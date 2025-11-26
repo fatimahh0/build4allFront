@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../../../../core/config/app_config.dart';
+import '../../../../core/config/home_config.dart';
 import '../../../home/presentation/screens/home_screen.dart';
 import '../../../home/presentation/screens/placeholder_screen.dart';
 
@@ -17,49 +18,64 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
 
+  late final List<NavItemView> _tabs;
+  late final List<Widget> _pages;
+
   @override
-  Widget build(BuildContext context) {
+  void initState() {
+    super.initState();
+
+    // build tabs from appConfig.navigation
     final navItems = widget.appConfig.navigation;
 
-   
-    final effectiveNavItems = navItems.isEmpty
-        ? [
-            NavItemConfig(id: 'home', label: 'Home', icon: 'home'),
-            NavItemConfig(id: 'profile', label: 'Profile', icon: 'user'),
-          ]
-        : navItems;
+    // Ensure there's at least one tab
+    if (navItems.isEmpty) {
+      _tabs = [
+        NavItemView(id: 'home', label: 'Home', icon: Icons.home_rounded),
+      ];
+    } else {
+      _tabs = navItems
+          .map(
+            (n) => NavItemView(
+              id: n.id,
+              label: n.label,
+              icon: _mapIconName(n.icon),
+            ),
+          )
+          .toList();
+    }
 
-    final pages = effectiveNavItems.map((nav) {
-      switch (nav.id) {
-        case 'home':
-          return const HomeScreen();
-        case 'orders':
-          return const PlaceholderScreen(title: 'Orders');
-        case 'items':
-          return const PlaceholderScreen(title: 'Items');
-        case 'explore':
-          return const PlaceholderScreen(title: 'Explore');
-        case 'communication':
-          return const PlaceholderScreen(title: 'Communication');
-        case 'profile':
-          return const PlaceholderScreen(title: 'Profile');
-        default:
-          return PlaceholderScreen(title: nav.label);
+    // Home sections config
+    final homeSections = HomeConfigLoader.loadSections(widget.appConfig);
+
+    _pages = _tabs.map((tab) {
+      if (tab.id == 'home') {
+        return HomeScreen(appConfig: widget.appConfig, sections: homeSections);
       }
+
+      // later you can map 'items', 'orders', 'profile' إلى screens حقيقية
+      return PlaceholderScreen(title: tab.label);
     }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
 
     return Scaffold(
-      body: pages[_currentIndex],
+      body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
-        items: [
-          for (final nav in effectiveNavItems)
-            BottomNavigationBarItem(
-              icon: Icon(_mapIcon(nav.icon)),
-              label: nav.label,
-            ),
-        ],
+        selectedItemColor: c.primary,
+        unselectedItemColor: c.onSurface.withOpacity(0.6),
+        showUnselectedLabels: true,
+        items: _tabs
+            .map(
+              (t) =>
+                  BottomNavigationBarItem(icon: Icon(t.icon), label: t.label),
+            )
+            .toList(),
         onTap: (index) {
           setState(() {
             _currentIndex = index;
@@ -69,8 +85,8 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  IconData _mapIcon(String iconName) {
-    switch (iconName) {
+  IconData _mapIconName(String name) {
+    switch (name) {
       case 'home':
         return Icons.home_rounded;
       case 'search':
@@ -84,7 +100,15 @@ class _MainShellState extends State<MainShell> {
       case 'chat':
         return Icons.chat_bubble_outline_rounded;
       default:
-        return Icons.circle;
+        return Icons.circle_rounded;
     }
   }
+}
+
+class NavItemView {
+  final String id;
+  final String label;
+  final IconData icon;
+
+  NavItemView({required this.id, required this.label, required this.icon});
 }

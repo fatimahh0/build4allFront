@@ -1,0 +1,31 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "App",
+
+  "loginTitle": "Welcome back",
+  "loginSubtitle": "Log in to continue",
+
+  "emailLabel": "Email",
+  "passwordLabel": "Password",
+  "phoneLabel": "Phone number",
+
+  "loginButton": "Log in",
+
+  "fieldRequired": "This field is required",
+  "invalidEmail": "Please enter a valid email",
+  "invalidPhone": "Please enter a valid phone number",
+  "passwordTooShort": "Password must be at least 6 characters",
+
+  "authErrorGeneric": "Something went wrong, please try again.",
+
+  "noAccountText": "Don't have an account?",
+  "signUpText": "Sign up",
+
+  "loginWithEmail": "Email",
+  "loginWithPhone": "Phone",
+
+  "loginMissingIdentifier": "Please enter your email or phone",
+
+  "forgotPassword": "Forgot password?"
+}

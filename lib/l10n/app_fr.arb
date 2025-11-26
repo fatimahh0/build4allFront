@@ -1,0 +1,31 @@
+{
+  "@@locale": "fr",
+
+  "appTitle": "Application",
+
+  "loginTitle": "Bon retour",
+  "loginSubtitle": "Connectez-vous pour continuer",
+
+  "emailLabel": "E-mail",
+  "passwordLabel": "Mot de passe",
+  "phoneLabel": "Numéro de téléphone",
+
+  "loginButton": "Se connecter",
+
+  "fieldRequired": "Ce champ est obligatoire",
+  "invalidEmail": "Veuillez entrer une adresse e-mail valide",
+  "invalidPhone": "Veuillez entrer un numéro de téléphone valide",
+  "passwordTooShort": "Le mot de passe doit contenir au moins 6 caractères",
+
+  "authErrorGeneric": "Une erreur s'est produite, veuillez réessayer.",
+
+  "noAccountText": "Vous n'avez pas de compte ?",
+  "signUpText": "Inscrivez-vous",
+
+  "loginWithEmail": "E-mail",
+  "loginWithPhone": "Téléphone",
+
+  "loginMissingIdentifier": "Veuillez entrer votre e-mail ou votre téléphone",
+
+  "forgotPassword": "Mot de passe oublié ?"
+}

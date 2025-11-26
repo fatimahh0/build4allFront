@@ -39,7 +39,6 @@ class Env {
     defaultValue: '',
   );
 
-  // النص الخام (ممكن نطنّشه، بس خلّيه)
   static const themeJson = String.fromEnvironment(
     'THEME_JSON',
     defaultValue: '{}',
@@ -58,8 +57,6 @@ class Env {
   );
 
   static const themeId = String.fromEnvironment('THEME_ID', defaultValue: '0');
-
-  /// النسخ Base64 – هولي اللي رح نستخدمهم فعليًا
   static const themeJsonB64 = String.fromEnvironment(
     'THEME_JSON_B64',
     defaultValue: '',
@@ -72,6 +69,12 @@ class Env {
 
   static const enabledFeaturesJsonB64 = String.fromEnvironment(
     'ENABLED_FEATURES_JSON_B64',
+    defaultValue: '',
+  );
+
+  /// 🆕 Home layout config as Base64 JSON string
+  static const homeJsonB64 = String.fromEnvironment(
+    'HOME_JSON_B64',
     defaultValue: '',
   );
 }
