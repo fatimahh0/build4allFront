@@ -1,14 +1,19 @@
+// lib/features/auth/presentation/screens/user_login_screen.dart
+import 'package:build4front/features/auth/data/repository/auth_repository_impl.dart';
+import 'package:build4front/features/auth/domain/usecases/send_verification_code.dart';
+import 'package:build4front/features/auth/presentation/register/bloc/register_bloc.dart';
+import 'package:build4front/features/auth/presentation/register/screens/user_register_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 
-import '../../../../common/widgets/primary_button.dart';
-import '../../../../common/widgets/app_text_field.dart';
-import '../../../../common/widgets/app_toast.dart';
-import '../../../../l10n/app_localizations.dart';
-import '../../../../core/config/app_config.dart';
-import '../../../../core/theme/theme_cubit.dart';
-import '../../../shell/presentation/screens/main_shell.dart';
+import '../../../../../common/widgets/primary_button.dart';
+import '../../../../../common/widgets/app_text_field.dart';
+import '../../../../../common/widgets/app_toast.dart';
+import '../../../../../l10n/app_localizations.dart';
+import '../../../../../core/config/app_config.dart';
+import '../../../../../core/theme/theme_cubit.dart';
+import '../../../../shell/presentation/screens/main_shell.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -269,9 +274,25 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                           l10n.noAccountText,
                           style: t.bodyMedium?.copyWith(color: colors.body),
                         ),
+                        // inside UserLoginScreen build, in the Sign Up TextButton:
                         TextButton(
                           onPressed: () {
-                            // TODO: navigate to Register
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (ctx) {
+                                  final repo = ctx.read<AuthRepositoryImpl>();
+                                  return BlocProvider(
+                                    create: (_) => RegisterBloc(
+                                      sendVerificationCode:
+                                          SendVerificationCode(repo),
+                                    ),
+                                    child: UserRegisterScreen(
+                                      appConfig: widget.appConfig,
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
                           },
                           child: Text(
                             l10n.signUpText,
@@ -406,7 +427,6 @@ class _PhoneFieldIntl extends StatelessWidget {
     required this.onChanged,
   });
 
-  @override
   Widget build(BuildContext context) {
     return IntlPhoneField(
       initialCountryCode: 'LB', // default Lebanon
@@ -431,7 +451,6 @@ class _PhoneFieldIntl extends StatelessWidget {
       style: textTheme.bodyMedium?.copyWith(color: colors.label),
       flagsButtonPadding: const EdgeInsets.only(left: 8),
       onChanged: (phone) {
-        // completeNumber = +96170123456
         onChanged(phone.completeNumber);
       },
       validator: (phone) {

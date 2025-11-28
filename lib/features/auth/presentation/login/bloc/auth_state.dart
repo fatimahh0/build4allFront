@@ -1,5 +1,7 @@
-import 'package:build4front/features/auth/domain/entities/user_entity.dart';
+// lib/features/auth/presentation/bloc/auth_state.dart
 import 'package:equatable/equatable.dart';
+
+import '../../../domain/entities/user_entity.dart';
 
 class AuthState extends Equatable {
   final bool isLoading;

@@ -1,8 +1,24 @@
-// lib/features/home/presentation/screens/home_screen.dart
-
+import 'package:build4front/features/items/domain/entities/item_summary.dart';
 import 'package:flutter/material.dart';
-import '../../../../core/config/app_config.dart';
-import '../../../../core/config/home_config.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:build4front/core/config/app_config.dart';
+import 'package:build4front/core/config/home_config.dart';
+import 'package:build4front/l10n/app_localizations.dart';
+
+import 'package:build4front/features/auth/presentation/login/bloc/auth_bloc.dart';
+import 'package:build4front/features/auth/presentation/login/bloc/auth_state.dart';
+import 'package:build4front/features/auth/domain/entities/user_entity.dart';
+
+import 'package:build4front/features/home/presentation/bloc/home_bloc.dart';
+import 'package:build4front/features/home/presentation/bloc/home_event.dart';
+import 'package:build4front/features/home/presentation/bloc/home_state.dart';
+
+import 'package:build4front/common/widgets/app_search_field.dart';
+import 'package:build4front/features/home/presentation/widgets/home_header.dart';
+import 'package:build4front/features/home/presentation/widgets/home_category_chips.dart';
+import 'package:build4front/features/home/presentation/widgets/home_items_section.dart';
+import 'package:build4front/features/home/presentation/widgets/home_section_header.dart';
 
 class HomeScreen extends StatelessWidget {
   final AppConfig appConfig;
@@ -17,6 +33,7 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final enabled = appConfig.enabledFeatures.toSet();
 
     final visibleSections = sections.where((s) {
@@ -24,14 +41,67 @@ class HomeScreen extends StatelessWidget {
       return enabled.contains(s.feature);
     }).toList();
 
+    final homeBloc = context.read<HomeBloc>();
+    if (!homeBloc.state.hasLoaded && !homeBloc.state.isLoading) {
+      homeBloc.add(const HomeStarted());
+    }
+
     return Scaffold(
       body: SafeArea(
-        child: ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-          itemCount: visibleSections.length,
-          itemBuilder: (context, index) {
-            final section = visibleSections[index];
-            return _buildSection(context, theme, section);
+        child: BlocBuilder<AuthBloc, AuthState>(
+          builder: (context, authState) {
+            String? fullName;
+            String? avatarUrl;
+
+            final UserEntity? user = authState.user as UserEntity?;
+
+            if (authState.isLoggedIn && user != null) {
+              final hasFirst = (user.firstName ?? '').trim().isNotEmpty;
+              final hasLast = (user.lastName ?? '').trim().isNotEmpty;
+
+              if (hasFirst || hasLast) {
+                fullName = '${user.firstName ?? ''} ${user.lastName ?? ''}'
+                    .trim();
+              } else if ((user.username ?? '').trim().isNotEmpty) {
+                fullName = user.username!.trim();
+              } else if ((user.email ?? '').trim().isNotEmpty) {
+                fullName = user.email!.trim();
+              } else if ((user.phoneNumber ?? '').trim().isNotEmpty) {
+                fullName = user.phoneNumber!.trim();
+              }
+
+              avatarUrl = user.profilePictureUrl;
+            }
+
+            return BlocBuilder<HomeBloc, HomeState>(
+              builder: (context, homeState) {
+                if (homeState.isLoading && !homeState.hasLoaded) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    context.read<HomeBloc>().add(const HomeStarted());
+                  },
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                    itemCount: visibleSections.length,
+                    itemBuilder: (context, index) {
+                      final section = visibleSections[index];
+                      return _buildSection(
+                        context,
+                        theme,
+                        l10n,
+                        section,
+                        homeState: homeState,
+                        fullName: fullName,
+                        avatarUrl: avatarUrl,
+                      );
+                    },
+                  ),
+                );
+              },
+            );
           },
         ),
       ),
@@ -41,162 +111,105 @@ class HomeScreen extends StatelessWidget {
   Widget _buildSection(
     BuildContext context,
     ThemeData theme,
-    HomeSectionConfig section,
-  ) {
+    AppLocalizations l10n,
+    HomeSectionConfig section, {
+    required HomeState homeState,
+    String? fullName,
+    String? avatarUrl,
+  }) {
     switch (section.type) {
       case HomeSectionType.header:
-        return _HeaderSection(appName: appConfig.appName);
-      case HomeSectionType.search:
-        return const _SearchSection();
-      case HomeSectionType.categoryChips:
-        return const _CategoryChipsSection();
-      case HomeSectionType.banner:
-        return _BannerSection(title: section.title);
-      case HomeSectionType.itemList:
-        return _ItemsSection(
-          title: section.title ?? 'Items',
-          layout: section.layout,
+        return HomeHeader(
+          appName: appConfig.appName,
+          fullName: fullName,
+          avatarUrl: avatarUrl,
+          welcomeText: l10n.home_welcome, // add to ARB
         );
+
+      case HomeSectionType.search:
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: AppSearchField(
+            hintText: l10n.home_search_hint, // add to ARB
+            onSubmitted: (value) {
+              // TODO: navigate to search screen or filter
+            },
+          ),
+        );
+
+      case HomeSectionType.categoryChips:
+        return HomeCategoryChips(categories: homeState.categories);
+
+      case HomeSectionType.banner:
+        return _BannerSection(
+          title: section.title ?? l10n.home_banner_title,
+          subtitle: l10n.home_banner_subtitle,
+          buttonLabel: l10n.home_banner_button,
+        );
+
+      case HomeSectionType.itemList:
+        final itemsForSection = _mapItemsForSection(section, homeState);
+
+        final sectionTitle =
+            section.title ??
+            (section.id == 'recommended'
+                ? l10n.home_recommended_title
+                : section.id == 'popular'
+                ? l10n.home_popular_title
+                : l10n.home_items_default_title);
+
+        return HomeItemsSection(
+          title: sectionTitle,
+          layout: section.layout,
+          items: itemsForSection,
+        );
+
       case HomeSectionType.bookingList:
-        return _BookingSection(title: section.title ?? 'Bookings');
+        return _BookingSection(
+          title: section.title ?? l10n.home_bookings_title,
+        );
+
       case HomeSectionType.reviewList:
         return _ReviewsSection(
-          title: section.title ?? 'Reviews',
+          title: section.title ?? l10n.home_reviews_title,
           layout: section.layout,
         );
+    }
+  }
+
+  List<ItemSummary> _mapItemsForSection(
+    HomeSectionConfig section,
+    HomeState homeState,
+  ) {
+    switch (section.id) {
+      case 'recommended':
+        if (homeState.recommendedItems.isNotEmpty) {
+          return homeState.recommendedItems;
+        }
+        return homeState.popularItems;
+      case 'popular':
+        return homeState.popularItems;
+      default:
+        return homeState.popularItems;
     }
   }
 }
 
 /// ===================
-///  SECTIONS
+///  Banner / bookings / reviews
+///  (no fake lists – UI only, data later)
 /// ===================
 
-class _HeaderSection extends StatelessWidget {
-  final String appName;
-
-  const _HeaderSection({required this.appName});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = Theme.of(context).colorScheme;
-    final t = Theme.of(context).textTheme;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: c.primary.withOpacity(0.15),
-            child: Icon(Icons.star_rounded, color: c.primary),
-            // TODO: later: NetworkImage(Env.appLogoUrl)
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Welcome 👋', style: t.labelLarge),
-                Text(
-                  appName,
-                  style: t.titleMedium,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.notifications_none_rounded),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SearchSection extends StatelessWidget {
-  const _SearchSection();
-
-  @override
-  Widget build(BuildContext context) {
-    final c = Theme.of(context).colorScheme;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        decoration: InputDecoration(
-          hintText: 'Search activities, items...',
-          prefixIcon: const Icon(Icons.search_rounded),
-          filled: true,
-          fillColor: c.surface,
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 0,
-            horizontal: 12,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: c.outline.withOpacity(0.2)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: c.outline.withOpacity(0.2)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: c.primary, width: 1.4),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _CategoryChipsSection extends StatelessWidget {
-  const _CategoryChipsSection();
-
-  @override
-  Widget build(BuildContext context) {
-    final categories = ['All', 'Sports', 'Art', 'Cooking', 'Music', 'Tech'];
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      height: 38,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final isSelected = index == 0; // TODO: bind to state later
-          final c = Theme.of(context).colorScheme;
-
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: isSelected ? c.primary : c.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isSelected ? c.primary : c.outline.withOpacity(0.3),
-              ),
-            ),
-            child: Text(
-              categories[index],
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: isSelected ? c.onPrimary : c.onSurface,
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
 class _BannerSection extends StatelessWidget {
-  final String? title;
+  final String title;
+  final String subtitle;
+  final String buttonLabel;
 
-  const _BannerSection({this.title});
+  const _BannerSection({
+    required this.title,
+    required this.subtitle,
+    required this.buttonLabel,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -219,12 +232,12 @@ class _BannerSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title ?? 'Discover your next hobby',
+                  title,
                   style: t.headlineSmall?.copyWith(color: c.onPrimary),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Explore activities, classes and more near you.',
+                  subtitle,
                   style: t.bodyMedium?.copyWith(color: c.onPrimary),
                 ),
                 const SizedBox(height: 12),
@@ -240,8 +253,10 @@ class _BannerSection extends StatelessWidget {
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),
-                  onPressed: () {},
-                  child: const Text('Start exploring'),
+                  onPressed: () {
+                    // TODO: scroll to items / navigate
+                  },
+                  child: Text(buttonLabel),
                 ),
               ],
             ),
@@ -266,51 +281,6 @@ class _BannerSection extends StatelessWidget {
   }
 }
 
-class _ItemsSection extends StatelessWidget {
-  final String title;
-  final String layout; // horizontal / vertical
-
-  const _ItemsSection({required this.title, required this.layout});
-
-  @override
-  Widget build(BuildContext context) {
-    final isHorizontal = layout.toLowerCase() == 'horizontal';
-    final dummyItems = List.generate(5, (i) => 'Item #${i + 1}');
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _SectionHeader(title: title, icon: Icons.local_activity_outlined),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: isHorizontal ? 190 : null,
-            child: isHorizontal
-                ? ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemBuilder: (context, index) =>
-                        _FakeCard(label: dummyItems[index]),
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemCount: dummyItems.length,
-                  )
-                : Column(
-                    children: dummyItems
-                        .map(
-                          (e) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: _FakeCard(label: e),
-                          ),
-                        )
-                        .toList(),
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _BookingSection extends StatelessWidget {
   final String title;
 
@@ -318,23 +288,34 @@ class _BookingSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dummy = List.generate(3, (i) => 'Booking #${i + 1}');
+    final c = Theme.of(context).colorScheme;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SectionHeader(title: title, icon: Icons.event_available_outlined),
+          HomeSectionHeader(title: title, icon: Icons.event_available_outlined),
           const SizedBox(height: 8),
-          Column(
-            children: dummy
-                .map(
-                  (e) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _FakeCard(label: e),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: c.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: c.outline.withOpacity(0.2)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Bookings feed not wired yet.', // can move to l10n if you want
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
-                )
-                .toList(),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -350,120 +331,37 @@ class _ReviewsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
     final isHorizontal = layout.toLowerCase() == 'horizontal';
-    final dummy = List.generate(4, (i) => 'Review #${i + 1}');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SectionHeader(title: title, icon: Icons.reviews_outlined),
+          HomeSectionHeader(title: title, icon: Icons.reviews_outlined),
           const SizedBox(height: 8),
           SizedBox(
-            height: isHorizontal ? 160 : null,
-            child: isHorizontal
-                ? ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemBuilder: (context, index) =>
-                        _FakeCard(label: dummy[index]),
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemCount: dummy.length,
-                  )
-                : Column(
-                    children: dummy
-                        .map(
-                          (e) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: _FakeCard(label: e),
-                          ),
-                        )
-                        .toList(),
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// ===================
-///  SMALL WIDGETS
-/// ===================
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  final IconData icon;
-
-  const _SectionHeader({required this.title, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    return Row(
-      children: [
-        Icon(icon, size: 20),
-        const SizedBox(width: 8),
-        Text(title, style: t.titleMedium),
-      ],
-    );
-  }
-}
-
-class _FakeCard extends StatelessWidget {
-  final String label;
-
-  const _FakeCard({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = Theme.of(context).colorScheme;
-    final t = Theme.of(context).textTheme;
-
-    // if you want to read from tokens instead of hard-coding:
-    // final card = context.read<ThemeCubit>().state.tokens.card;
-
-    return Container(
-      width: 160,
-      decoration: BoxDecoration(
-        color: c.surface,
-        borderRadius: BorderRadius.circular(0), // 👈 radius 0
-        border: Border.all(color: c.outline.withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // image placeholder
-          Container(
-            height: 90,
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(0), // 👈 radius 0
+            height: isHorizontal ? 140 : null,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: c.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: c.outline.withOpacity(0.2)),
               ),
-              color: c.primary.withOpacity(0.15),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: t.bodyMedium,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Short description...',
-                  style: t.bodySmall?.copyWith(
-                    color: c.onSurface.withOpacity(0.7),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Reviews feed not wired yet.', // also can be l10n
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],

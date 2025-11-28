@@ -22,7 +22,7 @@ class UserModel extends UserEntity {
        );
 
   factory UserModel.fromLoginJson(Map<String, dynamic> json) {
-    // مبني على شكل response من /api/auth/user/login بالbackend
+  
     final user = json['user'] as Map<String, dynamic>? ?? {};
     return UserModel(
       id: (user['id'] as num).toInt(),

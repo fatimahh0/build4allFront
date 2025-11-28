@@ -3,14 +3,9 @@ import 'env.dart';
 
 /// Represents one navigation item in the bottom bar.
 class NavItemConfig {
-  /// Technical id used by the app logic: "home", "items", "orders", "profile", ...
-  final String id;
-
-  /// The label shown under the icon in the bottom bar.
-  final String label;
-
-  /// String icon name, mapped later to Material Icons (e.g. "home", "bag", "ticket", "user").
-  final String icon;
+  final String id; // "home", "items", "orders", "profile", ...
+  final String label; // Label in bottom bar
+  final String icon; // Icon name ("home", "bag", "ticket", ...)
 
   const NavItemConfig({
     required this.id,
@@ -27,13 +22,7 @@ class NavItemConfig {
   }
 }
 
-/// High-level configuration for the current built app.
-///
-/// This is *build-time* config coming from dart-define:
-/// - appName
-/// - appType
-/// - enabledFeatures
-/// - navigation (bottom tabs)
+/// High-level app config read from Env / dart-define
 class AppConfig {
   final String appName;
   final String appType; // ACTIVITIES / SHOP / SERVICES / ...

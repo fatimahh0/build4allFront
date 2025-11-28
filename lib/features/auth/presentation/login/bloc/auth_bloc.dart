@@ -1,9 +1,10 @@
+// lib/features/auth/presentation/bloc/auth_bloc.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/config/env.dart';
-import '../../domain/usecases/login_with_email.dart';
+import '../../../../../core/config/env.dart';
+import '../../../domain/usecases/login_with_email.dart';
 
-import '../../domain/entities/user_entity.dart';
+import '../../../domain/entities/user_entity.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
@@ -23,7 +24,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
 
     final result = await loginWithEmail(
-      email: event.email.trim(),
+      email: event.email.trim(), // can be email OR phone
       password: event.password,
       ownerProjectLinkId: ownerId,
     );

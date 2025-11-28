@@ -12,10 +12,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'App';
 
   @override
-  String get loginTitle => 'Welcome back';
+  String get loginTitle => 'Log in';
 
   @override
-  String get loginSubtitle => 'Log in to continue';
+  String get loginSubtitle => 'Welcome back! Please sign in to continue.';
 
   @override
   String get emailLabel => 'Email';
@@ -30,19 +30,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginButton => 'Log in';
 
   @override
-  String get fieldRequired => 'This field is required';
+  String get fieldRequired => 'This field is required.';
 
   @override
-  String get invalidEmail => 'Please enter a valid email';
+  String get invalidEmail => 'Please enter a valid email address.';
 
   @override
-  String get invalidPhone => 'Please enter a valid phone number';
+  String get invalidPhone => 'Please enter a valid phone number.';
 
   @override
-  String get passwordTooShort => 'Password must be at least 6 characters';
+  String get passwordTooShort => 'Password must be at least 6 characters long.';
 
   @override
-  String get authErrorGeneric => 'Something went wrong, please try again.';
+  String get authErrorGeneric => 'Something went wrong. Please try again.';
 
   @override
   String get noAccountText => 'Don\'t have an account?';
@@ -57,8 +57,155 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loginWithPhone => 'Phone';
 
   @override
-  String get loginMissingIdentifier => 'Please enter your email or phone';
+  String get loginMissingIdentifier => 'Please enter your email or phone number.';
 
   @override
   String get forgotPassword => 'Forgot password?';
+
+  @override
+  String get registerTitle => 'Create your account';
+
+  @override
+  String get registerSubtitle => 'Choose how you want to sign up.';
+
+  @override
+  String get registerStep1Of3 => 'Step 1 of 3';
+
+  @override
+  String get registerWithEmail => 'Sign up with email';
+
+  @override
+  String get registerWithPhone => 'Sign up with phone';
+
+  @override
+  String get registerContinueButton => 'Continue';
+
+  @override
+  String get confirmPasswordLabel => 'Confirm password';
+
+  @override
+  String get passwordsDoNotMatch => 'Passwords do not match.';
+
+  @override
+  String get alreadyHaveAccountText => 'Already have an account?';
+
+  @override
+  String get verifyCodeTitle => 'Enter verification code';
+
+  @override
+  String get verifyCodeSubtitleEmail => 'We sent a code to your email.';
+
+  @override
+  String get verifyCodeSubtitlePhone => 'We sent a code to your phone.';
+
+  @override
+  String get verificationCodeLabel => 'Verification code';
+
+  @override
+  String get invalidVerificationCode => 'Please enter a valid verification code.';
+
+  @override
+  String get verifyButtonLabel => 'Verify';
+
+  @override
+  String get completeProfileTitle => 'Complete your profile';
+
+  @override
+  String get completeProfileSubtitle => 'Pick a username and your real name.';
+
+  @override
+  String get usernameLabel => 'Username';
+
+  @override
+  String get firstNameLabel => 'First name';
+
+  @override
+  String get lastNameLabel => 'Last name';
+
+  @override
+  String get usernameTooShort => 'Username must be at least 3 characters.';
+
+  @override
+  String get publicProfileLabel => 'Public profile';
+
+  @override
+  String get publicProfileDescription => 'If enabled, your profile and activities can be found by other users.';
+
+  @override
+  String get saveProfileButton => 'Save profile';
+
+  @override
+  String get profileCompletedSuccessMessage => 'Profile completed successfully. You can now log in.';
+
+  @override
+  String get profileCompletedErrorMessage => 'Failed to complete profile. Please try again.';
+
+  @override
+  String get featureComingSoon => 'This feature is coming soon.';
+
+  @override
+  String get changePhotoHint => 'Tap to add a profile photo';
+
+  @override
+  String get previousStepButton => 'Previous Step';
+
+  @override
+  String get completeProfileNamesTitle => 'Complete Your Profile - Names';
+
+  @override
+  String get completeProfileNamesSubtitle => 'Please provide your first and last name.';
+
+  @override
+  String get firstNameHint => 'Enter your first name';
+
+  @override
+  String get lastNameHint => 'Enter your last name';
+
+  @override
+  String get continueButton => 'Continue';
+
+  @override
+  String get completeProfileUsernameTitle => 'Complete Your Profile - Username';
+
+  @override
+  String get completeProfileUsernameSubtitle => 'Choose a unique username for your account.';
+
+  @override
+  String get completeProfilePhotoTitle => 'Complete Your Profile - Photo';
+
+  @override
+  String get completeProfilePhotoSubtitle => 'Add a profile picture to personalize your account.';
+
+  @override
+  String get nextStepButton => 'Next Step';
+
+  @override
+  String get home_welcome => 'Welcome 👋';
+
+  @override
+  String get home_search_hint => 'Search activities, items...';
+
+  @override
+  String get home_banner_title => 'Discover your next hobby';
+
+  @override
+  String get home_banner_subtitle => 'Explore activities, classes and more near you.';
+
+  @override
+  String get home_banner_button => 'Start exploring';
+
+  @override
+  String get home_items_default_title => 'Items';
+
+  @override
+  String get home_recommended_title => 'Recommended for you';
+
+  @override
+  String get home_popular_title => 'Popular now';
+
+  @override
+  String get home_bookings_title => 'Upcoming bookings';
+
+  @override
+  String get home_reviews_title => 'Latest reviews';
 }

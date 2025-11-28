@@ -1,3 +1,4 @@
+// lib/features/auth/presentation/bloc/auth_event.dart
 import 'package:equatable/equatable.dart';
 
 abstract class AuthEvent extends Equatable {
@@ -7,7 +8,7 @@ abstract class AuthEvent extends Equatable {
 }
 
 class AuthLoginSubmitted extends AuthEvent {
-  final String email;
+  final String email; // can be email OR phone
   final String password;
 
   const AuthLoginSubmitted({required this.email, required this.password});

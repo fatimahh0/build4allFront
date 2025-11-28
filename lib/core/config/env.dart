@@ -9,11 +9,14 @@ class Env {
     defaultValue: '/api/ws',
   );
 
+  /// "user" / "business" / "both"  (used by backend filters sometimes)
   static const appRole = String.fromEnvironment(
     'APP_ROLE',
     defaultValue: 'both',
   );
 
+  /// How to send ownerProjectLinkId to backend:
+  /// "header" | "query" | "body" | "off"
   static const ownerAttachMode = String.fromEnvironment(
     'OWNER_ATTACH_MODE',
     defaultValue: 'header',
@@ -21,7 +24,7 @@ class Env {
 
   static const ownerProjectLinkId = String.fromEnvironment(
     'OWNER_PROJECT_LINK_ID',
-    defaultValue: '0',
+    defaultValue: '1',
   );
 
   static const projectId = String.fromEnvironment(
@@ -57,6 +60,7 @@ class Env {
   );
 
   static const themeId = String.fromEnvironment('THEME_ID', defaultValue: '0');
+
   static const themeJsonB64 = String.fromEnvironment(
     'THEME_JSON_B64',
     defaultValue: '',
