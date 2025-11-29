@@ -498,6 +498,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Latest reviews'**
   String get home_reviews_title;
+
+  /// No description provided for @connection_offline.
+  ///
+  /// In en, this message translates to:
+  /// **'No internet connection'**
+  String get connection_offline;
+
+  /// No description provided for @connection_server_down.
+  ///
+  /// In en, this message translates to:
+  /// **'Server is not responding'**
+  String get connection_server_down;
+
+  /// No description provided for @connection_issue.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection issue'**
+  String get connection_issue;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

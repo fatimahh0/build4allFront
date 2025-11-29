@@ -97,5 +97,8 @@
   "home_recommended_title": "Recommended for you",
   "home_popular_title": "Popular now",
   "home_bookings_title": "Upcoming bookings",
-  "home_reviews_title": "Latest reviews"
+  "home_reviews_title": "Latest reviews",
+    "connection_offline": "No internet connection",
+  "connection_server_down": "Server is not responding",
+  "connection_issue": "Connection issue"
 }

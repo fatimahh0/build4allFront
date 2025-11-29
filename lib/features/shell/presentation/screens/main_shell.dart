@@ -53,7 +53,7 @@ class _MainShellState extends State<MainShell> {
         return HomeScreen(appConfig: widget.appConfig, sections: homeSections);
       }
 
-      // later you can map 'items', 'orders', 'profile' إلى screens حقيقية
+      // later you can map 'items', 'orders', 'profile' to real screens
       return PlaceholderScreen(title: tab.label);
     }).toList();
   }
@@ -62,8 +62,16 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
 
+    final body = IndexedStack(index: _currentIndex, children: _pages);
+
+    // 🔥 Important: if there is only ONE tab, do NOT show BottomNavigationBar
+    if (_tabs.length < 2) {
+      return Scaffold(body: body);
+    }
+
+    // Normal case: 2+ tabs → show bottom navigation
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _pages),
+      body: body,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,

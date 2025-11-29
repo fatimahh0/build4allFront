@@ -1,6 +1,10 @@
+// lib/features/items/data/services/items_api_service.dart
+
 import 'package:build4front/core/config/env.dart';
 import 'package:build4front/core/network/api_fetch.dart';
 import 'package:build4front/core/network/api_methods.dart';
+import 'package:build4front/core/exceptions/app_exception.dart';
+import 'package:build4front/core/exceptions/network_exception.dart';
 
 class ItemsApiService {
   final ApiFetch _fetch;
@@ -21,15 +25,26 @@ class ItemsApiService {
       if (typeId != null) 'typeId': typeId,
     };
 
-    final res = await _fetch.fetch(
-      HttpMethod.get,
-      '$_base/guest/upcoming',
-      data: query,
-    );
+    try {
+      final res = await _fetch.fetch(
+        HttpMethod.get,
+        '$_base/guest/upcoming',
+        data: query,
+      );
 
-    final data = res.data;
-    if (data is! List) throw Exception('Invalid response format');
-    return data;
+      final data = res.data;
+      if (data is! List) {
+        throw ServerException(
+          'Invalid response format for upcoming items',
+          statusCode: res.statusCode ?? 200,
+        );
+      }
+      return data;
+    } on AppException {
+      rethrow;
+    } catch (e) {
+      throw AppException('Failed to load upcoming items', original: e);
+    }
   }
 
   // ---------- /api/items/by-type/{typeId}?ownerProjectLinkId=... ----------
@@ -38,15 +53,26 @@ class ItemsApiService {
 
     final query = <String, dynamic>{'ownerProjectLinkId': ownerId};
 
-    final res = await _fetch.fetch(
-      HttpMethod.get,
-      '$_base/by-type/$typeId',
-      data: query,
-    );
+    try {
+      final res = await _fetch.fetch(
+        HttpMethod.get,
+        '$_base/by-type/$typeId',
+        data: query,
+      );
 
-    final data = res.data;
-    if (data is! List) throw Exception('Invalid response format');
-    return data;
+      final data = res.data;
+      if (data is! List) {
+        throw ServerException(
+          'Invalid response format for items by type',
+          statusCode: res.statusCode ?? 200,
+        );
+      }
+      return data;
+    } on AppException {
+      rethrow;
+    } catch (e) {
+      throw AppException('Failed to load items by type', original: e);
+    }
   }
 
   // ---------- /api/items/category-based/{userId}?ownerProjectLinkId=... ----------
@@ -62,15 +88,26 @@ class ItemsApiService {
 
     final query = <String, dynamic>{'ownerProjectLinkId': ownerId};
 
-    final res = await _fetch.fetch(
-      HttpMethod.get,
-      '$_base/category-based/$userId',
-      headers: headers,
-      data: query,
-    );
+    try {
+      final res = await _fetch.fetch(
+        HttpMethod.get,
+        '$_base/category-based/$userId',
+        headers: headers,
+        data: query,
+      );
 
-    final data = res.data;
-    if (data is! List) throw Exception('Invalid response format');
-    return data;
+      final data = res.data;
+      if (data is! List) {
+        throw ServerException(
+          'Invalid response format for interest-based items',
+          statusCode: res.statusCode ?? 200,
+        );
+      }
+      return data;
+    } on AppException {
+      rethrow;
+    } catch (e) {
+      throw AppException('Failed to load interest-based items', original: e);
+    }
   }
 }

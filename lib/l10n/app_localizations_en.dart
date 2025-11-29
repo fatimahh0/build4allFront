@@ -208,4 +208,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get home_reviews_title => 'Latest reviews';
+
+  @override
+  String get connection_offline => 'No internet connection';
+
+  @override
+  String get connection_server_down => 'Server is not responding';
+
+  @override
+  String get connection_issue => 'Connection issue';
 }

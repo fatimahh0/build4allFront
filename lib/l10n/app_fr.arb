@@ -88,6 +88,9 @@
 "completeProfileUsernameSubtitle": "Choisissez un nom d'utilisateur unique pour votre compte.",
 "completeProfilePhotoTitle": "Complétez votre profil - Photo",
 "completeProfilePhotoSubtitle": "Ajoutez une photo de profil pour personnaliser votre compte.",
-"nextStepButton": "Étape suivante"
+"nextStepButton": "Étape suivante",
+ "connection_offline": "Pas de connexion Internet",
+  "connection_server_down": "Le serveur ne répond pas",
+  "connection_issue": "Problème de connexion"
   
 }

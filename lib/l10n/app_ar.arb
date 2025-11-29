@@ -87,5 +87,8 @@
 "completeProfileUsernameSubtitle": "اختر اسم مستخدم فريد لحسابك.",
 "completeProfilePhotoTitle": "إكمال الملف الشخصي - الصورة",
 "completeProfilePhotoSubtitle": "أضف صورة للملف الشخصي لتخصيص حسابك.",
-"nextStepButton": "الخطوة التالية"
+"nextStepButton": "الخطوة التالية",
+ "connection_offline": "لا يوجد اتصال بالإنترنت",
+  "connection_server_down": "الخادم لا يستجيب",
+  "connection_issue": "مشكلة في الاتصال"
 }

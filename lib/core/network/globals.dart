@@ -4,6 +4,7 @@ library globals;
 import 'package:dio/dio.dart';
 import 'package:build4front/core/config/env.dart';
 import 'package:build4front/core/network/interceptors/auth_body_injector.dart';
+import 'package:build4front/core/network/connecting(wifiORserver)/connection_cubit.dart';
 
 Dio? appDio;
 
@@ -17,21 +18,28 @@ String? userToken;
 String? Token;
 
 // -------- Owner / tenant wiring --------
-String? ownerProjectLinkId; // e.g. "1"
-String? ownerAttachMode; // "header" | "query" | "body" | "off"
-String? projectId; // e.g. "1"
-String? appRole; // "both" | "user" | "business"
-String? wsPath; // "/api/ws"
+String? ownerProjectLinkId;
+String? ownerAttachMode;
+String? projectId;
+String? appRole;
+String? wsPath;
 
 // -------- Branding --------
-String appName = 'Build4All — Client'; // fallback
+String appName = 'Build4All — Client';
 String appLogoUrl = '';
+
+// -------- Connection Cubit (for server / network status) --------
+ConnectionCubit? connectionCubit;
+
+/// Register the ConnectionCubit globally so network layer can update status
+void registerConnectionCubit(ConnectionCubit cubit) {
+  connectionCubit = cubit;
+}
 
 String readAuthToken() {
   return (authToken ?? token ?? userToken ?? Token ?? '').toString();
 }
 
-/// ✅ نحط الـ token global + على Dio
 void setAuthToken(String? raw) {
   final t = (raw ?? '').trim();
 
@@ -61,17 +69,13 @@ void setAuthToken(String? raw) {
 
 String serverRootNoApi() {
   final base = appServerRoot;
- 
   return base.replaceFirst(RegExp(r'/api/?$'), '');
 }
 
-/// ✅ Resolve relative URLs against server root
-/// "/uploads/x.jpg" -> "http://192.168.1.3:8080/uploads/x.jpg"
 String resolveUrl(String maybeRelative) {
   final s = maybeRelative.trim();
   if (s.isEmpty) return s;
 
- 
   if (s.startsWith('http://') || s.startsWith('https://')) return s;
 
   final base = serverRootNoApi().replaceAll(RegExp(r'/+$'), '');
@@ -96,7 +100,7 @@ Dio dio() {
 void makeDefaultDio(String baseUrl) {
   appServerRoot = baseUrl;
 
-  // 🔗 copy Env → globals so interceptors can read them
+  // Copy Env → globals so interceptors can read them
   ownerProjectLinkId = Env.ownerProjectLinkId;
   ownerAttachMode = Env.ownerAttachMode;
   projectId = Env.projectId;
@@ -119,7 +123,7 @@ void makeDefaultDio(String baseUrl) {
   );
 
   d.interceptors.clear();
-  d.interceptors.add(OwnerInjector()); // will use globals.*
+  d.interceptors.add(OwnerInjector());
   d.interceptors.add(
     LogInterceptor(
       requestBody: true,
