@@ -123,25 +123,23 @@ class _UserCompleteProfileScreenState extends State<UserCompleteProfileScreen> {
       profileImagePath: _profileImagePath,
     );
 
-    result.fold(
-      (failure) {
-        AppToast.show(context, failure.message, isError: true);
-      },
-      (_) {
-        AppToast.show(
-          context,
-          l10n.profileCompletedSuccessMessage,
-          isError: false,
-        );
+    // The usecase returns a UserEntity (not an Either), so handle it directly.
+    if (result == null) {
+      AppToast.show(context, 'Failed to complete profile', isError: true);
+    } else {
+      AppToast.show(
+        context,
+        l10n.profileCompletedSuccessMessage,
+        isError: false,
+      );
 
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(
-            builder: (_) => UserLoginScreen(appConfig: widget.appConfig),
-          ),
-          (route) => false,
-        );
-      },
-    );
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => UserLoginScreen(appConfig: widget.appConfig),
+        ),
+        (route) => false,
+      );
+    }
 
     if (mounted) setState(() => _isLoading = false);
   }

@@ -91,6 +91,23 @@
 "nextStepButton": "Étape suivante",
  "connection_offline": "Pas de connexion Internet",
   "connection_server_down": "Le serveur ne répond pas",
-  "connection_issue": "Problème de connexion"
-  
+  "connection_issue": "Problème de connexion",
+   "explore_title": "Explorer",
+  "explore_search_hint": "Rechercher  des articles...",
+  "explore_items_title": "Articles",
+  "explore_empty_message": "Aucun résultat. Essayez de modifier vos filtres.",
+  "explore_category_all": "Tout",
+    "explore_results_label": "{count, plural, =0{Aucun résultat} =1{1 résultat} other{{count} résultats}}",
+  "@explore_results_label": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "explore_sort_relevance": "Pertinence",
+  "explore_sort_price_low_high": "Prix : du plus bas au plus élevé",
+  "explore_sort_price_high_low": "Prix : du plus élevé au plus bas",
+  "explore_sort_date_soonest": "Date : le plus proche"
 }

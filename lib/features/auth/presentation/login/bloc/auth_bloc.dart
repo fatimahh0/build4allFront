@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../../core/config/env.dart';
 import '../../../domain/usecases/login_with_email.dart';
-
 import '../../../domain/entities/user_entity.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
@@ -21,34 +20,34 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(state.copyWith(isLoading: true, errorMessage: null));
 
-    final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+    try {
+      final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
 
-    final result = await loginWithEmail(
-      email: event.email.trim(), // can be email OR phone
-      password: event.password,
-      ownerProjectLinkId: ownerId,
-    );
+      final userEntity = await loginWithEmail(
+        email: event.email.trim(),
+        password: event.password,
+        ownerProjectLinkId: ownerId,
+      );
 
-    result.fold(
-      (failure) {
-        emit(
-          state.copyWith(
-            isLoading: false,
-            errorMessage: failure.message,
-            isLoggedIn: false,
-          ),
-        );
-      },
-      (user) {
-        emit(
-          state.copyWith(
-            isLoading: false,
-            errorMessage: null,
-            isLoggedIn: true,
-            user: user as UserEntity,
-          ),
-        );
-      },
-    );
+      final token = await loginWithEmail.authApi.getSavedToken();
+
+      emit(
+        state.copyWith(
+          isLoading: false,
+          errorMessage: null,
+          isLoggedIn: true,
+          user: userEntity,
+          token: token,
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isLoading: false,
+          errorMessage: e.toString(),
+          isLoggedIn: false,
+        ),
+      );
+    }
   }
 }

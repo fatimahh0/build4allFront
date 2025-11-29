@@ -217,4 +217,94 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get connection_issue => 'Connection issue';
+
+  @override
+  String get explore_title => 'Explore';
+
+  @override
+  String get explore_search_hint => 'Search  places...';
+
+  @override
+  String get explore_items_title => 'All activities';
+
+  @override
+  String get explore_empty_message => 'No results found. Try another keyword.';
+
+  @override
+  String get explore_category_all => 'All';
+
+  @override
+  String explore_results_label(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count results',
+      one: '1 result',
+      zero: 'No results',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get explore_sort_relevance => 'Relevance';
+
+  @override
+  String get explore_sort_price_low_high => 'Price: Low to High';
+
+  @override
+  String get explore_sort_price_high_low => 'Price: High to Low';
+
+  @override
+  String get explore_sort_date_soonest => 'Soonest date';
+
+  @override
+  String get profileMotto => 'Live your hobby!';
+
+  @override
+  String get profile_load_error => 'Couldn\'t load your profile. Please try again.';
+
+  @override
+  String get retry => 'Retry';
+
+  @override
+  String get manageAccount => 'Manage account';
+
+  @override
+  String get profileMakePrivate => 'Make profile private';
+
+  @override
+  String get profileMakePublic => 'Make profile public';
+
+  @override
+  String get setInactive => 'Set account inactive';
+
+  @override
+  String get profileLogoutConfirm => 'Are you sure you want to log out?';
+
+  @override
+  String get deactivate_title => 'Deactivate account';
+
+  @override
+  String get deactivate_warning => 'Enter your password to confirm deactivation.';
+
+  @override
+  String get current_password_label => 'Current password';
+
+  @override
+  String get language_note => 'Changing language will restart some screens.';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get confirm => 'Confirm';
+
+  @override
+  String get language => 'Language';
+
+  @override
+  String get english => 'English';
+
+  @override
+  String get logout => 'Log out';
 }

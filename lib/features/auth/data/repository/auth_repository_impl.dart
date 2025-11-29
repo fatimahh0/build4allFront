@@ -1,16 +1,13 @@
-import 'package:build4front/features/auth/data/services/auth_api_service.dart';
-import 'package:build4front/features/auth/domain/repository/auth_repository.dart';
 import 'package:dartz/dartz.dart';
-
 import '../../domain/entities/user_entity.dart';
+import '../../domain/repository/auth_repository.dart';
+import '../services/auth_api_service.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthApiService api;
 
   AuthRepositoryImpl({required this.api});
 
-  /// Normalize error messages coming from Exceptions so the UI
-  /// doesn't show "Exception: <message>" but only "<message>".
   String _cleanError(Object e) {
     final raw = e.toString();
     const prefix = 'Exception: ';
@@ -69,26 +66,30 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  // ---------------------------------------------------------------
+  // LOGIN → return pure Future<UserEntity>
+  // ---------------------------------------------------------------
   @override
-  Future<Either<AuthFailure, UserEntity>> loginWithEmail({
+  Future<UserEntity> loginWithEmail({
     required String email,
     required String password,
     required int ownerProjectLinkId,
   }) async {
     try {
-      final user = await api.loginWithEmail(
+      final userModel = await api.loginWithEmail(
         email: email,
         password: password,
         ownerProjectLinkId: ownerProjectLinkId,
       );
-      return Right(user);
+
+      return userModel; // 🔥 no toEntity()
     } catch (e) {
-      return Left(AuthFailure(_cleanError(e)));
+      throw Exception(_cleanError(e));
     }
   }
 
   @override
-  Future<Either<AuthFailure, UserEntity>> completeProfile({
+  Future<UserEntity> completeProfile({
     required int pendingId,
     required String username,
     required String firstName,
@@ -98,7 +99,7 @@ class AuthRepositoryImpl implements AuthRepository {
     String? profileImagePath,
   }) async {
     try {
-      final user = await api.completeUserProfile(
+      final userModel = await api.completeUserProfile(
         pendingId: pendingId,
         username: username,
         firstName: firstName,
@@ -107,9 +108,15 @@ class AuthRepositoryImpl implements AuthRepository {
         ownerProjectLinkId: ownerProjectLinkId,
         profileImagePath: profileImagePath,
       );
-      return Right(user);
+
+      return userModel; // 🔥 no toEntity()
     } catch (e) {
-      return Left(AuthFailure(_cleanError(e)));
+      throw Exception(_cleanError(e));
     }
   }
+
+  // ---------------------------------------------------------------
+  // COMPLETE PROFILE → return pure Future<UserEntity>
+  // ---------------------------------------------------------------
+  
 }

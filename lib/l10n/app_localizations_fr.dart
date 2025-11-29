@@ -217,4 +217,94 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get connection_issue => 'Problème de connexion';
+
+  @override
+  String get explore_title => 'Explorer';
+
+  @override
+  String get explore_search_hint => 'Rechercher  des articles...';
+
+  @override
+  String get explore_items_title => 'Articles';
+
+  @override
+  String get explore_empty_message => 'Aucun résultat. Essayez de modifier vos filtres.';
+
+  @override
+  String get explore_category_all => 'Tout';
+
+  @override
+  String explore_results_label(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count résultats',
+      one: '1 résultat',
+      zero: 'Aucun résultat',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get explore_sort_relevance => 'Pertinence';
+
+  @override
+  String get explore_sort_price_low_high => 'Prix : du plus bas au plus élevé';
+
+  @override
+  String get explore_sort_price_high_low => 'Prix : du plus élevé au plus bas';
+
+  @override
+  String get explore_sort_date_soonest => 'Date : le plus proche';
+
+  @override
+  String get profileMotto => 'Live your hobby!';
+
+  @override
+  String get profile_load_error => 'Couldn\'t load your profile. Please try again.';
+
+  @override
+  String get retry => 'Retry';
+
+  @override
+  String get manageAccount => 'Manage account';
+
+  @override
+  String get profileMakePrivate => 'Make profile private';
+
+  @override
+  String get profileMakePublic => 'Make profile public';
+
+  @override
+  String get setInactive => 'Set account inactive';
+
+  @override
+  String get profileLogoutConfirm => 'Are you sure you want to log out?';
+
+  @override
+  String get deactivate_title => 'Deactivate account';
+
+  @override
+  String get deactivate_warning => 'Enter your password to confirm deactivation.';
+
+  @override
+  String get current_password_label => 'Current password';
+
+  @override
+  String get language_note => 'Changing language will restart some screens.';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get confirm => 'Confirm';
+
+  @override
+  String get language => 'Language';
+
+  @override
+  String get english => 'English';
+
+  @override
+  String get logout => 'Log out';
 }

@@ -1,10 +1,33 @@
 // lib/features/shell/presentation/screens/main_shell.dart
-
+import 'package:build4front/features/profile/presentation/bloc/user_profile_event.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../../../core/config/app_config.dart';
 import '../../../../core/config/home_config.dart';
+
+import 'package:build4front/l10n/app_localizations.dart';
+
+// Home + Explore
 import '../../../home/presentation/screens/home_screen.dart';
 import '../../../home/presentation/screens/placeholder_screen.dart';
+import '../../../explore/presentation/screens/explore_screen.dart';
+
+// Auth
+import 'package:build4front/features/auth/presentation/login/bloc/auth_bloc.dart';
+import 'package:build4front/features/auth/presentation/login/bloc/auth_state.dart';
+import 'package:build4front/features/auth/domain/entities/user_entity.dart';
+
+// Profile screen
+import 'package:build4front/features/profile/presentation/screens/user_profile_screen.dart';
+
+// Profile feature wiring (service → repo → usecases → bloc)
+import 'package:build4front/features/profile/presentation/bloc/user_profile_bloc.dart';
+import 'package:build4front/features/profile/domain/usecases/get_user_profile.dart';
+import 'package:build4front/features/profile/domain/usecases/toggle_user_visibility.dart';
+import 'package:build4front/features/profile/domain/usecases/update_user_status.dart';
+import 'package:build4front/features/profile/data/services/user_profile_service.dart';
+import 'package:build4front/features/profile/data/repositories/user_profile_repository_impl.dart';
 
 class MainShell extends StatefulWidget {
   final AppConfig appConfig;
@@ -25,7 +48,7 @@ class _MainShellState extends State<MainShell> {
   void initState() {
     super.initState();
 
-    // build tabs from appConfig.navigation
+    // Build tabs from appConfig.navigation
     final navItems = widget.appConfig.navigation;
 
     // Ensure there's at least one tab
@@ -45,16 +68,28 @@ class _MainShellState extends State<MainShell> {
           .toList();
     }
 
-    // Home sections config
+    // Home sections config (from dynamic HOME_JSON_B64 or defaults)
     final homeSections = HomeConfigLoader.loadSections(widget.appConfig);
 
+    // Map each tab id → actual screen
     _pages = _tabs.map((tab) {
-      if (tab.id == 'home') {
-        return HomeScreen(appConfig: widget.appConfig, sections: homeSections);
-      }
+      switch (tab.id) {
+        case 'home':
+          return HomeScreen(
+            appConfig: widget.appConfig,
+            sections: homeSections,
+          );
 
-      // later you can map 'items', 'orders', 'profile' to real screens
-      return PlaceholderScreen(title: tab.label);
+        case 'explore':
+          return ExploreScreen(appConfig: widget.appConfig);
+
+        case 'profile':
+          return const _ProfileTabShell();
+
+        // later: map 'items', 'orders', 'chat', ... to real screens
+        default:
+          return PlaceholderScreen(title: tab.label);
+      }
     }).toList();
   }
 
@@ -64,7 +99,7 @@ class _MainShellState extends State<MainShell> {
 
     final body = IndexedStack(index: _currentIndex, children: _pages);
 
-    // 🔥 Important: if there is only ONE tab, do NOT show BottomNavigationBar
+    // If there is only ONE tab, do NOT show BottomNavigationBar
     if (_tabs.length < 2) {
       return Scaffold(body: body);
     }
@@ -119,4 +154,65 @@ class NavItemView {
   final IconData icon;
 
   NavItemView({required this.id, required this.label, required this.icon});
+}
+
+/// ===============================
+///  Profile tab wrapper
+/// ===============================
+///
+/// Here we:
+/// - Read AuthBloc to get user / isLoggedIn
+/// - Provide UserProfileBloc (service → repo → usecases → bloc)
+/// - Show login hint if user not logged in
+///
+class _ProfileTabShell extends StatelessWidget {
+  const _ProfileTabShell();
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = context.watch<AuthBloc>().state;
+    final user = authState.user;
+    final token = authState.token;
+
+    // -----------------------
+    // 1. Not logged in
+    // -----------------------
+    if (!authState.isLoggedIn || user == null || token == null) {
+      return const Scaffold(
+        body: Center(child: Text("Please login first")),
+      );
+    }
+
+    // -----------------------
+    // 2. Provide Service → Repo → Bloc
+    // -----------------------
+    return RepositoryProvider<UserProfileService>(
+      create: (_) => UserProfileService(),
+      child: Builder(
+        builder: (context) {
+          final service = context.read<UserProfileService>();
+          final repo = UserProfileRepositoryImpl(service);
+
+          return MultiBlocProvider(
+            providers: [
+              BlocProvider<UserProfileBloc>(
+                create: (_) => UserProfileBloc(
+                  getUser: GetUserProfile(repo),
+                  toggleVisibility: ToggleUserVisibility(repo),
+                  updateStatus: UpdateUserStatus(repo),
+                )..add(LoadUserProfile(token, user.id)), // 🔥 auto load profile
+              ),
+            ],
+            child: UserProfileScreen(
+              token: token,
+              userId: user.id,
+              onChangeLocale: (_) {},
+              onLogout: () {},
+            ),
+          );
+        },
+      ),
+    );
+  }
+
 }

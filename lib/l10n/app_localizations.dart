@@ -516,6 +516,168 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Connection issue'**
   String get connection_issue;
+
+  /// No description provided for @explore_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore'**
+  String get explore_title;
+
+  /// No description provided for @explore_search_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search  places...'**
+  String get explore_search_hint;
+
+  /// No description provided for @explore_items_title.
+  ///
+  /// In en, this message translates to:
+  /// **'All activities'**
+  String get explore_items_title;
+
+  /// No description provided for @explore_empty_message.
+  ///
+  /// In en, this message translates to:
+  /// **'No results found. Try another keyword.'**
+  String get explore_empty_message;
+
+  /// No description provided for @explore_category_all.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get explore_category_all;
+
+  /// No description provided for @explore_results_label.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No results} =1{1 result} other{{count} results}}'**
+  String explore_results_label(int count);
+
+  /// No description provided for @explore_sort_relevance.
+  ///
+  /// In en, this message translates to:
+  /// **'Relevance'**
+  String get explore_sort_relevance;
+
+  /// No description provided for @explore_sort_price_low_high.
+  ///
+  /// In en, this message translates to:
+  /// **'Price: Low to High'**
+  String get explore_sort_price_low_high;
+
+  /// No description provided for @explore_sort_price_high_low.
+  ///
+  /// In en, this message translates to:
+  /// **'Price: High to Low'**
+  String get explore_sort_price_high_low;
+
+  /// No description provided for @explore_sort_date_soonest.
+  ///
+  /// In en, this message translates to:
+  /// **'Soonest date'**
+  String get explore_sort_date_soonest;
+
+  /// No description provided for @profileMotto.
+  ///
+  /// In en, this message translates to:
+  /// **'Live your hobby!'**
+  String get profileMotto;
+
+  /// No description provided for @profile_load_error.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your profile. Please try again.'**
+  String get profile_load_error;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
+
+  /// No description provided for @manageAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage account'**
+  String get manageAccount;
+
+  /// No description provided for @profileMakePrivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Make profile private'**
+  String get profileMakePrivate;
+
+  /// No description provided for @profileMakePublic.
+  ///
+  /// In en, this message translates to:
+  /// **'Make profile public'**
+  String get profileMakePublic;
+
+  /// No description provided for @setInactive.
+  ///
+  /// In en, this message translates to:
+  /// **'Set account inactive'**
+  String get setInactive;
+
+  /// No description provided for @profileLogoutConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to log out?'**
+  String get profileLogoutConfirm;
+
+  /// No description provided for @deactivate_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Deactivate account'**
+  String get deactivate_title;
+
+  /// No description provided for @deactivate_warning.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your password to confirm deactivation.'**
+  String get deactivate_warning;
+
+  /// No description provided for @current_password_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password'**
+  String get current_password_label;
+
+  /// No description provided for @language_note.
+  ///
+  /// In en, this message translates to:
+  /// **'Changing language will restart some screens.'**
+  String get language_note;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get confirm;
+
+  /// No description provided for @language.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get language;
+
+  /// No description provided for @english.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get english;
+
+  /// No description provided for @logout.
+  ///
+  /// In en, this message translates to:
+  /// **'Log out'**
+  String get logout;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -1,0 +1,70 @@
+import 'package:dio/dio.dart';
+import 'package:build4front/core/network/globals.dart' as g;
+import 'package:build4front/core/config/env.dart';
+
+class UserProfileService {
+  final Dio _dio = g.appDio!;
+  String get _base => '${g.appServerRoot}/api/users';
+
+  // GET /api/users/{id}?ownerProjectLinkId=...
+  Future<Map<String, dynamic>> fetchProfileMap({
+    required String token,
+    required int userId,
+  }) async {
+    final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+
+    final res = await _dio.get(
+      '$_base/$userId',
+      queryParameters: {'ownerProjectLinkId': ownerId},
+      options: Options(headers: {'Authorization': 'Bearer $token'}),
+    );
+
+    return (res.data as Map).cast<String, dynamic>();
+  }
+
+  // PUT /api/users/profile-visibility?isPublic=true|false
+  Future<void> updateVisibility({
+    required String token,
+    required bool isPublic,
+  }) async {
+    final res = await _dio.put(
+      '$_base/profile-visibility',
+      queryParameters: {'isPublic': isPublic},
+      options: Options(
+        headers: {'Authorization': 'Bearer $token'},
+        responseType: ResponseType.plain,
+      ),
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to update visibility');
+    }
+  }
+
+  // PUT /api/users/{id}/status  body:{status, password?}
+  Future<void> updateStatus({
+    required String token,
+    required int userId,
+    required String status,
+    String? password,
+  }) async {
+    final body = <String, dynamic>{'status': status};
+
+    if (status.toUpperCase() == 'INACTIVE' && (password?.isNotEmpty ?? false)) {
+      body['password'] = password;
+    }
+
+    final res = await _dio.put(
+      '$_base/$userId/status',
+      data: body,
+      options: Options(
+        headers: {'Authorization': 'Bearer $token'},
+        responseType: ResponseType.plain,
+      ),
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to update status');
+    }
+  }
+}

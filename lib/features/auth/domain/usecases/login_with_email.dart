@@ -1,21 +1,26 @@
+// lib/features/auth/domain/usecases/login_with_email.dart
 import 'package:build4front/features/auth/domain/repository/auth_repository.dart';
 import 'package:dartz/dartz.dart';
+import '../../data/services/auth_api_service.dart';
+
 import '../entities/user_entity.dart';
 
-
 class LoginWithEmail {
-  final AuthRepository repo;
-  LoginWithEmail(this.repo);
+  final AuthRepository repository;
+  final AuthApiService authApi;
 
-  Future<Either<AuthFailure, UserEntity>> call({
+  LoginWithEmail(this.repository, this.authApi);
+
+  Future<UserEntity> call({
     required String email,
     required String password,
     required int ownerProjectLinkId,
   }) {
-    return repo.loginWithEmail(
+    return repository.loginWithEmail(
       email: email,
       password: password,
       ownerProjectLinkId: ownerProjectLinkId,
     );
   }
 }
+

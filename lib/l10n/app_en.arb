@@ -100,5 +100,41 @@
   "home_reviews_title": "Latest reviews",
     "connection_offline": "No internet connection",
   "connection_server_down": "Server is not responding",
-  "connection_issue": "Connection issue"
+  "connection_issue": "Connection issue",
+ "explore_title": "Explore",
+  "explore_search_hint": "Search  places...",
+  "explore_items_title": "All activities",
+  "explore_empty_message": "No results found. Try another keyword.",
+  "explore_category_all": "All",
+   "explore_results_label": "{count, plural, =0{No results} =1{1 result} other{{count} results}}",
+  "@explore_results_label": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "explore_sort_relevance": "Relevance",
+  "explore_sort_price_low_high": "Price: Low to High",
+  "explore_sort_price_high_low": "Price: High to Low",
+  "explore_sort_date_soonest": "Soonest date",
+  "profileMotto": "Live your hobby!",
+"profile_load_error": "Couldn't load your profile. Please try again.",
+"retry": "Retry",
+"manageAccount": "Manage account",
+"profileMakePrivate": "Make profile private",
+"profileMakePublic": "Make profile public",
+"setInactive": "Set account inactive",
+"profileLogoutConfirm": "Are you sure you want to log out?",
+"deactivate_title": "Deactivate account",
+"deactivate_warning": "Enter your password to confirm deactivation.",
+"current_password_label": "Current password",
+"language_note": "Changing language will restart some screens.",
+"cancel": "Cancel",
+"confirm": "Confirm",
+"language": "Language",
+"english": "English",
+"logout": "Log out"
+
 }

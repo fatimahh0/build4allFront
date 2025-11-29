@@ -12,7 +12,7 @@ enum HomeSectionType {
   categoryChips, // horizontal chips row
   banner, // hero / promo card
   itemList, // items / activities list
-  bookingList, // upcoming bookings
+  bookingList, // upcominga bookings
   reviewList, // latest reviews
 }
 

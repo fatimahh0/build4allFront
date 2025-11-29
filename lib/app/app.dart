@@ -83,7 +83,10 @@ class Build4AllFrontApp extends StatelessWidget {
 
           BlocProvider<AuthBloc>(
             create: (ctx) => AuthBloc(
-              loginWithEmail: LoginWithEmail(ctx.read<AuthRepositoryImpl>()),
+              loginWithEmail: LoginWithEmail(
+                ctx.read<AuthRepositoryImpl>(),
+                ctx.read<AuthApiService>(),
+              ),
             ),
           ),
 

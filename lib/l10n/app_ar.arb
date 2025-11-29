@@ -90,5 +90,23 @@
 "nextStepButton": "الخطوة التالية",
  "connection_offline": "لا يوجد اتصال بالإنترنت",
   "connection_server_down": "الخادم لا يستجيب",
-  "connection_issue": "مشكلة في الاتصال"
+  "connection_issue": "مشكلة في الاتصال",
+   "explore_title": "استكشاف",
+  "explore_search_hint": "ابحث عن عناصر...",
+  "explore_items_title": "عناصر",
+  "explore_empty_message": "لا توجد عناصر للعرض.",
+  "explore_category_all": "الكل",
+   "explore_results_label": "{count, plural, =0{لا توجد نتائج} =1{نتيجة واحدة} other{{count} نتائج}}",
+  "@explore_results_label": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "explore_sort_relevance": "الأكثر صلة",
+  "explore_sort_price_low_high": "السعر: من الأقل إلى الأعلى",
+  "explore_sort_price_high_low": "السعر: من الأعلى إلى الأقل",
+  "explore_sort_date_soonest": "التاريخ: الأقرب أولاً"
 }

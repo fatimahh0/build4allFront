@@ -8,7 +8,7 @@ class CompleteUserProfile {
   final AuthRepository repo;
   CompleteUserProfile(this.repo);
 
-  Future<Either<AuthFailure, UserEntity>> call({
+  Future<UserEntity> call({
     required int pendingId,
     required String username,
     required String firstName,
@@ -27,4 +27,5 @@ class CompleteUserProfile {
       profileImagePath: profileImagePath,
     );
   }
+
 }
