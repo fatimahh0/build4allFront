@@ -1,20 +1,24 @@
-// lib/app/app_router.dart
-
+import 'package:build4front/features/admin/presentation/wdigets/admin_gate.dart';
 import 'package:flutter/material.dart';
 
 import 'package:build4front/core/config/app_config.dart';
 import 'package:build4front/features/auth/presentation/login/screens/user_login_screen.dart';
 import 'package:build4front/features/shell/presentation/screens/main_shell.dart';
 
+
+import 'package:build4front/features/admin/presentation/screens/admin_dashboard_screen.dart';
+
 class AppRouter {
-  // You can change this later to a splash or onboarding route
   static const String initialRoute = '/login';
+
+  static const String login = '/login';
+  static const String main = '/main';
+  static const String admin = '/admin'; // unified route
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
-      case '/login':
+      case login:
         {
-          // Read config here for the login screen
           final appConfig = AppConfig.fromEnv();
           return MaterialPageRoute(
             builder: (_) => UserLoginScreen(appConfig: appConfig),
@@ -22,9 +26,8 @@ class AppRouter {
           );
         }
 
-      case '/main':
+      case main:
         {
-          // MainShell (your bottom navigation shell)
           final appConfig = AppConfig.fromEnv();
           return MaterialPageRoute(
             builder: (_) => MainShell(appConfig: appConfig),
@@ -32,9 +35,19 @@ class AppRouter {
           );
         }
 
+      case admin:
+        {
+          return MaterialPageRoute(
+            builder: (_) => AdminGate(
+              // default allow all admin roles
+              builder: (_) => const AdminDashboardScreen(),
+            ),
+            settings: settings,
+          );
+        }
+
       default:
         {
-          // Fallback: go to login
           final appConfig = AppConfig.fromEnv();
           return MaterialPageRoute(
             builder: (_) => UserLoginScreen(appConfig: appConfig),

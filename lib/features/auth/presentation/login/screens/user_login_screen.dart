@@ -1,5 +1,5 @@
-// lib/features/auth/presentation/screens/user_login_screen.dart
 import 'package:build4front/features/auth/data/repository/auth_repository_impl.dart';
+import 'package:build4front/features/auth/data/services/admin_token_store.dart';
 import 'package:build4front/features/auth/domain/usecases/send_verification_code.dart';
 import 'package:build4front/features/auth/presentation/register/bloc/register_bloc.dart';
 import 'package:build4front/features/auth/presentation/register/screens/user_register_screen.dart';
@@ -13,10 +13,15 @@ import '../../../../../common/widgets/app_toast.dart';
 import '../../../../../l10n/app_localizations.dart';
 import '../../../../../core/config/app_config.dart';
 import '../../../../../core/theme/theme_cubit.dart';
+import '../../../../../core/exceptions/exception_mapper.dart';
+import '../../../../../core/config/env.dart';
+
 import '../../../../shell/presentation/screens/main_shell.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
+
+import 'package:build4front/features/auth/domain/facade/dual_login_orchestrator.dart';
 
 enum LoginMethod { email, phone }
 
@@ -36,8 +41,7 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
   final _passwordCtrl = TextEditingController();
 
   LoginMethod _method = LoginMethod.email;
-
-  String? _fullPhone; // e.g. +96170123456
+  String? _fullPhone;
 
   @override
   void dispose() {
@@ -46,9 +50,8 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
     super.dispose();
   }
 
-  void _onLoginPressed(BuildContext context) {
+  Future<void> _onLoginPressed(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
-
     if (!_formKey.currentState!.validate()) return;
 
     final identifier = _method == LoginMethod.email
@@ -60,12 +63,136 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
       return;
     }
 
-    context.read<AuthBloc>().add(
-      AuthLoginSubmitted(
-        email: identifier, // email OR phone depending on method
+    try {
+      // loader
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      // grab the underlying AuthApiService from DI (through repo)
+      final repo = context.read<AuthRepositoryImpl>();
+      final authApi = repo.api;
+
+      final orchestrator = DualLoginOrchestrator(
+        authApi: authApi,
+        adminStore: AdminTokenStore(),
+      );
+
+      final result = await orchestrator.login(
+        identifier: identifier,
         password: _passwordCtrl.text,
-      ),
+        usePhoneForUser: _method == LoginMethod.phone,
+        ownerProjectLinkId: int.tryParse(Env.ownerProjectLinkId) ?? 0,
+      );
+
+      if (mounted) Navigator.of(context).pop(); // close loader
+
+      if (result.none) {
+        AppToast.show(
+          context,
+          result.error ?? l10n.authErrorGeneric,
+          isError: true,
+        );
+        return;
+      }
+
+      if (result.both) {
+        final choice = await showModalBottomSheet<String>(
+          context: context,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          ),
+          builder: (ctx) {
+            final t = Theme.of(ctx).textTheme;
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    height: 4,
+                    width: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.black26,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Choose how to sign in',
+                    style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    leading: const Icon(Icons.verified_user_outlined),
+                    title: const Text('Enter as Owner (Admin)'),
+                    subtitle: Text('Role: ${result.adminRole}'),
+                    onTap: () => Navigator.pop(ctx, 'admin'),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.person_outline),
+                    title: const Text('Enter as User'),
+                    subtitle: Text(
+                      result.userEntity?.email ??
+                          result.userEntity?.username ??
+                          'User',
+                    ),
+                    onTap: () => Navigator.pop(ctx, 'user'),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+
+        if (choice == 'admin') {
+          _goToAdmin(
+            context,
+            role: result.adminRole!,
+            admin: result.adminData!,
+          );
+        } else if (choice == 'user') {
+          _goToUserHome(context);
+        }
+        return;
+      }
+
+      if (result.adminOk) {
+        _goToAdmin(context, role: result.adminRole!, admin: result.adminData!);
+        return;
+      }
+
+      if (result.userOk) {
+        _goToUserHome(context);
+        return;
+      }
+
+      AppToast.show(context, l10n.authErrorGeneric, isError: true);
+    } catch (e) {
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop(); // close loader if still open
+      }
+      final msg = ExceptionMapper.toMessage(e);
+      AppToast.show(context, msg, isError: true);
+    }
+  }
+
+  void _goToUserHome(BuildContext context) {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => MainShell(appConfig: widget.appConfig)),
     );
+  }
+
+  void _goToAdmin(
+    BuildContext context, {
+    required String role,
+    required Map<String, dynamic> admin,
+  }) {
+    // Regardless of role, go to unified admin dashboard
+    Navigator.of(context).pushNamedAndRemoveUntil('/admin', (_) => false);
   }
 
   @override
@@ -85,6 +212,7 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: BlocConsumer<AuthBloc, AuthState>(
               listener: (context, state) {
+                // (Keep Bloc listener for pure user-only pathway if you still dispatch)
                 if (state.isLoggedIn && state.user != null) {
                   Navigator.of(context).pushReplacement(
                     MaterialPageRoute(
@@ -93,11 +221,8 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                   );
                 }
 
-                if (state.errorMessage != null) {
-                  final msg = state.errorMessage!.isNotEmpty
-                      ? state.errorMessage!
-                      : l10n.authErrorGeneric;
-
+                if (state.error != null) {
+                  final msg = ExceptionMapper.toMessage(state.error!);
                   AppToast.show(context, msg, isError: true);
                 }
               },
@@ -157,7 +282,6 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Title
                             Text(
                               l10n.loginTitle,
                               style: t.headlineSmall?.copyWith(
@@ -167,7 +291,6 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                             ),
                             const SizedBox(height: 16),
 
-                            // Toggle: email / phone
                             _LoginMethodToggle(
                               method: _method,
                               onChanged: (m) {
@@ -185,7 +308,6 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
 
                             const SizedBox(height: 20),
 
-                            // Email OR Phone
                             if (!isPhone)
                               AppTextField(
                                 label: l10n.emailLabel,
@@ -193,12 +315,9 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                                 keyboardType: TextInputType.emailAddress,
                                 validator: (value) {
                                   final v = value?.trim() ?? '';
-                                  if (v.isEmpty) {
-                                    return l10n.fieldRequired;
-                                  }
-                                  if (!v.contains('@')) {
+                                  if (v.isEmpty) return l10n.fieldRequired;
+                                  if (!v.contains('@'))
                                     return l10n.invalidEmail;
-                                  }
                                   return null;
                                 },
                               )
@@ -208,25 +327,21 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                                 card: card,
                                 textTheme: t,
                                 l10n: l10n,
-                                onChanged: (fullPhone) {
-                                  _fullPhone = fullPhone;
-                                },
+                                onChanged: (fullPhone) =>
+                                    _fullPhone = fullPhone,
                               ),
 
                             const SizedBox(height: 16),
 
-                            // Password
                             AppTextField(
                               label: l10n.passwordLabel,
                               controller: _passwordCtrl,
                               obscureText: true,
                               validator: (value) {
-                                if (value == null || value.isEmpty) {
+                                if (value == null || value.isEmpty)
                                   return l10n.fieldRequired;
-                                }
-                                if (value.length < 6) {
+                                if (value.length < 6)
                                   return l10n.passwordTooShort;
-                                }
                                 return null;
                               },
                             ),
@@ -256,7 +371,8 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
 
                             PrimaryButton(
                               label: l10n.loginButton,
-                              isLoading: state.isLoading,
+                              isLoading: state
+                                  .isLoading, // still shows spinner if Bloc path used
                               onPressed: () => _onLoginPressed(context),
                             ),
                           ],
@@ -266,7 +382,6 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
 
                     const SizedBox(height: 16),
 
-                    // Register line
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -274,7 +389,6 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                           l10n.noAccountText,
                           style: t.bodyMedium?.copyWith(color: colors.body),
                         ),
-                        // inside UserLoginScreen build, in the Sign Up TextButton:
                         TextButton(
                           onPressed: () {
                             Navigator.of(context).push(
@@ -427,9 +541,10 @@ class _PhoneFieldIntl extends StatelessWidget {
     required this.onChanged,
   });
 
+  @override
   Widget build(BuildContext context) {
     return IntlPhoneField(
-      initialCountryCode: 'LB', // default Lebanon
+      initialCountryCode: 'LB',
       decoration: InputDecoration(
         labelText: l10n.phoneLabel,
         filled: true,
@@ -450,9 +565,7 @@ class _PhoneFieldIntl extends StatelessWidget {
       dropdownTextStyle: textTheme.bodyMedium?.copyWith(color: colors.label),
       style: textTheme.bodyMedium?.copyWith(color: colors.label),
       flagsButtonPadding: const EdgeInsets.only(left: 8),
-      onChanged: (phone) {
-        onChanged(phone.completeNumber);
-      },
+      onChanged: (phone) => onChanged(phone.completeNumber),
       validator: (phone) {
         if (phone == null || phone.number.trim().isEmpty) {
           return l10n.fieldRequired;

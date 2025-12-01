@@ -1,20 +1,22 @@
+// lib/features/auth/data/repository/auth_repository_impl.dart
 import 'package:dartz/dartz.dart';
+
 import '../../domain/entities/user_entity.dart';
 import '../../domain/repository/auth_repository.dart';
 import '../services/auth_api_service.dart';
+
+// bring in AppException so we can preserve it
+import 'package:build4front/core/exceptions/app_exception.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final AuthApiService api;
 
   AuthRepositoryImpl({required this.api});
 
-  String _cleanError(Object e) {
-    final raw = e.toString();
-    const prefix = 'Exception: ';
-    if (raw.startsWith(prefix)) {
-      return raw.substring(prefix.length);
-    }
-    return raw;
+  // ----- Helpers for Either<> branches -----
+  AuthFailure _toFailure(Object e) {
+    if (e is AppException) return AuthFailure(e.message);
+    return const AuthFailure('Something went wrong. Please try again.');
   }
 
   @override
@@ -33,7 +35,7 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       return const Right(null);
     } catch (e) {
-      return Left(AuthFailure(_cleanError(e)));
+      return Left(_toFailure(e));
     }
   }
 
@@ -46,7 +48,7 @@ class AuthRepositoryImpl implements AuthRepository {
       final id = await api.verifyEmailCode(email: email, code: code);
       return Right(id);
     } catch (e) {
-      return Left(AuthFailure(_cleanError(e)));
+      return Left(_toFailure(e));
     }
   }
 
@@ -62,12 +64,12 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       return Right(id);
     } catch (e) {
-      return Left(AuthFailure(_cleanError(e)));
+      return Left(_toFailure(e));
     }
   }
 
   // ---------------------------------------------------------------
-  // LOGIN → return pure Future<UserEntity>
+  // LOGIN → must preserve AppException so UI can map clean messages
   // ---------------------------------------------------------------
   @override
   Future<UserEntity> loginWithEmail({
@@ -81,13 +83,22 @@ class AuthRepositoryImpl implements AuthRepository {
         password: password,
         ownerProjectLinkId: ownerProjectLinkId,
       );
-
-      return userModel; // 🔥 no toEntity()
+      return userModel;
+    } on AppException {
+      rethrow; // ✅ keep code/message (e.g., INVALID_CREDENTIALS, USER_NOT_FOUND)
     } catch (e) {
-      throw Exception(_cleanError(e));
+      // unexpected error -> wrap in AppException so mapper can show a clean text
+      throw AppException(
+        'Server error. Please try later.',
+        code: 'SERVER_ERROR',
+        original: e,
+      );
     }
   }
 
+  // ---------------------------------------------------------------
+  // COMPLETE PROFILE → same preservation rule
+  // ---------------------------------------------------------------
   @override
   Future<UserEntity> completeProfile({
     required int pendingId,
@@ -108,15 +119,15 @@ class AuthRepositoryImpl implements AuthRepository {
         ownerProjectLinkId: ownerProjectLinkId,
         profileImagePath: profileImagePath,
       );
-
-      return userModel; // 🔥 no toEntity()
+      return userModel;
+    } on AppException {
+      rethrow; // ✅ keep nice message if backend responds with a clear error
     } catch (e) {
-      throw Exception(_cleanError(e));
+      throw AppException(
+        'Server error. Please try later.',
+        code: 'SERVER_ERROR',
+        original: e,
+      );
     }
   }
-
-  // ---------------------------------------------------------------
-  // COMPLETE PROFILE → return pure Future<UserEntity>
-  // ---------------------------------------------------------------
-  
 }
