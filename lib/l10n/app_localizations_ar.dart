@@ -307,4 +307,180 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get logout => 'Log out';
+
+  @override
+  String get adminDashboardTitle => 'لوحة التحكم';
+
+  @override
+  String get adminDashboardSubtitle => 'إدارة محتوى التطبيق والإعدادات.';
+
+  @override
+  String get adminProductsTitle => 'المنتجات';
+
+  @override
+  String get adminProductsEmpty => 'لا توجد منتجات بعد. اضغط + لإضافة أول منتج.';
+
+  @override
+  String get adminProductsNewArrivals => 'المنتجات الجديدة';
+
+  @override
+  String get adminProductsBestSellers => 'الأكثر مبيعًا';
+
+  @override
+  String get adminProductsDiscounted => 'المنتجات المخفّضة';
+
+  @override
+  String get adminProductsSearchPlaceholder => 'ابحث عن منتج...';
+
+  @override
+  String get productBadgeOnSale => 'عرض خاص';
+
+  @override
+  String get productStatusDraft => 'مسودة';
+
+  @override
+  String get productStatusActive => 'مفعل';
+
+  @override
+  String get productStatusArchived => 'مؤرشف';
+
+  @override
+  String get errorNetworkNoInternet => 'لا يوجد إنترنت أو الخادم غير متصل.';
+
+  @override
+  String get errorNetworkServerDown => 'الخادم لا يستجيب، حاول مرة أخرى لاحقًا.';
+
+  @override
+  String get errorServerUnexpected => 'خطأ غير متوقّع في الخادم، حاول مرة أخرى.';
+
+  @override
+  String get errorUnexpected => 'حدث خطأ غير متوقّع، حاول مرة أخرى.';
+
+  @override
+  String get errorAuthUnauthorized => 'انتهت صلاحية الجلسة، يرجى تسجيل الدخول مجددًا.';
+
+  @override
+  String get errorAuthForbidden => 'ليست لديك صلاحية لتنفيذ هذه العملية.';
+
+  @override
+  String get logoutLabel => 'تسجيل الخروج';
+
+  @override
+  String get adminDashboardQuickActions => 'إجراءات سريعة';
+
+  @override
+  String get adminOverviewAnalytics => 'نظرة عامة وإحصاءات';
+
+  @override
+  String get adminProjectsOwners => 'المشاريع والمالكون';
+
+  @override
+  String get adminUsersManagers => 'المستخدمون والمديرون';
+
+  @override
+  String get adminSettings => 'الإعدادات';
+
+  @override
+  String adminSignedInAs(Object role) {
+    return 'تسجيل الدخول كـ $role';
+  }
+
+  @override
+  String get adminProductCreateTitle => 'إنشاء منتج';
+
+  @override
+  String get adminProductNameLabel => 'اسم المنتج';
+
+  @override
+  String get adminProductNameHint => 'مثال: لابتوب سامسونغ';
+
+  @override
+  String get adminProductNameRequired => 'اسم المنتج مطلوب';
+
+  @override
+  String get adminProductDescriptionLabel => 'الوصف';
+
+  @override
+  String get adminProductDescriptionHint => 'وصف قصير عن المنتج';
+
+  @override
+  String get adminProductPriceLabel => 'السعر';
+
+  @override
+  String get adminProductPriceRequired => 'السعر مطلوب';
+
+  @override
+  String get adminProductPriceInvalid => 'أدخِل سعرًا صالحًا أكبر من 0';
+
+  @override
+  String get adminProductStockLabel => 'الكمية في المخزون';
+
+  @override
+  String get adminProductStatusLabel => 'الحالة';
+
+  @override
+  String get adminProductImageUrlLabel => 'رابط الصورة';
+
+  @override
+  String get adminProductSkuLabel => 'رمز المنتج (SKU)';
+
+  @override
+  String get adminProductTypeLabel => 'نوع المنتج';
+
+  @override
+  String get adminProductTypeSimple => 'بسيط';
+
+  @override
+  String get adminProductTypeVariable => 'متغيّر (مقاسات / ألوان)';
+
+  @override
+  String get adminProductTypeGrouped => 'مجموعة (باقة منتجات)';
+
+  @override
+  String get adminProductTypeExternal => 'خارجي / أفلييت';
+
+  @override
+  String get adminProductVirtualLabel => 'منتج افتراضي (بدون شحن)';
+
+  @override
+  String get adminProductDownloadableLabel => 'منتج قابل للتحميل';
+
+  @override
+  String get adminProductDownloadUrlLabel => 'رابط التحميل';
+
+  @override
+  String get adminProductExternalUrlLabel => 'رابط خارجي';
+
+  @override
+  String get adminProductButtonTextLabel => 'نص الزر';
+
+  @override
+  String get adminProductButtonTextHint => 'مثال: أضِف إلى السلة، اشترِ الآن';
+
+  @override
+  String get adminProductSaleSectionTitle => 'تخفيض / عرض';
+
+  @override
+  String get adminProductSalePriceLabel => 'سعر التخفيض';
+
+  @override
+  String get adminProductSaleStartLabel => 'بداية التخفيض (تاريخ ISO)';
+
+  @override
+  String get adminProductSaleEndLabel => 'نهاية التخفيض (تاريخ ISO)';
+
+  @override
+  String get adminProductAttributesTitle => 'الخصائص';
+
+  @override
+  String get adminProductAttributeCodeLabel => 'رمز الخاصية';
+
+  @override
+  String get adminProductAttributeValueLabel => 'قيمة الخاصية';
+
+  @override
+  String get adminProductAddAttribute => 'إضافة خاصية';
+
+  @override
+  String get adminProductSaveButton => 'حفظ المنتج';
 }

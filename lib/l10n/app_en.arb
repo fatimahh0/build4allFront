@@ -135,6 +135,80 @@
 "confirm": "Confirm",
 "language": "Language",
 "english": "English",
-"logout": "Log out"
+"logout": "Log out",
+ "adminDashboardTitle": "Admin dashboard",
+  "adminDashboardSubtitle": "Manage your app content and settings.",
+  "adminProductsTitle": "Products",
+  "adminProductsEmpty": "No products yet. Tap + to add your first product.",
+  "adminProductsNewArrivals": "New arrivals",
+  "adminProductsBestSellers": "Best sellers",
+  "adminProductsDiscounted": "Discounted products",
+  "adminProductsSearchPlaceholder": "Search products...",
 
+  "productBadgeOnSale": "On sale",
+  "productStatusDraft": "Draft",
+  "productStatusActive": "Active",
+  "productStatusArchived": "Archived",
+
+  "errorNetworkNoInternet": "No internet or server unreachable.",
+  "errorNetworkServerDown": "The server is not responding. Please try again later.",
+  "errorServerUnexpected": "Unexpected server error. Please try again.",
+  "errorUnexpected": "Unexpected error. Please try again.",
+  "errorAuthUnauthorized": "Your session has expired. Please log in again.",
+  "errorAuthForbidden": "You don\u0027t have permission to perform this action.",
+ 
+"logoutLabel": "Logout",
+"adminDashboardQuickActions": "Quick actions",
+"adminOverviewAnalytics": "Overview & analytics",
+
+"adminProjectsOwners": "Projects & owners",
+"adminUsersManagers": "Users & managers",
+"adminSettings": "Settings",
+"adminSignedInAs": "Signed in as {role}",
+ "adminProductCreateTitle": "Create product",
+  "adminProductNameLabel": "Product name",
+  "adminProductNameHint": "Ex: Samsung laptop",
+  "adminProductNameRequired": "Product name is required",
+
+  "adminProductDescriptionLabel": "Description",
+  "adminProductDescriptionHint": "Short description of the product",
+
+  "adminProductPriceLabel": "Price",
+  "adminProductPriceRequired": "Price is required",
+  "adminProductPriceInvalid": "Enter a valid price greater than 0",
+
+  "adminProductStockLabel": "Stock quantity",
+
+  "adminProductStatusLabel": "Status",
+
+  "adminProductImageUrlLabel": "Image URL",
+
+  "adminProductSkuLabel": "SKU (code)",
+
+  "adminProductTypeLabel": "Product type",
+  "adminProductTypeSimple": "Simple",
+  "adminProductTypeVariable": "Variable (sizes / colors)",
+  "adminProductTypeGrouped": "Grouped (bundle)",
+  "adminProductTypeExternal": "External / affiliate",
+
+  "adminProductVirtualLabel": "Virtual product (no shipping)",
+  "adminProductDownloadableLabel": "Downloadable product",
+
+  "adminProductDownloadUrlLabel": "Download URL",
+  "adminProductExternalUrlLabel": "External URL",
+
+  "adminProductButtonTextLabel": "Button text",
+  "adminProductButtonTextHint": "Ex: Add to cart, Buy now",
+
+  "adminProductSaleSectionTitle": "Sale / discount",
+  "adminProductSalePriceLabel": "Sale price",
+  "adminProductSaleStartLabel": "Sale start (ISO date)",
+  "adminProductSaleEndLabel": "Sale end (ISO date)",
+
+  "adminProductAttributesTitle": "Attributes",
+  "adminProductAttributeCodeLabel": "Attribute code",
+  "adminProductAttributeValueLabel": "Attribute value",
+  "adminProductAddAttribute": "Add attribute",
+
+  "adminProductSaveButton": "Save product"
 }

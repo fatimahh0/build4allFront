@@ -6,6 +6,7 @@ class AppThemeBuilder {
     final c = tokens.colors;
     final b = tokens.button;
     final card = tokens.card;
+    final text = tokens.typography;
 
     final colorScheme = ColorScheme.fromSeed(
       seedColor: c.primary,
@@ -33,13 +34,13 @@ class AppThemeBuilder {
         elevation: 0,
       ),
 
-      textTheme: const TextTheme(
-        headlineSmall: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-        titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
+      textTheme: TextTheme(
+        headlineSmall: text.headlineSmall,
+        titleMedium: text.titleMedium,
+        bodyMedium: text.bodyMedium,
+        bodySmall: text.bodySmall,
       ),
 
-      // Button style base (still overridable in PrimaryButton)
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: c.primary,

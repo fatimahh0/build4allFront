@@ -307,4 +307,180 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get logout => 'Log out';
+
+  @override
+  String get adminDashboardTitle => 'Tableau de bord admin';
+
+  @override
+  String get adminDashboardSubtitle => 'Gérez le contenu et les paramètres de votre application.';
+
+  @override
+  String get adminProductsTitle => 'Produits';
+
+  @override
+  String get adminProductsEmpty => 'Aucun produit pour le moment. Appuyez sur + pour ajouter votre premier produit.';
+
+  @override
+  String get adminProductsNewArrivals => 'Nouveautés';
+
+  @override
+  String get adminProductsBestSellers => 'Meilleures ventes';
+
+  @override
+  String get adminProductsDiscounted => 'Produits en promotion';
+
+  @override
+  String get adminProductsSearchPlaceholder => 'Rechercher un produit...';
+
+  @override
+  String get productBadgeOnSale => 'En promo';
+
+  @override
+  String get productStatusDraft => 'Brouillon';
+
+  @override
+  String get productStatusActive => 'Actif';
+
+  @override
+  String get productStatusArchived => 'Archivé';
+
+  @override
+  String get errorNetworkNoInternet => 'Pas de connexion Internet ou serveur injoignable.';
+
+  @override
+  String get errorNetworkServerDown => 'Le serveur ne répond pas. Veuillez réessayer plus tard.';
+
+  @override
+  String get errorServerUnexpected => 'Erreur serveur inattendue. Veuillez réessayer.';
+
+  @override
+  String get errorUnexpected => 'Erreur inattendue. Veuillez réessayer.';
+
+  @override
+  String get errorAuthUnauthorized => 'Votre session a expiré. Veuillez vous reconnecter.';
+
+  @override
+  String get errorAuthForbidden => 'Vous n\'avez pas l\'autorisation pour cette action.';
+
+  @override
+  String get logoutLabel => 'Déconnexion';
+
+  @override
+  String get adminDashboardQuickActions => 'Actions rapides';
+
+  @override
+  String get adminOverviewAnalytics => 'Vue d\'ensemble et analyses';
+
+  @override
+  String get adminProjectsOwners => 'Projets et propriétaires';
+
+  @override
+  String get adminUsersManagers => 'Utilisateurs et gestionnaires';
+
+  @override
+  String get adminSettings => 'Paramètres';
+
+  @override
+  String adminSignedInAs(Object role) {
+    return 'Connecté en tant que $role';
+  }
+
+  @override
+  String get adminProductCreateTitle => 'Créer un produit';
+
+  @override
+  String get adminProductNameLabel => 'Nom du produit';
+
+  @override
+  String get adminProductNameHint => 'Ex : ordinateur portable Samsung';
+
+  @override
+  String get adminProductNameRequired => 'Le nom du produit est obligatoire';
+
+  @override
+  String get adminProductDescriptionLabel => 'Description';
+
+  @override
+  String get adminProductDescriptionHint => 'Courte description du produit';
+
+  @override
+  String get adminProductPriceLabel => 'Prix';
+
+  @override
+  String get adminProductPriceRequired => 'Le prix est obligatoire';
+
+  @override
+  String get adminProductPriceInvalid => 'Saisissez un prix valide supérieur à 0';
+
+  @override
+  String get adminProductStockLabel => 'Quantité en stock';
+
+  @override
+  String get adminProductStatusLabel => 'Statut';
+
+  @override
+  String get adminProductImageUrlLabel => 'URL de l’image';
+
+  @override
+  String get adminProductSkuLabel => 'Code produit (SKU)';
+
+  @override
+  String get adminProductTypeLabel => 'Type de produit';
+
+  @override
+  String get adminProductTypeSimple => 'Simple';
+
+  @override
+  String get adminProductTypeVariable => 'Variable (tailles / couleurs)';
+
+  @override
+  String get adminProductTypeGrouped => 'Groupé (pack)';
+
+  @override
+  String get adminProductTypeExternal => 'Externe / affilié';
+
+  @override
+  String get adminProductVirtualLabel => 'Produit virtuel (sans livraison)';
+
+  @override
+  String get adminProductDownloadableLabel => 'Produit téléchargeable';
+
+  @override
+  String get adminProductDownloadUrlLabel => 'URL de téléchargement';
+
+  @override
+  String get adminProductExternalUrlLabel => 'URL externe';
+
+  @override
+  String get adminProductButtonTextLabel => 'Texte du bouton';
+
+  @override
+  String get adminProductButtonTextHint => 'Ex : Ajouter au panier, Acheter maintenant';
+
+  @override
+  String get adminProductSaleSectionTitle => 'Promotion / remise';
+
+  @override
+  String get adminProductSalePriceLabel => 'Prix remisé';
+
+  @override
+  String get adminProductSaleStartLabel => 'Début de la promo (date ISO)';
+
+  @override
+  String get adminProductSaleEndLabel => 'Fin de la promo (date ISO)';
+
+  @override
+  String get adminProductAttributesTitle => 'Attributs';
+
+  @override
+  String get adminProductAttributeCodeLabel => 'Code de l’attribut';
+
+  @override
+  String get adminProductAttributeValueLabel => 'Valeur de l’attribut';
+
+  @override
+  String get adminProductAddAttribute => 'Ajouter un attribut';
+
+  @override
+  String get adminProductSaveButton => 'Enregistrer le produit';
 }

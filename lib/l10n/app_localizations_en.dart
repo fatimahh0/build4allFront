@@ -307,4 +307,180 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get logout => 'Log out';
+
+  @override
+  String get adminDashboardTitle => 'Admin dashboard';
+
+  @override
+  String get adminDashboardSubtitle => 'Manage your app content and settings.';
+
+  @override
+  String get adminProductsTitle => 'Products';
+
+  @override
+  String get adminProductsEmpty => 'No products yet. Tap + to add your first product.';
+
+  @override
+  String get adminProductsNewArrivals => 'New arrivals';
+
+  @override
+  String get adminProductsBestSellers => 'Best sellers';
+
+  @override
+  String get adminProductsDiscounted => 'Discounted products';
+
+  @override
+  String get adminProductsSearchPlaceholder => 'Search products...';
+
+  @override
+  String get productBadgeOnSale => 'On sale';
+
+  @override
+  String get productStatusDraft => 'Draft';
+
+  @override
+  String get productStatusActive => 'Active';
+
+  @override
+  String get productStatusArchived => 'Archived';
+
+  @override
+  String get errorNetworkNoInternet => 'No internet or server unreachable.';
+
+  @override
+  String get errorNetworkServerDown => 'The server is not responding. Please try again later.';
+
+  @override
+  String get errorServerUnexpected => 'Unexpected server error. Please try again.';
+
+  @override
+  String get errorUnexpected => 'Unexpected error. Please try again.';
+
+  @override
+  String get errorAuthUnauthorized => 'Your session has expired. Please log in again.';
+
+  @override
+  String get errorAuthForbidden => 'You don\'t have permission to perform this action.';
+
+  @override
+  String get logoutLabel => 'Logout';
+
+  @override
+  String get adminDashboardQuickActions => 'Quick actions';
+
+  @override
+  String get adminOverviewAnalytics => 'Overview & analytics';
+
+  @override
+  String get adminProjectsOwners => 'Projects & owners';
+
+  @override
+  String get adminUsersManagers => 'Users & managers';
+
+  @override
+  String get adminSettings => 'Settings';
+
+  @override
+  String adminSignedInAs(Object role) {
+    return 'Signed in as $role';
+  }
+
+  @override
+  String get adminProductCreateTitle => 'Create product';
+
+  @override
+  String get adminProductNameLabel => 'Product name';
+
+  @override
+  String get adminProductNameHint => 'Ex: Samsung laptop';
+
+  @override
+  String get adminProductNameRequired => 'Product name is required';
+
+  @override
+  String get adminProductDescriptionLabel => 'Description';
+
+  @override
+  String get adminProductDescriptionHint => 'Short description of the product';
+
+  @override
+  String get adminProductPriceLabel => 'Price';
+
+  @override
+  String get adminProductPriceRequired => 'Price is required';
+
+  @override
+  String get adminProductPriceInvalid => 'Enter a valid price greater than 0';
+
+  @override
+  String get adminProductStockLabel => 'Stock quantity';
+
+  @override
+  String get adminProductStatusLabel => 'Status';
+
+  @override
+  String get adminProductImageUrlLabel => 'Image URL';
+
+  @override
+  String get adminProductSkuLabel => 'SKU (code)';
+
+  @override
+  String get adminProductTypeLabel => 'Product type';
+
+  @override
+  String get adminProductTypeSimple => 'Simple';
+
+  @override
+  String get adminProductTypeVariable => 'Variable (sizes / colors)';
+
+  @override
+  String get adminProductTypeGrouped => 'Grouped (bundle)';
+
+  @override
+  String get adminProductTypeExternal => 'External / affiliate';
+
+  @override
+  String get adminProductVirtualLabel => 'Virtual product (no shipping)';
+
+  @override
+  String get adminProductDownloadableLabel => 'Downloadable product';
+
+  @override
+  String get adminProductDownloadUrlLabel => 'Download URL';
+
+  @override
+  String get adminProductExternalUrlLabel => 'External URL';
+
+  @override
+  String get adminProductButtonTextLabel => 'Button text';
+
+  @override
+  String get adminProductButtonTextHint => 'Ex: Add to cart, Buy now';
+
+  @override
+  String get adminProductSaleSectionTitle => 'Sale / discount';
+
+  @override
+  String get adminProductSalePriceLabel => 'Sale price';
+
+  @override
+  String get adminProductSaleStartLabel => 'Sale start (ISO date)';
+
+  @override
+  String get adminProductSaleEndLabel => 'Sale end (ISO date)';
+
+  @override
+  String get adminProductAttributesTitle => 'Attributes';
+
+  @override
+  String get adminProductAttributeCodeLabel => 'Attribute code';
+
+  @override
+  String get adminProductAttributeValueLabel => 'Attribute value';
+
+  @override
+  String get adminProductAddAttribute => 'Add attribute';
+
+  @override
+  String get adminProductSaveButton => 'Save product';
 }

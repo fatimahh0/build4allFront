@@ -109,5 +109,80 @@
   "explore_sort_relevance": "Pertinence",
   "explore_sort_price_low_high": "Prix : du plus bas au plus élevé",
   "explore_sort_price_high_low": "Prix : du plus élevé au plus bas",
-  "explore_sort_date_soonest": "Date : le plus proche"
+  "explore_sort_date_soonest": "Date : le plus proche",
+  "adminDashboardTitle": "Tableau de bord admin",
+  "adminDashboardSubtitle": "Gérez le contenu et les paramètres de votre application.",
+  "adminProductsTitle": "Produits",
+  "adminProductsEmpty": "Aucun produit pour le moment. Appuyez sur + pour ajouter votre premier produit.",
+  "adminProductsNewArrivals": "Nouveautés",
+  "adminProductsBestSellers": "Meilleures ventes",
+  "adminProductsDiscounted": "Produits en promotion",
+  "adminProductsSearchPlaceholder": "Rechercher un produit...",
+
+  "productBadgeOnSale": "En promo",
+  "productStatusDraft": "Brouillon",
+  "productStatusActive": "Actif",
+  "productStatusArchived": "Archivé",
+
+  "errorNetworkNoInternet": "Pas de connexion Internet ou serveur injoignable.",
+  "errorNetworkServerDown": "Le serveur ne répond pas. Veuillez réessayer plus tard.",
+  "errorServerUnexpected": "Erreur serveur inattendue. Veuillez réessayer.",
+  "errorUnexpected": "Erreur inattendue. Veuillez réessayer.",
+  "errorAuthUnauthorized": "Votre session a expiré. Veuillez vous reconnecter.",
+  "errorAuthForbidden": "Vous n\u0027avez pas l\u0027autorisation pour cette action.",
+ 
+"logoutLabel": "Déconnexion",
+"adminDashboardQuickActions": "Actions rapides",
+"adminOverviewAnalytics": "Vue d'ensemble et analyses",
+
+"adminProjectsOwners": "Projets et propriétaires",
+"adminUsersManagers": "Utilisateurs et gestionnaires",
+"adminSettings": "Paramètres",
+"adminSignedInAs": "Connecté en tant que {role}",
+"adminProductCreateTitle": "Créer un produit",
+  "adminProductNameLabel": "Nom du produit",
+  "adminProductNameHint": "Ex : ordinateur portable Samsung",
+  "adminProductNameRequired": "Le nom du produit est obligatoire",
+
+  "adminProductDescriptionLabel": "Description",
+  "adminProductDescriptionHint": "Courte description du produit",
+
+  "adminProductPriceLabel": "Prix",
+  "adminProductPriceRequired": "Le prix est obligatoire",
+  "adminProductPriceInvalid": "Saisissez un prix valide supérieur à 0",
+
+  "adminProductStockLabel": "Quantité en stock",
+
+  "adminProductStatusLabel": "Statut",
+
+  "adminProductImageUrlLabel": "URL de l’image",
+
+  "adminProductSkuLabel": "Code produit (SKU)",
+
+  "adminProductTypeLabel": "Type de produit",
+  "adminProductTypeSimple": "Simple",
+  "adminProductTypeVariable": "Variable (tailles / couleurs)",
+  "adminProductTypeGrouped": "Groupé (pack)",
+  "adminProductTypeExternal": "Externe / affilié",
+
+  "adminProductVirtualLabel": "Produit virtuel (sans livraison)",
+  "adminProductDownloadableLabel": "Produit téléchargeable",
+
+  "adminProductDownloadUrlLabel": "URL de téléchargement",
+  "adminProductExternalUrlLabel": "URL externe",
+
+  "adminProductButtonTextLabel": "Texte du bouton",
+  "adminProductButtonTextHint": "Ex : Ajouter au panier, Acheter maintenant",
+
+  "adminProductSaleSectionTitle": "Promotion / remise",
+  "adminProductSalePriceLabel": "Prix remisé",
+  "adminProductSaleStartLabel": "Début de la promo (date ISO)",
+  "adminProductSaleEndLabel": "Fin de la promo (date ISO)",
+
+  "adminProductAttributesTitle": "Attributs",
+  "adminProductAttributeCodeLabel": "Code de l’attribut",
+  "adminProductAttributeValueLabel": "Valeur de l’attribut",
+  "adminProductAddAttribute": "Ajouter un attribut",
+
+  "adminProductSaveButton": "Enregistrer le produit"
 }

@@ -678,6 +678,354 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Log out'**
   String get logout;
+
+  /// No description provided for @adminDashboardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin dashboard'**
+  String get adminDashboardTitle;
+
+  /// No description provided for @adminDashboardSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage your app content and settings.'**
+  String get adminDashboardSubtitle;
+
+  /// No description provided for @adminProductsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Products'**
+  String get adminProductsTitle;
+
+  /// No description provided for @adminProductsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No products yet. Tap + to add your first product.'**
+  String get adminProductsEmpty;
+
+  /// No description provided for @adminProductsNewArrivals.
+  ///
+  /// In en, this message translates to:
+  /// **'New arrivals'**
+  String get adminProductsNewArrivals;
+
+  /// No description provided for @adminProductsBestSellers.
+  ///
+  /// In en, this message translates to:
+  /// **'Best sellers'**
+  String get adminProductsBestSellers;
+
+  /// No description provided for @adminProductsDiscounted.
+  ///
+  /// In en, this message translates to:
+  /// **'Discounted products'**
+  String get adminProductsDiscounted;
+
+  /// No description provided for @adminProductsSearchPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Search products...'**
+  String get adminProductsSearchPlaceholder;
+
+  /// No description provided for @productBadgeOnSale.
+  ///
+  /// In en, this message translates to:
+  /// **'On sale'**
+  String get productBadgeOnSale;
+
+  /// No description provided for @productStatusDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft'**
+  String get productStatusDraft;
+
+  /// No description provided for @productStatusActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get productStatusActive;
+
+  /// No description provided for @productStatusArchived.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived'**
+  String get productStatusArchived;
+
+  /// No description provided for @errorNetworkNoInternet.
+  ///
+  /// In en, this message translates to:
+  /// **'No internet or server unreachable.'**
+  String get errorNetworkNoInternet;
+
+  /// No description provided for @errorNetworkServerDown.
+  ///
+  /// In en, this message translates to:
+  /// **'The server is not responding. Please try again later.'**
+  String get errorNetworkServerDown;
+
+  /// No description provided for @errorServerUnexpected.
+  ///
+  /// In en, this message translates to:
+  /// **'Unexpected server error. Please try again.'**
+  String get errorServerUnexpected;
+
+  /// No description provided for @errorUnexpected.
+  ///
+  /// In en, this message translates to:
+  /// **'Unexpected error. Please try again.'**
+  String get errorUnexpected;
+
+  /// No description provided for @errorAuthUnauthorized.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session has expired. Please log in again.'**
+  String get errorAuthUnauthorized;
+
+  /// No description provided for @errorAuthForbidden.
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t have permission to perform this action.'**
+  String get errorAuthForbidden;
+
+  /// No description provided for @logoutLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Logout'**
+  String get logoutLabel;
+
+  /// No description provided for @adminDashboardQuickActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick actions'**
+  String get adminDashboardQuickActions;
+
+  /// No description provided for @adminOverviewAnalytics.
+  ///
+  /// In en, this message translates to:
+  /// **'Overview & analytics'**
+  String get adminOverviewAnalytics;
+
+  /// No description provided for @adminProjectsOwners.
+  ///
+  /// In en, this message translates to:
+  /// **'Projects & owners'**
+  String get adminProjectsOwners;
+
+  /// No description provided for @adminUsersManagers.
+  ///
+  /// In en, this message translates to:
+  /// **'Users & managers'**
+  String get adminUsersManagers;
+
+  /// No description provided for @adminSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get adminSettings;
+
+  /// No description provided for @adminSignedInAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in as {role}'**
+  String adminSignedInAs(Object role);
+
+  /// No description provided for @adminProductCreateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create product'**
+  String get adminProductCreateTitle;
+
+  /// No description provided for @adminProductNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Product name'**
+  String get adminProductNameLabel;
+
+  /// No description provided for @adminProductNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ex: Samsung laptop'**
+  String get adminProductNameHint;
+
+  /// No description provided for @adminProductNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Product name is required'**
+  String get adminProductNameRequired;
+
+  /// No description provided for @adminProductDescriptionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get adminProductDescriptionLabel;
+
+  /// No description provided for @adminProductDescriptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Short description of the product'**
+  String get adminProductDescriptionHint;
+
+  /// No description provided for @adminProductPriceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Price'**
+  String get adminProductPriceLabel;
+
+  /// No description provided for @adminProductPriceRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Price is required'**
+  String get adminProductPriceRequired;
+
+  /// No description provided for @adminProductPriceInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid price greater than 0'**
+  String get adminProductPriceInvalid;
+
+  /// No description provided for @adminProductStockLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Stock quantity'**
+  String get adminProductStockLabel;
+
+  /// No description provided for @adminProductStatusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get adminProductStatusLabel;
+
+  /// No description provided for @adminProductImageUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Image URL'**
+  String get adminProductImageUrlLabel;
+
+  /// No description provided for @adminProductSkuLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'SKU (code)'**
+  String get adminProductSkuLabel;
+
+  /// No description provided for @adminProductTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Product type'**
+  String get adminProductTypeLabel;
+
+  /// No description provided for @adminProductTypeSimple.
+  ///
+  /// In en, this message translates to:
+  /// **'Simple'**
+  String get adminProductTypeSimple;
+
+  /// No description provided for @adminProductTypeVariable.
+  ///
+  /// In en, this message translates to:
+  /// **'Variable (sizes / colors)'**
+  String get adminProductTypeVariable;
+
+  /// No description provided for @adminProductTypeGrouped.
+  ///
+  /// In en, this message translates to:
+  /// **'Grouped (bundle)'**
+  String get adminProductTypeGrouped;
+
+  /// No description provided for @adminProductTypeExternal.
+  ///
+  /// In en, this message translates to:
+  /// **'External / affiliate'**
+  String get adminProductTypeExternal;
+
+  /// No description provided for @adminProductVirtualLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Virtual product (no shipping)'**
+  String get adminProductVirtualLabel;
+
+  /// No description provided for @adminProductDownloadableLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloadable product'**
+  String get adminProductDownloadableLabel;
+
+  /// No description provided for @adminProductDownloadUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Download URL'**
+  String get adminProductDownloadUrlLabel;
+
+  /// No description provided for @adminProductExternalUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'External URL'**
+  String get adminProductExternalUrlLabel;
+
+  /// No description provided for @adminProductButtonTextLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Button text'**
+  String get adminProductButtonTextLabel;
+
+  /// No description provided for @adminProductButtonTextHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ex: Add to cart, Buy now'**
+  String get adminProductButtonTextHint;
+
+  /// No description provided for @adminProductSaleSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sale / discount'**
+  String get adminProductSaleSectionTitle;
+
+  /// No description provided for @adminProductSalePriceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sale price'**
+  String get adminProductSalePriceLabel;
+
+  /// No description provided for @adminProductSaleStartLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sale start (ISO date)'**
+  String get adminProductSaleStartLabel;
+
+  /// No description provided for @adminProductSaleEndLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sale end (ISO date)'**
+  String get adminProductSaleEndLabel;
+
+  /// No description provided for @adminProductAttributesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Attributes'**
+  String get adminProductAttributesTitle;
+
+  /// No description provided for @adminProductAttributeCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Attribute code'**
+  String get adminProductAttributeCodeLabel;
+
+  /// No description provided for @adminProductAttributeValueLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Attribute value'**
+  String get adminProductAttributeValueLabel;
+
+  /// No description provided for @adminProductAddAttribute.
+  ///
+  /// In en, this message translates to:
+  /// **'Add attribute'**
+  String get adminProductAddAttribute;
+
+  /// No description provided for @adminProductSaveButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Save product'**
+  String get adminProductSaveButton;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -1,0 +1,28 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:build4front/features/admin/product/domain/usecases/get_products.dart';
+import 'product_list_event.dart';
+import 'product_list_state.dart';
+
+class ProductListBloc extends Bloc<ProductListEvent, ProductListState> {
+  final GetProducts getProducts;
+
+  ProductListBloc({required this.getProducts})
+    : super(ProductListState.initial()) {
+    on<LoadProductsForOwner>(_onLoadProducts);
+  }
+
+  Future<void> _onLoadProducts(
+    LoadProductsForOwner event,
+    Emitter<ProductListState> emit,
+  ) async {
+    emit(state.copyWith(isLoading: true, error: null));
+
+    try {
+      final products = await getProducts(ownerProjectId: event.ownerProjectId);
+      emit(state.copyWith(isLoading: false, products: products));
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, error: e.toString()));
+    }
+  }
+}

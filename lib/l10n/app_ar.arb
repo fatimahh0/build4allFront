@@ -108,5 +108,81 @@
   "explore_sort_relevance": "الأكثر صلة",
   "explore_sort_price_low_high": "السعر: من الأقل إلى الأعلى",
   "explore_sort_price_high_low": "السعر: من الأعلى إلى الأقل",
-  "explore_sort_date_soonest": "التاريخ: الأقرب أولاً"
+  "explore_sort_date_soonest": "التاريخ: الأقرب أولاً",
+   "adminDashboardTitle": "لوحة التحكم",
+  "adminDashboardSubtitle": "إدارة محتوى التطبيق والإعدادات.",
+  "adminProductsTitle": "المنتجات",
+  "adminProductsEmpty": "لا توجد منتجات بعد. اضغط + لإضافة أول منتج.",
+  "adminProductsNewArrivals": "المنتجات الجديدة",
+  "adminProductsBestSellers": "الأكثر مبيعًا",
+  "adminProductsDiscounted": "المنتجات المخفّضة",
+  "adminProductsSearchPlaceholder": "ابحث عن منتج...",
+
+  "productBadgeOnSale": "عرض خاص",
+  "productStatusDraft": "مسودة",
+  "productStatusActive": "مفعل",
+  "productStatusArchived": "مؤرشف",
+
+  "errorNetworkNoInternet": "لا يوجد إنترنت أو الخادم غير متصل.",
+  "errorNetworkServerDown": "الخادم لا يستجيب، حاول مرة أخرى لاحقًا.",
+  "errorServerUnexpected": "خطأ غير متوقّع في الخادم، حاول مرة أخرى.",
+  "errorUnexpected": "حدث خطأ غير متوقّع، حاول مرة أخرى.",
+  "errorAuthUnauthorized": "انتهت صلاحية الجلسة، يرجى تسجيل الدخول مجددًا.",
+  "errorAuthForbidden": "ليست لديك صلاحية لتنفيذ هذه العملية.",
+ 
+"logoutLabel": "تسجيل الخروج",
+"adminDashboardQuickActions": "إجراءات سريعة",
+"adminOverviewAnalytics": "نظرة عامة وإحصاءات",
+
+"adminProjectsOwners": "المشاريع والمالكون",
+"adminUsersManagers": "المستخدمون والمديرون",
+"adminSettings": "الإعدادات",
+"adminSignedInAs": "تسجيل الدخول كـ {role}",
+ "adminProductCreateTitle": "إنشاء منتج",
+  "adminProductNameLabel": "اسم المنتج",
+  "adminProductNameHint": "مثال: لابتوب سامسونغ",
+  "adminProductNameRequired": "اسم المنتج مطلوب",
+
+  "adminProductDescriptionLabel": "الوصف",
+  "adminProductDescriptionHint": "وصف قصير عن المنتج",
+
+  "adminProductPriceLabel": "السعر",
+  "adminProductPriceRequired": "السعر مطلوب",
+  "adminProductPriceInvalid": "أدخِل سعرًا صالحًا أكبر من 0",
+
+  "adminProductStockLabel": "الكمية في المخزون",
+
+  "adminProductStatusLabel": "الحالة",
+
+  "adminProductImageUrlLabel": "رابط الصورة",
+
+  "adminProductSkuLabel": "رمز المنتج (SKU)",
+
+  "adminProductTypeLabel": "نوع المنتج",
+  "adminProductTypeSimple": "بسيط",
+  "adminProductTypeVariable": "متغيّر (مقاسات / ألوان)",
+  "adminProductTypeGrouped": "مجموعة (باقة منتجات)",
+  "adminProductTypeExternal": "خارجي / أفلييت",
+
+  "adminProductVirtualLabel": "منتج افتراضي (بدون شحن)",
+  "adminProductDownloadableLabel": "منتج قابل للتحميل",
+
+  "adminProductDownloadUrlLabel": "رابط التحميل",
+  "adminProductExternalUrlLabel": "رابط خارجي",
+
+  "adminProductButtonTextLabel": "نص الزر",
+  "adminProductButtonTextHint": "مثال: أضِف إلى السلة، اشترِ الآن",
+
+  "adminProductSaleSectionTitle": "تخفيض / عرض",
+  "adminProductSalePriceLabel": "سعر التخفيض",
+  "adminProductSaleStartLabel": "بداية التخفيض (تاريخ ISO)",
+  "adminProductSaleEndLabel": "نهاية التخفيض (تاريخ ISO)",
+
+  "adminProductAttributesTitle": "الخصائص",
+  "adminProductAttributeCodeLabel": "رمز الخاصية",
+  "adminProductAttributeValueLabel": "قيمة الخاصية",
+  "adminProductAddAttribute": "إضافة خاصية",
+
+  "adminProductSaveButton": "حفظ المنتج"
+  
 }
