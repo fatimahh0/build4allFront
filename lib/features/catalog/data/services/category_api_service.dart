@@ -1,69 +1,64 @@
-// lib/features/items/data/services/item_type_api_service.dart
+// lib/features/catalog/data/services/category_api_service.dart
 
 import 'package:build4front/core/network/api_fetch.dart';
 import 'package:build4front/core/network/api_methods.dart' show HttpMethod;
-import 'package:build4front/core/exceptions/network_exception.dart';
 import 'package:build4front/core/exceptions/app_exception.dart';
+import 'package:build4front/core/exceptions/network_exception.dart';
 
-class ItemTypeApiService {
+class CategoryApiService {
   final ApiFetch _fetch;
 
-  ItemTypeApiService({ApiFetch? fetch}) : _fetch = fetch ?? ApiFetch();
+  CategoryApiService({ApiFetch? fetch}) : _fetch = fetch ?? ApiFetch();
 
-  static const String _base = '/api/item-types';
+  static const String _base = '/api/admin/categories';
 
-  // ---------- list by PROJECT ----------
-  Future<List<Map<String, dynamic>>> getItemTypesByProject(
+  /// GET /api/admin/categories/by-project/{projectId}
+  Future<List<Map<String, dynamic>>> getCategoriesByProject(
     int projectId,
   ) async {
     try {
-      final r = await _fetch.fetch(
-        HttpMethod.get,
-        '$_base/by-project/$projectId',
-      );
-      return _asListOfMap(r.data);
-    } on AppException {
-      // already has proper message from backend
-      rethrow;
-    } catch (e) {
-      throw AppException('Failed to load item types by project', original: e);
-    }
-  }
-
-  // ---------- list by CATEGORY ----------
-  Future<List<Map<String, dynamic>>> getItemTypesByCategory(
-    int categoryId,
-  ) async {
-    try {
-      final path = '$_base/by-category/$categoryId';
+      final path = '$_base/by-project/$projectId';
       final r = await _fetch.fetch(HttpMethod.get, path);
       return _asListOfMap(r.data);
     } on AppException {
       rethrow;
     } catch (e) {
-      throw AppException('Failed to load item types by category', original: e);
+      throw AppException('Failed to load categories by project', original: e);
     }
   }
 
-  /// POST /api/item-types  (create item type)
-  Future<Map<String, dynamic>> createItemType({
+  /// GET /api/admin/categories
+  Future<List<Map<String, dynamic>>> getAllCategories() async {
+    try {
+      final r = await _fetch.fetch(HttpMethod.get, _base);
+      return _asListOfMap(r.data);
+    } on AppException {
+      rethrow;
+    } catch (e) {
+      throw AppException('Failed to load categories', original: e);
+    }
+  }
+
+  /// POST /api/admin/categories  (create category)
+  Future<Map<String, dynamic>> createCategory({
     required String name,
-    required int categoryId,
+    required int projectId,
     required String authToken,
   }) async {
     try {
       final r = await _fetch.fetch(
         HttpMethod.post,
         _base,
+        data: {'name': name, 'projectId': projectId},
         headers: {'Authorization': 'Bearer $authToken'},
-        data: {'name': name, 'categoryId': categoryId},
       );
       return _asMap(r.data);
     } on AppException {
-      // لو الـ ApiFetch رجّع ServerException برسالة من الباكند
+      // هنا الـ ServerException غالباً حيحمل message من backend:
+      // ex: "Category already exists in this project: LAPTOPS"
       rethrow;
     } catch (e) {
-      throw AppException('Failed to create item type', original: e);
+      throw AppException('Failed to create category', original: e);
     }
   }
 
@@ -82,8 +77,9 @@ class ItemTypeApiService {
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
     }
+
     throw ServerException(
-      'Invalid response format for item types',
+      'Invalid response format for categories',
       statusCode: 200,
     );
   }
@@ -93,7 +89,7 @@ class ItemTypeApiService {
     if (data is Map) return Map<String, dynamic>.from(data);
 
     throw ServerException(
-      'Invalid response format for item type',
+      'Invalid response format for category',
       statusCode: 200,
     );
   }

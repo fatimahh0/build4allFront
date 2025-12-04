@@ -1,4 +1,3 @@
-// lib/features/admin/product/data/models/create_product_request.dart
 import 'dart:convert';
 
 enum ProductTypeDto { simple, variable, grouped, external }
@@ -26,15 +25,22 @@ class AttributeValueDto {
 }
 
 class CreateProductRequest {
+  /// aup_id
   final int ownerProjectId;
-  final int itemTypeId;
+
+  /// OPTIONAL – advanced mode: explicit item type
+  final int? itemTypeId;
+
+  /// OPTIONAL – simple mode: only category
+  final int? categoryId;
+
   final int? currencyId;
 
   final String name;
   final String? description;
   final double price;
   final int? stock;
-  final String? status; // نتركها null والـ backend يحط Upcoming
+  final String? status; // backend will default to "Upcoming" if null
 
   final String? imageUrl;
   final String? sku;
@@ -47,14 +53,15 @@ class CreateProductRequest {
   final String? buttonText;
 
   final double? salePrice;
-  final String? saleStart; // ISO string text from TextField
+  final String? saleStart; // e.g. 2025-12-03T00:00:00
   final String? saleEnd;
 
   final List<AttributeValueDto> attributes;
 
   CreateProductRequest({
     required this.ownerProjectId,
-    required this.itemTypeId,
+    this.itemTypeId,
+    this.categoryId,
     this.currencyId,
     required this.name,
     this.description,
@@ -73,12 +80,16 @@ class CreateProductRequest {
     this.saleStart,
     this.saleEnd,
     this.attributes = const [],
-  });
+  }) : assert(
+         itemTypeId != null || categoryId != null,
+         'Either itemTypeId or categoryId must be provided',
+       );
 
   Map<String, dynamic> toJson() {
     return {
       'ownerProjectId': ownerProjectId,
-      'itemTypeId': itemTypeId,
+      if (itemTypeId != null) 'itemTypeId': itemTypeId,
+      if (categoryId != null) 'categoryId': categoryId,
       'currencyId': currencyId,
       'name': name,
       'description': description,

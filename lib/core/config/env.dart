@@ -81,4 +81,11 @@ class Env {
     'HOME_JSON_B64',
     defaultValue: '',
   );
+
+  /// 🆕 Currency id for this built app (e.g. 1 = DOLLAR, 2 = EURO, ...)
+  /// set from dart-define:  --dart-define=CURRENCY_ID=1
+  static const currencyId = String.fromEnvironment(
+    'CURRENCY_ID',
+    defaultValue: '',
+  );
 }

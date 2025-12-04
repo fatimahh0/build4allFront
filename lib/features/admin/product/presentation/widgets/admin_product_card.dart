@@ -8,7 +8,16 @@ import 'package:build4front/features/admin/product/domain/entities/product.dart'
 class AdminProductCard extends StatelessWidget {
   final Product product;
 
-  const AdminProductCard({super.key, required this.product});
+  /// Callbacks provided by the parent (list screen)
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+
+  const AdminProductCard({
+    super.key,
+    required this.product,
+    this.onEdit,
+    this.onDelete,
+  });
 
   String? _resolveImageUrl(String? url) {
     if (url == null || url.trim().isEmpty) return null;
@@ -22,6 +31,59 @@ class AdminProductCard extends StatelessWidget {
 
     // Backend gives "/uploads/xyz.jpg" → prefix with API base URL
     return '${Env.apiBaseUrl}$trimmed';
+  }
+
+  Future<void> _showActionsSheet(BuildContext context) async {
+    final tokens = context.read<ThemeCubit>().state.tokens;
+    final colors = tokens.colors;
+    final spacing = tokens.spacing;
+    final text = tokens.typography;
+
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(tokens.card.radius),
+        ),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.all(spacing.md),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.edit, color: colors.primary),
+                title: Text(
+                  'Edit product',
+                  style: text.bodyMedium.copyWith(color: colors.label),
+                ),
+                onTap: () => Navigator.of(ctx).pop('edit'),
+              ),
+              ListTile(
+                leading: Icon(Icons.delete_outline, color: colors.danger),
+                title: Text(
+                  'Delete product',
+                  style: text.bodyMedium.copyWith(color: colors.danger),
+                ),
+                onTap: () => Navigator.of(ctx).pop('delete'),
+              ),
+              SizedBox(height: spacing.sm),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (action == 'edit' && onEdit != null) {
+      onEdit!();
+    } else if (action == 'delete' && onDelete != null) {
+      onDelete!();
+    }
   }
 
   @override
@@ -51,9 +113,7 @@ class AdminProductCard extends StatelessWidget {
       child: Material(
         color: colors.surface,
         child: InkWell(
-          onTap: () {
-            // TODO: navigate to edit product
-          },
+          onTap: () => _showActionsSheet(context),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -107,7 +167,6 @@ class AdminProductCard extends StatelessWidget {
                         ),
                       ),
 
-                      // Push price/status to bottom
                       const Spacer(),
 
                       // Price row

@@ -1,5 +1,3 @@
-// lib/features/catalog/data/models/item_type_model.dart
-
 import '../../domain/entities/item_type.dart';
 
 class ItemTypeModel {
@@ -8,6 +6,7 @@ class ItemTypeModel {
   final String? icon;
   final String? iconLib;
   final int? itemsCount;
+  final int? categoryId; // 🔴 NEW
 
   ItemTypeModel({
     required this.id,
@@ -15,6 +14,7 @@ class ItemTypeModel {
     this.icon,
     this.iconLib,
     this.itemsCount,
+    this.categoryId,
   });
 
   static int? _asInt(dynamic v) {
@@ -25,8 +25,10 @@ class ItemTypeModel {
   }
 
   factory ItemTypeModel.fromJson(Map<String, dynamic> j) {
+    // label: displayName > name
     final label = (j['displayName'] ?? j['name'] ?? '').toString().trim();
 
+    // backward-compatible counts
     final rawCount =
         j['activitiesCount'] ??
         j['itemsCount'] ??
@@ -36,11 +38,12 @@ class ItemTypeModel {
         j['activities_count'];
 
     return ItemTypeModel(
-      id: (j['id'] ?? 0) is int ? j['id'] as int : int.parse('${j['id']}'),
+      id: _asInt(j['id']) ?? 0,
       name: label,
       icon: j['icon']?.toString(),
       iconLib: j['iconLibrary']?.toString() ?? j['iconLib']?.toString(),
       itemsCount: _asInt(rawCount),
+      categoryId: _asInt(j['categoryId']),
     );
   }
 
@@ -50,5 +53,6 @@ class ItemTypeModel {
     icon: icon,
     iconLib: iconLib,
     itemsCount: itemsCount,
+    categoryId: categoryId,
   );
 }

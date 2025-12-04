@@ -29,11 +29,16 @@ class AppConfig {
   final List<String> enabledFeatures;
   final List<NavItemConfig> navigation;
 
+  /// 🔥 NEW: currency id coming from dart-define (via Env)
+  /// example: --dart-define=CURRENCY_ID=1
+  final int? currencyId;
+
   const AppConfig({
     required this.appName,
     required this.appType,
     required this.enabledFeatures,
     required this.navigation,
+    this.currencyId, // optional → no breaking changes
   });
 
   /// Builds AppConfig from Env (dart-define values).
@@ -77,11 +82,25 @@ class AppConfig {
       features = [];
     }
 
+    // -------- CURRENCY ID (from dart-define via Env) --------
+    // in Env.dart you’ll have something like:
+    // static const String currencyId = String.fromEnvironment('CURRENCY_ID', defaultValue: '');
+    int? currencyId;
+    try {
+      final raw = Env.currencyId.trim(); // "1", "2", ""...
+      if (raw.isNotEmpty) {
+        currencyId = int.tryParse(raw);
+      }
+    } catch (_) {
+      currencyId = null;
+    }
+
     return AppConfig(
       appName: Env.appName,
       appType: Env.appType,
       enabledFeatures: features,
       navigation: navList,
+      currencyId: currencyId, // 🔥 now available everywhere
     );
   }
 }
