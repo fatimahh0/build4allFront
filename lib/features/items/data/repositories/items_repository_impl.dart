@@ -1,15 +1,19 @@
-// lib/features/items/data/repositories/items_repository_impl.dart
-
 import '../../domain/entities/item_summary.dart';
 import '../../domain/repositories/items_repository.dart';
 import '../models/item_summary_model.dart';
 import '../services/items_api_service.dart';
 
+/// Concrete implementation of [ItemsRepository] that uses
+/// [ItemsApiService] to talk to the backend.
+///
+/// It converts raw JSON lists into [ItemSummary] entities.
 class ItemsRepositoryImpl implements ItemsRepository {
   final ItemsApiService api;
 
   ItemsRepositoryImpl({required this.api});
 
+  /// Helper: map a list of dynamic JSON objects into
+  /// a list of [ItemSummary] domain entities.
   List<ItemSummary> _mapList(List<dynamic> list) {
     return list
         .map(

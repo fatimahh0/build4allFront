@@ -1,5 +1,3 @@
-// lib/features/items/domain/entities/item_summary.dart
-
 enum ItemKind { activity, product, service, unknown }
 
 class ItemSummary {
@@ -12,6 +10,9 @@ class ItemSummary {
   final num? price;
   final ItemKind kind;
 
+  /// NEW: category id of this item (for filtering chips)
+  final int? categoryId;
+
   const ItemSummary({
     required this.id,
     required this.title,
@@ -21,5 +22,6 @@ class ItemSummary {
     this.start,
     this.price,
     this.kind = ItemKind.unknown,
+    this.categoryId,
   });
 }

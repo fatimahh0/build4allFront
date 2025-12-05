@@ -29,16 +29,21 @@ class AppConfig {
   final List<String> enabledFeatures;
   final List<NavItemConfig> navigation;
 
-  /// 🔥 NEW: currency id coming from dart-define (via Env)
+  /// Currency id coming from dart-define (via Env)
   /// example: --dart-define=CURRENCY_ID=1
   final int? currencyId;
+
+  /// 🆕 Owner project id (AdminUserProject id) coming from Env.ownerProjectLinkId
+  /// example: --dart-define=OWNER_PROJECT_LINK_ID=3
+  final int? ownerProjectId;
 
   const AppConfig({
     required this.appName,
     required this.appType,
     required this.enabledFeatures,
     required this.navigation,
-    this.currencyId, // optional → no breaking changes
+    this.currencyId,
+    this.ownerProjectId,
   });
 
   /// Builds AppConfig from Env (dart-define values).
@@ -83,8 +88,6 @@ class AppConfig {
     }
 
     // -------- CURRENCY ID (from dart-define via Env) --------
-    // in Env.dart you’ll have something like:
-    // static const String currencyId = String.fromEnvironment('CURRENCY_ID', defaultValue: '');
     int? currencyId;
     try {
       final raw = Env.currencyId.trim(); // "1", "2", ""...
@@ -95,12 +98,24 @@ class AppConfig {
       currencyId = null;
     }
 
+    // -------- 🆕 OWNER PROJECT ID (AdminUserProject) --------
+    int? ownerProjectId;
+    try {
+      final raw = Env.ownerProjectLinkId.trim(); // "1", "2", ""...
+      if (raw.isNotEmpty) {
+        ownerProjectId = int.tryParse(raw);
+      }
+    } catch (_) {
+      ownerProjectId = null;
+    }
+
     return AppConfig(
       appName: Env.appName,
       appType: Env.appType,
       enabledFeatures: features,
       navigation: navList,
-      currencyId: currencyId, // 🔥 now available everywhere
+      currencyId: currencyId,
+      ownerProjectId: ownerProjectId,
     );
   }
 }

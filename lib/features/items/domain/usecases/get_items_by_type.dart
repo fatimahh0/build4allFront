@@ -1,6 +1,12 @@
 import '../entities/item_summary.dart';
 import '../repositories/items_repository.dart';
 
+/// Use case: fetch items by type/category.
+///
+/// - Activities:
+///     typeId = itemTypeId
+/// - E-commerce:
+///     typeId = categoryId
 class GetItemsByType {
   final ItemsRepository repo;
 

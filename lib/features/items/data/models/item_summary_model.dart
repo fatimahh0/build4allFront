@@ -10,6 +10,9 @@ class ItemSummaryModel {
   final DateTime? start;
   final num? price;
 
+  /// NEW: backend category id (ProductResponse.categoryId for e-commerce)
+  final int? categoryId;
+
   ItemSummaryModel({
     required this.id,
     required this.title,
@@ -18,6 +21,7 @@ class ItemSummaryModel {
     this.location,
     this.start,
     this.price,
+    this.categoryId,
   });
 
   factory ItemSummaryModel.fromJson(Map<String, dynamic> j) {
@@ -29,14 +33,24 @@ class ItemSummaryModel {
       return num.tryParse('$v');
     }
 
+    int? _intOrNull(dynamic v) {
+      if (v == null) return null;
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      return int.tryParse('$v');
+    }
+
     return ItemSummaryModel(
       id: j['id'] is int ? j['id'] as int : int.parse('${j['id']}'),
+      // for activities we used itemName, for products we use name
       title: (j['itemName'] ?? j['name'] ?? '').toString(),
       subtitle: j['description']?.toString(),
       imageUrl: j['imageUrl']?.toString(),
       location: j['location']?.toString(),
       start: _dt(j['startDatetime']),
-      price: _num(j['price']),
+      price: _num(j['price'] ?? j['effectivePrice']),
+      // 🔥 NEW: read categoryId if backend sends it (ProductResponse has it)
+      categoryId: _intOrNull(j['categoryId']),
     );
   }
 
@@ -50,6 +64,7 @@ class ItemSummaryModel {
       start: start,
       price: price,
       kind: currentItemKindFromEnv(),
+      categoryId: categoryId,
     );
   }
 }

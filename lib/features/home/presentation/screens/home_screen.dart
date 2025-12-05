@@ -1,9 +1,11 @@
-import 'package:build4front/features/items/domain/entities/item_summary.dart';
+import 'package:build4front/core/network/globals.dart' as authState;
+import 'package:build4front/features/home/homebanner/presentations/widgets/home_banner_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:build4front/core/config/app_config.dart';
 import 'package:build4front/core/config/home_config.dart';
+import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/l10n/app_localizations.dart';
 
 import 'package:build4front/features/auth/presentation/login/bloc/auth_bloc.dart';
@@ -19,6 +21,7 @@ import 'package:build4front/features/home/presentation/widgets/home_header.dart'
 import 'package:build4front/features/home/presentation/widgets/home_category_chips.dart';
 import 'package:build4front/features/home/presentation/widgets/home_items_section.dart';
 import 'package:build4front/features/home/presentation/widgets/home_section_header.dart';
+import 'package:build4front/features/items/domain/entities/item_summary.dart';
 
 class HomeScreen extends StatelessWidget {
   final AppConfig appConfig;
@@ -35,6 +38,10 @@ class HomeScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
     final enabled = appConfig.enabledFeatures.toSet();
+
+    // Read spacing tokens once at screen level
+    final themeState = context.watch<ThemeCubit>().state;
+    final spacing = themeState.tokens.spacing;
 
     final visibleSections = sections.where((s) {
       if (s.feature == null) return true;
@@ -84,7 +91,12 @@ class HomeScreen extends StatelessWidget {
                     context.read<HomeBloc>().add(const HomeStarted());
                   },
                   child: ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                    padding: EdgeInsets.fromLTRB(
+                      spacing.lg,
+                      spacing.lg,
+                      spacing.lg,
+                      spacing.xl,
+                    ),
                     itemCount: visibleSections.length,
                     itemBuilder: (context, index) {
                       final section = visibleSections[index];
@@ -123,14 +135,14 @@ class HomeScreen extends StatelessWidget {
           appName: appConfig.appName,
           fullName: fullName,
           avatarUrl: avatarUrl,
-          welcomeText: l10n.home_welcome, // add to ARB
+          welcomeText: l10n.home_welcome,
         );
 
       case HomeSectionType.search:
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           child: AppSearchField(
-            hintText: l10n.home_search_hint, // add to ARB
+            hintText: l10n.home_search_hint,
             onSubmitted: (value) {
               // TODO: navigate to search screen or filter
             },
@@ -141,10 +153,16 @@ class HomeScreen extends StatelessWidget {
         return HomeCategoryChips(categories: homeState.categories);
 
       case HomeSectionType.banner:
-        return _BannerSection(
-          title: section.title ?? l10n.home_banner_title,
-          subtitle: l10n.home_banner_subtitle,
-          buttonLabel: l10n.home_banner_button,
+        return HomeBannerSlider(
+          ownerProjectId:
+              appConfig.ownerProjectId ?? 1, // or whatever field you use
+          token: authState.token ?? '', // adapt to your AuthState
+          onBannerTap: (banner) {
+            // TODO: handle navigation:
+            // - if banner.targetType == 'PRODUCT' => open product details with banner.targetId
+            // - if 'CATEGORY' => navigate to category filter
+            // - if 'URL' => launchUrl(banner.targetUrl!)
+          },
         );
 
       case HomeSectionType.itemList:
@@ -156,12 +174,29 @@ class HomeScreen extends StatelessWidget {
                 ? l10n.home_recommended_title
                 : section.id == 'popular'
                 ? l10n.home_popular_title
+                : section.id == 'flash_sale'
+                ? 'Flash Sale'
+                : section.id == 'new_arrivals'
+                ? 'New Arrivals'
+                : section.id == 'best_sellers'
+                ? 'Best Sellers'
+                : section.id == 'top_rated'
+                ? 'Top Rated'
                 : l10n.home_items_default_title);
+
+        final icon = _iconForSection(section);
+        final trailing = _trailingForSection(section);
 
         return HomeItemsSection(
           title: sectionTitle,
           layout: section.layout,
           items: itemsForSection,
+          icon: icon,
+          trailingText: trailing.text,
+          trailingIcon: trailing.icon,
+          onTrailingTap: () {
+            // TODO: navigate to dedicated list screen
+          },
         );
 
       case HomeSectionType.bookingList:
@@ -170,9 +205,9 @@ class HomeScreen extends StatelessWidget {
         );
 
       case HomeSectionType.reviewList:
-        return _ReviewsSection(
-          title: section.title ?? l10n.home_reviews_title,
-          layout: section.layout,
+        // For e-commerce: use this slot as "Why Shop With Us"
+        return _WhyShopWithUsSection(
+          title: section.title ?? 'Why Shop With Us',
         );
     }
   }
@@ -188,16 +223,59 @@ class HomeScreen extends StatelessWidget {
         }
         return homeState.popularItems;
       case 'popular':
+      case 'flash_sale':
+      case 'new_arrivals':
+      case 'best_sellers':
+      case 'top_rated':
+        // For now reuse popular items for all.
+        // Later: map each to its real backend list.
         return homeState.popularItems;
       default:
         return homeState.popularItems;
     }
   }
+
+  IconData _iconForSection(HomeSectionConfig section) {
+    switch (section.id) {
+      case 'flash_sale':
+        return Icons.flash_on_rounded;
+      case 'new_arrivals':
+        return Icons.local_offer_outlined;
+      case 'best_sellers':
+        return Icons.workspace_premium_outlined;
+      case 'top_rated':
+        return Icons.star_rate_rounded;
+      default:
+        return Icons.local_activity_outlined;
+    }
+  }
+}
+
+class _TrailingData {
+  final String? text;
+  final IconData? icon;
+
+  const _TrailingData({this.text, this.icon});
+}
+
+_TrailingData _trailingForSection(HomeSectionConfig section) {
+  switch (section.id) {
+    case 'flash_sale':
+      return const _TrailingData(text: 'Limited time');
+    case 'new_arrivals':
+    case 'best_sellers':
+    case 'top_rated':
+      return const _TrailingData(
+        text: 'See all',
+        icon: Icons.chevron_right_rounded,
+      );
+    default:
+      return const _TrailingData();
+  }
 }
 
 /// ===================
-///  Banner / bookings / reviews
-///  (no fake lists – UI only, data later)
+///  Banner / bookings / why-us
 /// ===================
 
 class _BannerSection extends StatelessWidget {
@@ -216,17 +294,23 @@ class _BannerSection extends StatelessWidget {
     final c = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
 
+    final themeState = context.read<ThemeCubit>().state;
+    final spacing = themeState.tokens.spacing;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: spacing.lg),
+      padding: EdgeInsets.all(spacing.lg),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [c.primary, c.primaryContainer.withOpacity(0.8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         children: [
+          // Text + CTA
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,19 +319,19 @@ class _BannerSection extends StatelessWidget {
                   title,
                   style: t.headlineSmall?.copyWith(color: c.onPrimary),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: spacing.sm),
                 Text(
                   subtitle,
                   style: t.bodyMedium?.copyWith(color: c.onPrimary),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: spacing.md),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: c.onPrimary,
                     foregroundColor: c.primary,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: spacing.lg,
+                      vertical: spacing.sm,
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(999),
@@ -261,7 +345,8 @@ class _BannerSection extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: spacing.md),
+          // Right icon box (placeholder image block)
           Container(
             width: 72,
             height: 72,
@@ -270,7 +355,7 @@ class _BannerSection extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(
-              Icons.sports_martial_arts_rounded,
+              Icons.shopping_bag_rounded,
               color: c.onPrimary,
               size: 32,
             ),
@@ -289,16 +374,20 @@ class _BookingSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+
+    final themeState = context.read<ThemeCubit>().state;
+    final spacing = themeState.tokens.spacing;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: spacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           HomeSectionHeader(title: title, icon: Icons.event_available_outlined),
-          const SizedBox(height: 8),
+          SizedBox(height: spacing.sm),
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(spacing.md),
             decoration: BoxDecoration(
               color: c.surface,
               borderRadius: BorderRadius.circular(12),
@@ -307,11 +396,11 @@ class _BookingSection extends StatelessWidget {
             child: Row(
               children: [
                 const Icon(Icons.info_outline, size: 18),
-                const SizedBox(width: 8),
+                SizedBox(width: spacing.sm),
                 Expanded(
                   child: Text(
-                    'Bookings feed not wired yet.', // can move to l10n if you want
-                    style: Theme.of(context).textTheme.bodySmall,
+                    'Bookings feed not wired yet.',
+                    style: t.bodySmall,
                   ),
                 ),
               ],
@@ -323,46 +412,76 @@ class _BookingSection extends StatelessWidget {
   }
 }
 
-class _ReviewsSection extends StatelessWidget {
+/// New: Why Shop With Us section (bottom cards)
+class _WhyShopWithUsSection extends StatelessWidget {
   final String title;
-  final String layout;
 
-  const _ReviewsSection({required this.title, required this.layout});
+  const _WhyShopWithUsSection({required this.title});
 
   @override
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
-    final isHorizontal = layout.toLowerCase() == 'horizontal';
+    final t = Theme.of(context).textTheme;
+
+    final themeState = context.read<ThemeCubit>().state;
+    final spacing = themeState.tokens.spacing;
+
+    final cards = [
+      ('Free Shipping', 'On all orders over \$50'),
+      ('Easy Returns', '30-day return policy'),
+      ('Secure Payment', '100% protected transactions'),
+      ('24/7 Support', 'Always here to help you'),
+    ];
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: spacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          HomeSectionHeader(title: title, icon: Icons.reviews_outlined),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: isHorizontal ? 140 : null,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: c.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: c.outline.withOpacity(0.2)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.info_outline, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Reviews feed not wired yet.', // also can be l10n
-                      style: Theme.of(context).textTheme.bodySmall,
+          Text(
+            title,
+            style: t.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          SizedBox(height: spacing.md),
+          Column(
+            children: cards
+                .map(
+                  (card) => Container(
+                    margin: EdgeInsets.only(bottom: spacing.sm),
+                    padding: EdgeInsets.all(spacing.lg),
+                    decoration: BoxDecoration(
+                      color: c.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: c.outline.withOpacity(0.12)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: c.shadow.withOpacity(0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          card.$1,
+                          style: t.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: spacing.xs),
+                        Text(
+                          card.$2,
+                          style: t.bodySmall?.copyWith(
+                            color: c.onSurface.withOpacity(0.7),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
+                )
+                .toList(),
           ),
         ],
       ),

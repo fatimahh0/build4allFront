@@ -1,6 +1,9 @@
 // lib/features/items/presentation/widgets/item_card.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
 import 'package:build4front/core/network/globals.dart' as net;
+import 'package:build4front/core/theme/theme_cubit.dart';
 
 class ItemCard extends StatelessWidget {
   final String title;
@@ -27,6 +30,11 @@ class ItemCard extends StatelessWidget {
     final c = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
 
+    // Read design tokens from ThemeCubit (card + spacing)
+    final themeState = context.read<ThemeCubit>().state;
+    final cardTokens = themeState.tokens.card;
+    final spacing = themeState.tokens.spacing;
+
     String? resolvedImageUrl;
     if (imageUrl != null && imageUrl!.trim().isNotEmpty) {
       resolvedImageUrl = net.resolveUrl(imageUrl!);
@@ -35,23 +43,35 @@ class ItemCard extends StatelessWidget {
     return SizedBox(
       width: width ?? 160,
       child: InkWell(
-        borderRadius: BorderRadius.circular(0),
+        borderRadius: BorderRadius.circular(cardTokens.radius),
         onTap: onTap,
         child: Container(
           decoration: BoxDecoration(
             color: c.surface,
-            borderRadius: BorderRadius.circular(0),
-            border: Border.all(color: c.outline.withOpacity(0.2)),
+            borderRadius: BorderRadius.circular(cardTokens.radius),
+            border: cardTokens.showBorder
+                ? Border.all(color: c.outline.withOpacity(0.18))
+                : null,
+            boxShadow: cardTokens.showShadow
+                ? [
+                    BoxShadow(
+                      color: c.shadow.withOpacity(0.04),
+                      blurRadius: cardTokens.elevation * 2,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ---------- IMAGE AREA ----------
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(0),
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(cardTokens.radius),
                 ),
                 child: SizedBox(
-                  height: 90,
+                  height: cardTokens.imageHeight,
                   width: double.infinity,
                   child: Stack(
                     fit: StackFit.expand,
@@ -62,6 +82,7 @@ class ItemCard extends StatelessWidget {
                           resolvedImageUrl!,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
+                            // Fallback if image fails to load
                             return Container(
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
@@ -82,6 +103,7 @@ class ItemCard extends StatelessWidget {
                           },
                         )
                       else
+                        // Fallback if no image URL at all
                         Container(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
@@ -100,14 +122,15 @@ class ItemCard extends StatelessWidget {
                           ),
                         ),
 
+                      // Price / badge (top-right)
                       if (badgeLabel != null && badgeLabel!.isNotEmpty)
                         Positioned(
-                          top: 6,
-                          left: 6,
+                          top: spacing.xs,
+                          right: spacing.xs,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: spacing.sm,
+                              vertical: spacing.xs,
                             ),
                             decoration: BoxDecoration(
                               color: Colors.black.withOpacity(0.55),
@@ -127,11 +150,13 @@ class ItemCard extends StatelessWidget {
                 ),
               ),
 
+              // ---------- CONTENT AREA ----------
               Padding(
-                padding: const EdgeInsets.all(10),
+                padding: EdgeInsets.all(cardTokens.padding),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Title
                     Text(
                       title,
                       style: t.bodyMedium?.copyWith(
@@ -140,8 +165,9 @@ class ItemCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: spacing.xs),
 
+                    // Subtitle (optional, e.g. location / short desc)
                     if (subtitle != null && subtitle!.isNotEmpty) ...[
                       Text(
                         subtitle!,
@@ -151,9 +177,10 @@ class ItemCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: spacing.xs),
                     ],
 
+                    // Meta info (optional, e.g. date/time)
                     if (metaLabel != null && metaLabel!.isNotEmpty)
                       Row(
                         children: [
@@ -162,7 +189,7 @@ class ItemCard extends StatelessWidget {
                             size: 14,
                             color: c.onSurface.withOpacity(0.6),
                           ),
-                          const SizedBox(width: 4),
+                          SizedBox(width: spacing.xs),
                           Expanded(
                             child: Text(
                               metaLabel!,

@@ -1,6 +1,9 @@
 // lib/features/home/presentation/widgets/home_header.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
 import 'package:build4front/core/network/globals.dart' as net;
+import 'package:build4front/core/theme/theme_cubit.dart';
 
 class HomeHeader extends StatelessWidget {
   final String appName;
@@ -20,6 +23,9 @@ class HomeHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+
+    final themeState = context.read<ThemeCubit>().state;
+    final spacing = themeState.tokens.spacing;
 
     final displayName = (fullName == null || fullName!.trim().isEmpty)
         ? appName
@@ -46,11 +52,11 @@ class HomeHeader extends StatelessWidget {
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: spacing.md),
       child: Row(
         children: [
           avatar,
-          const SizedBox(width: 12),
+          SizedBox(width: spacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
