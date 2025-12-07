@@ -1,3 +1,5 @@
+// lib/features/auth/presentation/login/screens/user_login_screen.dart
+
 import 'package:build4front/features/auth/data/repository/auth_repository_impl.dart';
 import 'package:build4front/features/auth/data/services/admin_token_store.dart';
 import 'package:build4front/features/auth/domain/usecases/send_verification_code.dart';
@@ -64,14 +66,14 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
     }
 
     try {
-      // loader
+      // Show loading dialog
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (_) => const Center(child: CircularProgressIndicator()),
       );
 
-      // grab the underlying AuthApiService from DI (through repo)
+      // Get repository + underlying AuthApiService
       final repo = context.read<AuthRepositoryImpl>();
       final authApi = repo.api;
 
@@ -98,6 +100,60 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
         return;
       }
 
+      // Helper: hydrate AuthBloc with user + token
+      Future<void> _hydrateUserAuth(bool wasInactiveFlag) async {
+        final user = result.userEntity;
+        if (user == null) return;
+
+        final token = await authApi.getSavedToken();
+        if (!mounted) return;
+        if (token == null || token.isEmpty) return;
+
+        context.read<AuthBloc>().add(
+          AuthLoginHydrated(
+            user: user,
+            token: token,
+            wasInactive: wasInactiveFlag,
+          ),
+        );
+      }
+
+      // Helper: full flow when "User" is chosen (or only user exists)
+      Future<void> _enterUserFlow(bool wasInactiveUser) async {
+        final user = result.userEntity;
+        if (user == null) return;
+
+        if (wasInactiveUser) {
+          // Ask if they want to reactivate
+          final confirm = await _showReactivateSheet(context);
+          if (confirm != true) {
+            // User refused to reactivate → stay on login.
+            return;
+          }
+
+          try {
+            // Call backend: /api/auth/reactivate
+            await authApi.reactivateUser(userId: user.id);
+
+            if (!mounted) return;
+            AppToast.show(context, l10n.loginInactiveSuccess);
+
+            // Now status is ACTIVE and backend returned a fresh token.
+            await _hydrateUserAuth(true);
+            _goToUserHome(context);
+          } catch (e) {
+            if (!mounted) return;
+            final msg = ExceptionMapper.toMessage(e);
+            AppToast.show(context, msg, isError: true);
+          }
+        } else {
+          // Normal active user
+          await _hydrateUserAuth(false);
+          _goToUserHome(context);
+        }
+      }
+
+      // ========================= CASE: BOTH ADMIN & USER =========================
       if (result.both) {
         final choice = await showModalBottomSheet<String>(
           context: context,
@@ -106,6 +162,9 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
           ),
           builder: (ctx) {
             final t = Theme.of(ctx).textTheme;
+            final themeState = ctx.watch<ThemeCubit>().state;
+            final colors = themeState.tokens.colors;
+
             return Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
               child: Column(
@@ -115,30 +174,46 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                     height: 4,
                     width: 36,
                     decoration: BoxDecoration(
-                      color: Colors.black26,
+                      color: colors.border.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Choose how to sign in',
-                    style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                    l10n.loginChooseRoleTitle,
+                    style: t.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: colors.label,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   ListTile(
-                    leading: const Icon(Icons.verified_user_outlined),
-                    title: const Text('Enter as Owner (Admin)'),
-                    subtitle: Text('Role: ${result.adminRole}'),
+                    leading: Icon(
+                      Icons.verified_user_outlined,
+                      color: colors.primary,
+                    ),
+                    title: Text(
+                      l10n.loginEnterAsOwner,
+                      style: t.bodyLarge?.copyWith(color: colors.label),
+                    ),
+                    subtitle: Text(
+                      '${l10n.loginRoleLabel}: ${result.adminRole}',
+                      style: t.bodySmall?.copyWith(color: colors.body),
+                    ),
                     onTap: () => Navigator.pop(ctx, 'admin'),
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(Icons.person_outline),
-                    title: const Text('Enter as User'),
+                    leading: Icon(Icons.person_outline, color: colors.label),
+                    title: Text(
+                      l10n.loginEnterAsUser,
+                      style: t.bodyLarge?.copyWith(color: colors.label),
+                    ),
                     subtitle: Text(
                       result.userEntity?.email ??
                           result.userEntity?.username ??
                           'User',
+                      style: t.bodySmall?.copyWith(color: colors.body),
                     ),
                     onTap: () => Navigator.pop(ctx, 'user'),
                   ),
@@ -155,21 +230,25 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
             admin: result.adminData!,
           );
         } else if (choice == 'user') {
-          _goToUserHome(context);
+          // Here we apply the inactive check ONLY on user
+          await _enterUserFlow(result.wasInactiveUser);
         }
         return;
       }
 
-      if (result.adminOk) {
+      // ========================= CASE: ONLY ADMIN =========================
+      if (result.adminOk && !result.userOk) {
         _goToAdmin(context, role: result.adminRole!, admin: result.adminData!);
         return;
       }
 
-      if (result.userOk) {
-        _goToUserHome(context);
+      // ========================= CASE: ONLY USER =========================
+      if (result.userOk && !result.adminOk) {
+        await _enterUserFlow(result.wasInactiveUser);
         return;
       }
 
+      // Fallback (should never reach here, but just in case)
       AppToast.show(context, l10n.authErrorGeneric, isError: true);
     } catch (e) {
       if (Navigator.of(context).canPop()) {
@@ -180,19 +259,103 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
     }
   }
 
+  /// Navigate to main user shell.
   void _goToUserHome(BuildContext context) {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => MainShell(appConfig: widget.appConfig)),
     );
   }
 
+  /// Navigate to unified admin dashboard, regardless of owner/manager/super-admin.
   void _goToAdmin(
     BuildContext context, {
     required String role,
     required Map<String, dynamic> admin,
   }) {
-    // Regardless of role, go to unified admin dashboard
     Navigator.of(context).pushNamedAndRemoveUntil('/admin', (_) => false);
+  }
+
+  /// Bottom sheet that asks the user if they want to reactivate the inactive account.
+  Future<bool?> _showReactivateSheet(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final themeState = context.read<ThemeCubit>().state;
+    final colors = themeState.tokens.colors;
+    final t = Theme.of(context).textTheme;
+
+    return showModalBottomSheet<bool>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        final tt = Theme.of(ctx).textTheme;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  height: 4,
+                  width: 36,
+                  decoration: BoxDecoration(
+                    color: colors.border.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                l10n.loginInactiveTitle,
+                style: tt.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: colors.label,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                l10n.loginInactiveMessage(widget.appConfig.appName),
+                style: tt.bodyMedium?.copyWith(color: colors.body),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: colors.border.withOpacity(0.6)),
+                      ),
+                      child: Text(
+                        l10n.loginInactiveCancel,
+                        style: t.bodyMedium?.copyWith(color: colors.body),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colors.primary,
+                        foregroundColor: colors.onPrimary,
+                      ),
+                      child: Text(
+                        l10n.loginInactiveReactivate,
+                        style: t.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -212,15 +375,7 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: BlocConsumer<AuthBloc, AuthState>(
               listener: (context, state) {
-                // (Keep Bloc listener for pure user-only pathway if you still dispatch)
-                if (state.isLoggedIn && state.user != null) {
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (_) => MainShell(appConfig: widget.appConfig),
-                    ),
-                  );
-                }
-
+                // Keep only error here; navigation handled in _onLoginPressed
                 if (state.error != null) {
                   final msg = ExceptionMapper.toMessage(state.error!);
                   AppToast.show(context, msg, isError: true);
@@ -316,8 +471,9 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                                 validator: (value) {
                                   final v = value?.trim() ?? '';
                                   if (v.isEmpty) return l10n.fieldRequired;
-                                  if (!v.contains('@'))
+                                  if (!v.contains('@')) {
                                     return l10n.invalidEmail;
+                                  }
                                   return null;
                                 },
                               )
@@ -338,10 +494,12 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                               controller: _passwordCtrl,
                               obscureText: true,
                               validator: (value) {
-                                if (value == null || value.isEmpty)
+                                if (value == null || value.isEmpty) {
                                   return l10n.fieldRequired;
-                                if (value.length < 6)
+                                }
+                                if (value.length < 6) {
                                   return l10n.passwordTooShort;
+                                }
                                 return null;
                               },
                             ),
@@ -371,8 +529,7 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
 
                             PrimaryButton(
                               label: l10n.loginButton,
-                              isLoading: state
-                                  .isLoading, // still shows spinner if Bloc path used
+                              isLoading: state.isLoading,
                               onPressed: () => _onLoginPressed(context),
                             ),
                           ],

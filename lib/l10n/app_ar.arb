@@ -34,6 +34,47 @@
   "loginWithPhone": "رقم الهاتف",
   "loginButton": "تسجيل الدخول",
   "loginMissingIdentifier": "يرجى إدخال البريد الإلكتروني أو رقم الهاتف.",
+   "home_welcome": "أهلًا 👋",
+  "home_search_hint": "ابحث عن المنتجات، الماركات...",
+  "home_banner_title": "عروض خاصة",
+  "home_banner_subtitle": "وفّر حتى 50٪ على منتجات مختارة.",
+  "home_banner_button": "ابدأ التسوق",
+
+  "home_items_default_title": "المنتجات",
+  "home_recommended_title": "مقترحة لك",
+  "home_popular_title": "الأكثر رواجًا",
+  "home_bookings_title": "الحجوزات القادمة",
+  "home_reviews_title": "آخر التقييمات",
+
+  "home_flash_sale_title": "عروض فلاش",
+  "home_new_arrivals_title": "وصل حديثًا",
+  "home_best_sellers_title": "الأكثر مبيعًا",
+  "home_top_rated_title": "أعلى تقييمًا",
+  "accountInactiveTitle": "حسابك غير نشط",
+  "accountInactiveBody": "حسابك حالياً غير نشط. هل تريد إعادة تفعيله للمتابعة؟",
+  "reactivateButton": "إعادة التفعيل",
+  "accountReactivated": "تم تفعيل حسابك بنجاح.",
+  
+  "chooseSignInRole": "اختر طريقة تسجيل الدخول",
+  "enterAsOwner": "تسجيل الدخول كمالك (مسؤول)",
+  "enterAsUser": "تسجيل الدخول كمستخدم",
+  "roleLabel": "الدور",
+  "userLabel": "مستخدم",
+"loginInactiveTitle": "هل تريد تفعيل الحساب؟",
+  "loginInactiveMessage": "حسابك حالياً غير مُفعَّل. هل تريد تفعيله الآن والمتابعة؟",
+  "loginInactiveReactivateButton": "نعم، فعِّل الحساب",
+  "loginInactiveCancel": "لا، لاحقاً",
+  "loginInactiveSuccess": "تم تفعيل حسابك بنجاح. أهلاً بعودتك!",
+  "loginInactiveError": "تعذّر تفعيل الحساب. حاول مرة أخرى.",
+  "home_why_shop_title": "لماذا تتسوّق معنا؟",
+  "home_why_shop_free_shipping_title": "شحن مجاني",
+  "home_why_shop_free_shipping_subtitle": "على جميع الطلبات فوق 50$",
+  "home_why_shop_easy_returns_title": "إرجاع سهل",
+  "home_why_shop_easy_returns_subtitle": "سياسة إرجاع خلال 30 يومًا",
+  "home_why_shop_secure_payment_title": "دفع آمن",
+  "home_why_shop_secure_payment_subtitle": "معاملات محمية 100٪",
+  "home_why_shop_support_title": "دعم 24/7",
+  "home_why_shop_support_subtitle": "دائمًا هنا لمساعدتك",
   "authErrorGeneric": "حدث خطأ، يرجى المحاولة مرة أخرى.",
   "noAccountText": "ليس لديك حساب؟",
   "signUpText": "إنشاء حساب",

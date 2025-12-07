@@ -1,3 +1,5 @@
+// lib/features/items/data/repositories/items_repository_impl.dart
+
 import '../../domain/entities/item_summary.dart';
 import '../../domain/repositories/items_repository.dart';
 import '../models/item_summary_model.dart';
@@ -42,6 +44,27 @@ class ItemsRepositoryImpl implements ItemsRepository {
     required String token,
   }) async {
     final data = await api.getInterestBased(userId: userId, token: token);
+    return _mapList(data);
+  }
+
+  @override
+  Future<List<ItemSummary>> getNewArrivals({int? categoryId, int? days}) async {
+    final data = await api.getNewArrivals(categoryId: categoryId, days: days);
+    return _mapList(data);
+  }
+
+  @override
+  Future<List<ItemSummary>> getBestSellers({
+    int? categoryId,
+    int limit = 20,
+  }) async {
+    final data = await api.getBestSellers(categoryId: categoryId, limit: limit);
+    return _mapList(data);
+  }
+
+  @override
+  Future<List<ItemSummary>> getDiscounted({int? categoryId}) async {
+    final data = await api.getDiscounted(categoryId: categoryId);
     return _mapList(data);
   }
 }

@@ -14,6 +14,12 @@ class ItemCard extends StatelessWidget {
   final double? width;
   final VoidCallback? onTap;
 
+  /// NEW: label for CTA button (e.g. "Add to cart", "Book now")
+  final String? ctaLabel;
+
+  /// NEW: callback when CTA button is pressed
+  final VoidCallback? onCtaPressed;
+
   const ItemCard({
     super.key,
     required this.title,
@@ -23,6 +29,8 @@ class ItemCard extends StatelessWidget {
     this.metaLabel,
     this.width,
     this.onTap,
+    this.ctaLabel,
+    this.onCtaPressed,
   });
 
   @override
@@ -39,6 +47,8 @@ class ItemCard extends StatelessWidget {
     if (imageUrl != null && imageUrl!.trim().isNotEmpty) {
       resolvedImageUrl = net.resolveUrl(imageUrl!);
     }
+
+    final hasCta = ctaLabel != null && ctaLabel!.trim().isNotEmpty;
 
     return SizedBox(
       width: width ?? 160,
@@ -181,7 +191,7 @@ class ItemCard extends StatelessWidget {
                     ],
 
                     // Meta info (optional, e.g. date/time)
-                    if (metaLabel != null && metaLabel!.isNotEmpty)
+                    if (metaLabel != null && metaLabel!.isNotEmpty) ...[
                       Row(
                         children: [
                           Icon(
@@ -201,6 +211,34 @@ class ItemCard extends StatelessWidget {
                             ),
                           ),
                         ],
+                      ),
+                      SizedBox(height: hasCta ? spacing.sm : 0),
+                    ],
+
+                    // ---------- CTA BUTTON (optional) ----------
+                    if (hasCta)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: onCtaPressed,
+                          style: ElevatedButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: spacing.sm),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                cardTokens.radius / 1.5,
+                              ),
+                            ),
+                            elevation: 0,
+                            backgroundColor: c.primary,
+                            foregroundColor: c.onPrimary,
+                          ),
+                          child: Text(
+                            ctaLabel!,
+                            style: t.labelLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                       ),
                   ],
                 ),

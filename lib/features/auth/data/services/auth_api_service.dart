@@ -1,4 +1,3 @@
-// lib/features/auth/data/services/auth_api_service.dart
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -281,7 +280,58 @@ class AuthApiService {
     }
   }
 
-  // ========================= ADMIN LOGIN (OWNER / SUPER_ADMIN / MANAGER) =========================
+  // ========================= USER REACTIVATION =========================
+
+  /// Call /api/auth/reactivate to turn an INACTIVE user back to ACTIVE.
+  ///
+  /// Returns the updated user model with the new token.
+  // ========================= USER REACTIVATION =========================
+
+  // ========================= USER REACTIVATION =========================
+
+  /// Reactivate an INACTIVE user account.
+  /// - Calls /api/auth/reactivate with { "id": userId }
+  /// - Stores the new JWT token in AuthTokenStore
+  /// - Does NOT try to parse a UserModel (to avoid decode errors).
+  Future<void> reactivateUser({required int userId}) async {
+    final uri = _uri('/api/auth/reactivate');
+
+    try {
+      final resp = await _safePost(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'id': userId}),
+      );
+
+      debugPrint('♻️ REACTIVATE USER → ${resp.statusCode}');
+      debugPrint('BODY: ${resp.body}');
+
+      final decoded = _safeJson(resp.body);
+
+      if (resp.statusCode >= 400) {
+        _throwAuthFromHttp(
+          resp,
+          decoded,
+          fallback: 'Failed to reactivate account',
+        );
+      }
+
+      // Backend returns: { message, token, user: {...} }
+      // We only care about the token here.
+      final storePayload = <String, dynamic>{
+        'token': decoded['token'],
+        'wasInactive': false,
+      };
+
+      await _storeAuthFromLogin(storePayload);
+    } on AppException {
+      rethrow;
+    } catch (e) {
+      throw AppException('Failed to reactivate account', original: e);
+    }
+  }
+
+  // ========================= ADMIN LOGIN =========================
 
   Future<AdminLoginResponse> adminLogin({
     required String usernameOrEmail,
@@ -324,8 +374,7 @@ class AuthApiService {
         );
       }
 
-      // NOTE: intentionally DO NOT store admin token in user AuthTokenStore.
-      // Use a dedicated AdminTokenStore at the call site.
+      // Note: do not store admin token in user AuthTokenStore.
       return AdminLoginResponse(token: token, role: role, admin: admin);
     } on AppException {
       rethrow;
@@ -348,7 +397,12 @@ class AuthApiService {
 
   Future<String?> getSavedToken() => _tokenStore.getToken();
   Future<bool> getWasInactive() => _tokenStore.getWasInactive();
-  Future<void> clearAuth() => _tokenStore.clear();
+
+  Future<void> clearAuth() async {
+    await _tokenStore.clear();
+    g.setAuthToken('');
+    debugPrint('🔓 Auth cleared: token removed from storage and globals');
+  }
 
   // ============================ HELPERS ================================
 
@@ -370,8 +424,6 @@ class AuthApiService {
     if (e is String && e.trim().isNotEmpty) return e;
     return null;
   }
-
-  // ---- HTTP wrappers with nice network errors ----
 
   Future<http.Response> _safePost(
     Uri uri, {
@@ -406,7 +458,6 @@ class AuthApiService {
     }
   }
 
-  /// Throw a clean AuthException from a generic HTTP error.
   Never _throwAuthFromHttp(
     http.Response resp,
     Map<String, dynamic> decoded, {
@@ -441,12 +492,10 @@ class AuthApiService {
     throw AuthException(message, original: resp);
   }
 
-  /// Specialized mapping for user login failures → clean, user-friendly copy.
   Never _throwAuthFromLogin(http.Response resp, Map<String, dynamic> decoded) {
     final status = resp.statusCode;
     final backendMsg = _extractBackendMessage(decoded)?.toLowerCase() ?? '';
 
-    // user not found
     if (status == 404 || backendMsg.contains('user not found')) {
       throw AuthException(
         'User not found',
@@ -455,7 +504,6 @@ class AuthApiService {
       );
     }
 
-    // invalid credentials (cover 400 + 401 + common phrases)
     if (status == 400 ||
         status == 401 ||
         backendMsg.contains('invalid credentials') ||
@@ -468,7 +516,6 @@ class AuthApiService {
       );
     }
 
-    // inactive/locked/disabled
     if (status == 423 ||
         backendMsg.contains('inactive') ||
         backendMsg.contains('disabled') ||
@@ -480,13 +527,11 @@ class AuthApiService {
       );
     }
 
-    // fallback
     final msg =
         _extractBackendMessage(decoded) ?? 'Login failed. Please try again.';
     throw AuthException(msg, code: 'AUTH_ERROR', original: resp);
   }
 
-  /// Specialized mapping for ADMIN login failures.
   Never _throwAdminFromLogin(http.Response resp, Map<String, dynamic> decoded) {
     final status = resp.statusCode;
     final backendMsg = _extractBackendMessage(decoded)?.toLowerCase() ?? '';
@@ -509,7 +554,6 @@ class AuthApiService {
       );
     }
 
-    // generic
     final msg =
         _extractBackendMessage(decoded) ??
         'Admin login failed. Please try again.';

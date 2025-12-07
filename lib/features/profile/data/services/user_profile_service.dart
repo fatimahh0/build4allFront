@@ -1,3 +1,5 @@
+// lib/features/profile/data/services/user_profile_service.dart
+
 import 'package:dio/dio.dart';
 import 'package:build4front/core/network/globals.dart' as g;
 import 'package:build4front/core/config/env.dart';
@@ -22,14 +24,16 @@ class UserProfileService {
     return (res.data as Map).cast<String, dynamic>();
   }
 
-  // PUT /api/users/profile-visibility?isPublic=true|false
+  // PUT /api/users/profile-visibility?isPublic=true|false&ownerProjectLinkId=...
   Future<void> updateVisibility({
     required String token,
     required bool isPublic,
   }) async {
+    final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+
     final res = await _dio.put(
       '$_base/profile-visibility',
-      queryParameters: {'isPublic': isPublic},
+      queryParameters: {'isPublic': isPublic, 'ownerProjectLinkId': ownerId},
       options: Options(
         headers: {'Authorization': 'Bearer $token'},
         responseType: ResponseType.plain,
@@ -37,17 +41,22 @@ class UserProfileService {
     );
 
     if (res.statusCode != 200) {
-      throw Exception('Failed to update visibility');
+      // backend often returns empty body for 403, so give a useful error
+      throw Exception(
+        'Failed to update visibility (status: ${res.statusCode})',
+      );
     }
   }
 
-  // PUT /api/users/{id}/status  body:{status, password?}
+  // PUT /api/users/{id}/status?ownerProjectLinkId=...   body:{status, password?}
   Future<void> updateStatus({
     required String token,
     required int userId,
     required String status,
     String? password,
   }) async {
+    final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+
     final body = <String, dynamic>{'status': status};
 
     if (status.toUpperCase() == 'INACTIVE' && (password?.isNotEmpty ?? false)) {
@@ -56,6 +65,7 @@ class UserProfileService {
 
     final res = await _dio.put(
       '$_base/$userId/status',
+      queryParameters: {'ownerProjectLinkId': ownerId},
       data: body,
       options: Options(
         headers: {'Authorization': 'Bearer $token'},
@@ -64,7 +74,7 @@ class UserProfileService {
     );
 
     if (res.statusCode != 200) {
-      throw Exception('Failed to update status');
+      throw Exception('Failed to update status (status: ${res.statusCode})');
     }
   }
 }

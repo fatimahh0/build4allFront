@@ -180,40 +180,82 @@ class AppLocalizationsAr extends AppLocalizations {
   String get nextStepButton => 'الخطوة التالية';
 
   @override
-  String get home_welcome => 'Welcome 👋';
+  String get home_welcome => 'أهلًا 👋';
 
   @override
-  String get home_search_hint => 'Search activities, items...';
+  String get home_search_hint => 'ابحث عن المنتجات، الماركات...';
 
   @override
-  String get home_banner_title => 'Discover your next hobby';
+  String get home_banner_title => 'عروض خاصة';
 
   @override
-  String get home_banner_subtitle => 'Explore activities, classes and more near you.';
+  String get home_banner_subtitle => 'وفّر حتى 50٪ على منتجات مختارة.';
 
   @override
-  String get home_banner_button => 'Start exploring';
+  String get home_banner_button => 'ابدأ التسوق';
 
   @override
-  String get home_items_default_title => 'Items';
+  String get home_items_default_title => 'المنتجات';
 
   @override
-  String get home_recommended_title => 'Recommended for you';
+  String get home_recommended_title => 'مقترحة لك';
 
   @override
-  String get home_popular_title => 'Popular now';
+  String get home_popular_title => 'الأكثر رواجًا';
 
   @override
-  String get home_bookings_title => 'Upcoming bookings';
+  String get home_bookings_title => 'الحجوزات القادمة';
 
   @override
-  String get home_reviews_title => 'Latest reviews';
+  String get home_reviews_title => 'آخر التقييمات';
+
+  @override
+  String get home_flash_sale_title => 'عروض فلاش';
+
+  @override
+  String get home_new_arrivals_title => 'وصل حديثًا';
+
+  @override
+  String get home_best_sellers_title => 'الأكثر مبيعًا';
+
+  @override
+  String get home_top_rated_title => 'أعلى تقييمًا';
+
+  @override
+  String get home_why_shop_title => 'لماذا تتسوّق معنا؟';
+
+  @override
+  String get home_why_shop_free_shipping_title => 'شحن مجاني';
+
+  @override
+  String get home_why_shop_free_shipping_subtitle => 'على جميع الطلبات فوق 50\$';
+
+  @override
+  String get home_why_shop_easy_returns_title => 'إرجاع سهل';
+
+  @override
+  String get home_why_shop_easy_returns_subtitle => 'سياسة إرجاع خلال 30 يومًا';
+
+  @override
+  String get home_why_shop_secure_payment_title => 'دفع آمن';
+
+  @override
+  String get home_why_shop_secure_payment_subtitle => 'معاملات محمية 100٪';
+
+  @override
+  String get home_why_shop_support_title => 'دعم 24/7';
+
+  @override
+  String get home_why_shop_support_subtitle => 'دائمًا هنا لمساعدتك';
 
   @override
   String get connection_offline => 'لا يوجد اتصال بالإنترنت';
 
   @override
   String get connection_server_down => 'الخادم لا يستجيب';
+
+  @override
+  String get profile_login_required => 'Please log in to view your profile.';
 
   @override
   String get connection_issue => 'مشكلة في الاتصال';
@@ -331,6 +373,68 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get adminProductsSearchPlaceholder => 'ابحث عن منتج...';
+
+  @override
+  String get accountInactiveTitle => 'حسابك غير نشط';
+
+  @override
+  String get accountInactiveBody => 'حسابك حالياً غير نشط. هل تريد إعادة تفعيله للمتابعة؟';
+
+  @override
+  String get reactivateButton => 'إعادة التفعيل';
+
+  @override
+  String get accountReactivated => 'تم تفعيل حسابك بنجاح.';
+
+  @override
+  String get chooseSignInRole => 'اختر طريقة تسجيل الدخول';
+
+  @override
+  String get enterAsOwner => 'تسجيل الدخول كمالك (مسؤول)';
+
+  @override
+  String get enterAsUser => 'تسجيل الدخول كمستخدم';
+
+  @override
+  String get roleLabel => 'الدور';
+
+  @override
+  String get userLabel => 'مستخدم';
+
+  @override
+  String get loginInactiveTitle => 'هل تريد تفعيل الحساب؟';
+
+  @override
+  String loginInactiveMessage(Object name) {
+    return 'حسابك حالياً غير مُفعَّل. هل تريد تفعيله الآن والمتابعة؟';
+  }
+
+  @override
+  String get loginInactiveReactivate => 'Reactivate';
+
+  @override
+  String get loginInactiveCancel => 'لا، لاحقاً';
+
+  @override
+  String get loginInactiveRequired => 'You must reactivate your account to sign in as user.';
+
+  @override
+  String get loginChooseRoleTitle => 'Choose how to sign in';
+
+  @override
+  String get loginEnterAsOwner => 'Enter as Owner (Admin)';
+
+  @override
+  String get loginEnterAsUser => 'Enter as User';
+
+  @override
+  String get loginRoleLabel => 'Role:';
+
+  @override
+  String get loginUserFallbackLabel => 'User';
+
+  @override
+  String get loginInactiveSuccess => 'تم تفعيل حسابك بنجاح. أهلاً بعودتك!';
 
   @override
   String get productBadgeOnSale => 'عرض خاص';

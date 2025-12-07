@@ -1,10 +1,12 @@
+// lib/features/items/data/datasources/items_api_service.dart
+
 import 'package:build4front/core/config/env.dart';
 import 'package:build4front/core/network/api_fetch.dart';
 import 'package:build4front/core/network/api_methods.dart';
 import 'package:build4front/core/exceptions/app_exception.dart';
 import 'package:build4front/core/exceptions/network_exception.dart';
 
-/// Service responsible for talking to backend "items" API.
+/// Service responsible for talking to backend "items" or "products" API.
 ///
 /// It is multi-mode:
 /// - Activities mode:
@@ -12,16 +14,20 @@ import 'package:build4front/core/exceptions/network_exception.dart';
 /// - E-commerce/products mode:
 ///   base = /api/products
 ///
-/// The same methods are reused by the repository and use cases.
+/// This class is reused by repositories and use cases.
 class ItemsApiService {
   final ApiFetch _fetch;
 
   ItemsApiService({ApiFetch? fetch}) : _fetch = fetch ?? ApiFetch();
 
+  /// Current owner/app id coming from dart-define (OWNER_PROJECT_LINK_ID).
   int _ownerId() => int.tryParse(Env.ownerProjectLinkId) ?? 0;
 
+  /// Raw app type string from env (e.g. "ACTIVITIES", "ECOMMERCE").
+ // SAFE: if Env.appType is null, we get empty string.
   String get _appType => (Env.appType ?? '').toUpperCase().trim();
 
+  /// True when this app is an e-commerce/product app.
   bool get _isEcommerce => _appType == 'ECOMMERCE' || _appType == 'PRODUCTS';
 
   /// Base path:
@@ -36,9 +42,11 @@ class ItemsApiService {
   //    GET /api/items/guest/upcoming?ownerProjectLinkId=...&typeId=...
   //
   //  Products:
+  //    For historical reasons, in e-commerce mode this was reused as:
   //    GET /api/products/new-arrivals?ownerProjectId=...&categoryId=...
   //
-  //  We re-use this method in UI as "Upcoming / New items".
+  //  You can still use this as a generic "upcoming / new items" endpoint,
+  //  but for cleaner code prefer using getNewArrivals() below.
   // ---------------------------------------------------------------------------
   Future<List<dynamic>> getUpcomingGuest({int? typeId}) async {
     final ownerId = _ownerId();
@@ -185,6 +193,150 @@ class ItemsApiService {
       rethrow;
     } catch (e) {
       throw AppException('Failed to load interest-based items', original: e);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  //  NEW: getNewArrivals
+  //
+  //  E-commerce:
+  //    GET /api/products/new-arrivals?ownerProjectId=...&categoryId=...?&days=...?
+  //
+  //  Activities:
+  //    For now we fall back to "guest/upcoming" so the method is still usable
+  //    even if the appType is ACTIVITIES.
+  // ---------------------------------------------------------------------------
+  Future<List<dynamic>> getNewArrivals({int? categoryId, int? days}) async {
+    final ownerId = _ownerId();
+
+    String path;
+    final query = <String, dynamic>{};
+
+    if (_isEcommerce) {
+      path = '$_base/new-arrivals';
+      query['ownerProjectId'] = ownerId;
+      if (categoryId != null) {
+        query['categoryId'] = categoryId;
+      }
+      if (days != null) {
+        query['days'] = days;
+      }
+    } else {
+      // Activities: reuse guest/upcoming for now
+      path = '$_base/guest/upcoming';
+      query['ownerProjectLinkId'] = ownerId;
+    }
+
+    try {
+      final res = await _fetch.fetch(HttpMethod.get, path, data: query);
+
+      final data = res.data;
+      if (data is! List) {
+        throw ServerException(
+          'Invalid response format for new arrivals',
+          statusCode: res.statusCode ?? 200,
+        );
+      }
+      return data;
+    } on AppException {
+      rethrow;
+    } catch (e) {
+      throw AppException('Failed to load new arrivals', original: e);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  //  NEW: getBestSellers
+  //
+  //  E-commerce:
+  //    GET /api/products/best-sellers?ownerProjectId=...&categoryId=...?&limit=...?
+  //
+  //  Activities:
+  //    For now, we fall back to "guest/upcoming" so we always return something.
+  // ---------------------------------------------------------------------------
+  Future<List<dynamic>> getBestSellers({
+    int? categoryId,
+    int limit = 20,
+  }) async {
+    final ownerId = _ownerId();
+
+    String path;
+    final query = <String, dynamic>{};
+
+    if (_isEcommerce) {
+      path = '$_base/best-sellers';
+      query['ownerProjectId'] = ownerId;
+      query['limit'] = limit;
+      if (categoryId != null) {
+        query['categoryId'] = categoryId;
+      }
+    } else {
+      // Activities: simple fallback
+      path = '$_base/guest/upcoming';
+      query['ownerProjectLinkId'] = ownerId;
+    }
+
+    try {
+      final res = await _fetch.fetch(HttpMethod.get, path, data: query);
+
+      final data = res.data;
+      if (data is! List) {
+        throw ServerException(
+          'Invalid response format for best-sellers',
+          statusCode: res.statusCode ?? 200,
+        );
+      }
+      return data;
+    } on AppException {
+      rethrow;
+    } catch (e) {
+      throw AppException('Failed to load best-sellers', original: e);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  //  NEW: getDiscounted
+  //
+  //  E-commerce:
+  //    GET /api/products/discounted?ownerProjectId=...&categoryId=...?
+  //    → this is perfect for "Flash sale" / "On sale" sections.
+  //
+  //  Activities:
+  //    Again, we fall back to "guest/upcoming" to keep behavior safe.
+  // ---------------------------------------------------------------------------
+  Future<List<dynamic>> getDiscounted({int? categoryId}) async {
+    final ownerId = _ownerId();
+
+    String path;
+    final query = <String, dynamic>{};
+
+    if (_isEcommerce) {
+      path = '$_base/discounted';
+      query['ownerProjectId'] = ownerId;
+      if (categoryId != null) {
+        query['categoryId'] = categoryId;
+      }
+    } else {
+      // Activities: fallback behavior
+      path = '$_base/guest/upcoming';
+      query['ownerProjectLinkId'] = ownerId;
+    }
+
+    try {
+      final res = await _fetch.fetch(HttpMethod.get, path, data: query);
+
+      final data = res.data;
+      if (data is! List) {
+        throw ServerException(
+          'Invalid response format for discounted items',
+          statusCode: res.statusCode ?? 200,
+        );
+      }
+      return data;
+    } on AppException {
+      rethrow;
+    } catch (e) {
+      throw AppException('Failed to load discounted items', original: e);
     }
   }
 }

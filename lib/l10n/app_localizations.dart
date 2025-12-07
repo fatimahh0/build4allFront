@@ -448,25 +448,25 @@ abstract class AppLocalizations {
   /// No description provided for @home_search_hint.
   ///
   /// In en, this message translates to:
-  /// **'Search activities, items...'**
+  /// **'Search products, brands...'**
   String get home_search_hint;
 
   /// No description provided for @home_banner_title.
   ///
   /// In en, this message translates to:
-  /// **'Discover your next hobby'**
+  /// **'Special Offers'**
   String get home_banner_title;
 
   /// No description provided for @home_banner_subtitle.
   ///
   /// In en, this message translates to:
-  /// **'Explore activities, classes and more near you.'**
+  /// **'Save up to 50% on selected items.'**
   String get home_banner_subtitle;
 
   /// No description provided for @home_banner_button.
   ///
   /// In en, this message translates to:
-  /// **'Start exploring'**
+  /// **'Start shopping'**
   String get home_banner_button;
 
   /// No description provided for @home_items_default_title.
@@ -499,6 +499,84 @@ abstract class AppLocalizations {
   /// **'Latest reviews'**
   String get home_reviews_title;
 
+  /// No description provided for @home_flash_sale_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Flash Sale'**
+  String get home_flash_sale_title;
+
+  /// No description provided for @home_new_arrivals_title.
+  ///
+  /// In en, this message translates to:
+  /// **'New Arrivals'**
+  String get home_new_arrivals_title;
+
+  /// No description provided for @home_best_sellers_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Best Sellers'**
+  String get home_best_sellers_title;
+
+  /// No description provided for @home_top_rated_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Top Rated'**
+  String get home_top_rated_title;
+
+  /// No description provided for @home_why_shop_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Why Shop With Us'**
+  String get home_why_shop_title;
+
+  /// No description provided for @home_why_shop_free_shipping_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Free Shipping'**
+  String get home_why_shop_free_shipping_title;
+
+  /// No description provided for @home_why_shop_free_shipping_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'On all orders over \$50'**
+  String get home_why_shop_free_shipping_subtitle;
+
+  /// No description provided for @home_why_shop_easy_returns_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Easy Returns'**
+  String get home_why_shop_easy_returns_title;
+
+  /// No description provided for @home_why_shop_easy_returns_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'30-day return policy'**
+  String get home_why_shop_easy_returns_subtitle;
+
+  /// No description provided for @home_why_shop_secure_payment_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Secure Payment'**
+  String get home_why_shop_secure_payment_title;
+
+  /// No description provided for @home_why_shop_secure_payment_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'100% protected transactions'**
+  String get home_why_shop_secure_payment_subtitle;
+
+  /// No description provided for @home_why_shop_support_title.
+  ///
+  /// In en, this message translates to:
+  /// **'24/7 Support'**
+  String get home_why_shop_support_title;
+
+  /// No description provided for @home_why_shop_support_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Always here to help you'**
+  String get home_why_shop_support_subtitle;
+
   /// No description provided for @connection_offline.
   ///
   /// In en, this message translates to:
@@ -510,6 +588,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Server is not responding'**
   String get connection_server_down;
+
+  /// No description provided for @profile_login_required.
+  ///
+  /// In en, this message translates to:
+  /// **'Please log in to view your profile.'**
+  String get profile_login_required;
 
   /// No description provided for @connection_issue.
   ///
@@ -726,6 +810,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Search products...'**
   String get adminProductsSearchPlaceholder;
+
+  /// No description provided for @accountInactiveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account is inactive'**
+  String get accountInactiveTitle;
+
+  /// No description provided for @accountInactiveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account is currently inactive. Do you want to reactivate it to continue?'**
+  String get accountInactiveBody;
+
+  /// No description provided for @reactivateButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Reactivate'**
+  String get reactivateButton;
+
+  /// No description provided for @accountReactivated.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account has been reactivated successfully'**
+  String get accountReactivated;
+
+  /// No description provided for @chooseSignInRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose how to sign in'**
+  String get chooseSignInRole;
+
+  /// No description provided for @enterAsOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter as Owner (Admin)'**
+  String get enterAsOwner;
+
+  /// No description provided for @enterAsUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter as User'**
+  String get enterAsUser;
+
+  /// No description provided for @roleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Role'**
+  String get roleLabel;
+
+  /// No description provided for @userLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'User'**
+  String get userLabel;
+
+  /// No description provided for @loginInactiveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reactivate your account?'**
+  String get loginInactiveTitle;
+
+  /// No description provided for @loginInactiveMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account \"{name}\" is currently inactive. Do you want to reactivate it and continue?'**
+  String loginInactiveMessage(Object name);
+
+  /// No description provided for @loginInactiveReactivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Reactivate'**
+  String get loginInactiveReactivate;
+
+  /// No description provided for @loginInactiveCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get loginInactiveCancel;
+
+  /// No description provided for @loginInactiveRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'You must reactivate your account to sign in as user.'**
+  String get loginInactiveRequired;
+
+  /// No description provided for @loginChooseRoleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose how to sign in'**
+  String get loginChooseRoleTitle;
+
+  /// No description provided for @loginEnterAsOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter as Owner (Admin)'**
+  String get loginEnterAsOwner;
+
+  /// No description provided for @loginEnterAsUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter as User'**
+  String get loginEnterAsUser;
+
+  /// No description provided for @loginRoleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Role:'**
+  String get loginRoleLabel;
+
+  /// No description provided for @loginUserFallbackLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'User'**
+  String get loginUserFallbackLabel;
+
+  /// No description provided for @loginInactiveSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account has been reactivated successfully.'**
+  String get loginInactiveSuccess;
 
   /// No description provided for @productBadgeOnSale.
   ///

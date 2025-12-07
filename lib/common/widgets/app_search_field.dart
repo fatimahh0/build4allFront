@@ -4,11 +4,18 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:build4front/core/theme/theme_cubit.dart';
 
-class AppSearchField extends StatelessWidget {
+class AppSearchField extends StatefulWidget {
   final String hintText;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
+
+  /// Optional external controller.
+  /// If provided, we will NOT create our own.
   final TextEditingController? controller;
+
+  /// Optional initial value (used when no external controller provided).
+  /// Perfect for ExploreScreen to pre-fill the search.
+  final String? initialValue;
 
   const AppSearchField({
     super.key,
@@ -16,7 +23,34 @@ class AppSearchField extends StatelessWidget {
     this.onChanged,
     this.onSubmitted,
     this.controller,
+    this.initialValue,
   });
+
+  @override
+  State<AppSearchField> createState() => _AppSearchFieldState();
+}
+
+class _AppSearchFieldState extends State<AppSearchField> {
+  TextEditingController? _internalController;
+
+  TextEditingController get _effectiveController {
+    // If parent passed a controller → use it.
+    if (widget.controller != null) {
+      return widget.controller!;
+    }
+
+    // Otherwise create our own once, with initialValue.
+    _internalController ??= TextEditingController(
+      text: widget.initialValue ?? '',
+    );
+    return _internalController!;
+  }
+
+  @override
+  void dispose() {
+    _internalController?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,12 +66,12 @@ class AppSearchField extends StatelessWidget {
     final verticalPadding = searchTokens.dense ? spacing.xs : spacing.sm;
 
     return TextField(
-      controller: controller,
-      onChanged: onChanged,
-      onSubmitted: onSubmitted,
+      controller: _effectiveController,
+      onChanged: widget.onChanged,
+      onSubmitted: widget.onSubmitted,
       style: t.bodyMedium,
       decoration: InputDecoration(
-        hintText: hintText,
+        hintText: widget.hintText,
         prefixIcon: const Icon(Icons.search_rounded),
         filled: true,
         fillColor: c.surface,

@@ -1,6 +1,7 @@
 // lib/core/network/globals.dart
 library globals;
 
+import 'dart:convert'; // for JWT decoding
 import 'package:dio/dio.dart';
 import 'package:build4front/core/config/env.dart';
 import 'package:build4front/core/network/interceptors/auth_body_injector.dart';
@@ -31,15 +32,17 @@ String appLogoUrl = '';
 // -------- Connection Cubit (for server / network status) --------
 ConnectionCubit? connectionCubit;
 
-/// Register the ConnectionCubit globally so network layer can update status
+/// Register the ConnectionCubit globally so the network layer can update status.
 void registerConnectionCubit(ConnectionCubit cubit) {
   connectionCubit = cubit;
 }
 
+/// Read the current auth token from any of the legacy fields.
 String readAuthToken() {
   return (authToken ?? token ?? userToken ?? Token ?? '').toString();
 }
 
+/// Set the current auth token and update Dio default headers.
 void setAuthToken(String? raw) {
   final t = (raw ?? '').trim();
 
@@ -67,11 +70,13 @@ void setAuthToken(String? raw) {
   }
 }
 
+/// Base URL without "/api" suffix, used to resolve relative URLs.
 String serverRootNoApi() {
   final base = appServerRoot;
   return base.replaceFirst(RegExp(r'/api/?$'), '');
 }
 
+/// Resolve a relative path against the server root.
 String resolveUrl(String maybeRelative) {
   final s = maybeRelative.trim();
   if (s.isEmpty) return s;
@@ -85,6 +90,7 @@ String resolveUrl(String maybeRelative) {
 
 String get appLogoUrlResolved => resolveUrl(appLogoUrl);
 
+/// Get the shared Dio instance (or create it lazily).
 Dio dio() {
   return appDio ??= Dio(
     BaseOptions(
@@ -96,11 +102,11 @@ Dio dio() {
 }
 
 /// Initialize shared Dio and global values.
-/// Call once at startup.
+/// Call this once at app startup.
 void makeDefaultDio(String baseUrl) {
   appServerRoot = baseUrl;
 
-  // Copy Env → globals so interceptors can read them
+  // Copy Env → globals so interceptors can read them.
   ownerProjectLinkId = Env.ownerProjectLinkId;
   ownerAttachMode = Env.ownerAttachMode;
   projectId = Env.projectId;
@@ -134,4 +140,65 @@ void makeDefaultDio(String baseUrl) {
   );
 
   appDio = d;
+}
+
+/// =======================
+///   JWT helpers (USER + OWNER)
+/// =======================
+
+/// Extract raw JWT without the "Bearer " prefix.
+String? _rawJwt() {
+  final full = readAuthToken().trim();
+  if (full.isEmpty) return null;
+  if (full.toLowerCase().startsWith('bearer ')) {
+    return full.substring(7).trim();
+  }
+  return full;
+}
+
+/// Decode the JWT payload as a Map<String, dynamic>.
+Map<String, dynamic>? decodeJwtPayload() {
+  try {
+    final raw = _rawJwt();
+    if (raw == null || raw.isEmpty) return null;
+
+    final parts = raw.split('.');
+    if (parts.length != 3) return null;
+
+    var payload = parts[1];
+    payload = base64Url.normalize(payload);
+    final decoded = utf8.decode(base64Url.decode(payload));
+    final map = jsonDecode(decoded);
+
+    if (map is Map<String, dynamic>) {
+      return map;
+    }
+    return null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Return the OWNER name (username) from the JWT if the role is OWNER.
+///
+/// Based on JwtUtil.java:
+/// - USER token:  id, username, firstName, lastName, profileImageUrl, role = USER
+/// - OWNER token: id, username, role = OWNER
+///
+/// If the token is not an OWNER token, this returns null.
+String? getOwnerNameFromJwt() {
+  final payload = decodeJwtPayload();
+  if (payload == null) return null;
+
+  final roleRaw = payload['role'];
+  final role = roleRaw is String ? roleRaw.toUpperCase().trim() : null;
+
+  if (role == 'OWNER') {
+    final uname = payload['username'];
+    if (uname is String && uname.trim().isNotEmpty) {
+      return uname.trim();
+    }
+  }
+
+  return null;
 }

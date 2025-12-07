@@ -9,6 +9,9 @@ import '../../../items/domain/entities/item_summary.dart';
 import '../../../items/domain/usecases/get_guest_upcoming_items.dart';
 import '../../../items/domain/usecases/get_interest_based_items.dart';
 import '../../../items/domain/usecases/get_items_by_type.dart';
+import '../../../items/domain/usecases/get_new_arrivals_items.dart';
+import '../../../items/domain/usecases/get_best_sellers_items.dart';
+import '../../../items/domain/usecases/get_discounted_items.dart';
 
 // catalog (item types + categories)
 import '../../../catalog/domain/entities/item_type.dart';
@@ -24,7 +27,12 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   final GetInterestBasedItems getInterestBasedItems;
   final GetItemsByType getItemsByType;
   final GetItemTypesByProject getItemTypesByProject;
-  final GetCategoriesByProject getCategoriesByProject; // ✅ NEW
+  final GetCategoriesByProject getCategoriesByProject;
+
+  /// New use cases for e-commerce sections.
+  final GetNewArrivalsItems getNewArrivalsItems;
+  final GetBestSellersItems getBestSellersItems;
+  final GetDiscountedItems getDiscountedItems;
 
   HomeBloc({
     required this.getGuestUpcomingItems,
@@ -32,6 +40,9 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     required this.getItemsByType,
     required this.getItemTypesByProject,
     required this.getCategoriesByProject,
+    required this.getNewArrivalsItems,
+    required this.getBestSellersItems,
+    required this.getDiscountedItems,
   }) : super(HomeState.initial()) {
     on<HomeStarted>(_onStarted);
     on<HomeRefreshRequested>(_onRefresh);
@@ -54,26 +65,41 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     try {
       final projectId = int.tryParse(Env.projectId) ?? 0;
 
-      // 1) Popular items = guest upcoming / new arrivals (dynamic by appType)
+      // 1) Main "popular" list = upcoming/new items (works for both modes).
       final List<ItemSummary> popularItems = await getGuestUpcomingItems();
 
-
+      // 2) Recommended: later we can use getInterestBased + userId + token.
+      //    For now fallback to popular items to keep UI non-empty.
       final List<ItemSummary> recommendedItems = popularItems;
 
+      // 3) Flash sale / discounted items.
+      final List<ItemSummary> flashSaleItems = await getDiscountedItems.call();
 
+      // 4) New arrivals items.
+      final List<ItemSummary> newArrivalsItems = await getNewArrivalsItems
+          .call();
+
+      // 5) Best sellers items.
+      final List<ItemSummary> bestSellersItems = await getBestSellersItems
+          .call();
+
+      // 6) Top rated: for now we simply reuse best sellers.
+      final List<ItemSummary> topRatedItems = bestSellersItems;
+
+      // 7) Build categories list (labels for chips).
       List<String> categoryLabels = <String>[];
 
       if (projectId > 0) {
-  
-        final List<ItemType> types = await getItemTypesByProject(
-          projectId,
-        ); // ignore: unused_local_variable
+        // These are available if you need them later.
+        final List<ItemType> types = await getItemTypesByProject(projectId);
+        // ignore: unused_local_variable
+        final _ = types;
 
-      
         final List<Category> allCategories = await getCategoriesByProject(
           projectId,
         );
 
+        // Collect categoryIds used in the popular items list.
         final Set<int> usedCategoryIds = <int>{};
         for (final item in popularItems) {
           final cid = item.categoryId;
@@ -82,7 +108,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
           }
         }
 
-    
+        // Filter categories by those which are actually used.
         final List<Category> filteredCategories = usedCategoryIds.isEmpty
             ? allCategories
             : allCategories
@@ -100,6 +126,10 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
           popularItems: popularItems,
           recommendedItems: recommendedItems,
           categories: categoryLabels,
+          flashSaleItems: flashSaleItems,
+          newArrivalsItems: newArrivalsItems,
+          bestSellersItems: bestSellersItems,
+          topRatedItems: topRatedItems,
         ),
       );
     } catch (e) {

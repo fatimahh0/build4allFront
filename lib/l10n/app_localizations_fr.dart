@@ -180,40 +180,82 @@ class AppLocalizationsFr extends AppLocalizations {
   String get nextStepButton => 'Étape suivante';
 
   @override
-  String get home_welcome => 'Welcome 👋';
+  String get home_welcome => 'Bienvenue 👋';
 
   @override
-  String get home_search_hint => 'Search activities, items...';
+  String get home_search_hint => 'Rechercher des produits, des marques...';
 
   @override
-  String get home_banner_title => 'Discover your next hobby';
+  String get home_banner_title => 'Offres spéciales';
 
   @override
-  String get home_banner_subtitle => 'Explore activities, classes and more near you.';
+  String get home_banner_subtitle => 'Économisez jusqu’à 50 % sur une sélection d’articles.';
 
   @override
-  String get home_banner_button => 'Start exploring';
+  String get home_banner_button => 'Commencer les achats';
 
   @override
-  String get home_items_default_title => 'Items';
+  String get home_items_default_title => 'Articles';
 
   @override
-  String get home_recommended_title => 'Recommended for you';
+  String get home_recommended_title => 'Recommandé pour vous';
 
   @override
-  String get home_popular_title => 'Popular now';
+  String get home_popular_title => 'Populaire en ce moment';
 
   @override
-  String get home_bookings_title => 'Upcoming bookings';
+  String get home_bookings_title => 'Prochaines réservations';
 
   @override
-  String get home_reviews_title => 'Latest reviews';
+  String get home_reviews_title => 'Derniers avis';
+
+  @override
+  String get home_flash_sale_title => 'Ventes flash';
+
+  @override
+  String get home_new_arrivals_title => 'Nouveautés';
+
+  @override
+  String get home_best_sellers_title => 'Meilleures ventes';
+
+  @override
+  String get home_top_rated_title => 'Mieux notés';
+
+  @override
+  String get home_why_shop_title => 'Pourquoi acheter chez nous ?';
+
+  @override
+  String get home_why_shop_free_shipping_title => 'Livraison gratuite';
+
+  @override
+  String get home_why_shop_free_shipping_subtitle => 'Sur toutes les commandes de plus de 50\$';
+
+  @override
+  String get home_why_shop_easy_returns_title => 'Retours faciles';
+
+  @override
+  String get home_why_shop_easy_returns_subtitle => 'Politique de retour sous 30 jours';
+
+  @override
+  String get home_why_shop_secure_payment_title => 'Paiement sécurisé';
+
+  @override
+  String get home_why_shop_secure_payment_subtitle => 'Transactions protégées à 100 %';
+
+  @override
+  String get home_why_shop_support_title => 'Support 24h/24 et 7j/7';
+
+  @override
+  String get home_why_shop_support_subtitle => 'Toujours là pour vous aider';
 
   @override
   String get connection_offline => 'Pas de connexion Internet';
 
   @override
   String get connection_server_down => 'Le serveur ne répond pas';
+
+  @override
+  String get profile_login_required => 'Please log in to view your profile.';
 
   @override
   String get connection_issue => 'Problème de connexion';
@@ -331,6 +373,68 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get adminProductsSearchPlaceholder => 'Rechercher un produit...';
+
+  @override
+  String get accountInactiveTitle => 'Votre compte est inactif';
+
+  @override
+  String get accountInactiveBody => 'Votre compte est actuellement inactif. Voulez-vous le réactiver pour continuer ?';
+
+  @override
+  String get reactivateButton => 'Réactiver';
+
+  @override
+  String get accountReactivated => 'Votre compte a été réactivé avec succès.';
+
+  @override
+  String get chooseSignInRole => 'Choisissez votre mode de connexion';
+
+  @override
+  String get enterAsOwner => 'Se connecter en tant que propriétaire (admin)';
+
+  @override
+  String get enterAsUser => 'Se connecter en tant qu\'utilisateur';
+
+  @override
+  String get roleLabel => 'Rôle';
+
+  @override
+  String get userLabel => 'Utilisateur';
+
+  @override
+  String get loginInactiveTitle => 'Réactiver le compte ?';
+
+  @override
+  String loginInactiveMessage(Object name) {
+    return 'Votre compte est actuellement inactif. Voulez-vous le réactiver maintenant et continuer ?';
+  }
+
+  @override
+  String get loginInactiveReactivate => 'Reactivate';
+
+  @override
+  String get loginInactiveCancel => 'Non, plus tard';
+
+  @override
+  String get loginInactiveRequired => 'You must reactivate your account to sign in as user.';
+
+  @override
+  String get loginChooseRoleTitle => 'Choose how to sign in';
+
+  @override
+  String get loginEnterAsOwner => 'Enter as Owner (Admin)';
+
+  @override
+  String get loginEnterAsUser => 'Enter as User';
+
+  @override
+  String get loginRoleLabel => 'Role:';
+
+  @override
+  String get loginUserFallbackLabel => 'User';
+
+  @override
+  String get loginInactiveSuccess => 'Votre compte a été réactivé avec succès. Bienvenue de nouveau !';
 
   @override
   String get productBadgeOnSale => 'En promo';

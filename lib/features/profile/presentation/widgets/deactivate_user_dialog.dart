@@ -1,8 +1,11 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+// lib/features/profile/presentation/widgets/deactivate_user_dialog.dart
 
+import 'package:flutter/material.dart';
 import 'package:build4front/l10n/app_localizations.dart';
-import 'package:build4front/features/profile/domain/usecases/update_user_status.dart';
+
+// call the profile service directly
+import 'package:build4front/features/profile/data/services/user_profile_service.dart'
+    as svc;
 
 class DeactivateUserDialog extends StatefulWidget {
   final String token;
@@ -35,11 +38,11 @@ class _DeactivateUserDialogState extends State<DeactivateUserDialog> {
     final tr = AppLocalizations.of(context)!;
 
     return AlertDialog(
-      title: Text(tr.deactivate_title), // add key
+      title: Text(tr.deactivate_title), // add key in ARB
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(tr.deactivate_warning), // add key
+          Text(tr.deactivate_warning), // add key in ARB
           const SizedBox(height: 12),
           TextField(
             controller: _ctrl,
@@ -86,18 +89,23 @@ class _DeactivateUserDialogState extends State<DeactivateUserDialog> {
     });
 
     try {
-      final uc = context.read<UpdateUserStatus>();
-      await uc(
+      final service = svc.UserProfileService();
+
+      await service.updateStatus(
         token: widget.token,
         userId: widget.userId,
         status: 'INACTIVE',
         password: pwd,
       );
+
+      // ✅ tell parent we’re done & successful
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       setState(() => _error = e.toString());
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 }

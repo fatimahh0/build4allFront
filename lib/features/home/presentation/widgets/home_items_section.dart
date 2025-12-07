@@ -93,6 +93,16 @@ class HomeItemsSection extends StatelessWidget {
                               onTap: () {
                                 // TODO: navigate to item details
                               },
+                              ctaLabel: item.kind == ItemKind.product
+                                  ? 'Add to cart'
+                                  : 'Book now',
+                              onCtaPressed: () {
+                                // TODO: بعدين نربطها مع الـ CartBloc / booking
+                                debugPrint(
+                                  'CTA pressed for item ${item.id} (${item.kind})',
+                                );
+                              },
+                              
                             ),
                           ),
                         )

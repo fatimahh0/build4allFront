@@ -24,6 +24,11 @@ import 'package:build4front/features/items/domain/usecases/get_guest_upcoming_it
 import 'package:build4front/features/items/domain/usecases/get_interest_based_items.dart';
 import 'package:build4front/features/items/domain/usecases/get_items_by_type.dart';
 
+// ✅ NEW: items home use cases (e-commerce sections)
+import 'package:build4front/features/items/domain/usecases/get_new_arrivals_items.dart';
+import 'package:build4front/features/items/domain/usecases/get_best_sellers_items.dart';
+import 'package:build4front/features/items/domain/usecases/get_discounted_items.dart';
+
 // ---------- ITEM TYPES ----------
 import 'package:build4front/features/catalog/data/services/item_type_api_service.dart';
 import 'package:build4front/features/catalog/data/repositories/item_type_repository_impl.dart';
@@ -47,7 +52,7 @@ class Build4AllFrontApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Read static build-time config (owner/project/app type etc.)
+    // Read static build-time config (owner/project/app type, etc.)
     final appConfig = AppConfig.fromEnv();
 
     // ---------- AUTH LAYER ----------
@@ -95,13 +100,13 @@ class Build4AllFrontApp extends StatelessWidget {
           BlocProvider<ConnectionCubit>(
             create: (_) {
               final cubit = ConnectionCubit();
-              // Expose globally so network layer can use it
+              // Expose globally so the network layer can check connectivity
               g.registerConnectionCubit(cubit);
               return cubit;
             },
           ),
 
-          // Auth bloc: handles login/logout, user session
+          // Auth bloc: handles login/logout and user session
           BlocProvider<AuthBloc>(
             create: (ctx) => AuthBloc(
               loginWithEmail: LoginWithEmail(
@@ -111,31 +116,51 @@ class Build4AllFrontApp extends StatelessWidget {
             ),
           ),
 
-          // Home bloc: items + types + categories for home screen
+          // Home bloc: items + types + categories for the Home screen
           BlocProvider<HomeBloc>(
             create: (ctx) => HomeBloc(
               // Popular / upcoming items (guest)
               getGuestUpcomingItems: GetGuestUpcomingItems(
                 ctx.read<ItemsRepository>(),
               ),
-              // Later: interest-based items when user logged-in
+
+              // Interest-based items (when user is logged in)
               getInterestBasedItems: GetInterestBasedItems(
                 ctx.read<ItemsRepository>(),
               ),
-              // Fetch items by type (for filters/sections)
+
+              // Items by type/category (for filters / Explore)
               getItemsByType: GetItemsByType(ctx.read<ItemsRepository>()),
-              // Load ItemTypes per project (types like: LAPTOP, HEADPHONES...)
+
+              // Item types per project (for future use if needed)
               getItemTypesByProject: GetItemTypesByProject(
                 ctx.read<ItemTypeRepository>(),
               ),
-              // ✅ NEW: load Categories by project (ex: LAPTOPS, PHONES...)
+
+              // Categories per project → used for Home chips
               getCategoriesByProject: GetCategoriesByProject(
                 ctx.read<CategoryRepository>(),
               ),
-            )..add(const HomeStarted()), // initial load
+
+              // ✅ New arrivals section (e-commerce)
+              getNewArrivalsItems: GetNewArrivalsItems(
+                ctx.read<ItemsRepository>(),
+              ),
+
+              // ✅ Best sellers section (e-commerce)
+              getBestSellersItems: GetBestSellersItems(
+                ctx.read<ItemsRepository>(),
+              ),
+
+              // ✅ Discounted / flash sale section (e-commerce)
+              getDiscountedItems: GetDiscountedItems(
+                ctx.read<ItemsRepository>(),
+              ),
+            )..add(const HomeStarted()), // Initial load when app opens
           ),
         ],
-        // Main app view (MaterialApp + navigation shell)
+
+        // Main app view (MaterialApp + router + shell)
         child: AppView(appConfig: appConfig),
       ),
     );

@@ -183,16 +183,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get home_welcome => 'Welcome 👋';
 
   @override
-  String get home_search_hint => 'Search activities, items...';
+  String get home_search_hint => 'Search products, brands...';
 
   @override
-  String get home_banner_title => 'Discover your next hobby';
+  String get home_banner_title => 'Special Offers';
 
   @override
-  String get home_banner_subtitle => 'Explore activities, classes and more near you.';
+  String get home_banner_subtitle => 'Save up to 50% on selected items.';
 
   @override
-  String get home_banner_button => 'Start exploring';
+  String get home_banner_button => 'Start shopping';
 
   @override
   String get home_items_default_title => 'Items';
@@ -210,10 +210,52 @@ class AppLocalizationsEn extends AppLocalizations {
   String get home_reviews_title => 'Latest reviews';
 
   @override
+  String get home_flash_sale_title => 'Flash Sale';
+
+  @override
+  String get home_new_arrivals_title => 'New Arrivals';
+
+  @override
+  String get home_best_sellers_title => 'Best Sellers';
+
+  @override
+  String get home_top_rated_title => 'Top Rated';
+
+  @override
+  String get home_why_shop_title => 'Why Shop With Us';
+
+  @override
+  String get home_why_shop_free_shipping_title => 'Free Shipping';
+
+  @override
+  String get home_why_shop_free_shipping_subtitle => 'On all orders over \$50';
+
+  @override
+  String get home_why_shop_easy_returns_title => 'Easy Returns';
+
+  @override
+  String get home_why_shop_easy_returns_subtitle => '30-day return policy';
+
+  @override
+  String get home_why_shop_secure_payment_title => 'Secure Payment';
+
+  @override
+  String get home_why_shop_secure_payment_subtitle => '100% protected transactions';
+
+  @override
+  String get home_why_shop_support_title => '24/7 Support';
+
+  @override
+  String get home_why_shop_support_subtitle => 'Always here to help you';
+
+  @override
   String get connection_offline => 'No internet connection';
 
   @override
   String get connection_server_down => 'Server is not responding';
+
+  @override
+  String get profile_login_required => 'Please log in to view your profile.';
 
   @override
   String get connection_issue => 'Connection issue';
@@ -331,6 +373,68 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get adminProductsSearchPlaceholder => 'Search products...';
+
+  @override
+  String get accountInactiveTitle => 'Your account is inactive';
+
+  @override
+  String get accountInactiveBody => 'Your account is currently inactive. Do you want to reactivate it to continue?';
+
+  @override
+  String get reactivateButton => 'Reactivate';
+
+  @override
+  String get accountReactivated => 'Your account has been reactivated successfully';
+
+  @override
+  String get chooseSignInRole => 'Choose how to sign in';
+
+  @override
+  String get enterAsOwner => 'Enter as Owner (Admin)';
+
+  @override
+  String get enterAsUser => 'Enter as User';
+
+  @override
+  String get roleLabel => 'Role';
+
+  @override
+  String get userLabel => 'User';
+
+  @override
+  String get loginInactiveTitle => 'Reactivate your account?';
+
+  @override
+  String loginInactiveMessage(Object name) {
+    return 'Your account \"$name\" is currently inactive. Do you want to reactivate it and continue?';
+  }
+
+  @override
+  String get loginInactiveReactivate => 'Reactivate';
+
+  @override
+  String get loginInactiveCancel => 'Not now';
+
+  @override
+  String get loginInactiveRequired => 'You must reactivate your account to sign in as user.';
+
+  @override
+  String get loginChooseRoleTitle => 'Choose how to sign in';
+
+  @override
+  String get loginEnterAsOwner => 'Enter as Owner (Admin)';
+
+  @override
+  String get loginEnterAsUser => 'Enter as User';
+
+  @override
+  String get loginRoleLabel => 'Role:';
+
+  @override
+  String get loginUserFallbackLabel => 'User';
+
+  @override
+  String get loginInactiveSuccess => 'Your account has been reactivated successfully.';
 
   @override
   String get productBadgeOnSale => 'On sale';

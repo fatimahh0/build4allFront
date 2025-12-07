@@ -1,3 +1,5 @@
+// lib/features/profile/presentation/screens/user_profile_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -51,7 +53,7 @@ class UserProfileScreen extends StatelessWidget {
                     const Icon(Icons.person_off_outlined, size: 48),
                     const SizedBox(height: 12),
                     Text(
-                      tr.profile_load_error, // add key in ARB
+                      tr.profile_load_error,
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyLarge,
                     ),
@@ -98,7 +100,7 @@ class UserProfileScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   Center(
                     child: Text(
-                      tr.profileMotto, // e.g. "Live your hobby!"
+                      tr.profileMotto,
                       style: theme.textTheme.bodySmall?.copyWith(
                         fontStyle: FontStyle.italic,
                       ),
@@ -146,15 +148,17 @@ class UserProfileScreen extends StatelessWidget {
                         icon: Icons.power_settings_new,
                         title: tr.setInactive,
                         onTap: () async {
+                          // 🔴 THIS IS THE IMPORTANT PART
                           final ok = await showDialog<bool>(
                             context: context,
                             barrierDismissible: false,
-                            // ❌ no RepositoryProvider / UpdateUserStatus
                             builder: (ctx) => DeactivateUserDialog(
                               token: token,
                               userId: userId,
                             ),
                           );
+
+                          // ✅ If backend accepted INACTIVE → log out
                           if (ok == true) {
                             onLogout();
                           }
@@ -173,6 +177,8 @@ class UserProfileScreen extends StatelessWidget {
     );
   }
 
+ 
+  /// Simple reusable ListTile builder for profile menu entries.
   Widget _tile(
     BuildContext context, {
     required IconData icon,
@@ -192,6 +198,7 @@ class UserProfileScreen extends StatelessWidget {
     );
   }
 
+  /// Language bottom sheet
   void _showLanguageSelector(BuildContext context) {
     final tr = AppLocalizations.of(context)!;
 
@@ -236,6 +243,7 @@ class UserProfileScreen extends StatelessWidget {
     );
   }
 
+  /// Logout confirmation dialog
   Future<void> _confirmLogout(BuildContext context) async {
     final tr = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
@@ -265,4 +273,29 @@ class UserProfileScreen extends StatelessWidget {
       onLogout();
     }
   }
+}
+
+/// Detect if the backend error is basically "login required".
+bool _isLoginRequiredMessage(String raw) {
+  final lower = raw.toLowerCase();
+  return lower.contains('please login first') ||
+      lower.contains('please log in first') ||
+      lower.contains('unauthorized') ||
+      lower.contains('401');
+}
+
+/// Map a raw error message to a user-friendly one.
+String _mapErrorMessage(
+  String raw,
+  AppLocalizations tr, {
+  required String fallback,
+}) {
+  if (_isLoginRequiredMessage(raw)) {
+    // You can add this key in your ARB:
+    // "profile_login_required": "Please log in to view your profile."
+    return "";
+  }
+
+  // For other cases, just use the generic fallback text (e.g. "Could not load profile").
+  return fallback;
 }

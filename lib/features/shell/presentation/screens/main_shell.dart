@@ -1,5 +1,4 @@
 // lib/features/shell/presentation/screens/main_shell.dart
-import 'package:build4front/features/profile/presentation/bloc/user_profile_event.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -16,13 +15,16 @@ import '../../../explore/presentation/screens/explore_screen.dart';
 // Auth
 import 'package:build4front/features/auth/presentation/login/bloc/auth_bloc.dart';
 import 'package:build4front/features/auth/presentation/login/bloc/auth_state.dart';
-import 'package:build4front/features/auth/domain/entities/user_entity.dart';
+import 'package:build4front/features/auth/data/repository/auth_repository_impl.dart';
+import 'package:build4front/features/auth/presentation/login/screens/user_login_screen.dart';
 
 // Profile screen
 import 'package:build4front/features/profile/presentation/screens/user_profile_screen.dart';
 
 // Profile feature wiring (service → repo → usecases → bloc)
 import 'package:build4front/features/profile/presentation/bloc/user_profile_bloc.dart';
+import 'package:build4front/features/profile/presentation/bloc/user_profile_event.dart';
+import 'package:build4front/features/profile/presentation/bloc/user_profile_state.dart';
 import 'package:build4front/features/profile/domain/usecases/get_user_profile.dart';
 import 'package:build4front/features/profile/domain/usecases/toggle_user_visibility.dart';
 import 'package:build4front/features/profile/domain/usecases/update_user_status.dart';
@@ -84,6 +86,7 @@ class _MainShellState extends State<MainShell> {
           return ExploreScreen(appConfig: widget.appConfig);
 
         case 'profile':
+          // Profile tab wrapper (no appConfig passed here anymore)
           return const _ProfileTabShell();
 
         // later: map 'items', 'orders', 'chat', ... to real screens
@@ -160,26 +163,52 @@ class NavItemView {
 ///  Profile tab wrapper
 /// ===============================
 ///
-/// Here we:
-/// - Read AuthBloc to get user / isLoggedIn
-/// - Provide UserProfileBloc (service → repo → usecases → bloc)
-/// - Show login hint if user not logged in
+/// - Reads AuthBloc to get user / isLoggedIn
+/// - Provides UserProfileBloc (service → repo → usecases → bloc)
+/// - Shows login hint if user not logged in
 ///
 class _ProfileTabShell extends StatelessWidget {
   const _ProfileTabShell();
+
+  /// Centralized logout:
+  /// - clear user token from secure storage + globals
+  /// - navigate back to UserLoginScreen and clear navigation stack
+  Future<void> _handleLogout(BuildContext context) async {
+    final authRepo = context.read<AuthRepositoryImpl>();
+
+    // 1) clear user token (+ global header)
+    await authRepo.api.clearAuth();
+    debugPrint('🔓 Auth cleared: token removed from storage and globals');
+
+    // 2) rebuild AppConfig from env for the login screen
+    final appConfig = AppConfig.fromEnv();
+
+    // 3) navigate to login and remove all previous routes
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => UserLoginScreen(appConfig: appConfig)),
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
     final user = authState.user;
     final token = authState.token;
+    final tr = AppLocalizations.of(context)!;
 
     // -----------------------
     // 1. Not logged in
     // -----------------------
     if (!authState.isLoggedIn || user == null || token == null) {
-      return const Scaffold(
-        body: Center(child: Text("Please login first")),
+      return Scaffold(
+        body: Center(
+          child: Text(
+            // if you don't have this key yet, you can just put a literal:
+            // "Please login first",
+            tr.profile_login_required,
+          ),
+        ),
       );
     }
 
@@ -200,19 +229,20 @@ class _ProfileTabShell extends StatelessWidget {
                   getUser: GetUserProfile(repo),
                   toggleVisibility: ToggleUserVisibility(repo),
                   updateStatus: UpdateUserStatus(repo),
-                )..add(LoadUserProfile(token, user.id)), // 🔥 auto load profile
+                )..add(LoadUserProfile(token, user.id)), // auto load profile
               ),
             ],
             child: UserProfileScreen(
               token: token,
               userId: user.id,
-              onChangeLocale: (_) {},
-              onLogout: () {},
+              onChangeLocale: (_) {
+                // wire locale switching later if needed
+              },
+              onLogout: () => _handleLogout(context), // ✅ REAL LOGOUT
             ),
           );
         },
       ),
     );
   }
-
 }

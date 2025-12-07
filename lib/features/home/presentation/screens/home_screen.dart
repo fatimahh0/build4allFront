@@ -1,3 +1,4 @@
+// lib/features/home/presentation/screens/home_screen.dart
 import 'package:build4front/core/network/globals.dart' as authState;
 import 'package:build4front/features/home/homebanner/presentations/widgets/home_banner_slider.dart';
 import 'package:flutter/material.dart';
@@ -39,15 +40,17 @@ class HomeScreen extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final enabled = appConfig.enabledFeatures.toSet();
 
-    // Read spacing tokens once at screen level
+    // Read spacing tokens once at screen level.
     final themeState = context.watch<ThemeCubit>().state;
     final spacing = themeState.tokens.spacing;
 
+    // Filter visible sections based on enabled features.
     final visibleSections = sections.where((s) {
       if (s.feature == null) return true;
       return enabled.contains(s.feature);
     }).toList();
 
+    // Trigger home data loading on first build.
     final homeBloc = context.read<HomeBloc>();
     if (!homeBloc.state.hasLoaded && !homeBloc.state.isLoading) {
       homeBloc.add(const HomeStarted());
@@ -56,13 +59,14 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       body: SafeArea(
         child: BlocBuilder<AuthBloc, AuthState>(
-          builder: (context, authState) {
+          builder: (context, authStateBloc) {
             String? fullName;
             String? avatarUrl;
 
-            final UserEntity? user = authState.user as UserEntity?;
+            final UserEntity? user = authStateBloc.user as UserEntity?;
 
-            if (authState.isLoggedIn && user != null) {
+            // Prepare user display name and avatar if logged in as USER.
+            if (authStateBloc.isLoggedIn && user != null) {
               final hasFirst = (user.firstName ?? '').trim().isNotEmpty;
               final hasLast = (user.lastName ?? '').trim().isNotEmpty;
 
@@ -131,6 +135,7 @@ class HomeScreen extends StatelessWidget {
   }) {
     switch (section.type) {
       case HomeSectionType.header:
+        // ✅ Show user name if available, otherwise owner/app fallback inside HomeHeader.
         return HomeHeader(
           appName: appConfig.appName,
           fullName: fullName,
@@ -144,24 +149,46 @@ class HomeScreen extends StatelessWidget {
           child: AppSearchField(
             hintText: l10n.home_search_hint,
             onSubmitted: (value) {
-              // TODO: navigate to search screen or filter
+              final query = value.trim();
+              if (query.isEmpty) return;
+
+              // Navigate to Explore screen with initial query.
+              Navigator.of(
+                context,
+              ).pushNamed('/explore', arguments: {'query': query});
             },
           ),
         );
 
       case HomeSectionType.categoryChips:
-        return HomeCategoryChips(categories: homeState.categories);
+        return HomeCategoryChips(
+          categories: homeState.categories,
+          onCategoryTap: (category) {
+            final selected = category.trim();
+            if (selected.isEmpty) return;
+
+            // Navigate to Explore screen filtered by category.
+            Navigator.of(
+              context,
+            ).pushNamed('/explore', arguments: {'category': selected});
+          },
+        );
 
       case HomeSectionType.banner:
         return HomeBannerSlider(
-          ownerProjectId:
-              appConfig.ownerProjectId ?? 1, // or whatever field you use
-          token: authState.token ?? '', // adapt to your AuthState
+          ownerProjectId: appConfig.ownerProjectId ?? 1,
+          token: authState.token ?? '',
           onBannerTap: (banner) {
-            // TODO: handle navigation:
-            // - if banner.targetType == 'PRODUCT' => open product details with banner.targetId
-            // - if 'CATEGORY' => navigate to category filter
-            // - if 'URL' => launchUrl(banner.targetUrl!)
+            // Example navigation based on banner target type.
+            if (banner.targetType == 'CATEGORY' && banner.targetId != null) {
+              Navigator.of(context).pushNamed(
+                '/explore',
+                arguments: {'categoryId': banner.targetId},
+              );
+            } else if (banner.targetType == 'URL' &&
+                (banner.targetUrl ?? '').isNotEmpty) {
+              // TODO: integrate url_launcher for external URLs.
+            }
           },
         );
 
@@ -175,13 +202,13 @@ class HomeScreen extends StatelessWidget {
                 : section.id == 'popular'
                 ? l10n.home_popular_title
                 : section.id == 'flash_sale'
-                ? 'Flash Sale'
+                ? l10n.home_flash_sale_title
                 : section.id == 'new_arrivals'
-                ? 'New Arrivals'
+                ? l10n.home_new_arrivals_title
                 : section.id == 'best_sellers'
-                ? 'Best Sellers'
+                ? l10n.home_best_sellers_title
                 : section.id == 'top_rated'
-                ? 'Top Rated'
+                ? l10n.home_top_rated_title
                 : l10n.home_items_default_title);
 
         final icon = _iconForSection(section);
@@ -195,7 +222,10 @@ class HomeScreen extends StatelessWidget {
           trailingText: trailing.text,
           trailingIcon: trailing.icon,
           onTrailingTap: () {
-            // TODO: navigate to dedicated list screen
+            // Navigate to Explore screen for this specific section.
+            Navigator.of(
+              context,
+            ).pushNamed('/explore', arguments: {'sectionId': section.id});
           },
         );
 
@@ -205,13 +235,14 @@ class HomeScreen extends StatelessWidget {
         );
 
       case HomeSectionType.reviewList:
-        // For e-commerce: use this slot as "Why Shop With Us"
         return _WhyShopWithUsSection(
-          title: section.title ?? 'Why Shop With Us',
+          title: section.title ?? l10n.home_why_shop_title,
         );
     }
   }
 
+  /// Map a home section to the item list it should display.
+   /// Map a home section to the item list it should display.
   List<ItemSummary> _mapItemsForSection(
     HomeSectionConfig section,
     HomeState homeState,
@@ -222,19 +253,43 @@ class HomeScreen extends StatelessWidget {
           return homeState.recommendedItems;
         }
         return homeState.popularItems;
+
       case 'popular':
-      case 'flash_sale':
-      case 'new_arrivals':
-      case 'best_sellers':
-      case 'top_rated':
-        // For now reuse popular items for all.
-        // Later: map each to its real backend list.
         return homeState.popularItems;
+
+      case 'flash_sale':
+        if (homeState.flashSaleItems.isNotEmpty) {
+          return homeState.flashSaleItems;
+        }
+        return homeState.popularItems;
+
+      case 'new_arrivals':
+        if (homeState.newArrivalsItems.isNotEmpty) {
+          return homeState.newArrivalsItems;
+        }
+        return homeState.popularItems;
+
+      case 'best_sellers':
+        if (homeState.bestSellersItems.isNotEmpty) {
+          return homeState.bestSellersItems;
+        }
+        return homeState.popularItems;
+
+      case 'top_rated':
+        if (homeState.topRatedItems.isNotEmpty) {
+          return homeState.topRatedItems;
+        }
+        if (homeState.bestSellersItems.isNotEmpty) {
+          return homeState.bestSellersItems;
+        }
+        return homeState.popularItems;
+
       default:
         return homeState.popularItems;
     }
   }
 
+  /// Choose a leading icon for each item section.
   IconData _iconForSection(HomeSectionConfig section) {
     switch (section.id) {
       case 'flash_sale':
@@ -258,6 +313,7 @@ class _TrailingData {
   const _TrailingData({this.text, this.icon});
 }
 
+/// Decide trailing label/icon for item sections like "See all".
 _TrailingData _trailingForSection(HomeSectionConfig section) {
   switch (section.id) {
     case 'flash_sale':
@@ -275,97 +331,8 @@ _TrailingData _trailingForSection(HomeSectionConfig section) {
 }
 
 /// ===================
-///  Banner / bookings / why-us
+///  Booking section
 /// ===================
-
-class _BannerSection extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final String buttonLabel;
-
-  const _BannerSection({
-    required this.title,
-    required this.subtitle,
-    required this.buttonLabel,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final c = Theme.of(context).colorScheme;
-    final t = Theme.of(context).textTheme;
-
-    final themeState = context.read<ThemeCubit>().state;
-    final spacing = themeState.tokens.spacing;
-
-    return Container(
-      margin: EdgeInsets.only(bottom: spacing.lg),
-      padding: EdgeInsets.all(spacing.lg),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [c.primary, c.primaryContainer.withOpacity(0.8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          // Text + CTA
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: t.headlineSmall?.copyWith(color: c.onPrimary),
-                ),
-                SizedBox(height: spacing.sm),
-                Text(
-                  subtitle,
-                  style: t.bodyMedium?.copyWith(color: c.onPrimary),
-                ),
-                SizedBox(height: spacing.md),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: c.onPrimary,
-                    foregroundColor: c.primary,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: spacing.lg,
-                      vertical: spacing.sm,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                  onPressed: () {
-                    // TODO: scroll to items / navigate
-                  },
-                  child: Text(buttonLabel),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(width: spacing.md),
-          // Right icon box (placeholder image block)
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: c.onPrimary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              Icons.shopping_bag_rounded,
-              color: c.onPrimary,
-              size: 32,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _BookingSection extends StatelessWidget {
   final String title;
 
@@ -412,7 +379,9 @@ class _BookingSection extends StatelessWidget {
   }
 }
 
-/// New: Why Shop With Us section (bottom cards)
+/// ===================
+///  Why Shop With Us section
+/// ===================
 class _WhyShopWithUsSection extends StatelessWidget {
   final String title;
 
@@ -425,12 +394,22 @@ class _WhyShopWithUsSection extends StatelessWidget {
 
     final themeState = context.read<ThemeCubit>().state;
     final spacing = themeState.tokens.spacing;
+    final l10n = AppLocalizations.of(context)!;
 
     final cards = [
-      ('Free Shipping', 'On all orders over \$50'),
-      ('Easy Returns', '30-day return policy'),
-      ('Secure Payment', '100% protected transactions'),
-      ('24/7 Support', 'Always here to help you'),
+      (
+        l10n.home_why_shop_free_shipping_title,
+        l10n.home_why_shop_free_shipping_subtitle,
+      ),
+      (
+        l10n.home_why_shop_easy_returns_title,
+        l10n.home_why_shop_easy_returns_subtitle,
+      ),
+      (
+        l10n.home_why_shop_secure_payment_title,
+        l10n.home_why_shop_secure_payment_subtitle,
+      ),
+      (l10n.home_why_shop_support_title, l10n.home_why_shop_support_subtitle),
     ];
 
     return Container(

@@ -1,19 +1,16 @@
-// lib/core/config/home_config.dart
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'env.dart';
 import 'app_config.dart';
 
-
 enum HomeSectionType {
   header, // logo + welcome
   search, // search bar
   categoryChips, // horizontal chips row
-  banner, // hero / promo card
-  itemList, // items / activities list
-  bookingList, // upcominga bookings
-  reviewList, // latest reviews
+  banner, // hero / promo card (slider)
+  itemList, // items list (flash / new arrivals / ...)
+  bookingList, // upcoming bookings
+  reviewList, // latest reviews OR "Why Shop With Us"
 }
 
 HomeSectionType _parseType(String raw) {
@@ -67,7 +64,6 @@ class HomeSectionConfig {
   }
 }
 
-
 class HomeConfigLoader {
   /// default sections لو ما في HOME_JSON_B64
   static List<HomeSectionConfig> buildDefaultSections(AppConfig app) {
@@ -97,7 +93,17 @@ class HomeConfigLoader {
       ),
     );
 
-    // 3) Category chips
+    // 3) Hero banner (slider)
+    sections.add(
+      const HomeSectionConfig(
+        id: 'hero_banner',
+        type: HomeSectionType.banner,
+        layout: 'full',
+        limit: 1,
+      ),
+    );
+
+    // 4) Category chips row
     sections.add(
       const HomeSectionConfig(
         id: 'categories',
@@ -107,69 +113,61 @@ class HomeConfigLoader {
       ),
     );
 
-    // 4) Hero banner
-    sections.add(
-      const HomeSectionConfig(
-        id: 'hero_banner',
-        type: HomeSectionType.banner,
-        title: 'Find your next hobby',
-        layout: 'full',
-        limit: 1,
-      ),
-    );
-
-    // 5) Recommended items
     if (hasItems) {
+      // 5) Flash sale (horizontal cards)
       sections.add(
         const HomeSectionConfig(
-          id: 'recommended',
+          id: 'flash_sale',
           type: HomeSectionType.itemList,
-          title: 'Recommended for you',
           feature: 'ITEMS',
           layout: 'horizontal',
           limit: 10,
         ),
       );
-    }
 
-    // 6) Popular items
-    if (hasItems) {
+      // 6) New arrivals (vertical list)
       sections.add(
         const HomeSectionConfig(
-          id: 'popular',
+          id: 'new_arrivals',
           type: HomeSectionType.itemList,
-          title: 'Popular now',
           feature: 'ITEMS',
-          layout: 'horizontal',
-          limit: 10,
-        ),
-      );
-    }
-
-    // 7) Upcoming bookings
-    if (hasBooking) {
-      sections.add(
-        const HomeSectionConfig(
-          id: 'upcoming_bookings',
-          type: HomeSectionType.bookingList,
-          title: 'Upcoming bookings',
-          feature: 'BOOKING',
           layout: 'vertical',
-          limit: 5,
+          limit: 10,
+        ),
+      );
+
+      // 7) Best sellers (horizontal cards)
+      sections.add(
+        const HomeSectionConfig(
+          id: 'best_sellers',
+          type: HomeSectionType.itemList,
+          feature: 'ITEMS',
+          layout: 'horizontal',
+          limit: 10,
+        ),
+      );
+
+      // 8) Top rated (vertical list)
+      sections.add(
+        const HomeSectionConfig(
+          id: 'top_rated',
+          type: HomeSectionType.itemList,
+          feature: 'ITEMS',
+          layout: 'vertical',
+          limit: 10,
         ),
       );
     }
 
-    // 8) Latest reviews
+    // 9) Why shop with us (bottom info cards)
     if (hasReviews) {
       sections.add(
         const HomeSectionConfig(
-          id: 'latest_reviews',
+          id: 'why_shop',
           type: HomeSectionType.reviewList,
-          title: 'Latest reviews',
           feature: 'REVIEWS',
-          layout: 'horizontal',
-          limit: 8,
+          layout: 'vertical',
+          limit: 4,
         ),
       );
     }
@@ -177,7 +175,6 @@ class HomeConfigLoader {
     return sections;
   }
 
- 
   static List<HomeSectionConfig> loadSections(AppConfig app) {
     String raw = '';
 

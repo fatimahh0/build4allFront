@@ -3,9 +3,16 @@ import 'package:build4front/features/auth/data/services/admin_token_store.dart';
 import 'package:build4front/features/auth/data/services/auth_api_service.dart';
 import 'package:build4front/features/auth/domain/entities/user_entity.dart';
 
+/// Result object that tells us:
+/// - did admin login succeed?
+/// - did user login succeed?
+/// - did the user login return "wasInactive" from backend?
 class DualLoginResult {
   final bool adminOk;
   final bool userOk;
+
+  /// True if backend returned wasInactive = true for the user login.
+  final bool wasInactiveUser;
 
   final String? adminToken;
   final String? adminRole;
@@ -19,6 +26,7 @@ class DualLoginResult {
   const DualLoginResult({
     required this.adminOk,
     required this.userOk,
+    required this.wasInactiveUser,
     this.adminToken,
     this.adminRole,
     this.adminData,
@@ -31,6 +39,10 @@ class DualLoginResult {
   bool get none => !adminOk && !userOk;
 }
 
+/// Orchestrates dual login:
+/// - Tries admin login (SUPER_ADMIN / OWNER / MANAGER)
+/// - Tries user login (email or phone)
+/// - Does NOT decide UI, only returns what worked.
 class DualLoginOrchestrator {
   final AuthApiService authApi;
   final AdminTokenStore adminStore;
@@ -38,10 +50,9 @@ class DualLoginOrchestrator {
   DualLoginOrchestrator({required this.authApi, required this.adminStore});
 
   Future<DualLoginResult> login({
-    required String
-    identifier, // email or phone (for user), email/username (for admin)
+    required String identifier, // email or phone (user), email/username (admin)
     required String password,
-    required bool usePhoneForUser, // true → try user/phone endpoint
+    required bool usePhoneForUser, // true → user login via phone endpoint
     required int ownerProjectLinkId,
   }) async {
     String? adminToken;
@@ -50,11 +61,12 @@ class DualLoginOrchestrator {
 
     UserEntity? userEntity;
     String? userToken;
+    bool wasInactiveUser = false;
 
     AppException? adminErr;
     AppException? userErr;
 
-    // 1) Try ADMIN/OWNER/MANAGER
+    // ===================== 1) Try ADMIN/OWNER/MANAGER =====================
     try {
       final adminRes = await authApi.adminLogin(
         usernameOrEmail: identifier,
@@ -63,12 +75,14 @@ class DualLoginOrchestrator {
       adminToken = adminRes.token;
       adminRole = adminRes.role;
       adminData = adminRes.admin;
+
+      // Save admin token in dedicated store (NOT user token store)
       await adminStore.save(token: adminToken!, role: adminRole!);
     } catch (e) {
       adminErr = e is AppException ? e : AppException(e.toString());
     }
 
-    // 2) Try USER
+    // ========================== 2) Try USER ==========================
     try {
       final user = usePhoneForUser
           ? await authApi.loginWithPhone(
@@ -81,8 +95,11 @@ class DualLoginOrchestrator {
               password: password,
               ownerProjectLinkId: ownerProjectLinkId,
             );
+
       userEntity = user;
       userToken = await authApi.getSavedToken();
+      // Read "wasInactive" flag that backend returned in last login
+      wasInactiveUser = await authApi.getWasInactive();
     } catch (e) {
       userErr = e is AppException ? e : AppException(e.toString());
     }
@@ -94,6 +111,7 @@ class DualLoginOrchestrator {
       return DualLoginResult(
         adminOk: false,
         userOk: false,
+        wasInactiveUser: false,
         error:
             (userErr ?? adminErr)?.message ?? 'Login failed. Please try again.',
       );
@@ -102,6 +120,7 @@ class DualLoginOrchestrator {
     return DualLoginResult(
       adminOk: adminOk,
       userOk: userOk,
+      wasInactiveUser: userOk ? wasInactiveUser : false,
       adminToken: adminToken,
       adminRole: adminRole,
       adminData: adminData,

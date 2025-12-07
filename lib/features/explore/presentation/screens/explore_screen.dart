@@ -18,20 +18,44 @@ enum ExploreSortOption { relevance, priceLowHigh, priceHighLow, dateSoonest }
 class ExploreScreen extends StatefulWidget {
   final AppConfig appConfig;
 
-  const ExploreScreen({super.key, required this.appConfig});
+  /// Optional initial search query (from Home search bar).
+  final String? initialQuery;
+
+  /// Optional initial category label (from Home chips).
+  final String? initialCategoryLabel;
+
+  /// Optional section id (e.g. "new_arrivals", "best_sellers", "flash_sale"...)
+  final String? initialSectionId;
+
+  /// Optional category id (from banner targetId).
+  final int? initialCategoryId;
+
+  const ExploreScreen({
+    super.key,
+    required this.appConfig,
+    this.initialQuery,
+    this.initialCategoryLabel,
+    this.initialSectionId,
+    this.initialCategoryId,
+  });
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  String _searchQuery = '';
+  late String _searchQuery;
   String? _selectedCategory; // null = All
   ExploreSortOption _sortOption = ExploreSortOption.relevance;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize from navigation arguments
+    _searchQuery = (widget.initialQuery ?? '').trim();
+    _selectedCategory = widget.initialCategoryLabel;
+    _sortOption = ExploreSortOption.relevance;
 
     // Make sure HomeBloc has data (in case Explore is opened first)
     final homeBloc = context.read<HomeBloc>();
@@ -48,7 +72,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      // 🔹 No AppBar here – clean top, only content
       body: SafeArea(
         child: BlocBuilder<HomeBloc, HomeState>(
           builder: (context, homeState) {
@@ -76,6 +99,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   // 🔍 Search bar
                   AppSearchField(
                     hintText: l10n.explore_search_hint, // add to l10n
+                    initialValue: _searchQuery.isEmpty ? null : _searchQuery,
                     onChanged: (value) {
                       setState(() => _searchQuery = value.trim());
                     },
@@ -141,7 +165,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
       result = result.where((item) {
-        final title = (item.title ?? '').toLowerCase();
+        final title = (item.title).toLowerCase();
         final location = (item.location ?? '').toLowerCase();
         return title.contains(query) || location.contains(query);
       }).toList();
@@ -151,9 +175,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
     if (_selectedCategory != null && _selectedCategory!.trim().isNotEmpty) {
       final cat = _selectedCategory!.toLowerCase();
       result = result.where((item) {
-        // If ItemSummary has a category / type field later, use it here.
-        // For now, try to match in title or location.
-        final title = (item.title ?? '').toLowerCase();
+        // For now: match in title or location.
+        final title = (item.title).toLowerCase();
         final location = (item.location ?? '').toLowerCase();
         return title.contains(cat) || location.contains(cat);
       }).toList();
