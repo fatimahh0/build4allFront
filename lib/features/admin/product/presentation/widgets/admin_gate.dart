@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:build4front/features/auth/data/services/admin_token_store.dart';
 
 class AdminGate extends StatefulWidget {
-  /// Allow ANY admin role by default
   final List<String> allowRoles;
   final WidgetBuilder builder;
 
@@ -18,8 +17,6 @@ class AdminGate extends StatefulWidget {
 
 class _AdminGateState extends State<AdminGate> {
   final _store = AdminTokenStore();
-  String? _role;
-  String? _token;
   bool _loading = true;
 
   @override
@@ -31,23 +28,20 @@ class _AdminGateState extends State<AdminGate> {
   Future<void> _load() async {
     final role = await _store.getRole();
     final token = await _store.getToken();
+
     if (!mounted) return;
 
-    setState(() {
-      _role = role;
-      _token = token;
-      _loading = false;
-    });
-
-    if (token == null || token.isEmpty || role == null || role.isEmpty) {
-      if (!mounted) return;
-      Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
-      return;
-    }
-
     final allowed = widget.allowRoles.map((r) => r.toUpperCase()).toSet();
-    if (!allowed.contains(role.toUpperCase())) {
-      if (!mounted) return;
+    final ok =
+        token != null &&
+        token.isNotEmpty &&
+        role != null &&
+        role.isNotEmpty &&
+        allowed.contains(role.toUpperCase());
+
+    setState(() => _loading = false);
+
+    if (!ok) {
       Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
     }
   }

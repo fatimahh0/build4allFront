@@ -1,6 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-import 'package:build4front/features/admin/product/domain/usecases/get_products.dart';
+import '../../../domain/usecases/get_products.dart';
 import 'product_list_event.dart';
 import 'product_list_state.dart';
 
@@ -19,7 +18,11 @@ class ProductListBloc extends Bloc<ProductListEvent, ProductListState> {
     emit(state.copyWith(isLoading: true, error: null));
 
     try {
-      final products = await getProducts(ownerProjectId: event.ownerProjectId);
+      final products = await getProducts(
+        ownerProjectId: event.ownerProjectId,
+        itemTypeId: event.itemTypeId,
+        categoryId: event.categoryId,
+      );
       emit(state.copyWith(isLoading: false, products: products));
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));

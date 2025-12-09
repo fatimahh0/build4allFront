@@ -14,39 +14,87 @@ class ProductFormCubit extends Cubit<ProductFormState> {
     required int ownerProjectId,
     required int itemTypeId,
     required int? currencyId,
+
     required String name,
     String? description,
     required double price,
     int? stock,
-    String? status,
+
     String? imageUrl,
     String? sku,
+
+    // ✅ New fields
+    String productType = 'SIMPLE', // SIMPLE / VARIABLE / GROUPED / EXTERNAL
+    bool virtualProduct = false,
+    bool downloadable = false,
+    String? downloadUrl,
+
+    String? externalUrl,
+    String? buttonText,
+
+    double? salePrice,
+    DateTime? saleStart,
+    DateTime? saleEnd,
+
+    /// attributes as code -> value
+    Map<String, String>? attributes,
   }) async {
-    emit(state.copyWith(isSubmitting: true, error: null));
+    // Reset old success + error
+    emit(
+      state.copyWith(
+        isSubmitting: true,
+        clearCreatedProduct: true,
+        clearError: true,
+      ),
+    );
 
     try {
       final Product p = await createProduct(
         ownerProjectId: ownerProjectId,
         itemTypeId: itemTypeId,
         currencyId: currencyId,
+
         name: name,
         description: description,
         price: price,
         stock: stock,
-        status: status,
+
         imageUrl: imageUrl,
         sku: sku,
+
+        productType: productType,
+        virtualProduct: virtualProduct,
+        downloadable: downloadable,
+        downloadUrl: downloadUrl,
+        externalUrl: externalUrl,
+        buttonText: buttonText,
+
+        salePrice: salePrice,
+        saleStart: saleStart,
+        saleEnd: saleEnd,
+
+        attributes: attributes,
       );
 
-      emit(state.copyWith(isSubmitting: false, createdProduct: p, error: null));
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          createdProduct: p,
+          clearError: true,
+        ),
+      );
     } catch (e) {
       emit(
         state.copyWith(
           isSubmitting: false,
-          createdProduct: null,
+          clearCreatedProduct: true,
           error: e.toString(),
         ),
       );
     }
+  }
+
+  void reset() {
+    emit(ProductFormState.initial());
   }
 }

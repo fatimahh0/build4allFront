@@ -1,3 +1,5 @@
+// lib/features/catalog/data/services/currency_api_service.dart
+
 import 'package:build4front/core/network/api_fetch.dart';
 import 'package:build4front/core/network/api_methods.dart' show HttpMethod;
 import 'package:build4front/core/exceptions/app_exception.dart';
@@ -10,9 +12,18 @@ class CurrencyApiService {
 
   static const String _base = '/api/currencies';
 
-  Future<Map<String, dynamic>> getCurrencyById(int id) async {
+  Future<Map<String, dynamic>> getCurrencyById(
+    int id, {
+    String? authToken,
+  }) async {
     try {
-      final r = await _fetch.fetch(HttpMethod.get, '$_base/$id');
+      final r = await _fetch.fetch(
+        HttpMethod.get,
+        '$_base/$id',
+        headers: authToken != null && authToken.isNotEmpty
+            ? {'Authorization': 'Bearer $authToken'}
+            : null,
+      );
       return _asMap(r.data);
     } on AppException {
       rethrow;
@@ -22,12 +33,9 @@ class CurrencyApiService {
   }
 
   Map<String, dynamic> _asMap(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      return data;
-    }
-    if (data is Map) {
-      return Map<String, dynamic>.from(data);
-    }
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+
     throw ServerException(
       'Invalid response format for currency',
       statusCode: 200,

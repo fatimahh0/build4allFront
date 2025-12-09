@@ -1,5 +1,4 @@
-import 'package:build4front/features/admin/product/domain/entities/product.dart';
-
+import '../entities/product.dart';
 
 abstract class ProductRepository {
   Future<List<Product>> getProducts({
@@ -26,23 +25,35 @@ abstract class ProductRepository {
     required int ownerProjectId,
     required int itemTypeId,
     required int? currencyId,
+
     required String name,
     String? description,
     required double price,
     int? stock,
-    String? status,
-    String? imageUrl,
+
+    String? imageUrl, // ✅ ADD
+
     String? sku,
+
     String productType,
     bool virtualProduct,
     bool downloadable,
     String? downloadUrl,
+
     String? externalUrl,
     String? buttonText,
+
     double? salePrice,
     DateTime? saleStart,
     DateTime? saleEnd,
+
     Map<String, String>? attributes,
+  });
+
+  /// ✅ new: create with file
+  Future<Product> createProductWithImage({
+    required Map<String, dynamic> body,
+    required String imagePath,
   });
 
   Future<Product> updateProduct(
@@ -51,8 +62,6 @@ abstract class ProductRepository {
     String? description,
     double? price,
     int? stock,
-    String? status,
-    String? imageUrl,
     String? sku,
     String? productType,
     bool? virtualProduct,
@@ -64,6 +73,13 @@ abstract class ProductRepository {
     DateTime? saleStart,
     DateTime? saleEnd,
     Map<String, String>? attributes,
+  });
+
+  /// ✅ new: update with file
+  Future<Product> updateProductWithImage({
+    required int id,
+    required Map<String, dynamic> body,
+    required String imagePath,
   });
 
   Future<void> deleteProduct(int id);

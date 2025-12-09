@@ -247,6 +247,101 @@
   "adminProductAttributeCodeLabel": "Attribute code",
   "adminProductAttributeValueLabel": "Attribute value",
   "adminProductAddAttribute": "Add attribute",
+  "adminProductCreateTitle": "Create product",
+  "adminProductEditTitle": "Edit product",
 
-  "adminProductSaveButton": "Save product"
+  "adminProductNameLabel": "Name",
+  "adminProductNameHint": "Ex: MacBook Pro",
+  "adminProductNameRequired": "Name is required",
+
+  "adminProductDescriptionLabel": "Description",
+  "adminProductDescriptionHint": "Short description...",
+
+  "adminProductCategoryLabel": "Category",
+  "adminProductItemTypeLabel": "Item type",
+
+  "adminProductPriceLabel": "Price",
+  "adminProductPriceRequired": "Price is required",
+  "adminProductPriceInvalid": "Price must be greater than 0",
+
+  "adminProductStockLabel": "Stock",
+  "adminStockHint": "Ex: 50",
+
+  "adminProductImageLabel": "Image",
+  "adminProductPickImage": "Pick image",
+  "adminRemove": "Remove",
+
+  "adminProductSkuLabel": "SKU",
+  "adminProductSkuHint": "Ex: SKU-123",
+
+  "adminProductTypeLabel": "Product type",
+  "adminProductTypeSimple": "Simple",
+  "adminProductTypeVariable": "Variable",
+  "adminProductTypeGrouped": "Grouped",
+  "adminProductTypeExternal": "External",
+
+  "adminProductVirtualLabel": "Virtual product",
+  "adminProductDownloadableLabel": "Downloadable",
+  "adminProductDownloadUrlLabel": "Download URL",
+  "adminProductDownloadUrlHint": "https://...",
+
+  "adminProductExternalUrlLabel": "External URL",
+  "adminProductExternalUrlHint": "https://...",
+  "adminProductButtonTextLabel": "Button text",
+  "adminProductButtonTextHint": "Buy now",
+
+  "adminProductSaleSectionTitle": "Sale",
+  "adminProductSalePriceLabel": "Sale price",
+  "adminProductSaleStartLabel": "Sale start date",
+  "adminProductSaleEndLabel": "Sale end date",
+
+  "adminProductAttributesTitle": "Attributes",
+  "adminProductAddAttribute": "Add attribute",
+  "adminProductAttributeValueLabel": "Value",
+
+  "adminProductSaveButton": "Save",
+
+  "adminNoCategories": "No categories found",
+  "adminCreateCategory": "Create category",
+
+  "adminNoItemTypes": "No item types found",
+  "adminCreateItemType": "Create item type",
+
+  "adminProductSaveButton": "Save product",
+   "adminTaxesTitle": "Taxes",
+  "adminTaxRulesTitle": "Tax Rules",
+  "adminTaxAddRule": "Add tax rule",
+  "adminTaxNoRules": "No tax rules found.",
+  "adminTaxCreateRuleTitle": "Create Tax Rule",
+  "adminTaxEditRuleTitle": "Edit Tax Rule",
+
+  "adminTaxRuleNameLabel": "Rule name",
+  "adminTaxRuleNameHint": "Ex: Standard VAT 11%",
+  "adminTaxRuleNameRequired": "Tax rule name is required",
+
+  "adminTaxRuleRateLabel": "Rate (%)",
+  "adminTaxRuleRateHint": "11.00",
+  "adminTaxRuleRateRequired": "Rate is required",
+  "adminTaxRuleRateInvalid": "Rate must be a valid number > 0",
+
+  "adminTaxAppliesToShippingLabel": "Applies to shipping",
+  "adminTaxEnabledLabel": "Enabled",
+
+  "adminTaxCountryIdLabel": "Country ID (optional)",
+  "adminTaxCountryIdHint": "1",
+  "adminTaxRegionIdLabel": "Region ID (optional)",
+  "adminTaxRegionIdHint": "2",
+
+  "adminTaxRateShort": "Rate",
+  "adminTaxAppliesToShippingShort": "Shipping tax",
+  "adminTaxEnabledShort": "Enabled",
+
+  "adminCancel": "Cancel",
+  "adminCreate": "Create",
+  "adminUpdate": "Update",
+  "adminEdit": "Edit",
+  "adminDelete": "Delete",
+  "yes": "Yes",
+  "no": "No"
+
 }

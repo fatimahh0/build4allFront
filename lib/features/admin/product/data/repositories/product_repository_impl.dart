@@ -1,11 +1,11 @@
-import 'package:build4front/features/admin/product/data/models/product_model.dart';
-import 'package:build4front/features/admin/product/data/services/product_api_service.dart';
-import 'package:build4front/features/admin/product/domain/entities/product.dart';
-import 'package:build4front/features/admin/product/domain/repositories/product_repository.dart';
+import '../models/product_model.dart';
+import '../services/product_api_service.dart';
+import '../../domain/entities/product.dart';
+import '../../domain/repositories/product_repository.dart';
 
 class ProductRepositoryImpl implements ProductRepository {
   final ProductApiService api;
-  final Future<String?> Function() getToken; // helper to read admin token
+  final Future<String?> Function() getToken;
 
   ProductRepositoryImpl({required this.api, required this.getToken});
 
@@ -99,8 +99,6 @@ class ProductRepositoryImpl implements ProductRepository {
     String? description,
     required double price,
     int? stock,
-    String? status,
-    String? imageUrl,
     String? sku,
     String productType = 'SIMPLE',
     bool virtualProduct = false,
@@ -110,10 +108,12 @@ class ProductRepositoryImpl implements ProductRepository {
     String? buttonText,
     double? salePrice,
     DateTime? saleStart,
+    String? imageUrl,
     DateTime? saleEnd,
     Map<String, String>? attributes,
   }) async {
     final token = await _requireToken();
+
     final body = <String, dynamic>{
       'ownerProjectId': ownerProjectId,
       'itemTypeId': itemTypeId,
@@ -122,8 +122,6 @@ class ProductRepositoryImpl implements ProductRepository {
       'description': description,
       'price': price,
       'stock': stock,
-      'status': status,
-      'imageUrl': imageUrl,
       'sku': sku,
       'productType': productType,
       'virtualProduct': virtualProduct,
@@ -134,12 +132,27 @@ class ProductRepositoryImpl implements ProductRepository {
       'salePrice': salePrice,
       'saleStart': saleStart?.toIso8601String(),
       'saleEnd': saleEnd?.toIso8601String(),
-      'attributes': attributes?.entries
-          .map((e) => {'code': e.key, 'value': e.value})
-          .toList(),
+      if (attributes != null)
+        'attributes': attributes.entries
+            .map((e) => {'code': e.key, 'value': e.value})
+            .toList(),
     };
 
     final json = await api.create(body: body, authToken: token);
+    return ProductModel.fromJson(json);
+  }
+
+  @override
+  Future<Product> createProductWithImage({
+    required Map<String, dynamic> body,
+    required String imagePath,
+  }) async {
+    final token = await _requireToken();
+    final json = await api.createWithImage(
+      body: body,
+      imagePath: imagePath,
+      authToken: token,
+    );
     return ProductModel.fromJson(json);
   }
 
@@ -150,8 +163,6 @@ class ProductRepositoryImpl implements ProductRepository {
     String? description,
     double? price,
     int? stock,
-    String? status,
-    String? imageUrl,
     String? sku,
     String? productType,
     bool? virtualProduct,
@@ -165,13 +176,12 @@ class ProductRepositoryImpl implements ProductRepository {
     Map<String, String>? attributes,
   }) async {
     final token = await _requireToken();
+
     final body = <String, dynamic>{
       if (name != null) 'name': name,
       if (description != null) 'description': description,
       if (price != null) 'price': price,
       if (stock != null) 'stock': stock,
-      if (status != null) 'status': status,
-      if (imageUrl != null) 'imageUrl': imageUrl,
       if (sku != null) 'sku': sku,
       if (productType != null) 'productType': productType,
       if (virtualProduct != null) 'virtualProduct': virtualProduct,
@@ -189,6 +199,22 @@ class ProductRepositoryImpl implements ProductRepository {
     };
 
     final json = await api.update(id: id, body: body, authToken: token);
+    return ProductModel.fromJson(json);
+  }
+
+  @override
+  Future<Product> updateProductWithImage({
+    required int id,
+    required Map<String, dynamic> body,
+    required String imagePath,
+  }) async {
+    final token = await _requireToken();
+    final json = await api.updateWithImage(
+      id: id,
+      body: body,
+      imagePath: imagePath,
+      authToken: token,
+    );
     return ProductModel.fromJson(json);
   }
 

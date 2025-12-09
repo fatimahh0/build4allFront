@@ -493,19 +493,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminProductCreateTitle => 'Create product';
 
   @override
-  String get adminProductNameLabel => 'Product name';
+  String get adminProductNameLabel => 'Name';
 
   @override
-  String get adminProductNameHint => 'Ex: Samsung laptop';
+  String get adminProductNameHint => 'Ex: MacBook Pro';
 
   @override
-  String get adminProductNameRequired => 'Product name is required';
+  String get adminProductNameRequired => 'Name is required';
 
   @override
   String get adminProductDescriptionLabel => 'Description';
 
   @override
-  String get adminProductDescriptionHint => 'Short description of the product';
+  String get adminProductDescriptionHint => 'Short description...';
 
   @override
   String get adminProductPriceLabel => 'Price';
@@ -514,10 +514,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminProductPriceRequired => 'Price is required';
 
   @override
-  String get adminProductPriceInvalid => 'Enter a valid price greater than 0';
+  String get adminProductPriceInvalid => 'Price must be greater than 0';
 
   @override
-  String get adminProductStockLabel => 'Stock quantity';
+  String get adminProductStockLabel => 'Stock';
 
   @override
   String get adminProductStatusLabel => 'Status';
@@ -526,7 +526,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminProductImageUrlLabel => 'Image URL';
 
   @override
-  String get adminProductSkuLabel => 'SKU (code)';
+  String get adminProductSkuLabel => 'SKU';
 
   @override
   String get adminProductTypeLabel => 'Product type';
@@ -535,19 +535,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminProductTypeSimple => 'Simple';
 
   @override
-  String get adminProductTypeVariable => 'Variable (sizes / colors)';
+  String get adminProductTypeVariable => 'Variable';
 
   @override
-  String get adminProductTypeGrouped => 'Grouped (bundle)';
+  String get adminProductTypeGrouped => 'Grouped';
 
   @override
-  String get adminProductTypeExternal => 'External / affiliate';
+  String get adminProductTypeExternal => 'External';
 
   @override
-  String get adminProductVirtualLabel => 'Virtual product (no shipping)';
+  String get adminProductVirtualLabel => 'Virtual product';
 
   @override
-  String get adminProductDownloadableLabel => 'Downloadable product';
+  String get adminProductDownloadableLabel => 'Downloadable';
 
   @override
   String get adminProductDownloadUrlLabel => 'Download URL';
@@ -559,19 +559,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminProductButtonTextLabel => 'Button text';
 
   @override
-  String get adminProductButtonTextHint => 'Ex: Add to cart, Buy now';
+  String get adminProductButtonTextHint => 'Buy now';
 
   @override
-  String get adminProductSaleSectionTitle => 'Sale / discount';
+  String get adminProductSaleSectionTitle => 'Sale';
 
   @override
   String get adminProductSalePriceLabel => 'Sale price';
 
   @override
-  String get adminProductSaleStartLabel => 'Sale start (ISO date)';
+  String get adminProductSaleStartLabel => 'Sale start date';
 
   @override
-  String get adminProductSaleEndLabel => 'Sale end (ISO date)';
+  String get adminProductSaleEndLabel => 'Sale end date';
 
   @override
   String get adminProductAttributesTitle => 'Attributes';
@@ -580,11 +580,140 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminProductAttributeCodeLabel => 'Attribute code';
 
   @override
-  String get adminProductAttributeValueLabel => 'Attribute value';
+  String get adminProductAttributeValueLabel => 'Value';
 
   @override
   String get adminProductAddAttribute => 'Add attribute';
 
   @override
+  String get adminProductEditTitle => 'Edit product';
+
+  @override
+  String get adminProductCategoryLabel => 'Category';
+
+  @override
+  String get adminProductItemTypeLabel => 'Item type';
+
+  @override
+  String get adminStockHint => 'Ex: 50';
+
+  @override
+  String get adminProductImageLabel => 'Image';
+
+  @override
+  String get adminProductPickImage => 'Pick image';
+
+  @override
+  String get adminRemove => 'Remove';
+
+  @override
+  String get adminProductSkuHint => 'Ex: SKU-123';
+
+  @override
+  String get adminProductDownloadUrlHint => 'https://...';
+
+  @override
+  String get adminProductExternalUrlHint => 'https://...';
+
+  @override
   String get adminProductSaveButton => 'Save product';
+
+  @override
+  String get adminNoCategories => 'No categories found';
+
+  @override
+  String get adminCreateCategory => 'Create category';
+
+  @override
+  String get adminNoItemTypes => 'No item types found';
+
+  @override
+  String get adminCreateItemType => 'Create item type';
+
+  @override
+  String get adminTaxesTitle => 'Taxes';
+
+  @override
+  String get adminTaxRulesTitle => 'Tax Rules';
+
+  @override
+  String get adminTaxAddRule => 'Add tax rule';
+
+  @override
+  String get adminTaxNoRules => 'No tax rules found.';
+
+  @override
+  String get adminTaxCreateRuleTitle => 'Create Tax Rule';
+
+  @override
+  String get adminTaxEditRuleTitle => 'Edit Tax Rule';
+
+  @override
+  String get adminTaxRuleNameLabel => 'Rule name';
+
+  @override
+  String get adminTaxRuleNameHint => 'Ex: Standard VAT 11%';
+
+  @override
+  String get adminTaxRuleNameRequired => 'Tax rule name is required';
+
+  @override
+  String get adminTaxRuleRateLabel => 'Rate (%)';
+
+  @override
+  String get adminTaxRuleRateHint => '11.00';
+
+  @override
+  String get adminTaxRuleRateRequired => 'Rate is required';
+
+  @override
+  String get adminTaxRuleRateInvalid => 'Rate must be a valid number > 0';
+
+  @override
+  String get adminTaxAppliesToShippingLabel => 'Applies to shipping';
+
+  @override
+  String get adminTaxEnabledLabel => 'Enabled';
+
+  @override
+  String get adminTaxCountryIdLabel => 'Country ID (optional)';
+
+  @override
+  String get adminTaxCountryIdHint => '1';
+
+  @override
+  String get adminTaxRegionIdLabel => 'Region ID (optional)';
+
+  @override
+  String get adminTaxRegionIdHint => '2';
+
+  @override
+  String get adminTaxRateShort => 'Rate';
+
+  @override
+  String get adminTaxAppliesToShippingShort => 'Shipping tax';
+
+  @override
+  String get adminTaxEnabledShort => 'Enabled';
+
+  @override
+  String get adminCancel => 'Cancel';
+
+  @override
+  String get adminCreate => 'Create';
+
+  @override
+  String get adminUpdate => 'Update';
+
+  @override
+  String get adminEdit => 'Edit';
+
+  @override
+  String get adminDelete => 'Delete';
+
+  @override
+  String get yes => 'Yes';
+
+  @override
+  String get no => 'No';
 }

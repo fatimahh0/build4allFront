@@ -1042,19 +1042,19 @@ abstract class AppLocalizations {
   /// No description provided for @adminProductNameLabel.
   ///
   /// In en, this message translates to:
-  /// **'Product name'**
+  /// **'Name'**
   String get adminProductNameLabel;
 
   /// No description provided for @adminProductNameHint.
   ///
   /// In en, this message translates to:
-  /// **'Ex: Samsung laptop'**
+  /// **'Ex: MacBook Pro'**
   String get adminProductNameHint;
 
   /// No description provided for @adminProductNameRequired.
   ///
   /// In en, this message translates to:
-  /// **'Product name is required'**
+  /// **'Name is required'**
   String get adminProductNameRequired;
 
   /// No description provided for @adminProductDescriptionLabel.
@@ -1066,7 +1066,7 @@ abstract class AppLocalizations {
   /// No description provided for @adminProductDescriptionHint.
   ///
   /// In en, this message translates to:
-  /// **'Short description of the product'**
+  /// **'Short description...'**
   String get adminProductDescriptionHint;
 
   /// No description provided for @adminProductPriceLabel.
@@ -1084,13 +1084,13 @@ abstract class AppLocalizations {
   /// No description provided for @adminProductPriceInvalid.
   ///
   /// In en, this message translates to:
-  /// **'Enter a valid price greater than 0'**
+  /// **'Price must be greater than 0'**
   String get adminProductPriceInvalid;
 
   /// No description provided for @adminProductStockLabel.
   ///
   /// In en, this message translates to:
-  /// **'Stock quantity'**
+  /// **'Stock'**
   String get adminProductStockLabel;
 
   /// No description provided for @adminProductStatusLabel.
@@ -1108,7 +1108,7 @@ abstract class AppLocalizations {
   /// No description provided for @adminProductSkuLabel.
   ///
   /// In en, this message translates to:
-  /// **'SKU (code)'**
+  /// **'SKU'**
   String get adminProductSkuLabel;
 
   /// No description provided for @adminProductTypeLabel.
@@ -1126,31 +1126,31 @@ abstract class AppLocalizations {
   /// No description provided for @adminProductTypeVariable.
   ///
   /// In en, this message translates to:
-  /// **'Variable (sizes / colors)'**
+  /// **'Variable'**
   String get adminProductTypeVariable;
 
   /// No description provided for @adminProductTypeGrouped.
   ///
   /// In en, this message translates to:
-  /// **'Grouped (bundle)'**
+  /// **'Grouped'**
   String get adminProductTypeGrouped;
 
   /// No description provided for @adminProductTypeExternal.
   ///
   /// In en, this message translates to:
-  /// **'External / affiliate'**
+  /// **'External'**
   String get adminProductTypeExternal;
 
   /// No description provided for @adminProductVirtualLabel.
   ///
   /// In en, this message translates to:
-  /// **'Virtual product (no shipping)'**
+  /// **'Virtual product'**
   String get adminProductVirtualLabel;
 
   /// No description provided for @adminProductDownloadableLabel.
   ///
   /// In en, this message translates to:
-  /// **'Downloadable product'**
+  /// **'Downloadable'**
   String get adminProductDownloadableLabel;
 
   /// No description provided for @adminProductDownloadUrlLabel.
@@ -1174,13 +1174,13 @@ abstract class AppLocalizations {
   /// No description provided for @adminProductButtonTextHint.
   ///
   /// In en, this message translates to:
-  /// **'Ex: Add to cart, Buy now'**
+  /// **'Buy now'**
   String get adminProductButtonTextHint;
 
   /// No description provided for @adminProductSaleSectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Sale / discount'**
+  /// **'Sale'**
   String get adminProductSaleSectionTitle;
 
   /// No description provided for @adminProductSalePriceLabel.
@@ -1192,13 +1192,13 @@ abstract class AppLocalizations {
   /// No description provided for @adminProductSaleStartLabel.
   ///
   /// In en, this message translates to:
-  /// **'Sale start (ISO date)'**
+  /// **'Sale start date'**
   String get adminProductSaleStartLabel;
 
   /// No description provided for @adminProductSaleEndLabel.
   ///
   /// In en, this message translates to:
-  /// **'Sale end (ISO date)'**
+  /// **'Sale end date'**
   String get adminProductSaleEndLabel;
 
   /// No description provided for @adminProductAttributesTitle.
@@ -1216,7 +1216,7 @@ abstract class AppLocalizations {
   /// No description provided for @adminProductAttributeValueLabel.
   ///
   /// In en, this message translates to:
-  /// **'Attribute value'**
+  /// **'Value'**
   String get adminProductAttributeValueLabel;
 
   /// No description provided for @adminProductAddAttribute.
@@ -1225,11 +1225,269 @@ abstract class AppLocalizations {
   /// **'Add attribute'**
   String get adminProductAddAttribute;
 
+  /// No description provided for @adminProductEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit product'**
+  String get adminProductEditTitle;
+
+  /// No description provided for @adminProductCategoryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get adminProductCategoryLabel;
+
+  /// No description provided for @adminProductItemTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Item type'**
+  String get adminProductItemTypeLabel;
+
+  /// No description provided for @adminStockHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ex: 50'**
+  String get adminStockHint;
+
+  /// No description provided for @adminProductImageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get adminProductImageLabel;
+
+  /// No description provided for @adminProductPickImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick image'**
+  String get adminProductPickImage;
+
+  /// No description provided for @adminRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get adminRemove;
+
+  /// No description provided for @adminProductSkuHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ex: SKU-123'**
+  String get adminProductSkuHint;
+
+  /// No description provided for @adminProductDownloadUrlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'https://...'**
+  String get adminProductDownloadUrlHint;
+
+  /// No description provided for @adminProductExternalUrlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'https://...'**
+  String get adminProductExternalUrlHint;
+
   /// No description provided for @adminProductSaveButton.
   ///
   /// In en, this message translates to:
   /// **'Save product'**
   String get adminProductSaveButton;
+
+  /// No description provided for @adminNoCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'No categories found'**
+  String get adminNoCategories;
+
+  /// No description provided for @adminCreateCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Create category'**
+  String get adminCreateCategory;
+
+  /// No description provided for @adminNoItemTypes.
+  ///
+  /// In en, this message translates to:
+  /// **'No item types found'**
+  String get adminNoItemTypes;
+
+  /// No description provided for @adminCreateItemType.
+  ///
+  /// In en, this message translates to:
+  /// **'Create item type'**
+  String get adminCreateItemType;
+
+  /// No description provided for @adminTaxesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Taxes'**
+  String get adminTaxesTitle;
+
+  /// No description provided for @adminTaxRulesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tax Rules'**
+  String get adminTaxRulesTitle;
+
+  /// No description provided for @adminTaxAddRule.
+  ///
+  /// In en, this message translates to:
+  /// **'Add tax rule'**
+  String get adminTaxAddRule;
+
+  /// No description provided for @adminTaxNoRules.
+  ///
+  /// In en, this message translates to:
+  /// **'No tax rules found.'**
+  String get adminTaxNoRules;
+
+  /// No description provided for @adminTaxCreateRuleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create Tax Rule'**
+  String get adminTaxCreateRuleTitle;
+
+  /// No description provided for @adminTaxEditRuleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Tax Rule'**
+  String get adminTaxEditRuleTitle;
+
+  /// No description provided for @adminTaxRuleNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Rule name'**
+  String get adminTaxRuleNameLabel;
+
+  /// No description provided for @adminTaxRuleNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ex: Standard VAT 11%'**
+  String get adminTaxRuleNameHint;
+
+  /// No description provided for @adminTaxRuleNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Tax rule name is required'**
+  String get adminTaxRuleNameRequired;
+
+  /// No description provided for @adminTaxRuleRateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate (%)'**
+  String get adminTaxRuleRateLabel;
+
+  /// No description provided for @adminTaxRuleRateHint.
+  ///
+  /// In en, this message translates to:
+  /// **'11.00'**
+  String get adminTaxRuleRateHint;
+
+  /// No description provided for @adminTaxRuleRateRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate is required'**
+  String get adminTaxRuleRateRequired;
+
+  /// No description provided for @adminTaxRuleRateInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate must be a valid number > 0'**
+  String get adminTaxRuleRateInvalid;
+
+  /// No description provided for @adminTaxAppliesToShippingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Applies to shipping'**
+  String get adminTaxAppliesToShippingLabel;
+
+  /// No description provided for @adminTaxEnabledLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get adminTaxEnabledLabel;
+
+  /// No description provided for @adminTaxCountryIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Country ID (optional)'**
+  String get adminTaxCountryIdLabel;
+
+  /// No description provided for @adminTaxCountryIdHint.
+  ///
+  /// In en, this message translates to:
+  /// **'1'**
+  String get adminTaxCountryIdHint;
+
+  /// No description provided for @adminTaxRegionIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Region ID (optional)'**
+  String get adminTaxRegionIdLabel;
+
+  /// No description provided for @adminTaxRegionIdHint.
+  ///
+  /// In en, this message translates to:
+  /// **'2'**
+  String get adminTaxRegionIdHint;
+
+  /// No description provided for @adminTaxRateShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate'**
+  String get adminTaxRateShort;
+
+  /// No description provided for @adminTaxAppliesToShippingShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Shipping tax'**
+  String get adminTaxAppliesToShippingShort;
+
+  /// No description provided for @adminTaxEnabledShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get adminTaxEnabledShort;
+
+  /// No description provided for @adminCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get adminCancel;
+
+  /// No description provided for @adminCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get adminCreate;
+
+  /// No description provided for @adminUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get adminUpdate;
+
+  /// No description provided for @adminEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get adminEdit;
+
+  /// No description provided for @adminDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get adminDelete;
+
+  /// No description provided for @yes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get yes;
+
+  /// No description provided for @no.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get no;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

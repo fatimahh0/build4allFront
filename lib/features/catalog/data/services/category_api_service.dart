@@ -12,13 +12,19 @@ class CategoryApiService {
 
   static const String _base = '/api/admin/categories';
 
-  /// GET /api/admin/categories/by-project/{projectId}
   Future<List<Map<String, dynamic>>> getCategoriesByProject(
-    int projectId,
-  ) async {
+    int projectId, {
+    String? authToken,
+  }) async {
     try {
       final path = '$_base/by-project/$projectId';
-      final r = await _fetch.fetch(HttpMethod.get, path);
+      final r = await _fetch.fetch(
+        HttpMethod.get,
+        path,
+        headers: authToken != null && authToken.isNotEmpty
+            ? {'Authorization': 'Bearer $authToken'}
+            : null,
+      );
       return _asListOfMap(r.data);
     } on AppException {
       rethrow;
@@ -27,10 +33,17 @@ class CategoryApiService {
     }
   }
 
-  /// GET /api/admin/categories
-  Future<List<Map<String, dynamic>>> getAllCategories() async {
+  Future<List<Map<String, dynamic>>> getAllCategories({
+    String? authToken,
+  }) async {
     try {
-      final r = await _fetch.fetch(HttpMethod.get, _base);
+      final r = await _fetch.fetch(
+        HttpMethod.get,
+        _base,
+        headers: authToken != null && authToken.isNotEmpty
+            ? {'Authorization': 'Bearer $authToken'}
+            : null,
+      );
       return _asListOfMap(r.data);
     } on AppException {
       rethrow;
@@ -39,7 +52,6 @@ class CategoryApiService {
     }
   }
 
-  /// POST /api/admin/categories  (create category)
   Future<Map<String, dynamic>> createCategory({
     required String name,
     required int projectId,
@@ -54,15 +66,12 @@ class CategoryApiService {
       );
       return _asMap(r.data);
     } on AppException {
-      // هنا الـ ServerException غالباً حيحمل message من backend:
-      // ex: "Category already exists in this project: LAPTOPS"
       rethrow;
     } catch (e) {
       throw AppException('Failed to create category', original: e);
     }
   }
 
-  // ---------- Helpers ----------
   List<Map<String, dynamic>> _asListOfMap(dynamic data) {
     if (data is List) {
       return data

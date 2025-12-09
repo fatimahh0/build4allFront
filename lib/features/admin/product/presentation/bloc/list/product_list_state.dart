@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:build4front/features/admin/product/domain/entities/product.dart';
+import '../../../domain/entities/product.dart';
 
 class ProductListState extends Equatable {
   final bool isLoading;

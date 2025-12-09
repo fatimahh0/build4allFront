@@ -3,24 +3,19 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/l10n/app_localizations.dart';
-
-// Domain + data
-import 'package:build4front/features/admin/product/domain/usecases/get_products.dart';
-import 'package:build4front/features/admin/product/data/repositories/product_repository_impl.dart';
-import 'package:build4front/features/admin/product/data/services/product_api_service.dart';
-import 'package:build4front/features/admin/product/domain/entities/product.dart';
-
-// Admin token (for auth)
 import 'package:build4front/features/auth/data/services/admin_token_store.dart';
 
-// UI
-import 'package:build4front/features/admin/product/presentation/widgets/admin_product_card.dart';
-import 'package:build4front/features/admin/product/presentation/screens/admin_create_product_screen.dart';
+import '../../data/repositories/product_repository_impl.dart';
+import '../../data/services/product_api_service.dart';
+import '../../domain/usecases/get_products.dart';
+import '../../domain/entities/product.dart';
 
-// Bloc
-import 'package:build4front/features/admin/product/presentation/bloc/list/product_list_bloc.dart';
-import 'package:build4front/features/admin/product/presentation/bloc/list/product_list_event.dart';
-import 'package:build4front/features/admin/product/presentation/bloc/list/product_list_state.dart';
+import '../bloc/list/product_list_bloc.dart';
+import '../bloc/list/product_list_event.dart';
+import '../bloc/list/product_list_state.dart';
+
+import '../widgets/admin_product_card.dart';
+import 'admin_create_product_screen.dart';
 
 class AdminProductsListScreen extends StatelessWidget {
   final int ownerProjectId;
@@ -45,7 +40,6 @@ class AdminProductsListScreen extends StatelessWidget {
 
 class _AdminProductsListView extends StatelessWidget {
   final int ownerProjectId;
-
   const _AdminProductsListView({required this.ownerProjectId});
 
   Future<void> _confirmDelete(BuildContext context, Product product) async {
@@ -76,7 +70,6 @@ class _AdminProductsListView extends StatelessWidget {
 
     if (confirmed != true) return;
 
-    // Progress dialog while deleting
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -92,22 +85,18 @@ class _AdminProductsListView extends StatelessWidget {
       final api = ProductApiService();
       await api.delete(id: product.id, authToken: token);
 
-      // Close progress dialog
       Navigator.of(context).pop();
 
       if (context.mounted) {
-        // Reload list
         context.read<ProductListBloc>().add(
           LoadProductsForOwner(ownerProjectId),
         );
-
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Product deleted successfully')),
         );
       }
     } catch (e) {
-      Navigator.of(context).pop(); // close progress
-
+      Navigator.of(context).pop();
       if (!context.mounted) return;
 
       ScaffoldMessenger.of(
@@ -206,7 +195,7 @@ class _AdminProductsListView extends StatelessWidget {
                           ownerProjectId: ownerProjectId,
                           categoryId: product.categoryId,
                           itemTypeId: product.itemTypeId,
-                          currencyId: null, // use Env or AUP config
+                          currencyId: product.currencyId,
                           initialProduct: product,
                         ),
                       ),

@@ -3,12 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:build4front/core/config/env.dart';
 import 'package:build4front/core/theme/theme_cubit.dart';
-import 'package:build4front/features/admin/product/domain/entities/product.dart';
+import '../../domain/entities/product.dart';
 
 class AdminProductCard extends StatelessWidget {
   final Product product;
-
-  /// Callbacks provided by the parent (list screen)
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
@@ -23,13 +21,9 @@ class AdminProductCard extends StatelessWidget {
     if (url == null || url.trim().isEmpty) return null;
 
     final trimmed = url.trim();
-
-    // Already full URL
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
       return trimmed;
     }
-
-    // Backend gives "/uploads/xyz.jpg" → prefix with API base URL
     return '${Env.apiBaseUrl}$trimmed';
   }
 
@@ -97,7 +91,7 @@ class AdminProductCard extends StatelessWidget {
     final showDiscountBadge = product.onSale;
     final imageUrl = _resolveImageUrl(product.imageUrl);
 
-    Widget _imagePlaceholder() {
+    Widget imagePlaceholder() {
       return Container(
         color: colors.muted.withOpacity(0.08),
         child: Icon(
@@ -117,19 +111,16 @@ class AdminProductCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top image area
               AspectRatio(
                 aspectRatio: 4 / 3,
                 child: imageUrl != null
                     ? Image.network(
                         imageUrl,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _imagePlaceholder(),
+                        errorBuilder: (_, __, ___) => imagePlaceholder(),
                       )
-                    : _imagePlaceholder(),
+                    : imagePlaceholder(),
               ),
-
-              // Bottom content – fills remaining height, no overflow
               Expanded(
                 child: Padding(
                   padding: EdgeInsets.all(spacing.sm),
@@ -155,8 +146,6 @@ class AdminProductCard extends StatelessWidget {
                           ),
                         ),
                       if (showDiscountBadge) SizedBox(height: spacing.xs),
-
-                      // Product name (takes flexible space)
                       Text(
                         product.name,
                         maxLines: 2,
@@ -166,10 +155,7 @@ class AdminProductCard extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-
                       const Spacer(),
-
-                      // Price row
                       Row(
                         children: [
                           Text(
@@ -191,10 +177,7 @@ class AdminProductCard extends StatelessWidget {
                             ),
                         ],
                       ),
-
                       SizedBox(height: spacing.xs),
-
-                      // Status text
                       Text(
                         product.status,
                         maxLines: 1,

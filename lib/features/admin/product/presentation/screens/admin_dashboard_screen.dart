@@ -1,9 +1,7 @@
-// lib/features/admin/dashboard/presentation/screens/admin_dashboard_screen.dart
-
+import 'package:build4front/features/admin/tax/presentation/screens/admin_tax_rules_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:build4front/core/theme/app_theme_tokens.dart';
 import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/l10n/app_localizations.dart';
 import 'package:build4front/core/config/env.dart';
@@ -46,7 +44,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final tokens = context.watch<ThemeCubit>().state.tokens;
     final colors = tokens.colors;
     final card = tokens.card;
-
     final role = _role ?? 'ADMIN';
 
     return Scaffold(
@@ -102,7 +99,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   card: card,
                   onTap: () {
                     final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
-
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) =>
@@ -112,30 +108,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   },
                 ),
                 _AdminTile(
-                  icon: Icons.store_mall_directory_outlined,
-                  title: l10n.adminProjectsOwners,
-                  colors: colors,
-                  card: card,
-                  onTap: () {
-                    // TODO: owners/projects screen
-                  },
-                ),
-                _AdminTile(
-                  icon: Icons.group_outlined,
-                  title: l10n.adminUsersManagers,
-                  colors: colors,
-                  card: card,
-                  onTap: () {
-                    // TODO: users & managers screen
-                  },
-                ),
-                _AdminTile(
                   icon: Icons.settings_outlined,
                   title: l10n.adminSettings,
                   colors: colors,
                   card: card,
+                  onTap: () {},
+                ),
+                _AdminTile(
+                  icon: Icons.receipt_long_outlined,
+                  title: l10n.adminTaxesTitle,
+                  colors: colors,
+                  card: card,
                   onTap: () {
-                    // TODO: settings screen
+                    final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            AdminTaxRulesScreen(ownerProjectId: ownerId),
+                      ),
+                    );
                   },
                 ),
               ],
@@ -151,7 +142,7 @@ class _RoleBanner extends StatelessWidget {
   final String role;
   const _RoleBanner({required this.role});
 
-  Color _roleColor(ColorTokens c) {
+  Color _roleColor(dynamic c) {
     switch (role) {
       case 'SUPER_ADMIN':
         return c.error;
@@ -168,25 +159,25 @@ class _RoleBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.watch<ThemeCubit>().state.tokens;
     final colors = tokens.colors;
-    final c = _roleColor(colors);
+    final rColor = _roleColor(colors);
     final l10n = AppLocalizations.of(context)!;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: c.withOpacity(.08),
+        color: rColor.withOpacity(.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: c.withOpacity(.3)),
+        border: Border.all(color: rColor.withOpacity(.3)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: c.withOpacity(0.12),
+              color: rColor.withOpacity(0.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.verified_user_outlined, color: c, size: 24),
+            child: Icon(Icons.verified_user_outlined, color: rColor, size: 24),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -208,8 +199,8 @@ class _AdminTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final VoidCallback onTap;
-  final ColorTokens colors;
-  final CardTokens card;
+  final dynamic colors;
+  final dynamic card;
 
   const _AdminTile({
     required this.icon,
@@ -222,9 +213,11 @@ class _AdminTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final width = MediaQuery.of(context).size.width;
+    final tileWidth = (width - 16 * 2 - 12) / 2;
 
     return SizedBox(
-      width: (MediaQuery.of(context).size.width - 16 * 2 - 12) / 2,
+      width: tileWidth,
       child: InkWell(
         borderRadius: BorderRadius.circular(card.radius),
         onTap: onTap,
@@ -256,13 +249,6 @@ class _AdminTile extends StatelessWidget {
                 style: t.bodyMedium?.copyWith(
                   color: colors.label,
                   fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '',
-                style: t.bodySmall?.copyWith(
-                  color: colors.body.withOpacity(0.7),
                 ),
               ),
             ],

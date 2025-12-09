@@ -586,5 +586,134 @@ class AppLocalizationsAr extends AppLocalizations {
   String get adminProductAddAttribute => 'إضافة خاصية';
 
   @override
+  String get adminProductEditTitle => 'Edit product';
+
+  @override
+  String get adminProductCategoryLabel => 'Category';
+
+  @override
+  String get adminProductItemTypeLabel => 'Item type';
+
+  @override
+  String get adminStockHint => 'Ex: 50';
+
+  @override
+  String get adminProductImageLabel => 'Image';
+
+  @override
+  String get adminProductPickImage => 'Pick image';
+
+  @override
+  String get adminRemove => 'Remove';
+
+  @override
+  String get adminProductSkuHint => 'Ex: SKU-123';
+
+  @override
+  String get adminProductDownloadUrlHint => 'https://...';
+
+  @override
+  String get adminProductExternalUrlHint => 'https://...';
+
+  @override
   String get adminProductSaveButton => 'حفظ المنتج';
+
+  @override
+  String get adminNoCategories => 'No categories found';
+
+  @override
+  String get adminCreateCategory => 'Create category';
+
+  @override
+  String get adminNoItemTypes => 'No item types found';
+
+  @override
+  String get adminCreateItemType => 'Create item type';
+
+  @override
+  String get adminTaxesTitle => 'Taxes';
+
+  @override
+  String get adminTaxRulesTitle => 'Tax Rules';
+
+  @override
+  String get adminTaxAddRule => 'Add tax rule';
+
+  @override
+  String get adminTaxNoRules => 'No tax rules found.';
+
+  @override
+  String get adminTaxCreateRuleTitle => 'Create Tax Rule';
+
+  @override
+  String get adminTaxEditRuleTitle => 'Edit Tax Rule';
+
+  @override
+  String get adminTaxRuleNameLabel => 'Rule name';
+
+  @override
+  String get adminTaxRuleNameHint => 'Ex: Standard VAT 11%';
+
+  @override
+  String get adminTaxRuleNameRequired => 'Tax rule name is required';
+
+  @override
+  String get adminTaxRuleRateLabel => 'Rate (%)';
+
+  @override
+  String get adminTaxRuleRateHint => '11.00';
+
+  @override
+  String get adminTaxRuleRateRequired => 'Rate is required';
+
+  @override
+  String get adminTaxRuleRateInvalid => 'Rate must be a valid number > 0';
+
+  @override
+  String get adminTaxAppliesToShippingLabel => 'Applies to shipping';
+
+  @override
+  String get adminTaxEnabledLabel => 'Enabled';
+
+  @override
+  String get adminTaxCountryIdLabel => 'Country ID (optional)';
+
+  @override
+  String get adminTaxCountryIdHint => '1';
+
+  @override
+  String get adminTaxRegionIdLabel => 'Region ID (optional)';
+
+  @override
+  String get adminTaxRegionIdHint => '2';
+
+  @override
+  String get adminTaxRateShort => 'Rate';
+
+  @override
+  String get adminTaxAppliesToShippingShort => 'Shipping tax';
+
+  @override
+  String get adminTaxEnabledShort => 'Enabled';
+
+  @override
+  String get adminCancel => 'Cancel';
+
+  @override
+  String get adminCreate => 'Create';
+
+  @override
+  String get adminUpdate => 'Update';
+
+  @override
+  String get adminEdit => 'Edit';
+
+  @override
+  String get adminDelete => 'Delete';
+
+  @override
+  String get yes => 'Yes';
+
+  @override
+  String get no => 'No';
 }

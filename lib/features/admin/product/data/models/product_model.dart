@@ -1,6 +1,4 @@
-
-
-import 'package:build4front/features/admin/product/domain/entities/product.dart';
+import '../../domain/entities/product.dart';
 
 class ProductModel extends Product {
   ProductModel({
@@ -32,13 +30,15 @@ class ProductModel extends Product {
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     final attrsList =
-        (json['attributes'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ??
+        (json['attributes'] as List<dynamic>?)
+            ?.map((e) => (e as Map).cast<String, dynamic>())
+            .toList() ??
         [];
 
     final attrsMap = <String, String>{};
     for (final attr in attrsList) {
-      final code = attr['code'] as String?;
-      final value = attr['value'] as String?;
+      final code = attr['code']?.toString();
+      final value = attr['value']?.toString();
       if (code != null && value != null) {
         attrsMap[code] = value;
       }
@@ -50,14 +50,14 @@ class ProductModel extends Product {
       itemTypeId: (json['itemTypeId'] as num?)?.toInt(),
       currencyId: (json['currencyId'] as num?)?.toInt(),
       categoryId: (json['categoryId'] as num?)?.toInt(),
-      name: json['name'] as String,
+      name: (json['name'] ?? '').toString(),
       description: json['description'] as String?,
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       stock: (json['stock'] as num?)?.toInt(),
-      status: json['status'] as String? ?? 'Upcoming',
+      status: (json['status'] ?? 'Upcoming').toString(),
       imageUrl: json['imageUrl'] as String?,
       sku: json['sku'] as String?,
-      productType: (json['productType'] as String?) ?? 'SIMPLE',
+      productType: (json['productType'] ?? 'SIMPLE').toString(),
       virtualProduct: json['virtualProduct'] as bool? ?? false,
       downloadable: json['downloadable'] as bool? ?? false,
       downloadUrl: json['downloadUrl'] as String?,
@@ -65,10 +65,10 @@ class ProductModel extends Product {
       buttonText: json['buttonText'] as String?,
       salePrice: (json['salePrice'] as num?)?.toDouble(),
       saleStart: json['saleStart'] != null
-          ? DateTime.tryParse(json['saleStart'] as String)
+          ? DateTime.tryParse(json['saleStart'].toString())
           : null,
       saleEnd: json['saleEnd'] != null
-          ? DateTime.tryParse(json['saleEnd'] as String)
+          ? DateTime.tryParse(json['saleEnd'].toString())
           : null,
       effectivePrice:
           (json['effectivePrice'] as num?)?.toDouble() ??

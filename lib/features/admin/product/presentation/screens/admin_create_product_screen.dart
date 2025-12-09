@@ -1,15 +1,17 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/l10n/app_localizations.dart';
 import 'package:build4front/core/config/env.dart';
-
 import 'package:build4front/features/auth/data/services/admin_token_store.dart';
 
-import 'package:build4front/features/admin/product/data/services/product_api_service.dart';
-import 'package:build4front/features/admin/product/data/models/create_product_request.dart';
-import 'package:build4front/features/admin/product/domain/entities/product.dart';
+import '../../data/services/product_api_service.dart';
+import '../../data/models/create_product_request.dart';
+import '../../domain/entities/product.dart';
 
 import 'package:build4front/features/catalog/data/services/category_api_service.dart';
 import 'package:build4front/features/catalog/data/services/item_type_api_service.dart';
@@ -20,17 +22,9 @@ import 'package:build4front/features/catalog/domain/entities/item_type.dart';
 
 class AdminCreateProductScreen extends StatefulWidget {
   final int ownerProjectId;
-
-  /// Optional: advanced mode: explicit item type
   final int? itemTypeId;
-
-  /// Optional: simple mode – backend will resolve/create DEFAULT ItemType for this category.
   final int? categoryId;
-
-  /// Currency for this app (per AdminUserProject)
   final int? currencyId;
-
-  /// If not null → we are EDITING an existing product
   final Product? initialProduct;
 
   const AdminCreateProductScreen({
@@ -48,17 +42,19 @@ class AdminCreateProductScreen extends StatefulWidget {
 }
 
 class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
+  // ---------------- Form ----------------
   final _formKey = GlobalKey<FormState>();
 
   final _nameCtrl = TextEditingController();
   final _descriptionCtrl = TextEditingController();
   final _priceCtrl = TextEditingController();
   final _stockCtrl = TextEditingController();
-  final _imageUrlCtrl = TextEditingController();
   final _skuCtrl = TextEditingController();
+
   final _downloadUrlCtrl = TextEditingController();
   final _externalUrlCtrl = TextEditingController();
   final _buttonTextCtrl = TextEditingController(text: 'Add to cart');
+
   final _salePriceCtrl = TextEditingController();
   final _saleStartCtrl = TextEditingController();
   final _saleEndCtrl = TextEditingController();
@@ -67,17 +63,11 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
   bool _virtualProduct = false;
   bool _downloadable = false;
 
-  bool _isSubmitting = false;
-  String? _errorMessage;
-
-  // Local state for sale dates (used with date picker)
   DateTime? _saleStartDate;
   DateTime? _saleEndDate;
 
-  // Attribute rows (code from dropdown + value text)
   final List<_AttributeRow> _attributes = [];
 
-  // Fixed attribute codes – owner cannot invent random keys.
   static const List<String> _allowedAttributeCodes = [
     'brand',
     'color',
@@ -87,58 +77,90 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
     'model',
   ];
 
-  // Category + ItemType state
+  // ✅ image
+  final _picker = ImagePicker();
+  XFile? _pickedImage;
+
+  // ---------------- Meta dropdowns ----------------
   List<_CategoryOption> _categories = [];
   int? _selectedCategoryId;
 
   List<ItemType> _itemTypes = [];
   int? _selectedItemTypeId;
 
-  bool _loadingCategories = false;
-  bool _loadingItemTypes = false;
-  String? _metaError;
-
-  // Currency
+  // ---------------- Currency ----------------
   int? _effectiveCurrencyId;
   bool _loadingCurrency = false;
-  String? _currencyLabel; // e.g. "USD ($)" or "EUR"
+  String? _currencyLabel;
+
+  // ---------------- States ----------------
+  bool _loadingCategories = false;
+  bool _loadingItemTypes = false;
+
+  bool _isSubmitting = false;
+
+  String? _errorMessage;
+  String? _metaError;
 
   bool get _isEdit => widget.initialProduct != null;
 
+  // ---------------- Lifecycle ----------------
   @override
   void initState() {
     super.initState();
+    _bootstrap();
+  }
 
-    // Resolve currency id: screen param → env → null
+  Future<void> _bootstrap() async {
     final rawCurrency = Env.currencyId.trim();
     _effectiveCurrencyId =
         widget.currencyId ??
         (rawCurrency.isNotEmpty ? int.tryParse(rawCurrency) : null);
 
-    if (_effectiveCurrencyId != null) {
-      _loadCurrency(_effectiveCurrencyId!);
-    }
-
-    // If editing, pre-fill all fields from the existing product
     if (_isEdit) {
       _applyInitialProduct(widget.initialProduct!);
     }
 
-    _loadCategories();
+    if (_effectiveCurrencyId != null) {
+      await _loadCurrency(_effectiveCurrencyId!);
+    }
+
+    await _loadCategories();
   }
 
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _descriptionCtrl.dispose();
+    _priceCtrl.dispose();
+    _stockCtrl.dispose();
+    _skuCtrl.dispose();
+
+    _downloadUrlCtrl.dispose();
+    _externalUrlCtrl.dispose();
+    _buttonTextCtrl.dispose();
+
+    _salePriceCtrl.dispose();
+    _saleStartCtrl.dispose();
+    _saleEndCtrl.dispose();
+
+    for (final row in _attributes) {
+      row.dispose();
+    }
+    super.dispose();
+  }
+
+  // ---------------- Initial edit mapping ----------------
   void _applyInitialProduct(Product p) {
     _nameCtrl.text = p.name;
     _descriptionCtrl.text = p.description ?? '';
     _priceCtrl.text = p.price.toStringAsFixed(2);
-    if (p.stock != null) {
-      _stockCtrl.text = p.stock.toString();
-    }
-    _imageUrlCtrl.text = p.imageUrl ?? '';
+    if (p.stock != null) _stockCtrl.text = p.stock.toString();
     _skuCtrl.text = p.sku ?? '';
 
     _virtualProduct = p.virtualProduct;
     _downloadable = p.downloadable;
+
     _downloadUrlCtrl.text = p.downloadUrl ?? '';
     _externalUrlCtrl.text = p.externalUrl ?? '';
     _buttonTextCtrl.text = p.buttonText ?? 'Add to cart';
@@ -157,7 +179,6 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       _saleEndCtrl.text = _formatDateForBackend(p.saleEnd!);
     }
 
-    // Attributes (only allowed codes)
     _attributes.clear();
     p.attributes.forEach((code, value) {
       if (_allowedAttributeCodes.contains(code)) {
@@ -182,32 +203,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _descriptionCtrl.dispose();
-    _priceCtrl.dispose();
-    _stockCtrl.dispose();
-    _imageUrlCtrl.dispose();
-    _skuCtrl.dispose();
-    _downloadUrlCtrl.dispose();
-    _externalUrlCtrl.dispose();
-    _buttonTextCtrl.dispose();
-    _salePriceCtrl.dispose();
-    _saleStartCtrl.dispose();
-    _saleEndCtrl.dispose();
-
-    for (final row in _attributes) {
-      row.dispose();
-    }
-
-    super.dispose();
-  }
-
-  // ───────────────────────────────
-  // Helpers
-  // ───────────────────────────────
-
+  // ---------------- Helpers ----------------
   String _formatDateForBackend(DateTime d) {
     final y = d.year.toString().padLeft(4, '0');
     final m = d.month.toString().padLeft(2, '0');
@@ -254,22 +250,50 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
     }
   }
 
-  // ───────────────────────────────
-  // Currency
-  // ───────────────────────────────
+  Future<void> _pickImage() async {
+    final img = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
 
+    if (img != null) {
+      setState(() => _pickedImage = img);
+    }
+  }
+
+  void _removePickedImage() {
+    setState(() => _pickedImage = null);
+  }
+
+  Future<String> _requireAdminToken() async {
+    final token = await AdminTokenStore().getToken();
+    if (token == null || token.isEmpty) {
+      throw Exception('Missing admin token – please log in again.');
+    }
+    return token;
+  }
+
+  int _requireProjectId() {
+    final projectId = int.tryParse(Env.projectId) ?? 0;
+    if (projectId <= 0) {
+      throw Exception('PROJECT_ID is not configured for this app.');
+    }
+    return projectId;
+  }
+
+  // ---------------- Currency ----------------
   Future<void> _loadCurrency(int id) async {
-    setState(() {
-      _loadingCurrency = true;
-    });
+    setState(() => _loadingCurrency = true);
 
     try {
+      final token = await _requireAdminToken();
       final api = CurrencyApiService();
-      final data = await api.getCurrencyById(id);
+
+      final data = await api.getCurrencyById(id, authToken: token);
 
       final code = (data['code'] ?? '').toString();
       final symbol = (data['symbol'] ?? '').toString();
-      final type = (data['currencyType'] ?? '').toString();
+      final type = (data['currencyType'] ?? data['type'] ?? '').toString();
 
       String label = '';
       if (code.isNotEmpty && symbol.isNotEmpty) {
@@ -280,22 +304,16 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
         label = type;
       }
 
-      setState(() {
-        _currencyLabel = label.isEmpty ? null : label;
-      });
+      if (!mounted) return;
+      setState(() => _currencyLabel = label.isEmpty ? null : label);
     } catch (_) {
-      // keep label null on error
+      // non-blocking
     } finally {
-      if (mounted) {
-        setState(() => _loadingCurrency = false);
-      }
+      if (mounted) setState(() => _loadingCurrency = false);
     }
   }
 
-  // ───────────────────────────────
-  // Load categories & item types
-  // ───────────────────────────────
-
+  // ---------------- Categories + ItemTypes ----------------
   Future<void> _loadCategories() async {
     setState(() {
       _loadingCategories = true;
@@ -303,18 +321,20 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
     });
 
     try {
-      final projectId = int.tryParse(Env.projectId) ?? 0;
-      if (projectId <= 0) {
-        throw Exception('PROJECT_ID is not configured for this app.');
-      }
+      final token = await _requireAdminToken();
+      final projectId = _requireProjectId();
 
       final api = CategoryApiService();
-      final rawList = await api.getCategoriesByProject(projectId);
+      final rawList = await api.getCategoriesByProject(
+        projectId,
+        authToken: token,
+      );
+
       final cats = rawList.map(_CategoryOption.fromJson).toList();
 
       int? initialCategoryId;
-      final p = widget.initialProduct;
 
+      final p = widget.initialProduct;
       if (p != null &&
           p.categoryId != null &&
           cats.any((c) => c.id == p.categoryId)) {
@@ -326,6 +346,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
         initialCategoryId = cats.first.id;
       }
 
+      if (!mounted) return;
       setState(() {
         _categories = cats;
         _selectedCategoryId = initialCategoryId;
@@ -335,13 +356,10 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
         await _loadItemTypesForCategory(initialCategoryId);
       }
     } catch (e) {
-      setState(() {
-        _metaError = e.toString();
-      });
+      if (!mounted) return;
+      setState(() => _metaError = e.toString());
     } finally {
-      if (mounted) {
-        setState(() => _loadingCategories = false);
-      }
+      if (mounted) setState(() => _loadingCategories = false);
     }
   }
 
@@ -349,18 +367,26 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
     setState(() {
       _loadingItemTypes = true;
       _metaError = null;
+      _itemTypes = [];
+      _selectedItemTypeId = null;
     });
 
     try {
+      final token = await _requireAdminToken();
+
       final api = ItemTypeApiService();
-      final rawList = await api.getItemTypesByCategory(categoryId);
+      final rawList = await api.getItemTypesByCategory(
+        categoryId,
+        authToken: token,
+      );
+
       final types = rawList
           .map((m) => ItemTypeModel.fromJson(m).toEntity())
           .toList();
 
       int? initialTypeId;
-      final p = widget.initialProduct;
 
+      final p = widget.initialProduct;
       if (p != null &&
           p.itemTypeId != null &&
           types.any((t) => t.id == p.itemTypeId)) {
@@ -372,25 +398,20 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
         initialTypeId = types.first.id;
       }
 
+      if (!mounted) return;
       setState(() {
         _itemTypes = types;
         _selectedItemTypeId = initialTypeId;
       });
     } catch (e) {
-      setState(() {
-        _metaError = e.toString();
-      });
+      if (!mounted) return;
+      setState(() => _metaError = e.toString());
     } finally {
-      if (mounted) {
-        setState(() => _loadingItemTypes = false);
-      }
+      if (mounted) setState(() => _loadingItemTypes = false);
     }
   }
 
-  // ───────────────────────────────
-  // Create new Category / ItemType
-  // ───────────────────────────────
-
+  // ---------------- Create Category / Type ----------------
   Future<void> _showCreateCategoryDialog() async {
     final ctrl = TextEditingController();
 
@@ -420,21 +441,13 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
     );
 
     if (result == null || result.trim().isEmpty) return;
-
     await _createCategory(result.trim());
   }
 
   Future<void> _createCategory(String name) async {
     try {
-      final token = await AdminTokenStore().getToken();
-      if (token == null || token.isEmpty) {
-        throw Exception('Missing admin token – please log in again.');
-      }
-
-      final projectId = int.tryParse(Env.projectId) ?? 0;
-      if (projectId <= 0) {
-        throw Exception('PROJECT_ID is not configured for this app.');
-      }
+      final token = await _requireAdminToken();
+      final projectId = _requireProjectId();
 
       final api = CategoryApiService();
       final data = await api.createCategory(
@@ -445,25 +458,27 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
 
       final cat = _CategoryOption.fromJson(data);
 
+      if (!mounted) return;
       setState(() {
         _categories = [..._categories, cat];
         _selectedCategoryId = cat.id;
-        _metaError = null; // clear old errors on success
+        _metaError = null;
       });
 
       await _loadItemTypesForCategory(cat.id);
     } catch (e) {
-      setState(() {
-        _metaError = e.toString();
-      });
+      if (!mounted) return;
+      setState(() => _metaError = e.toString());
     }
   }
 
   Future<void> _showCreateItemTypeDialog() async {
-    if (_selectedCategoryId == null) {
-      setState(() {
-        _metaError = 'Please select a category before creating item type.';
-      });
+    final categoryId = _selectedCategoryId;
+    if (categoryId == null) {
+      setState(
+        () =>
+            _metaError = 'Please select a category before creating item type.',
+      );
       return;
     }
 
@@ -495,24 +510,12 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
     );
 
     if (result == null || result.trim().isEmpty) return;
-
-    await _createItemType(result.trim());
+    await _createItemType(result.trim(), categoryId);
   }
 
-  Future<void> _createItemType(String name) async {
-    final categoryId = _selectedCategoryId;
-    if (categoryId == null) {
-      setState(() {
-        _metaError = 'Please select a category before creating item type.';
-      });
-      return;
-    }
-
+  Future<void> _createItemType(String name, int categoryId) async {
     try {
-      final token = await AdminTokenStore().getToken();
-      if (token == null || token.isEmpty) {
-        throw Exception('Missing admin token – please log in again.');
-      }
+      final token = await _requireAdminToken();
 
       final api = ItemTypeApiService();
       final data = await api.createItemType(
@@ -523,38 +526,49 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
 
       final newType = ItemTypeModel.fromJson(data).toEntity();
 
+      if (!mounted) return;
       setState(() {
         _itemTypes = [..._itemTypes, newType];
         _selectedItemTypeId = newType.id;
       });
     } catch (e) {
-      setState(() {
-        _metaError = e.toString();
-      });
+      if (!mounted) return;
+      setState(() => _metaError = e.toString());
     }
   }
 
-  // ───────────────────────────────
-  // Submit (create OR update)
-  // ───────────────────────────────
+  // ---------------- Attributes ----------------
+  void _addAttributeRow() {
+    setState(() {
+      _attributes.add(
+        _AttributeRow(selectedCode: _allowedAttributeCodes.first),
+      );
+    });
+  }
 
+  void _removeAttributeRow(int index) {
+    setState(() {
+      _attributes[index].dispose();
+      _attributes.removeAt(index);
+    });
+  }
+
+  // ---------------- Submit ----------------
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final selectedCategoryId = _selectedCategoryId ?? widget.categoryId;
-    if (selectedCategoryId == null) {
-      setState(() {
-        _errorMessage = 'Please select a category before saving the product.';
-      });
+    final categoryId = _selectedCategoryId ?? widget.categoryId;
+    if (categoryId == null) {
+      setState(() => _errorMessage = 'Please select a category before saving.');
       return;
     }
 
     final currencyId = widget.currencyId ?? _effectiveCurrencyId;
     if (currencyId == null) {
-      setState(() {
-        _errorMessage =
-            'Missing currency for this app. Please configure currency first.';
-      });
+      setState(
+        () => _errorMessage =
+            'Missing currency for this app. Please configure currency first.',
+      );
       return;
     }
 
@@ -586,56 +600,49 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
           )
           .toList();
 
-      final int? itemTypeId = _selectedItemTypeId ?? widget.itemTypeId;
+      final itemTypeId = _selectedItemTypeId ?? widget.itemTypeId;
 
-      // Common values used by both create & update
-      final String? description = _descriptionCtrl.text.trim().isEmpty
+      final description = _descriptionCtrl.text.trim().isEmpty
           ? null
           : _descriptionCtrl.text.trim();
-      final String? imageUrl = _imageUrlCtrl.text.trim().isEmpty
-          ? null
-          : _imageUrlCtrl.text.trim();
-      final String? sku = _skuCtrl.text.trim().isEmpty
-          ? null
-          : _skuCtrl.text.trim();
 
-      final String? downloadUrl =
+      final sku = _skuCtrl.text.trim().isEmpty ? null : _skuCtrl.text.trim();
+
+      final downloadUrl =
           _downloadable && _downloadUrlCtrl.text.trim().isNotEmpty
           ? _downloadUrlCtrl.text.trim()
           : null;
 
-      final String? externalUrl =
+      final externalUrl =
           _selectedProductType == ProductTypeDto.external &&
               _externalUrlCtrl.text.trim().isNotEmpty
           ? _externalUrlCtrl.text.trim()
           : null;
 
-      final String? buttonText =
+      final buttonText =
           _selectedProductType == ProductTypeDto.external &&
               _buttonTextCtrl.text.trim().isNotEmpty
           ? _buttonTextCtrl.text.trim()
           : null;
 
-      final String? saleStartText = _saleStartCtrl.text.trim().isEmpty
+      final saleStartText = _saleStartCtrl.text.trim().isEmpty
           ? null
           : _saleStartCtrl.text.trim();
-      final String? saleEndText = _saleEndCtrl.text.trim().isEmpty
+      final saleEndText = _saleEndCtrl.text.trim().isEmpty
           ? null
           : _saleEndCtrl.text.trim();
 
       if (!_isEdit) {
-        // CREATE
         final req = CreateProductRequest(
           ownerProjectId: widget.ownerProjectId,
           itemTypeId: itemTypeId,
-          categoryId: selectedCategoryId,
+          categoryId: categoryId,
           currencyId: currencyId,
           name: _nameCtrl.text.trim(),
           description: description,
           price: price,
           stock: stock,
-          status: null, // backend will set "Upcoming"
-          imageUrl: imageUrl,
+          status: null, // keep backend default
           sku: sku,
           productType: _selectedProductType,
           virtualProduct: _virtualProduct,
@@ -649,138 +656,82 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
           attributes: attrs,
         );
 
-        await _createProductApi(req);
+        await _createProduct(req);
       } else {
-        // UPDATE
-        await _updateProductApi(
+        await _updateProduct(
           productId: widget.initialProduct!.id,
-          ownerProjectId: widget.ownerProjectId,
-          categoryId: selectedCategoryId,
-          itemTypeId: itemTypeId,
-          currencyId: currencyId,
-          name: _nameCtrl.text.trim(),
-          description: description,
-          price: price,
-          stock: stock,
-          imageUrl: imageUrl,
-          sku: sku,
-          productType: _selectedProductType,
-          virtualProduct: _virtualProduct,
-          downloadable: _downloadable,
-          downloadUrl: downloadUrl,
-          externalUrl: externalUrl,
-          buttonText: buttonText,
-          salePrice: salePrice,
-          saleStart: saleStartText,
-          saleEnd: saleEndText,
-          attributes: attrs,
+          reqBody: {
+            'ownerProjectId': widget.ownerProjectId,
+            if (categoryId != null) 'categoryId': categoryId,
+            if (itemTypeId != null) 'itemTypeId': itemTypeId,
+            'currencyId': currencyId,
+            'name': _nameCtrl.text.trim(),
+            'description': description,
+            'price': price,
+            'stock': stock,
+            'sku': sku,
+            'productType': productTypeDtoToApi(_selectedProductType),
+            'virtualProduct': _virtualProduct,
+            'downloadable': _downloadable,
+            'downloadUrl': downloadUrl,
+            'externalUrl': externalUrl,
+            'buttonText': buttonText,
+            'salePrice': salePrice,
+            'saleStart': saleStartText,
+            'saleEnd': saleEndText,
+            if (attrs.isNotEmpty)
+              'attributes': attrs.map((e) => e.toJson()).toList(),
+          },
         );
       }
 
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-      });
+      setState(() => _errorMessage = e.toString());
     } finally {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-      }
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
-  Future<void> _createProductApi(CreateProductRequest req) async {
-    final token = await AdminTokenStore().getToken();
-    if (token == null || token.isEmpty) {
-      throw Exception('Missing admin token – please log in again.');
-    }
-
-    final api = ProductApiService();
-    await api.create(body: req.toJson(), authToken: token);
-  }
-
-  Future<void> _updateProductApi({
-    required int productId,
-    required int ownerProjectId,
-    required int? categoryId,
-    required int? itemTypeId,
-    required int? currencyId,
-    required String name,
-    String? description,
-    required double price,
-    int? stock,
-    String? imageUrl,
-    String? sku,
-    required ProductTypeDto productType,
-    required bool virtualProduct,
-    required bool downloadable,
-    String? downloadUrl,
-    String? externalUrl,
-    String? buttonText,
-    double? salePrice,
-    String? saleStart,
-    String? saleEnd,
-    required List<AttributeValueDto> attributes,
-  }) async {
-    final token = await AdminTokenStore().getToken();
-    if (token == null || token.isEmpty) {
-      throw Exception('Missing admin token – please log in again.');
-    }
-
+  Future<void> _createProduct(CreateProductRequest req) async {
+    final token = await _requireAdminToken();
     final api = ProductApiService();
 
-    final body = <String, dynamic>{
-      'ownerProjectId': ownerProjectId,
-      if (categoryId != null) 'categoryId': categoryId,
-      if (itemTypeId != null) 'itemTypeId': itemTypeId,
-      'currencyId': currencyId,
-      'name': name,
-      'description': description,
-      'price': price,
-      'stock': stock,
-      // status NOT sent → backend keeps existing
-      'imageUrl': imageUrl,
-      'sku': sku,
-      'productType': productTypeDtoToApi(productType),
-      'virtualProduct': virtualProduct,
-      'downloadable': downloadable,
-      'downloadUrl': downloadUrl,
-      'externalUrl': externalUrl,
-      'buttonText': buttonText,
-      'salePrice': salePrice,
-      'saleStart': saleStart,
-      'saleEnd': saleEnd,
-      if (attributes.isNotEmpty)
-        'attributes': attributes.map((e) => e.toJson()).toList(),
-    };
-
-    await api.update(id: productId, body: body, authToken: token);
-  }
-
-  void _addAttributeRow() {
-    setState(() {
-      _attributes.add(
-        _AttributeRow(selectedCode: _allowedAttributeCodes.first),
+    if (_pickedImage != null) {
+      await api.createWithImage(
+        body: req.toJson(),
+        imagePath: _pickedImage!.path,
+        authToken: token,
       );
-    });
+    } else {
+      await api.create(body: req.toJson(), authToken: token);
+    }
   }
 
-  void _removeAttributeRow(int index) {
-    setState(() {
-      _attributes[index].dispose();
-      _attributes.removeAt(index);
-    });
+  Future<void> _updateProduct({
+    required int productId,
+    required Map<String, dynamic> reqBody,
+  }) async {
+    final token = await _requireAdminToken();
+    final api = ProductApiService();
+
+    if (_pickedImage != null) {
+      await api.updateWithImage(
+        id: productId,
+        body: reqBody,
+        imagePath: _pickedImage!.path,
+        authToken: token,
+      );
+    } else {
+      await api.update(id: productId, body: reqBody, authToken: token);
+    }
   }
 
-  // ───────────────────────────────
-  // UI
-  // ───────────────────────────────
-
+  // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
-    final themeState = context.watch<ThemeCubit>().state;
-    final tokens = themeState.tokens;
+    final tokens = context.watch<ThemeCubit>().state.tokens;
     final c = tokens.colors;
     final spacing = tokens.spacing;
     final text = tokens.typography;
@@ -791,9 +742,8 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       appBar: AppBar(
         backgroundColor: c.surface,
         title: Text(
-          // reuse same key for now
-          l.adminProductCreateTitle,
-          style: text.titleMedium,
+          _isEdit ? l.adminProductEditTitle : l.adminProductCreateTitle,
+          style: text.titleMedium.copyWith(color: c.label),
         ),
       ),
       body: SafeArea(
@@ -804,22 +754,19 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // --- name ---
+                // -------- Name --------
                 Text(l.adminProductNameLabel, style: text.titleMedium),
                 SizedBox(height: spacing.xs),
                 TextFormField(
                   controller: _nameCtrl,
                   decoration: InputDecoration(hintText: l.adminProductNameHint),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) {
-                      return l.adminProductNameRequired;
-                    }
-                    return null;
-                  },
+                  validator: (v) => v == null || v.trim().isEmpty
+                      ? l.adminProductNameRequired
+                      : null,
                 ),
                 SizedBox(height: spacing.md),
 
-                // --- description ---
+                // -------- Description --------
                 Text(l.adminProductDescriptionLabel, style: text.titleMedium),
                 SizedBox(height: spacing.xs),
                 TextFormField(
@@ -831,152 +778,17 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                 ),
                 SizedBox(height: spacing.md),
 
-                // --- Category + ItemType (same as before) ---
-                Text('Category', style: text.titleMedium),
+                // -------- Category --------
+                Text(l.adminProductCategoryLabel, style: text.titleMedium),
                 SizedBox(height: spacing.xs),
-                if (_loadingCategories)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.0),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (_categories.isEmpty)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'No categories found for this project.',
-                        style: text.bodyMedium.copyWith(color: c.danger),
-                      ),
-                      TextButton.icon(
-                        onPressed: _showCreateCategoryDialog,
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add category'),
-                      ),
-                    ],
-                  )
-                else
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: spacing.sm,
-                            vertical: spacing.xs,
-                          ),
-                          decoration: BoxDecoration(
-                            color: c.surface,
-                            borderRadius: BorderRadius.circular(
-                              tokens.card.radius,
-                            ),
-                            border: Border.all(
-                              color: c.border.withOpacity(0.4),
-                            ),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<int>(
-                              value: _selectedCategoryId,
-                              isExpanded: true,
-                              items: _categories
-                                  .map(
-                                    (cat) => DropdownMenuItem<int>(
-                                      value: cat.id,
-                                      child: Text(cat.name),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: (val) async {
-                                if (val == null) return;
-                                setState(() {
-                                  _selectedCategoryId = val;
-                                  _selectedItemTypeId = null;
-                                });
-                                await _loadItemTypesForCategory(val);
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: spacing.sm),
-                      IconButton(
-                        onPressed: _showCreateCategoryDialog,
-                        icon: const Icon(Icons.add),
-                        color: c.primary,
-                      ),
-                    ],
-                  ),
+                _buildCategorySection(context, tokens, l),
                 SizedBox(height: spacing.md),
 
+                // -------- Item Type --------
                 if (_selectedCategoryId != null) ...[
-                  Text('Item type', style: text.titleMedium),
+                  Text(l.adminProductItemTypeLabel, style: text.titleMedium),
                   SizedBox(height: spacing.xs),
-                  if (_loadingItemTypes)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8.0),
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else if (_itemTypes.isEmpty)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'No item types for this category.',
-                          style: text.bodyMedium.copyWith(color: c.danger),
-                        ),
-                        TextButton.icon(
-                          onPressed: _showCreateItemTypeDialog,
-                          icon: const Icon(Icons.add),
-                          label: const Text('Add item type'),
-                        ),
-                      ],
-                    )
-                  else
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: spacing.sm,
-                              vertical: spacing.xs,
-                            ),
-                            decoration: BoxDecoration(
-                              color: c.surface,
-                              borderRadius: BorderRadius.circular(
-                                tokens.card.radius,
-                              ),
-                              border: Border.all(
-                                color: c.border.withOpacity(0.4),
-                              ),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<int>(
-                                value: _selectedItemTypeId,
-                                isExpanded: true,
-                                items: _itemTypes
-                                    .map(
-                                      (t) => DropdownMenuItem<int>(
-                                        value: t.id,
-                                        child: Text(t.name),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (val) {
-                                  if (val == null) return;
-                                  setState(() {
-                                    _selectedItemTypeId = val;
-                                  });
-                                },
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: spacing.sm),
-                        IconButton(
-                          onPressed: _showCreateItemTypeDialog,
-                          icon: const Icon(Icons.add),
-                          color: c.primary,
-                        ),
-                      ],
-                    ),
+                  _buildItemTypeSection(context, tokens, l),
                   SizedBox(height: spacing.md),
                 ],
 
@@ -988,7 +800,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                   SizedBox(height: spacing.md),
                 ],
 
-                // --- price + stock ---
+                // -------- Price + Stock --------
                 Row(
                   children: [
                     Expanded(
@@ -1055,7 +867,9 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                           TextFormField(
                             controller: _stockCtrl,
                             keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(hintText: '50'),
+                            decoration: InputDecoration(
+                              hintText: l.adminStockHint,
+                            ),
                           ),
                         ],
                       ),
@@ -1064,75 +878,28 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                 ),
                 SizedBox(height: spacing.md),
 
-                // --- image URL ---
-                Text(l.adminProductImageUrlLabel, style: text.titleMedium),
+                // -------- Image FILE --------
+                Text(l.adminProductImageLabel, style: text.titleMedium),
                 SizedBox(height: spacing.xs),
-                TextFormField(
-                  controller: _imageUrlCtrl,
-                  decoration: const InputDecoration(hintText: 'https://...'),
-                ),
+                _buildImagePicker(tokens, l),
                 SizedBox(height: spacing.md),
 
-                // --- SKU ---
+                // -------- SKU --------
                 Text(l.adminProductSkuLabel, style: text.titleMedium),
                 SizedBox(height: spacing.xs),
                 TextFormField(
                   controller: _skuCtrl,
-                  decoration: const InputDecoration(hintText: 'SKU-123-ABC'),
+                  decoration: InputDecoration(hintText: l.adminProductSkuHint),
                 ),
                 SizedBox(height: spacing.md),
 
-                // --- Product type ---
+                // -------- Product Type --------
                 Text(l.adminProductTypeLabel, style: text.titleMedium),
                 SizedBox(height: spacing.xs),
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: spacing.sm,
-                    vertical: spacing.xs,
-                  ),
-                  decoration: BoxDecoration(
-                    color: c.surface,
-                    borderRadius: BorderRadius.circular(tokens.card.radius),
-                    border: Border.all(color: c.border.withOpacity(0.4)),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<ProductTypeDto>(
-                      value: _selectedProductType,
-                      isExpanded: true,
-                      items: [
-                        DropdownMenuItem(
-                          value: ProductTypeDto.simple,
-                          child: Text(l.adminProductTypeSimple),
-                        ),
-                        DropdownMenuItem(
-                          value: ProductTypeDto.variable,
-                          child: Text(l.adminProductTypeVariable),
-                        ),
-                        DropdownMenuItem(
-                          value: ProductTypeDto.grouped,
-                          child: Text(l.adminProductTypeGrouped),
-                        ),
-                        DropdownMenuItem(
-                          value: ProductTypeDto.external,
-                          child: Text(l.adminProductTypeExternal),
-                        ),
-                      ],
-                      onChanged: (val) {
-                        if (val == null) return;
-                        setState(() {
-                          _selectedProductType = val;
-                          if (val != ProductTypeDto.external) {
-                            _externalUrlCtrl.clear();
-                            _buttonTextCtrl.clear();
-                          }
-                        });
-                      },
-                    ),
-                  ),
-                ),
+                _buildProductTypeDropdown(context, tokens, l),
                 SizedBox(height: spacing.md),
 
-                // --- Toggles ---
+                // -------- Flags --------
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(
@@ -1140,9 +907,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                     style: text.bodyMedium,
                   ),
                   value: _virtualProduct,
-                  onChanged: (v) {
-                    setState(() => _virtualProduct = v);
-                  },
+                  onChanged: (v) => setState(() => _virtualProduct = v),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
@@ -1154,9 +919,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                   onChanged: (v) {
                     setState(() {
                       _downloadable = v;
-                      if (!v) {
-                        _downloadUrlCtrl.clear();
-                      }
+                      if (!v) _downloadUrlCtrl.clear();
                     });
                   },
                 ),
@@ -1167,8 +930,8 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                   SizedBox(height: spacing.xs),
                   TextFormField(
                     controller: _downloadUrlCtrl,
-                    decoration: const InputDecoration(
-                      hintText: 'https://download-link...',
+                    decoration: InputDecoration(
+                      hintText: l.adminProductDownloadUrlHint,
                     ),
                   ),
                   SizedBox(height: spacing.md),
@@ -1179,12 +942,11 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                   SizedBox(height: spacing.xs),
                   TextFormField(
                     controller: _externalUrlCtrl,
-                    decoration: const InputDecoration(
-                      hintText: 'https://external-link...',
+                    decoration: InputDecoration(
+                      hintText: l.adminProductExternalUrlHint,
                     ),
                   ),
                   SizedBox(height: spacing.md),
-
                   Text(l.adminProductButtonTextLabel, style: text.titleMedium),
                   SizedBox(height: spacing.xs),
                   TextFormField(
@@ -1196,10 +958,9 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                   SizedBox(height: spacing.md),
                 ],
 
-                // --- Sale section ---
+                // -------- Sale --------
                 Text(l.adminProductSaleSectionTitle, style: text.titleMedium),
                 SizedBox(height: spacing.sm),
-
                 Row(
                   children: [
                     Expanded(
@@ -1229,7 +990,6 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                   ],
                 ),
                 SizedBox(height: spacing.sm),
-
                 TextFormField(
                   controller: _saleEndCtrl,
                   readOnly: true,
@@ -1242,78 +1002,10 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                 ),
                 SizedBox(height: spacing.lg),
 
-                // --- Attributes ---
+                // -------- Attributes --------
                 Text(l.adminProductAttributesTitle, style: text.titleMedium),
                 SizedBox(height: spacing.sm),
-
-                ..._attributes.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final row = entry.value;
-
-                  return Padding(
-                    padding: EdgeInsets.only(bottom: spacing.sm),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: spacing.sm,
-                              vertical: spacing.xs,
-                            ),
-                            decoration: BoxDecoration(
-                              color: c.surface,
-                              borderRadius: BorderRadius.circular(
-                                tokens.card.radius,
-                              ),
-                              border: Border.all(
-                                color: c.border.withOpacity(0.4),
-                              ),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value:
-                                    row.selectedCode ??
-                                    _allowedAttributeCodes.first,
-                                isExpanded: true,
-                                items: _allowedAttributeCodes
-                                    .map(
-                                      (code) => DropdownMenuItem(
-                                        value: code,
-                                        child: Text(code),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (val) {
-                                  if (val == null) return;
-                                  setState(() {
-                                    row.selectedCode = val;
-                                  });
-                                },
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: spacing.sm),
-                        Expanded(
-                          flex: 3,
-                          child: TextFormField(
-                            controller: row.valueCtrl,
-                            decoration: InputDecoration(
-                              labelText: l.adminProductAttributeValueLabel,
-                              hintText: 'Samsung',
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => _removeAttributeRow(index),
-                          icon: Icon(Icons.delete, color: c.danger),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-
+                ..._buildAttributeRows(context, tokens, l),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton.icon(
@@ -1353,23 +1045,352 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       ),
     );
   }
+
+  Widget _buildImagePicker(dynamic tokens, AppLocalizations l) {
+    final c = tokens.colors;
+    final spacing = tokens.spacing;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          height: 160,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: c.surface,
+            borderRadius: BorderRadius.circular(tokens.card.radius),
+            border: Border.all(color: c.border.withOpacity(0.4)),
+          ),
+          child: _pickedImage != null
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(tokens.card.radius),
+                  child: Image.file(
+                    File(_pickedImage!.path),
+                    fit: BoxFit.cover,
+                  ),
+                )
+              : Center(
+                  child: Icon(
+                    Icons.image_outlined,
+                    color: c.muted.withOpacity(0.7),
+                    size: 36,
+                  ),
+                ),
+        ),
+        SizedBox(height: spacing.sm),
+        Row(
+          children: [
+            OutlinedButton.icon(
+              onPressed: _pickImage,
+              icon: const Icon(Icons.upload),
+              label: Text(l.adminProductPickImage),
+            ),
+            SizedBox(width: spacing.sm),
+            if (_pickedImage != null)
+              TextButton.icon(
+                onPressed: _removePickedImage,
+                icon: const Icon(Icons.close),
+                label: Text(l.adminRemove),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ---------------- UI helpers ----------------
+  Widget _buildCategorySection(
+    BuildContext context,
+    dynamic tokens,
+    AppLocalizations l,
+  ) {
+    final c = tokens.colors;
+    final spacing = tokens.spacing;
+    final text = tokens.typography;
+
+    if (_loadingCategories) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8.0),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_categories.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l.adminNoCategories,
+            style: text.bodyMedium.copyWith(color: c.danger),
+          ),
+          TextButton.icon(
+            onPressed: _showCreateCategoryDialog,
+            icon: const Icon(Icons.add),
+            label: Text(l.adminCreateCategory),
+          ),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: spacing.sm,
+              vertical: spacing.xs,
+            ),
+            decoration: BoxDecoration(
+              color: c.surface,
+              borderRadius: BorderRadius.circular(tokens.card.radius),
+              border: Border.all(color: c.border.withOpacity(0.4)),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+                value: _selectedCategoryId,
+                isExpanded: true,
+                items: _categories
+                    .map(
+                      (cat) => DropdownMenuItem<int>(
+                        value: cat.id,
+                        child: Text(cat.name),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (val) async {
+                  if (val == null) return;
+                  setState(() {
+                    _selectedCategoryId = val;
+                    _selectedItemTypeId = null;
+                  });
+                  await _loadItemTypesForCategory(val);
+                },
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: spacing.sm),
+        IconButton(
+          onPressed: _showCreateCategoryDialog,
+          icon: const Icon(Icons.add),
+          color: c.primary,
+          tooltip: l.adminCreateCategory,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildItemTypeSection(
+    BuildContext context,
+    dynamic tokens,
+    AppLocalizations l,
+  ) {
+    final c = tokens.colors;
+    final spacing = tokens.spacing;
+    final text = tokens.typography;
+
+    if (_loadingItemTypes) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8.0),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_itemTypes.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l.adminNoItemTypes,
+            style: text.bodyMedium.copyWith(color: c.danger),
+          ),
+          TextButton.icon(
+            onPressed: _showCreateItemTypeDialog,
+            icon: const Icon(Icons.add),
+            label: Text(l.adminCreateItemType),
+          ),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: spacing.sm,
+              vertical: spacing.xs,
+            ),
+            decoration: BoxDecoration(
+              color: c.surface,
+              borderRadius: BorderRadius.circular(tokens.card.radius),
+              border: Border.all(color: c.border.withOpacity(0.4)),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+                value: _selectedItemTypeId,
+                isExpanded: true,
+                items: _itemTypes
+                    .map(
+                      (t) => DropdownMenuItem<int>(
+                        value: t.id,
+                        child: Text(t.name),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (val) {
+                  if (val == null) return;
+                  setState(() => _selectedItemTypeId = val);
+                },
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: spacing.sm),
+        IconButton(
+          onPressed: _showCreateItemTypeDialog,
+          icon: const Icon(Icons.add),
+          color: c.primary,
+          tooltip: l.adminCreateItemType,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProductTypeDropdown(
+    BuildContext context,
+    dynamic tokens,
+    AppLocalizations l,
+  ) {
+    final c = tokens.colors;
+    final spacing = tokens.spacing;
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: spacing.sm,
+        vertical: spacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: c.surface,
+        borderRadius: BorderRadius.circular(tokens.card.radius),
+        border: Border.all(color: c.border.withOpacity(0.4)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<ProductTypeDto>(
+          value: _selectedProductType,
+          isExpanded: true,
+          items: [
+            DropdownMenuItem(
+              value: ProductTypeDto.simple,
+              child: Text(l.adminProductTypeSimple),
+            ),
+            DropdownMenuItem(
+              value: ProductTypeDto.variable,
+              child: Text(l.adminProductTypeVariable),
+            ),
+            DropdownMenuItem(
+              value: ProductTypeDto.grouped,
+              child: Text(l.adminProductTypeGrouped),
+            ),
+            DropdownMenuItem(
+              value: ProductTypeDto.external,
+              child: Text(l.adminProductTypeExternal),
+            ),
+          ],
+          onChanged: (val) {
+            if (val == null) return;
+            setState(() {
+              _selectedProductType = val;
+              if (val != ProductTypeDto.external) {
+                _externalUrlCtrl.clear();
+                _buttonTextCtrl.clear();
+              }
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildAttributeRows(
+    BuildContext context,
+    dynamic tokens,
+    AppLocalizations l,
+  ) {
+    final c = tokens.colors;
+    final spacing = tokens.spacing;
+
+    return _attributes.asMap().entries.map((entry) {
+      final index = entry.key;
+      final row = entry.value;
+
+      return Padding(
+        padding: EdgeInsets.only(bottom: spacing.sm),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: spacing.sm,
+                  vertical: spacing.xs,
+                ),
+                decoration: BoxDecoration(
+                  color: c.surface,
+                  borderRadius: BorderRadius.circular(tokens.card.radius),
+                  border: Border.all(color: c.border.withOpacity(0.4)),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: row.selectedCode ?? _allowedAttributeCodes.first,
+                    isExpanded: true,
+                    items: _allowedAttributeCodes
+                        .map(
+                          (code) =>
+                              DropdownMenuItem(value: code, child: Text(code)),
+                        )
+                        .toList(),
+                    onChanged: (val) {
+                      if (val == null) return;
+                      setState(() => row.selectedCode = val);
+                    },
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: spacing.sm),
+            Expanded(
+              flex: 3,
+              child: TextFormField(
+                controller: row.valueCtrl,
+                decoration: InputDecoration(
+                  labelText: l.adminProductAttributeValueLabel,
+                  hintText: 'Samsung',
+                ),
+              ),
+            ),
+            IconButton(
+              onPressed: () => _removeAttributeRow(index),
+              icon: Icon(Icons.delete, color: c.danger),
+            ),
+          ],
+        ),
+      );
+    }).toList();
+  }
 }
 
-// ───────────────────────────────
-// Helpers
-// ───────────────────────────────
-
+// ---------------- local helper row ----------------
 class _AttributeRow {
   String? selectedCode;
   final TextEditingController valueCtrl = TextEditingController();
 
   _AttributeRow({this.selectedCode});
 
-  void dispose() {
-    valueCtrl.dispose();
-  }
+  void dispose() => valueCtrl.dispose();
 }
 
+// ---------------- local category option ----------------
 class _CategoryOption {
   final int id;
   final String name;
@@ -1377,9 +1398,9 @@ class _CategoryOption {
   _CategoryOption({required this.id, required this.name});
 
   factory _CategoryOption.fromJson(Map<String, dynamic> j) {
-    return _CategoryOption(
-      id: (j['id'] ?? 0) is int ? j['id'] as int : int.parse('${j['id']}'),
-      name: (j['name'] ?? '').toString(),
-    );
+    final raw = j['id'];
+    final id = raw is int ? raw : int.tryParse('$raw') ?? 0;
+
+    return _CategoryOption(id: id, name: (j['name'] ?? '').toString());
   }
 }

@@ -25,24 +25,19 @@ class AttributeValueDto {
 }
 
 class CreateProductRequest {
-  /// aup_id
   final int ownerProjectId;
-
-  /// OPTIONAL – advanced mode: explicit item type
   final int? itemTypeId;
-
-  /// OPTIONAL – simple mode: only category
   final int? categoryId;
-
   final int? currencyId;
 
   final String name;
   final String? description;
   final double price;
   final int? stock;
-  final String? status; // backend will default to "Upcoming" if null
 
-  final String? imageUrl;
+  /// backend default if null
+  final String? status;
+
   final String? sku;
   final ProductTypeDto productType;
 
@@ -53,7 +48,7 @@ class CreateProductRequest {
   final String? buttonText;
 
   final double? salePrice;
-  final String? saleStart; // e.g. 2025-12-03T00:00:00
+  final String? saleStart;
   final String? saleEnd;
 
   final List<AttributeValueDto> attributes;
@@ -68,7 +63,6 @@ class CreateProductRequest {
     required this.price,
     this.stock,
     this.status,
-    this.imageUrl,
     this.sku,
     required this.productType,
     this.virtualProduct = false,
@@ -96,7 +90,6 @@ class CreateProductRequest {
       'price': price,
       'stock': stock,
       'status': status,
-      'imageUrl': imageUrl,
       'sku': sku,
       'productType': productTypeDtoToApi(productType),
       'virtualProduct': virtualProduct,

@@ -20,15 +20,23 @@ class ProductFormState extends Equatable {
     );
   }
 
+  /// ✅ Fix:
+  /// - Allows clearing createdProduct intentionally
+  /// - Allows clearing error intentionally
+  /// - Preserves previous error if not provided
   ProductFormState copyWith({
     bool? isSubmitting,
     Product? createdProduct,
+    bool clearCreatedProduct = false,
     String? error,
+    bool clearError = false,
   }) {
     return ProductFormState(
       isSubmitting: isSubmitting ?? this.isSubmitting,
-      createdProduct: createdProduct ?? this.createdProduct,
-      error: error,
+      createdProduct: clearCreatedProduct
+          ? null
+          : (createdProduct ?? this.createdProduct),
+      error: clearError ? null : (error ?? this.error),
     );
   }
 

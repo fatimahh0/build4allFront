@@ -1,4 +1,4 @@
-// lib/features/items/data/services/item_type_api_service.dart
+// lib/features/catalog/data/services/item_type_api_service.dart
 
 import 'package:build4front/core/network/api_fetch.dart';
 import 'package:build4front/core/network/api_methods.dart' show HttpMethod;
@@ -12,31 +12,38 @@ class ItemTypeApiService {
 
   static const String _base = '/api/item-types';
 
-  // ---------- list by PROJECT ----------
   Future<List<Map<String, dynamic>>> getItemTypesByProject(
-    int projectId,
-  ) async {
+    int projectId, {
+    String? authToken,
+  }) async {
     try {
       final r = await _fetch.fetch(
         HttpMethod.get,
         '$_base/by-project/$projectId',
+        headers: authToken != null && authToken.isNotEmpty
+            ? {'Authorization': 'Bearer $authToken'}
+            : null,
       );
       return _asListOfMap(r.data);
     } on AppException {
-      // already has proper message from backend
       rethrow;
     } catch (e) {
       throw AppException('Failed to load item types by project', original: e);
     }
   }
 
-  // ---------- list by CATEGORY ----------
   Future<List<Map<String, dynamic>>> getItemTypesByCategory(
-    int categoryId,
-  ) async {
+    int categoryId, {
+    String? authToken,
+  }) async {
     try {
-      final path = '$_base/by-category/$categoryId';
-      final r = await _fetch.fetch(HttpMethod.get, path);
+      final r = await _fetch.fetch(
+        HttpMethod.get,
+        '$_base/by-category/$categoryId',
+        headers: authToken != null && authToken.isNotEmpty
+            ? {'Authorization': 'Bearer $authToken'}
+            : null,
+      );
       return _asListOfMap(r.data);
     } on AppException {
       rethrow;
@@ -45,7 +52,6 @@ class ItemTypeApiService {
     }
   }
 
-  /// POST /api/item-types  (create item type)
   Future<Map<String, dynamic>> createItemType({
     required String name,
     required int categoryId,
@@ -60,14 +66,12 @@ class ItemTypeApiService {
       );
       return _asMap(r.data);
     } on AppException {
-      // لو الـ ApiFetch رجّع ServerException برسالة من الباكند
       rethrow;
     } catch (e) {
       throw AppException('Failed to create item type', original: e);
     }
   }
 
-  // ---------- Helpers ----------
   List<Map<String, dynamic>> _asListOfMap(dynamic data) {
     if (data is List) {
       return data
