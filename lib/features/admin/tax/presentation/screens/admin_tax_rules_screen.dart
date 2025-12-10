@@ -49,6 +49,7 @@ class _AdminTaxRulesView extends StatefulWidget {
 class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
   final _store = AdminTokenStore();
   String? _token;
+  bool _loadingToken = true;
 
   @override
   void initState() {
@@ -59,7 +60,11 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
   Future<void> _load() async {
     final t = await _store.getToken();
     if (!mounted) return;
-    setState(() => _token = t);
+
+    setState(() {
+      _token = t;
+      _loadingToken = false;
+    });
 
     if (t != null && t.isNotEmpty) {
       context.read<TaxRulesBloc>().add(
@@ -68,8 +73,20 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
     }
   }
 
+  void _showNoTokenMessage() {
+    final l = AppLocalizations.of(context)!;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(l.adminSessionExpired)));
+  }
+
   Future<void> _openCreateSheet() async {
-    if (_token == null) return;
+    if (_loadingToken) return;
+
+    if (_token == null || _token!.isEmpty) {
+      _showNoTokenMessage();
+      return;
+    }
 
     final body = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
@@ -89,7 +106,12 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
   }
 
   Future<void> _openEditSheet(dynamic rule) async {
-    if (_token == null) return;
+    if (_loadingToken) return;
+
+    if (_token == null || _token!.isEmpty) {
+      _showNoTokenMessage();
+      return;
+    }
 
     final body = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
@@ -113,7 +135,13 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
   }
 
   void _deleteRule(int id) {
-    if (_token == null) return;
+    if (_loadingToken) return;
+
+    if (_token == null || _token!.isEmpty) {
+      _showNoTokenMessage();
+      return;
+    }
+
     context.read<TaxRulesBloc>().add(
       DeleteTaxRuleEvent(
         id: id,
@@ -141,7 +169,9 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
         ),
         actions: [
           IconButton(
-            onPressed: _openCreateSheet,
+            onPressed: (_loadingToken || _token == null || _token!.isEmpty)
+                ? null
+                : _openCreateSheet,
             icon: const Icon(Icons.add),
             tooltip: l.adminTaxAddRule,
           ),
@@ -149,6 +179,22 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
       ),
       body: BlocBuilder<TaxRulesBloc, TaxRulesState>(
         builder: (context, state) {
+          if (_loadingToken) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (_token == null || _token!.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: EdgeInsets.all(spacing.lg),
+                child: Text(
+                  l.adminSessionExpired,
+                  style: text.bodyMedium.copyWith(color: c.danger),
+                ),
+              ),
+            );
+          }
+
           if (state.loading) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -169,9 +215,20 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
             return Center(
               child: Padding(
                 padding: EdgeInsets.all(spacing.lg),
-                child: Text(
-                  l.adminTaxNoRules,
-                  style: text.bodyMedium.copyWith(color: c.muted),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      l.adminTaxNoRules,
+                      style: text.bodyMedium.copyWith(color: c.muted),
+                    ),
+                    SizedBox(height: spacing.md),
+                    ElevatedButton.icon(
+                      onPressed: _openCreateSheet,
+                      icon: const Icon(Icons.add),
+                      label: Text(l.adminTaxAddRule),
+                    ),
+                  ],
                 ),
               ),
             );

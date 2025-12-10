@@ -342,6 +342,7 @@
   "adminEdit": "Edit",
   "adminDelete": "Delete",
   "yes": "Yes",
-  "no": "No"
+  "no": "No",
+  "adminSessionExpired": "Your session has expired. Please log in again."
 
 }

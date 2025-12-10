@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/l10n/app_localizations.dart';
 import '../../domain/entities/tax_rule.dart';
@@ -35,12 +36,14 @@ class _TaxRuleFormSheetState extends State<TaxRuleFormSheet> {
   void initState() {
     super.initState();
     final p = widget.initial;
+
     _nameCtrl = TextEditingController(text: p?.name ?? '');
     _rateCtrl = TextEditingController(
       text: p != null ? p.rate.toStringAsFixed(2) : '',
     );
     _countryCtrl = TextEditingController(text: p?.countryId?.toString() ?? '');
     _regionCtrl = TextEditingController(text: p?.regionId?.toString() ?? '');
+
     _appliesToShipping = p?.appliesToShipping ?? false;
     _enabled = p?.enabled ?? true;
   }
@@ -58,6 +61,7 @@ class _TaxRuleFormSheetState extends State<TaxRuleFormSheet> {
     final countryId = _countryCtrl.text.trim().isEmpty
         ? null
         : int.tryParse(_countryCtrl.text.trim());
+
     final regionId = _regionCtrl.text.trim().isEmpty
         ? null
         : int.tryParse(_regionCtrl.text.trim());
@@ -96,11 +100,14 @@ class _TaxRuleFormSheetState extends State<TaxRuleFormSheet> {
           children: [
             Text(
               _isEdit ? l.adminTaxEditRuleTitle : l.adminTaxCreateRuleTitle,
-            
+              style: text.titleMedium.copyWith(
+                color: c.label,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             SizedBox(height: spacing.md),
 
-            Text(l.adminTaxRuleNameLabel, style: text.titleMedium),
+            Text(l.adminTaxRuleNameLabel, style: text.bodyMedium),
             SizedBox(height: spacing.xs),
             TextFormField(
               controller: _nameCtrl,
@@ -111,7 +118,7 @@ class _TaxRuleFormSheetState extends State<TaxRuleFormSheet> {
             ),
             SizedBox(height: spacing.md),
 
-            Text(l.adminTaxRuleRateLabel, style: text.titleMedium),
+            Text(l.adminTaxRuleRateLabel, style: text.bodyMedium),
             SizedBox(height: spacing.xs),
             TextFormField(
               controller: _rateCtrl,
@@ -144,7 +151,7 @@ class _TaxRuleFormSheetState extends State<TaxRuleFormSheet> {
             ),
             SizedBox(height: spacing.sm),
 
-            Text(l.adminTaxCountryIdLabel, style: text.titleMedium),
+            Text(l.adminTaxCountryIdLabel, style: text.bodyMedium),
             SizedBox(height: spacing.xs),
             TextFormField(
               controller: _countryCtrl,
@@ -153,7 +160,7 @@ class _TaxRuleFormSheetState extends State<TaxRuleFormSheet> {
             ),
             SizedBox(height: spacing.md),
 
-            Text(l.adminTaxRegionIdLabel, style: text.titleMedium),
+            Text(l.adminTaxRegionIdLabel, style: text.bodyMedium),
             SizedBox(height: spacing.xs),
             TextFormField(
               controller: _regionCtrl,

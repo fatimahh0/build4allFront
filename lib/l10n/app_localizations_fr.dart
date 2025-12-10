@@ -716,4 +716,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get no => 'No';
+
+  @override
+  String get adminSessionExpired => 'Your session has expired. Please log in again.';
 }
