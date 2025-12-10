@@ -1,3 +1,4 @@
+import 'package:build4front/features/admin/home_banner/presentation/screens/admin_home_banners_screen.dart';
 import 'package:build4front/features/admin/shipping/prensentation/screens/admin_shipping_methods_screen.dart';
 import 'package:build4front/features/admin/tax/presentation/screens/admin_tax_rules_screen.dart';
 import 'package:flutter/material.dart';
@@ -148,9 +149,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     );
                   },
                 ),
+                // ✅ NEW HOME BANNERS TILE
+                _AdminTile(
+                  icon: Icons.view_carousel_outlined,
+                  title: l10n.adminHomeBannersTitle,
+                  colors: colors,
+                  card: card,
+                  onTap: () {
+                    final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            AdminHomeBannersScreen(ownerProjectId: ownerId),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
-
           ],
         ),
       ),

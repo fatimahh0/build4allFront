@@ -88,7 +88,7 @@ class ProductApiService {
   // ---------------- HELPERS ----------------
 
   /// Backend expects: attributesJson (string)
-  /// but UI غالباً بيرسل: attributes (list)
+
   Map<String, dynamic> _normalizeBodyForMultipart(Map<String, dynamic> body) {
     final map = Map<String, dynamic>.from(body);
 
@@ -161,8 +161,7 @@ class ProductApiService {
 
   // ---------------- UPDATE ----------------
 
-  /// ✅ Update WITHOUT image
-  /// Your backend PUT consumes multipart, so we must إرسال FormData حتى لو ما في صورة.
+
   Future<Map<String, dynamic>> update({
     required int id,
     required Map<String, dynamic> body,

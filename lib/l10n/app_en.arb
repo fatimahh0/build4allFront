@@ -413,7 +413,87 @@
   "adminDisabled": "Disabled only",
   "adminActive": "Active only",
   "adminCreated": "Created successfully",
-  "adminUpdated": "Updated successfully"
+  "adminUpdated": "Updated successfully",
+  "adminHomeBannersTitle": "Home Banners",
+  "adminHomeBannerAdd": "Add banner",
+  "adminHomeBannerNoBanners": "No banners yet",
+
+  "adminHomeBannerCreateTitle": "Create home banner",
+  "adminHomeBannerEditTitle": "Edit home banner",
+
+  "adminHomeBannerTitleLabel": "Title",
+  "adminHomeBannerSubtitleLabel": "Subtitle",
+
+  "adminHomeBannerTargetTypeLabel": "Target type",
+  "adminHomeBannerTargetIdLabel": "Target ID",
+  "adminHomeBannerTargetUrlLabel": "Target URL",
+
+  "adminHomeBannerSortOrderLabel": "Sort order",
+  "adminHomeBannerActiveLabel": "Active",
+
+  "adminImageLabel": "Banner image",
+  "adminChooseFromGallery": "Choose from gallery",
+  "adminTakePhoto": "Take photo",
+  "adminRemoveImage": "Remove image",
+  "adminImageRequired": "Image is required",
+
+  "adminTargetShort": "Target",
+  "adminSortShort": "Sort",
+  "adminUntitled": "Untitled",
+
+  "adminCreate": "Create",
+  "adminUpdate": "Update",
+  "adminEdit": "Edit",
+  "adminDelete": "Delete",
+  "adminCancel": "Cancel",
+
+  "adminConfirmDelete": "Are you sure you want to delete this item?",
+  "adminDeleted": "Deleted",
+  "adminCreated": "Created",
+  "adminUpdated": "Updated",
+
+  "refreshLabel": "Refresh",
+  "adminSessionExpired": "Your session has expired. Please log in again.",
+   "adminHomeBannersTitle": "Home Banners",
+  "adminHomeBannerAdd": "Add banner",
+  "adminHomeBannerEdit": "Edit banner",
+  "adminHomeBannerCreate": "Create banner",
+
+  "adminHomeBannerImageLabel": "Banner image",
+  "adminHomeBannerImageRequired": "Image is required",
+  "adminPickFromGallery": "Gallery",
+  "adminPickFromCamera": "Camera",
+  "adminRemoveImage": "Remove",
+
+  "adminHomeBannerTitleLabel": "Title",
+  "adminHomeBannerSubtitleLabel": "Subtitle",
+  "adminHomeBannerSortLabel": "Sort order",
+
+  "adminHomeBannerLoadingTargets": "Loading targets...",
+
+  "adminHomeBannerTargetTypeLabel": "Target type",
+  "adminHomeBannerTargetTypeHint": "Select target type",
+
+  "adminHomeBannerTargetNone": "None",
+  "adminHomeBannerTargetCategory": "Category",
+  "adminHomeBannerTargetProduct": "Product",
+  "adminHomeBannerTargetUrl": "External URL",
+
+  "adminHomeBannerTargetUrlLabel": "Target URL",
+  "adminHomeBannerUrlRequired": "URL is required",
+
+  "adminHomeBannerTargetCategoryLabel": "Category",
+  "adminHomeBannerTargetCategoryHint": "Select category",
+  "adminHomeBannerCategoryRequired": "Category is required",
+
+  "adminHomeBannerTargetProductLabel": "Product",
+  "adminHomeBannerTargetProductHint": "Select product",
+  "adminHomeBannerProductRequired": "Product is required",
+
+  "adminActiveLabel": "Active",
+  "adminNoOptions": "No options",
+  "noResultsLabel": "No results",
+  "searchLabel": "Search..."
 
 
 }

@@ -886,7 +886,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get adminShippingCreateButton => 'Create method';
 
   @override
-  String get adminDeleted => 'Item deleted successfully';
+  String get adminDeleted => 'Deleted';
 
   @override
   String get refreshLabel => 'Refresh';
@@ -904,8 +904,140 @@ class AppLocalizationsAr extends AppLocalizations {
   String get adminActive => 'Active only';
 
   @override
-  String get adminCreated => 'Created successfully';
+  String get adminCreated => 'Created';
 
   @override
-  String get adminUpdated => 'Updated successfully';
+  String get adminUpdated => 'Updated';
+
+  @override
+  String get adminHomeBannersTitle => 'Home Banners';
+
+  @override
+  String get adminHomeBannerAdd => 'Add banner';
+
+  @override
+  String get adminHomeBannerNoBanners => 'No banners yet';
+
+  @override
+  String get adminHomeBannerCreateTitle => 'Create home banner';
+
+  @override
+  String get adminHomeBannerEditTitle => 'Edit home banner';
+
+  @override
+  String get adminHomeBannerTitleLabel => 'Title';
+
+  @override
+  String get adminHomeBannerSubtitleLabel => 'Subtitle';
+
+  @override
+  String get adminHomeBannerTargetTypeLabel => 'Target type';
+
+  @override
+  String get adminHomeBannerTargetIdLabel => 'Target ID';
+
+  @override
+  String get adminHomeBannerTargetUrlLabel => 'Target URL';
+
+  @override
+  String get adminHomeBannerSortOrderLabel => 'Sort order';
+
+  @override
+  String get adminHomeBannerActiveLabel => 'Active';
+
+  @override
+  String get adminImageLabel => 'Banner image';
+
+  @override
+  String get adminChooseFromGallery => 'Choose from gallery';
+
+  @override
+  String get adminTakePhoto => 'Take photo';
+
+  @override
+  String get adminRemoveImage => 'Remove';
+
+  @override
+  String get adminImageRequired => 'Image is required';
+
+  @override
+  String get adminTargetShort => 'Target';
+
+  @override
+  String get adminSortShort => 'Sort';
+
+  @override
+  String get adminUntitled => 'Untitled';
+
+  @override
+  String get adminHomeBannerEdit => 'Edit banner';
+
+  @override
+  String get adminHomeBannerCreate => 'Create banner';
+
+  @override
+  String get adminHomeBannerImageLabel => 'Banner image';
+
+  @override
+  String get adminHomeBannerImageRequired => 'Image is required';
+
+  @override
+  String get adminPickFromGallery => 'Gallery';
+
+  @override
+  String get adminPickFromCamera => 'Camera';
+
+  @override
+  String get adminHomeBannerSortLabel => 'Sort order';
+
+  @override
+  String get adminHomeBannerLoadingTargets => 'Loading targets...';
+
+  @override
+  String get adminHomeBannerTargetTypeHint => 'Select target type';
+
+  @override
+  String get adminHomeBannerTargetNone => 'None';
+
+  @override
+  String get adminHomeBannerTargetCategory => 'Category';
+
+  @override
+  String get adminHomeBannerTargetProduct => 'Product';
+
+  @override
+  String get adminHomeBannerTargetUrl => 'External URL';
+
+  @override
+  String get adminHomeBannerUrlRequired => 'URL is required';
+
+  @override
+  String get adminHomeBannerTargetCategoryLabel => 'Category';
+
+  @override
+  String get adminHomeBannerTargetCategoryHint => 'Select category';
+
+  @override
+  String get adminHomeBannerCategoryRequired => 'Category is required';
+
+  @override
+  String get adminHomeBannerTargetProductLabel => 'Product';
+
+  @override
+  String get adminHomeBannerTargetProductHint => 'Select product';
+
+  @override
+  String get adminHomeBannerProductRequired => 'Product is required';
+
+  @override
+  String get adminActiveLabel => 'Active';
+
+  @override
+  String get adminNoOptions => 'No options';
+
+  @override
+  String get noResultsLabel => 'No results';
+
+  @override
+  String get searchLabel => 'Search...';
 }

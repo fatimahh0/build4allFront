@@ -1828,7 +1828,7 @@ abstract class AppLocalizations {
   /// No description provided for @adminDeleted.
   ///
   /// In en, this message translates to:
-  /// **'Item deleted successfully'**
+  /// **'Deleted'**
   String get adminDeleted;
 
   /// No description provided for @refreshLabel.
@@ -1864,14 +1864,278 @@ abstract class AppLocalizations {
   /// No description provided for @adminCreated.
   ///
   /// In en, this message translates to:
-  /// **'Created successfully'**
+  /// **'Created'**
   String get adminCreated;
 
   /// No description provided for @adminUpdated.
   ///
   /// In en, this message translates to:
-  /// **'Updated successfully'**
+  /// **'Updated'**
   String get adminUpdated;
+
+  /// No description provided for @adminHomeBannersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Home Banners'**
+  String get adminHomeBannersTitle;
+
+  /// No description provided for @adminHomeBannerAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add banner'**
+  String get adminHomeBannerAdd;
+
+  /// No description provided for @adminHomeBannerNoBanners.
+  ///
+  /// In en, this message translates to:
+  /// **'No banners yet'**
+  String get adminHomeBannerNoBanners;
+
+  /// No description provided for @adminHomeBannerCreateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create home banner'**
+  String get adminHomeBannerCreateTitle;
+
+  /// No description provided for @adminHomeBannerEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit home banner'**
+  String get adminHomeBannerEditTitle;
+
+  /// No description provided for @adminHomeBannerTitleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get adminHomeBannerTitleLabel;
+
+  /// No description provided for @adminHomeBannerSubtitleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtitle'**
+  String get adminHomeBannerSubtitleLabel;
+
+  /// No description provided for @adminHomeBannerTargetTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Target type'**
+  String get adminHomeBannerTargetTypeLabel;
+
+  /// No description provided for @adminHomeBannerTargetIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Target ID'**
+  String get adminHomeBannerTargetIdLabel;
+
+  /// No description provided for @adminHomeBannerTargetUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Target URL'**
+  String get adminHomeBannerTargetUrlLabel;
+
+  /// No description provided for @adminHomeBannerSortOrderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort order'**
+  String get adminHomeBannerSortOrderLabel;
+
+  /// No description provided for @adminHomeBannerActiveLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get adminHomeBannerActiveLabel;
+
+  /// No description provided for @adminImageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Banner image'**
+  String get adminImageLabel;
+
+  /// No description provided for @adminChooseFromGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from gallery'**
+  String get adminChooseFromGallery;
+
+  /// No description provided for @adminTakePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take photo'**
+  String get adminTakePhoto;
+
+  /// No description provided for @adminRemoveImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get adminRemoveImage;
+
+  /// No description provided for @adminImageRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Image is required'**
+  String get adminImageRequired;
+
+  /// No description provided for @adminTargetShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Target'**
+  String get adminTargetShort;
+
+  /// No description provided for @adminSortShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort'**
+  String get adminSortShort;
+
+  /// No description provided for @adminUntitled.
+  ///
+  /// In en, this message translates to:
+  /// **'Untitled'**
+  String get adminUntitled;
+
+  /// No description provided for @adminHomeBannerEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit banner'**
+  String get adminHomeBannerEdit;
+
+  /// No description provided for @adminHomeBannerCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create banner'**
+  String get adminHomeBannerCreate;
+
+  /// No description provided for @adminHomeBannerImageLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Banner image'**
+  String get adminHomeBannerImageLabel;
+
+  /// No description provided for @adminHomeBannerImageRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Image is required'**
+  String get adminHomeBannerImageRequired;
+
+  /// No description provided for @adminPickFromGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Gallery'**
+  String get adminPickFromGallery;
+
+  /// No description provided for @adminPickFromCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get adminPickFromCamera;
+
+  /// No description provided for @adminHomeBannerSortLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort order'**
+  String get adminHomeBannerSortLabel;
+
+  /// No description provided for @adminHomeBannerLoadingTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading targets...'**
+  String get adminHomeBannerLoadingTargets;
+
+  /// No description provided for @adminHomeBannerTargetTypeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select target type'**
+  String get adminHomeBannerTargetTypeHint;
+
+  /// No description provided for @adminHomeBannerTargetNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get adminHomeBannerTargetNone;
+
+  /// No description provided for @adminHomeBannerTargetCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get adminHomeBannerTargetCategory;
+
+  /// No description provided for @adminHomeBannerTargetProduct.
+  ///
+  /// In en, this message translates to:
+  /// **'Product'**
+  String get adminHomeBannerTargetProduct;
+
+  /// No description provided for @adminHomeBannerTargetUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'External URL'**
+  String get adminHomeBannerTargetUrl;
+
+  /// No description provided for @adminHomeBannerUrlRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'URL is required'**
+  String get adminHomeBannerUrlRequired;
+
+  /// No description provided for @adminHomeBannerTargetCategoryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get adminHomeBannerTargetCategoryLabel;
+
+  /// No description provided for @adminHomeBannerTargetCategoryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select category'**
+  String get adminHomeBannerTargetCategoryHint;
+
+  /// No description provided for @adminHomeBannerCategoryRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Category is required'**
+  String get adminHomeBannerCategoryRequired;
+
+  /// No description provided for @adminHomeBannerTargetProductLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Product'**
+  String get adminHomeBannerTargetProductLabel;
+
+  /// No description provided for @adminHomeBannerTargetProductHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select product'**
+  String get adminHomeBannerTargetProductHint;
+
+  /// No description provided for @adminHomeBannerProductRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Product is required'**
+  String get adminHomeBannerProductRequired;
+
+  /// No description provided for @adminActiveLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get adminActiveLabel;
+
+  /// No description provided for @adminNoOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'No options'**
+  String get adminNoOptions;
+
+  /// No description provided for @noResultsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'No results'**
+  String get noResultsLabel;
+
+  /// No description provided for @searchLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Search...'**
+  String get searchLabel;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
