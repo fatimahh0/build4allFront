@@ -791,4 +791,121 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get adminTaxAutoNameLabel => 'Auto-generate name';
+
+  @override
+  String get adminShippingTitle => 'Shipping Methods';
+
+  @override
+  String get adminShippingAdd => 'Add method';
+
+  @override
+  String get adminShippingNoMethods => 'No shipping methods yet';
+
+  @override
+  String get adminShippingCreateTitle => 'Create shipping method';
+
+  @override
+  String get adminShippingEditTitle => 'Edit shipping method';
+
+  @override
+  String get adminShippingNameLabel => 'Name';
+
+  @override
+  String get adminShippingNameRequired => 'Name is required';
+
+  @override
+  String get adminShippingDescLabel => 'Description';
+
+  @override
+  String get adminShippingTypeLabel => 'Method type';
+
+  @override
+  String get adminShippingTypeHint => 'Select type';
+
+  @override
+  String get adminShippingFlatRateLabel => 'Flat rate';
+
+  @override
+  String get adminShippingPerKgLabel => 'Price per kg';
+
+  @override
+  String get adminShippingThresholdLabel => 'Free shipping threshold';
+
+  @override
+  String get adminShippingCountryLabel => 'Country';
+
+  @override
+  String get adminShippingCountryHint => 'Select country';
+
+  @override
+  String get adminShippingCountryRequired => 'Country is required';
+
+  @override
+  String get adminShippingRegionLabel => 'Region';
+
+  @override
+  String get adminShippingRegionHint => 'Select region (optional)';
+
+  @override
+  String get adminShippingSelectCountryFirst => 'Select country first';
+
+  @override
+  String get adminShippingEnabledLabel => 'Enabled';
+
+  @override
+  String get adminShippingEnabledShort => 'Enabled';
+
+  @override
+  String get adminShippingTypeShort => 'Type';
+
+  @override
+  String get shippingTypeFlatRate => 'Flat rate';
+
+  @override
+  String get shippingTypeFree => 'Free';
+
+  @override
+  String get shippingTypeWeightBased => 'Weight based';
+
+  @override
+  String get shippingTypePriceBased => 'Price based';
+
+  @override
+  String get shippingTypePricePerKg => 'Price per kg';
+
+  @override
+  String get shippingTypeLocalPickup => 'Local pickup';
+
+  @override
+  String get shippingTypeFreeOverThreshold => 'Free over threshold';
+
+  @override
+  String get adminConfirmDelete => 'Are you sure you want to delete this item?';
+
+  @override
+  String get adminShippingCreateButton => 'Create method';
+
+  @override
+  String get adminDeleted => 'Item deleted successfully';
+
+  @override
+  String get refreshLabel => 'Refresh';
+
+  @override
+  String get adminEnabledOnly => 'Enabled only';
+
+  @override
+  String get adminShowAll => 'Show all';
+
+  @override
+  String get adminDisabled => 'Disabled only';
+
+  @override
+  String get adminActive => 'Active only';
+
+  @override
+  String get adminCreated => 'Created successfully';
+
+  @override
+  String get adminUpdated => 'Updated successfully';
 }

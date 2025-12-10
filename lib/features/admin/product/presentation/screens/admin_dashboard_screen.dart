@@ -1,3 +1,4 @@
+import 'package:build4front/features/admin/shipping/prensentation/screens/admin_shipping_methods_screen.dart';
 import 'package:build4front/features/admin/tax/presentation/screens/admin_tax_rules_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -107,6 +108,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     );
                   },
                 ),
+
+                // ✅ NEW SHIPPING TILE
+                _AdminTile(
+                  icon: Icons.local_shipping_outlined,
+                  title: l10n.adminShippingTitle,
+                  colors: colors,
+                  card: card,
+                  onTap: () {
+                    final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            AdminShippingMethodsScreen(ownerProjectId: ownerId),
+                      ),
+                    );
+                  },
+                ),
+
                 _AdminTile(
                   icon: Icons.settings_outlined,
                   title: l10n.adminSettings,
@@ -131,6 +150,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
               ],
             ),
+
           ],
         ),
       ),

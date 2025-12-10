@@ -7,54 +7,56 @@ import 'package:build4front/features/auth/data/services/admin_token_store.dart';
 
 import 'package:build4front/common/widgets/app_toast.dart';
 
-import 'package:build4front/features/admin/tax/domain/usecase/create_tax_rule.dart';
-import 'package:build4front/features/admin/tax/domain/usecase/delete_tax_rule.dart';
-import 'package:build4front/features/admin/tax/domain/usecase/list_tax_rules.dart';
-import 'package:build4front/features/admin/tax/domain/usecase/update_tax_rule.dart';
+import '../../data/services/shipping_api_service.dart';
+import '../../data/repositories/shipping_repository_impl.dart';
 
-import '../../data/services/tax_api_service.dart';
-import '../../data/repositories/tax_repository_impl.dart';
+import '../../domain/entities/shipping_method.dart';
+import '../../domain/usecases/list_shipping_methods.dart';
+import '../../domain/usecases/create_shipping_method.dart';
+import '../../domain/usecases/update_shipping_method.dart';
+import '../../domain/usecases/delete_shipping_method.dart';
 
-import '../../domain/entities/tax_rule.dart';
-import '../bloc/tax_rules_bloc.dart';
-import '../bloc/tax_rules_event.dart';
-import '../bloc/tax_rules_state.dart';
-import '../widgets/tax_rule_form_sheet.dart';
+import '../bloc/shipping_methods_bloc.dart';
+import '../bloc/shipping_methods_event.dart';
+import '../bloc/shipping_methods_state.dart';
 
-import '../widgets/admin_tax_rule_card.dart';
-import '../widgets/admin_tax_empty_state.dart';
-import '../widgets/admin_tax_filters_bar.dart';
+import '../widgets/shipping_method_form_sheet.dart';
+import '../widgets/admin_shipping_filters_bar.dart';
+import '../widgets/admin_shipping_empty_state.dart';
+import '../widgets/admin_shipping_method_card.dart';
 
-class AdminTaxRulesScreen extends StatelessWidget {
+class AdminShippingMethodsScreen extends StatelessWidget {
   final int ownerProjectId;
 
-  const AdminTaxRulesScreen({super.key, required this.ownerProjectId});
+  const AdminShippingMethodsScreen({super.key, required this.ownerProjectId});
 
   @override
   Widget build(BuildContext context) {
-    final repo = TaxRepositoryImpl(TaxApiService());
+    final repo = ShippingRepositoryImpl(ShippingApiService());
 
     return BlocProvider(
-      create: (_) => TaxRulesBloc(
-        listRules: ListTaxRules(repo),
-        createRule: CreateTaxRule(repo),
-        updateRule: UpdateTaxRule(repo),
-        deleteRule: DeleteTaxRule(repo),
+      create: (_) => ShippingMethodsBloc(
+        listMethods: ListShippingMethods(repo),
+        createMethod: CreateShippingMethod(repo),
+        updateMethod: UpdateShippingMethod(repo),
+        deleteMethod: DeleteShippingMethod(repo),
       ),
-      child: _AdminTaxRulesView(ownerProjectId: ownerProjectId),
+      child: _AdminShippingMethodsView(ownerProjectId: ownerProjectId),
     );
   }
 }
 
-class _AdminTaxRulesView extends StatefulWidget {
+class _AdminShippingMethodsView extends StatefulWidget {
   final int ownerProjectId;
-  const _AdminTaxRulesView({required this.ownerProjectId});
+
+  const _AdminShippingMethodsView({required this.ownerProjectId});
 
   @override
-  State<_AdminTaxRulesView> createState() => _AdminTaxRulesViewState();
+  State<_AdminShippingMethodsView> createState() =>
+      _AdminShippingMethodsViewState();
 }
 
-class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
+class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
   final _store = AdminTokenStore();
 
   String? _token;
@@ -65,10 +67,10 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
   @override
   void initState() {
     super.initState();
-    _loadTokenAndRules();
+    _loadTokenAndData();
   }
 
-  Future<void> _loadTokenAndRules() async {
+  Future<void> _loadTokenAndData() async {
     final t = await _store.getToken();
     if (!mounted) return;
 
@@ -78,8 +80,8 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
     });
 
     if (t != null && t.isNotEmpty) {
-      context.read<TaxRulesBloc>().add(
-        LoadTaxRules(ownerProjectId: widget.ownerProjectId, token: t),
+      context.read<ShippingMethodsBloc>().add(
+        LoadShippingMethods(ownerProjectId: widget.ownerProjectId, token: t),
       );
     }
   }
@@ -95,8 +97,11 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
       return;
     }
 
-    context.read<TaxRulesBloc>().add(
-      LoadTaxRules(ownerProjectId: widget.ownerProjectId, token: _token!),
+    context.read<ShippingMethodsBloc>().add(
+      LoadShippingMethods(
+        ownerProjectId: widget.ownerProjectId,
+        token: _token!,
+      ),
     );
   }
 
@@ -111,13 +116,14 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
     final body = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => TaxRuleFormSheet(ownerProjectId: widget.ownerProjectId),
+      builder: (_) =>
+          ShippingMethodFormSheet(ownerProjectId: widget.ownerProjectId),
     );
 
     if (body == null) return;
 
-    context.read<TaxRulesBloc>().add(
-      CreateTaxRuleEvent(
+    context.read<ShippingMethodsBloc>().add(
+      CreateShippingMethodEvent(
         body: body,
         token: _token!,
         ownerProjectId: widget.ownerProjectId,
@@ -128,7 +134,7 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
     AppToast.show(context, l.adminCreated ?? 'Created');
   }
 
-  Future<void> _openEditSheet(TaxRule rule) async {
+  Future<void> _openEditSheet(ShippingMethod method) async {
     if (_loadingToken) return;
 
     if (_token == null || _token!.isEmpty) {
@@ -139,17 +145,17 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
     final body = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => TaxRuleFormSheet(
+      builder: (_) => ShippingMethodFormSheet(
         ownerProjectId: widget.ownerProjectId,
-        initial: rule,
+        initial: method,
       ),
     );
 
     if (body == null) return;
 
-    context.read<TaxRulesBloc>().add(
-      UpdateTaxRuleEvent(
-        id: rule.id,
+    context.read<ShippingMethodsBloc>().add(
+      UpdateShippingMethodEvent(
+        id: method.id,
         body: body,
         token: _token!,
         ownerProjectId: widget.ownerProjectId,
@@ -160,7 +166,7 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
     AppToast.show(context, l.adminUpdated ?? 'Updated');
   }
 
-  Future<void> _confirmAndDelete(TaxRule rule) async {
+  Future<void> _confirmAndDelete(ShippingMethod method) async {
     if (_loadingToken) return;
 
     if (_token == null || _token!.isEmpty) {
@@ -195,9 +201,9 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
 
     if (ok != true) return;
 
-    context.read<TaxRulesBloc>().add(
-      DeleteTaxRuleEvent(
-        id: rule.id,
+    context.read<ShippingMethodsBloc>().add(
+      DeleteShippingMethodEvent(
+        id: method.id,
         token: _token!,
         ownerProjectId: widget.ownerProjectId,
       ),
@@ -220,7 +226,7 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
         backgroundColor: c.surface,
         elevation: 0,
         title: Text(
-          l.adminTaxRulesTitle,
+          l.adminShippingTitle ?? 'Shipping Methods',
           style: text.titleMedium.copyWith(
             color: c.label,
             fontWeight: FontWeight.w700,
@@ -237,7 +243,7 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
                 ? null
                 : _openCreateSheet,
             icon: Icon(Icons.add, color: c.primary),
-            tooltip: l.adminTaxAddRule,
+            tooltip: l.adminShippingAdd ?? 'Add method',
           ),
         ],
       ),
@@ -254,7 +260,7 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
                 ),
               ),
             )
-          : BlocBuilder<TaxRulesBloc, TaxRulesState>(
+          : BlocBuilder<ShippingMethodsBloc, ShippingMethodsState>(
               builder: (context, state) {
                 if (state.loading) {
                   return Center(
@@ -279,32 +285,32 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
                   );
                 }
 
-                final all = state.rules;
+                final all = state.methods;
                 final filtered = _showAll
                     ? all
-                    : all.where((r) => r.enabled).toList();
+                    : all.where((m) => m.enabled).toList();
 
                 return RefreshIndicator(
                   onRefresh: _refresh,
                   child: ListView(
                     padding: EdgeInsets.all(spacing.lg),
                     children: [
-                      AdminTaxFiltersBar(
+                      AdminShippingFiltersBar(
                         showAll: _showAll,
                         onChangedShowAll: (v) => setState(() => _showAll = v),
                       ),
                       SizedBox(height: spacing.md),
 
                       if (filtered.isEmpty)
-                        AdminTaxEmptyState(onAdd: _openCreateSheet)
+                        AdminShippingEmptyState(onAdd: _openCreateSheet)
                       else
                         ...filtered.map(
-                          (r) => Padding(
+                          (m) => Padding(
                             padding: EdgeInsets.only(bottom: spacing.sm),
-                            child: AdminTaxRuleCard(
-                              rule: r,
-                              onEdit: () => _openEditSheet(r),
-                              onDelete: () => _confirmAndDelete(r),
+                            child: AdminShippingMethodCard(
+                              method: m,
+                              onEdit: () => _openEditSheet(m),
+                              onDelete: () => _confirmAndDelete(m),
                             ),
                           ),
                         ),

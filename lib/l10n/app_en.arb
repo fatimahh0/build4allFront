@@ -367,7 +367,53 @@
   "adminTaxRulePresetLabel" : "Rule Preset",
   "adminTaxRulePresetHint" : "Select a preset to auto-fill fields",
   "adminCustom": "Custom",
-  "adminTaxAutoNameLabel": "Auto-generate name"
+  "adminTaxAutoNameLabel": "Auto-generate name",
+   "adminShippingTitle": "Shipping Methods",
+  "adminShippingAdd": "Add method",
+  "adminShippingNoMethods": "No shipping methods yet",
+  "adminShippingCreateTitle": "Create shipping method",
+  "adminShippingEditTitle": "Edit shipping method",
+
+  "adminShippingNameLabel": "Name",
+  "adminShippingNameRequired": "Name is required",
+  "adminShippingDescLabel": "Description",
+
+  "adminShippingTypeLabel": "Method type",
+  "adminShippingTypeHint": "Select type",
+
+  "adminShippingFlatRateLabel": "Flat rate",
+  "adminShippingPerKgLabel": "Price per kg",
+  "adminShippingThresholdLabel": "Free shipping threshold",
+
+  "adminShippingCountryLabel": "Country",
+  "adminShippingCountryHint": "Select country",
+  "adminShippingCountryRequired": "Country is required",
+
+  "adminShippingRegionLabel": "Region",
+  "adminShippingRegionHint": "Select region (optional)",
+  "adminShippingSelectCountryFirst": "Select country first",
+
+  "adminShippingEnabledLabel": "Enabled",
+  "adminShippingEnabledShort": "Enabled",
+  "adminShippingTypeShort": "Type",
+
+  "shippingTypeFlatRate": "Flat rate",
+  "shippingTypeFree": "Free",
+  "shippingTypeWeightBased": "Weight based",
+  "shippingTypePriceBased": "Price based",
+  "shippingTypePricePerKg": "Price per kg",
+  "shippingTypeLocalPickup": "Local pickup",
+  "shippingTypeFreeOverThreshold": "Free over threshold",
+  "adminConfirmDelete": "Are you sure you want to delete this item?",
+  "adminShippingCreateButton": "Create method",
+  "adminDeleted": "Item deleted successfully",
+  "refreshLabel": "Refresh",
+  "adminEnabledOnly": "Enabled only",
+  "adminShowAll"  : "Show all",
+  "adminDisabled": "Disabled only",
+  "adminActive": "Active only",
+  "adminCreated": "Created successfully",
+  "adminUpdated": "Updated successfully"
 
 
 }

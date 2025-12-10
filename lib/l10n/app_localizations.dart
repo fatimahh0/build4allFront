@@ -1638,6 +1638,240 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Auto-generate name'**
   String get adminTaxAutoNameLabel;
+
+  /// No description provided for @adminShippingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shipping Methods'**
+  String get adminShippingTitle;
+
+  /// No description provided for @adminShippingAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add method'**
+  String get adminShippingAdd;
+
+  /// No description provided for @adminShippingNoMethods.
+  ///
+  /// In en, this message translates to:
+  /// **'No shipping methods yet'**
+  String get adminShippingNoMethods;
+
+  /// No description provided for @adminShippingCreateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create shipping method'**
+  String get adminShippingCreateTitle;
+
+  /// No description provided for @adminShippingEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit shipping method'**
+  String get adminShippingEditTitle;
+
+  /// No description provided for @adminShippingNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get adminShippingNameLabel;
+
+  /// No description provided for @adminShippingNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Name is required'**
+  String get adminShippingNameRequired;
+
+  /// No description provided for @adminShippingDescLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get adminShippingDescLabel;
+
+  /// No description provided for @adminShippingTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Method type'**
+  String get adminShippingTypeLabel;
+
+  /// No description provided for @adminShippingTypeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select type'**
+  String get adminShippingTypeHint;
+
+  /// No description provided for @adminShippingFlatRateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Flat rate'**
+  String get adminShippingFlatRateLabel;
+
+  /// No description provided for @adminShippingPerKgLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Price per kg'**
+  String get adminShippingPerKgLabel;
+
+  /// No description provided for @adminShippingThresholdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Free shipping threshold'**
+  String get adminShippingThresholdLabel;
+
+  /// No description provided for @adminShippingCountryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Country'**
+  String get adminShippingCountryLabel;
+
+  /// No description provided for @adminShippingCountryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select country'**
+  String get adminShippingCountryHint;
+
+  /// No description provided for @adminShippingCountryRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Country is required'**
+  String get adminShippingCountryRequired;
+
+  /// No description provided for @adminShippingRegionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Region'**
+  String get adminShippingRegionLabel;
+
+  /// No description provided for @adminShippingRegionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select region (optional)'**
+  String get adminShippingRegionHint;
+
+  /// No description provided for @adminShippingSelectCountryFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Select country first'**
+  String get adminShippingSelectCountryFirst;
+
+  /// No description provided for @adminShippingEnabledLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get adminShippingEnabledLabel;
+
+  /// No description provided for @adminShippingEnabledShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get adminShippingEnabledShort;
+
+  /// No description provided for @adminShippingTypeShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get adminShippingTypeShort;
+
+  /// No description provided for @shippingTypeFlatRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Flat rate'**
+  String get shippingTypeFlatRate;
+
+  /// No description provided for @shippingTypeFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Free'**
+  String get shippingTypeFree;
+
+  /// No description provided for @shippingTypeWeightBased.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight based'**
+  String get shippingTypeWeightBased;
+
+  /// No description provided for @shippingTypePriceBased.
+  ///
+  /// In en, this message translates to:
+  /// **'Price based'**
+  String get shippingTypePriceBased;
+
+  /// No description provided for @shippingTypePricePerKg.
+  ///
+  /// In en, this message translates to:
+  /// **'Price per kg'**
+  String get shippingTypePricePerKg;
+
+  /// No description provided for @shippingTypeLocalPickup.
+  ///
+  /// In en, this message translates to:
+  /// **'Local pickup'**
+  String get shippingTypeLocalPickup;
+
+  /// No description provided for @shippingTypeFreeOverThreshold.
+  ///
+  /// In en, this message translates to:
+  /// **'Free over threshold'**
+  String get shippingTypeFreeOverThreshold;
+
+  /// No description provided for @adminConfirmDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this item?'**
+  String get adminConfirmDelete;
+
+  /// No description provided for @adminShippingCreateButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Create method'**
+  String get adminShippingCreateButton;
+
+  /// No description provided for @adminDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Item deleted successfully'**
+  String get adminDeleted;
+
+  /// No description provided for @refreshLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get refreshLabel;
+
+  /// No description provided for @adminEnabledOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled only'**
+  String get adminEnabledOnly;
+
+  /// No description provided for @adminShowAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all'**
+  String get adminShowAll;
+
+  /// No description provided for @adminDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled only'**
+  String get adminDisabled;
+
+  /// No description provided for @adminActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active only'**
+  String get adminActive;
+
+  /// No description provided for @adminCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Created successfully'**
+  String get adminCreated;
+
+  /// No description provided for @adminUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated successfully'**
+  String get adminUpdated;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
