@@ -62,4 +62,16 @@ class TaxApiService {
   Future<void> deleteRule({required int id, required String authToken}) async {
     await _dio.delete('$_baseUrl/rules/$id', options: _auth(authToken));
   }
+
+  Future<Map<String, dynamic>> previewTax({
+    required Map<String, dynamic> body,
+    required String authToken,
+  }) async {
+    final res = await _dio.post(
+      '$_baseUrl/preview',
+      data: body,
+      options: Options(headers: {'Authorization': 'Bearer $authToken'}),
+    );
+    return (res.data as Map).cast<String, dynamic>();
+  }
 }

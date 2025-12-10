@@ -343,6 +343,31 @@
   "adminDelete": "Delete",
   "yes": "Yes",
   "no": "No",
-  "adminSessionExpired": "Your session has expired. Please log in again."
+  "adminSessionExpired": "Your session has expired. Please log in again.",
+  "adminTaxCountryLabel": "Country",
+  "adminTaxCountryHint": "Select country",
+  "adminTaxRegionLabel": "Region",
+  "adminTaxSelectCountryFirst": "Select country first",
+  "adminTaxRegionHint": "Select region",
+  "adminTaxRulesTitleShort": "Tax Rules",
+  "adminTaxRulesSubtitle": "Manage tax rules for your products.",
+  "taxPreviewLoading": "Calculating tax preview...",
+ "taxPreviewTitle": "Tax Preview",
+ "itemsTaxLabel": "Items Tax",
+  "shippingTaxLabel": "Shipping Tax",
+  "totalTaxLabel": "Total Tax",
+  "taxClassNone": "No Tax",
+  "taxClassStandard": "Standard Rate",
+  "taxClassReduced": "Reduced Rate",
+  "taxClassZero": "Zero Rate",
+  "taxClassLabel": "Tax Class",
+  "taxClassHint": "Select tax class",
+  "adminTaxCountryRequired": "Country is required",
+  "adminTaxRegionRequired": "Region is required",
+  "adminTaxRulePresetLabel" : "Rule Preset",
+  "adminTaxRulePresetHint" : "Select a preset to auto-fill fields",
+  "adminCustom": "Custom",
+  "adminTaxAutoNameLabel": "Auto-generate name"
+
 
 }

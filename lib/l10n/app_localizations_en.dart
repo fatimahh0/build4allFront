@@ -719,4 +719,76 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get adminSessionExpired => 'Your session has expired. Please log in again.';
+
+  @override
+  String get adminTaxCountryLabel => 'Country';
+
+  @override
+  String get adminTaxCountryHint => 'Select country';
+
+  @override
+  String get adminTaxRegionLabel => 'Region';
+
+  @override
+  String get adminTaxSelectCountryFirst => 'Select country first';
+
+  @override
+  String get adminTaxRegionHint => 'Select region';
+
+  @override
+  String get adminTaxRulesTitleShort => 'Tax Rules';
+
+  @override
+  String get adminTaxRulesSubtitle => 'Manage tax rules for your products.';
+
+  @override
+  String get taxPreviewLoading => 'Calculating tax preview...';
+
+  @override
+  String get taxPreviewTitle => 'Tax Preview';
+
+  @override
+  String get itemsTaxLabel => 'Items Tax';
+
+  @override
+  String get shippingTaxLabel => 'Shipping Tax';
+
+  @override
+  String get totalTaxLabel => 'Total Tax';
+
+  @override
+  String get taxClassNone => 'No Tax';
+
+  @override
+  String get taxClassStandard => 'Standard Rate';
+
+  @override
+  String get taxClassReduced => 'Reduced Rate';
+
+  @override
+  String get taxClassZero => 'Zero Rate';
+
+  @override
+  String get taxClassLabel => 'Tax Class';
+
+  @override
+  String get taxClassHint => 'Select tax class';
+
+  @override
+  String get adminTaxCountryRequired => 'Country is required';
+
+  @override
+  String get adminTaxRegionRequired => 'Region is required';
+
+  @override
+  String get adminTaxRulePresetLabel => 'Rule Preset';
+
+  @override
+  String get adminTaxRulePresetHint => 'Select a preset to auto-fill fields';
+
+  @override
+  String get adminCustom => 'Custom';
+
+  @override
+  String get adminTaxAutoNameLabel => 'Auto-generate name';
 }

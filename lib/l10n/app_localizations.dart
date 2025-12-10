@@ -1494,6 +1494,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your session has expired. Please log in again.'**
   String get adminSessionExpired;
+
+  /// No description provided for @adminTaxCountryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Country'**
+  String get adminTaxCountryLabel;
+
+  /// No description provided for @adminTaxCountryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select country'**
+  String get adminTaxCountryHint;
+
+  /// No description provided for @adminTaxRegionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Region'**
+  String get adminTaxRegionLabel;
+
+  /// No description provided for @adminTaxSelectCountryFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Select country first'**
+  String get adminTaxSelectCountryFirst;
+
+  /// No description provided for @adminTaxRegionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select region'**
+  String get adminTaxRegionHint;
+
+  /// No description provided for @adminTaxRulesTitleShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Tax Rules'**
+  String get adminTaxRulesTitleShort;
+
+  /// No description provided for @adminTaxRulesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage tax rules for your products.'**
+  String get adminTaxRulesSubtitle;
+
+  /// No description provided for @taxPreviewLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculating tax preview...'**
+  String get taxPreviewLoading;
+
+  /// No description provided for @taxPreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tax Preview'**
+  String get taxPreviewTitle;
+
+  /// No description provided for @itemsTaxLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Items Tax'**
+  String get itemsTaxLabel;
+
+  /// No description provided for @shippingTaxLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Shipping Tax'**
+  String get shippingTaxLabel;
+
+  /// No description provided for @totalTaxLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Tax'**
+  String get totalTaxLabel;
+
+  /// No description provided for @taxClassNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No Tax'**
+  String get taxClassNone;
+
+  /// No description provided for @taxClassStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard Rate'**
+  String get taxClassStandard;
+
+  /// No description provided for @taxClassReduced.
+  ///
+  /// In en, this message translates to:
+  /// **'Reduced Rate'**
+  String get taxClassReduced;
+
+  /// No description provided for @taxClassZero.
+  ///
+  /// In en, this message translates to:
+  /// **'Zero Rate'**
+  String get taxClassZero;
+
+  /// No description provided for @taxClassLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tax Class'**
+  String get taxClassLabel;
+
+  /// No description provided for @taxClassHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select tax class'**
+  String get taxClassHint;
+
+  /// No description provided for @adminTaxCountryRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Country is required'**
+  String get adminTaxCountryRequired;
+
+  /// No description provided for @adminTaxRegionRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Region is required'**
+  String get adminTaxRegionRequired;
+
+  /// No description provided for @adminTaxRulePresetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Rule Preset'**
+  String get adminTaxRulePresetLabel;
+
+  /// No description provided for @adminTaxRulePresetHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a preset to auto-fill fields'**
+  String get adminTaxRulePresetHint;
+
+  /// No description provided for @adminCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get adminCustom;
+
+  /// No description provided for @adminTaxAutoNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-generate name'**
+  String get adminTaxAutoNameLabel;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
