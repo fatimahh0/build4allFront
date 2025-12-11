@@ -18,3 +18,23 @@ class HomeStarted extends HomeEvent {
 class HomeRefreshRequested extends HomeEvent {
   const HomeRefreshRequested();
 }
+
+/// search text changed (from search field)
+class HomeSearchChanged extends HomeEvent {
+  final String query;
+
+  const HomeSearchChanged(this.query);
+
+  @override
+  List<Object?> get props => [query];
+}
+
+/// category chip selected (by categoryId)
+class HomeCategorySelected extends HomeEvent {
+  final int categoryId;
+
+  const HomeCategorySelected(this.categoryId);
+
+  @override
+  List<Object?> get props => [categoryId];
+}

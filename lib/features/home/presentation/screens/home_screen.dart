@@ -1,4 +1,3 @@
-// lib/features/home/presentation/screens/home_screen.dart
 import 'package:build4front/core/network/globals.dart' as authState;
 import 'package:build4front/features/home/homebanner/presentations/widgets/home_banner_slider.dart';
 import 'package:flutter/material.dart';
@@ -24,7 +23,7 @@ import 'package:build4front/features/home/presentation/widgets/home_items_sectio
 import 'package:build4front/features/home/presentation/widgets/home_section_header.dart';
 import 'package:build4front/features/items/domain/entities/item_summary.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final AppConfig appConfig;
   final List<HomeSectionConfig> sections;
 
@@ -35,17 +34,28 @@ class HomeScreen extends StatelessWidget {
   });
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  /// Current text from search.
+  String _searchQuery = '';
+
+  /// Currently selected categoryId (from chips), null = no filter.
+  int? _selectedCategoryId;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
-    final enabled = appConfig.enabledFeatures.toSet();
+    final enabled = widget.appConfig.enabledFeatures.toSet();
 
     // Read spacing tokens once at screen level.
     final themeState = context.watch<ThemeCubit>().state;
     final spacing = themeState.tokens.spacing;
 
     // Filter visible sections based on enabled features.
-    final visibleSections = sections.where((s) {
+    final visibleSections = widget.sections.where((s) {
       if (s.feature == null) return true;
       return enabled.contains(s.feature);
     }).toList();
@@ -92,7 +102,12 @@ class HomeScreen extends StatelessWidget {
 
                 return RefreshIndicator(
                   onRefresh: () async {
-                    context.read<HomeBloc>().add(const HomeStarted());
+                    // Optional: reset filters on pull-to-refresh
+                    setState(() {
+                      _searchQuery = '';
+                      _selectedCategoryId = null;
+                    });
+                    context.read<HomeBloc>().add(const HomeRefreshRequested());
                   },
                   child: ListView.builder(
                     padding: EdgeInsets.fromLTRB(
@@ -137,7 +152,7 @@ class HomeScreen extends StatelessWidget {
       case HomeSectionType.header:
         // ✅ Show user name if available, otherwise owner/app fallback inside HomeHeader.
         return HomeHeader(
-          appName: appConfig.appName,
+          appName: widget.appConfig.appName,
           fullName: fullName,
           avatarUrl: avatarUrl,
           welcomeText: l10n.home_welcome,
@@ -149,38 +164,46 @@ class HomeScreen extends StatelessWidget {
           child: AppSearchField(
             hintText: l10n.home_search_hint,
             onSubmitted: (value) {
-              final query = value.trim();
-              if (query.isEmpty) return;
-
-              // Navigate to Explore screen with initial query.
-              Navigator.of(
-                context,
-              ).pushNamed('/explore', arguments: {'query': query});
+              setState(() {
+                _searchQuery = value.trim();
+              });
             },
           ),
         );
 
-      case HomeSectionType.categoryChips:
+     case HomeSectionType.categoryChips:
         return HomeCategoryChips(
           categories: homeState.categories,
-          onCategoryTap: (category) {
-            final selected = category.trim();
-            if (selected.isEmpty) return;
+          onCategoryTap: (categoryName) {
+            final selected = categoryName.trim();
+            if (selected.isEmpty) {
+              setState(() => _selectedCategoryId = null);
+              return;
+            }
 
-            // Navigate to Explore screen filtered by category.
-            Navigator.of(
-              context,
-            ).pushNamed('/explore', arguments: {'category': selected});
+            int? foundId;
+            for (final cat in homeState.categoryEntities) {
+              if (cat.name == selected) {
+                foundId = cat.id;
+                break;
+              }
+            }
+
+            setState(() {
+              _selectedCategoryId = foundId;
+            });
           },
         );
 
+
       case HomeSectionType.banner:
         return HomeBannerSlider(
-          ownerProjectId: appConfig.ownerProjectId ?? 1,
+          ownerProjectId: widget.appConfig.ownerProjectId ?? 1,
           token: authState.token ?? '',
           onBannerTap: (banner) {
-            // Example navigation based on banner target type.
+            // Example: you can still route to explore if you want for banners.
             if (banner.targetType == 'CATEGORY' && banner.targetId != null) {
+              // Could also set _selectedCategoryId here instead of navigate.
               Navigator.of(context).pushNamed(
                 '/explore',
                 arguments: {'categoryId': banner.targetId},
@@ -193,7 +216,13 @@ class HomeScreen extends StatelessWidget {
         );
 
       case HomeSectionType.itemList:
-        final itemsForSection = _mapItemsForSection(section, homeState);
+        final rawItems = _mapItemsForSection(section, homeState);
+        final itemsForSection = _applyFilters(rawItems);
+
+        if (itemsForSection.isEmpty) {
+          // If filtering removed all, just don't render section.
+          return const SizedBox.shrink();
+        }
 
         final sectionTitle =
             section.title ??
@@ -222,7 +251,7 @@ class HomeScreen extends StatelessWidget {
           trailingText: trailing.text,
           trailingIcon: trailing.icon,
           onTrailingTap: () {
-            // Navigate to Explore screen for this specific section.
+            // You *could* still navigate to Explore for "See all", or later show a full list dialog.
             Navigator.of(
               context,
             ).pushNamed('/explore', arguments: {'sectionId': section.id});
@@ -241,8 +270,34 @@ class HomeScreen extends StatelessWidget {
     }
   }
 
+  /// Apply search + category filtering on items.
+  List<ItemSummary> _applyFilters(List<ItemSummary> items) {
+    var result = items;
+
+    // Category filter by categoryId.
+    if (_selectedCategoryId != null) {
+      result = result
+          .where((item) => item.categoryId == _selectedCategoryId)
+          .toList();
+    }
+
+    // Search filter on title / subtitle / location.
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      result = result.where((item) {
+        final title = item.title.toLowerCase();
+        final subtitle = (item.subtitle ?? '').toLowerCase();
+        final location = (item.location ?? '').toLowerCase();
+        return title.contains(q) ||
+            subtitle.contains(q) ||
+            location.contains(q);
+      }).toList();
+    }
+
+    return result;
+  }
+
   /// Map a home section to the item list it should display.
-   /// Map a home section to the item list it should display.
   List<ItemSummary> _mapItemsForSection(
     HomeSectionConfig section,
     HomeState homeState,
@@ -434,7 +489,7 @@ class _WhyShopWithUsSection extends StatelessWidget {
                       border: Border.all(color: c.outline.withOpacity(0.12)),
                       boxShadow: [
                         BoxShadow(
-                          color: c.shadow.withOpacity(0.04),
+                          color: c.onSurface.withOpacity(0.04),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),

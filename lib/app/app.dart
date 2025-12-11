@@ -1,5 +1,6 @@
 // lib/app/app.dart
 
+import 'package:build4front/features/cart/data/services/cart_api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -45,6 +46,17 @@ import 'package:build4front/features/catalog/domain/usecases/get_categories_by_p
 import 'package:build4front/features/home/presentation/bloc/home_bloc.dart';
 import 'package:build4front/features/home/presentation/bloc/home_event.dart';
 
+// ---------- CART (NEW) ----------
+
+import 'package:build4front/features/cart/data/repositories/cart_repository_impl.dart';
+import 'package:build4front/features/cart/domain/repositories/cart_repository.dart';
+import 'package:build4front/features/cart/domain/usecases/get_my_cart.dart';
+import 'package:build4front/features/cart/domain/usecases/add_to_cart.dart';
+import 'package:build4front/features/cart/domain/usecases/update_cart_item.dart';
+import 'package:build4front/features/cart/domain/usecases/remove_cart_item.dart';
+import 'package:build4front/features/cart/domain/usecases/clear_cart.dart';
+import 'package:build4front/features/cart/presentation/bloc/cart_bloc.dart';
+
 import 'app_view.dart';
 
 class Build4AllFrontApp extends StatelessWidget {
@@ -72,6 +84,10 @@ class Build4AllFrontApp extends StatelessWidget {
     final categoryApi = CategoryApiService();
     final categoryRepo = CategoryRepositoryImpl(api: categoryApi);
 
+    // ---------- CART LAYER (NEW) ----------
+    final cartApi = CartApiService();
+    final cartRepo = CartRepositoryImpl(cartApi);
+
     return MultiRepositoryProvider(
       providers: [
         // Auth
@@ -90,6 +106,10 @@ class Build4AllFrontApp extends StatelessWidget {
         // Categories
         RepositoryProvider<CategoryApiService>.value(value: categoryApi),
         RepositoryProvider<CategoryRepository>.value(value: categoryRepo),
+
+        // ✅ Cart
+        RepositoryProvider<CartApiService>.value(value: cartApi),
+        RepositoryProvider<CartRepository>.value(value: cartRepo),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -157,6 +177,17 @@ class Build4AllFrontApp extends StatelessWidget {
                 ctx.read<ItemsRepository>(),
               ),
             )..add(const HomeStarted()), // Initial load when app opens
+          ),
+
+          // ✅ Cart bloc: global cart state for the app
+          BlocProvider<CartBloc>(
+            create: (ctx) => CartBloc(
+              getMyCart: GetMyCart(ctx.read<CartRepository>()),
+              addToCartUc: AddToCart(ctx.read<CartRepository>()),
+              updateCartItemUc: UpdateCartItem(ctx.read<CartRepository>()),
+              removeCartItemUc: RemoveCartItem(ctx.read<CartRepository>()),
+              clearCartUc: ClearCart(ctx.read<CartRepository>()),
+            ),
           ),
         ],
 

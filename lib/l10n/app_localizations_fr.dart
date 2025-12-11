@@ -1040,4 +1040,121 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get searchLabel => 'Search...';
+
+  @override
+  String get adminProductsSearchHint => 'Search products...';
+
+  @override
+  String get adminProductsFilterAll => 'All products';
+
+  @override
+  String get adminProductEditSubtitle => 'Update product details';
+
+  @override
+  String get adminProductCreateSubtitle => 'Add a new product';
+
+  @override
+  String get adminProductSectionBasicInfoTitle => 'Basic info';
+
+  @override
+  String get adminProductSectionPricingTitle => 'Pricing';
+
+  @override
+  String get adminProductSectionBasicInfoSubtitle => 'Name, description, type, SKU';
+
+  @override
+  String get adminProductSectionPricingSubtitle => 'Price, sale, stock';
+
+  @override
+  String get adminProductSectionMetaTitle => 'Meta';
+
+  @override
+  String get adminProductSectionMetaSubtitle => 'SEO title & description';
+
+  @override
+  String get adminSelectCategoryFirst => 'Select category first';
+
+  @override
+  String get adminProductImageSectionTitle => 'Product image';
+
+  @override
+  String get adminProductImageSectionSubtitle => 'Upload product image';
+
+  @override
+  String get adminProductSectionConfigTitle => 'Product configuration';
+
+  @override
+  String get adminProductSectionConfigSubtitle => 'Virtual, downloadable, external';
+
+  @override
+  String get adminProductSaleSectionSubtitle => 'Set sale price and duration';
+
+  @override
+  String get adminProductAttributesSubtitle => 'Add custom attributes';
+
+  @override
+  String get cart_title => 'Shopping Cart';
+
+  @override
+  String get cart_empty_message => 'Your cart is empty. Start adding items!';
+
+  @override
+  String get cart_total_label => 'Total:';
+
+  @override
+  String get cart_checkout_button => 'Proceed to Checkout';
+
+  @override
+  String get cart_item_added => 'Item added to cart';
+
+  @override
+  String get cart_item_removed => 'Item removed from cart';
+
+  @override
+  String get cart_clear_confirmation => 'Are you sure you want to clear the cart?';
+
+  @override
+  String get cart_item_quantity_label => 'Quantity:';
+
+  @override
+  String get cart_item_updated => 'Cart item updated';
+
+  @override
+  String get cart_checkout => 'Checkout';
+
+  @override
+  String get cart_clear => 'Clear Cart';
+
+  @override
+  String get cart_empty_cta => 'Browse Products';
+
+  @override
+  String get cart_cleared => 'Cart has been cleared';
+
+  @override
+  String get adminProductNoAttributesHint => 'No attributes added yet.';
+
+  @override
+  String get cart_add_button => 'Add to Cart';
+
+  @override
+  String get home_book_now_button => 'Book Now';
+
+  @override
+  String get home_view_details_button => 'View Details';
+
+  @override
+  String get cart_login_required_title => 'Login Required';
+
+  @override
+  String get cart_login_required_message => 'Please log in to proceed to checkout.';
+
+  @override
+  String get cancel_button => 'Cancel';
+
+  @override
+  String get login_button => 'Log In';
+
+  @override
+  String get cart_item_added_snackbar => 'Item added to cart';
 }

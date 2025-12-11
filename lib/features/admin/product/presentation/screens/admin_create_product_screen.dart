@@ -1,3 +1,5 @@
+// lib/features/admin/product/presentation/screens/admin_create_product_screen.dart
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -19,6 +21,20 @@ import 'package:build4front/features/catalog/data/services/currency_api_service.
 
 import 'package:build4front/features/catalog/data/models/item_type_model.dart';
 import 'package:build4front/features/catalog/domain/entities/item_type.dart';
+
+String productTypeDtoToApi(ProductTypeDto t) {
+  switch (t) {
+    case ProductTypeDto.variable:
+      return 'VARIABLE';
+    case ProductTypeDto.grouped:
+      return 'GROUPED';
+    case ProductTypeDto.external:
+      return 'EXTERNAL';
+    case ProductTypeDto.simple:
+    default:
+      return 'SIMPLE';
+  }
+}
 
 class AdminCreateProductScreen extends StatefulWidget {
   final int ownerProjectId;
@@ -77,7 +93,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
     'model',
   ];
 
-  // ✅ image
+  // image
   final _picker = ImagePicker();
   XFile? _pickedImage;
 
@@ -279,6 +295,16 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       throw Exception('PROJECT_ID is not configured for this app.');
     }
     return projectId;
+  }
+
+  String? _resolveImageUrl(String? url) {
+    if (url == null || url.trim().isEmpty) return null;
+
+    final trimmed = url.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    return '${Env.apiBaseUrl}$trimmed';
   }
 
   // ---------------- Currency ----------------
@@ -642,7 +668,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
           description: description,
           price: price,
           stock: stock,
-          status: null, // keep backend default
+          status: null,
           sku: sku,
           productType: _selectedProductType,
           virtualProduct: _virtualProduct,
@@ -752,276 +778,138 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
           child: Form(
             key: _formKey,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // -------- Name --------
-                Text(l.adminProductNameLabel, style: text.titleMedium),
-                SizedBox(height: spacing.xs),
-                TextFormField(
-                  controller: _nameCtrl,
-                  decoration: InputDecoration(hintText: l.adminProductNameHint),
-                  validator: (v) => v == null || v.trim().isEmpty
-                      ? l.adminProductNameRequired
-                      : null,
+                // Header
+                _AdminFormHeader(tokens: tokens, l: l, isEdit: _isEdit),
+
+                SizedBox(height: spacing.lg),
+
+                // Basic info
+                AdminProductBasicInfoSection(
+                  tokens: tokens,
+                  l: l,
+                  nameCtrl: _nameCtrl,
+                  descriptionCtrl: _descriptionCtrl,
                 ),
+
                 SizedBox(height: spacing.md),
 
-                // -------- Description --------
-                Text(l.adminProductDescriptionLabel, style: text.titleMedium),
-                SizedBox(height: spacing.xs),
-                TextFormField(
-                  controller: _descriptionCtrl,
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    hintText: l.adminProductDescriptionHint,
+                // Category + Item type
+                AdminProductCategoryTypeSection(
+                  tokens: tokens,
+                  l: l,
+                  categories: _categories,
+                  selectedCategoryId: _selectedCategoryId,
+                  loadingCategories: _loadingCategories,
+                  itemTypes: _itemTypes,
+                  selectedItemTypeId: _selectedItemTypeId,
+                  loadingItemTypes: _loadingItemTypes,
+                  metaError: _metaError,
+                  onCategoryChanged: (id) async {
+                    if (id == null) return;
+                    setState(() {
+                      _selectedCategoryId = id;
+                      _selectedItemTypeId = null;
+                    });
+                    await _loadItemTypesForCategory(id);
+                  },
+                  onCreateCategory: _showCreateCategoryDialog,
+                  onCreateItemType: _showCreateItemTypeDialog,
+                ),
+
+                SizedBox(height: spacing.md),
+
+                // Pricing
+                AdminProductPricingSection(
+                  tokens: tokens,
+                  l: l,
+                  priceCtrl: _priceCtrl,
+                  stockCtrl: _stockCtrl,
+                  loadingCurrency: _loadingCurrency,
+                  currencyLabel: _currencyLabel,
+                ),
+
+                SizedBox(height: spacing.md),
+
+                // Image
+                AdminProductImageSection(
+                  tokens: tokens,
+                  l: l,
+                  pickedImage: _pickedImage,
+                  existingImageUrl: _resolveImageUrl(
+                    widget.initialProduct?.imageUrl,
                   ),
+                  onPickImage: _pickImage,
+                  onRemoveImage: _removePickedImage,
                 ),
+
                 SizedBox(height: spacing.md),
 
-                // -------- Category --------
-                Text(l.adminProductCategoryLabel, style: text.titleMedium),
-                SizedBox(height: spacing.xs),
-                _buildCategorySection(context, tokens, l),
-                SizedBox(height: spacing.md),
-
-                // -------- Item Type --------
-                if (_selectedCategoryId != null) ...[
-                  Text(l.adminProductItemTypeLabel, style: text.titleMedium),
-                  SizedBox(height: spacing.xs),
-                  _buildItemTypeSection(context, tokens, l),
-                  SizedBox(height: spacing.md),
-                ],
-
-                if (_metaError != null) ...[
-                  Text(
-                    _metaError!,
-                    style: text.bodyMedium.copyWith(color: c.danger),
-                  ),
-                  SizedBox(height: spacing.md),
-                ],
-
-                // -------- Price + Stock --------
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                l.adminProductPriceLabel,
-                                style: text.titleMedium,
-                              ),
-                              const SizedBox(width: 6),
-                              if (_loadingCurrency)
-                                const SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              else if (_currencyLabel != null)
-                                Text(
-                                  ' (${_currencyLabel!})',
-                                  style: text.bodySmall.copyWith(
-                                    color: c.muted.withOpacity(0.8),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          SizedBox(height: spacing.xs),
-                          TextFormField(
-                            controller: _priceCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            decoration: const InputDecoration(
-                              hintText: '120.00',
-                            ),
-                            validator: (v) {
-                              if (v == null || v.trim().isEmpty) {
-                                return l.adminProductPriceRequired;
-                              }
-                              final value = double.tryParse(v.trim());
-                              if (value == null || value <= 0) {
-                                return l.adminProductPriceInvalid;
-                              }
-                              return null;
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(width: spacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            l.adminProductStockLabel,
-                            style: text.titleMedium,
-                          ),
-                          SizedBox(height: spacing.xs),
-                          TextFormField(
-                            controller: _stockCtrl,
-                            keyboardType: TextInputType.number,
-                            decoration: InputDecoration(
-                              hintText: l.adminStockHint,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: spacing.md),
-
-                // -------- Image FILE --------
-                Text(l.adminProductImageLabel, style: text.titleMedium),
-                SizedBox(height: spacing.xs),
-                _buildImagePicker(tokens, l),
-                SizedBox(height: spacing.md),
-
-                // -------- SKU --------
-                Text(l.adminProductSkuLabel, style: text.titleMedium),
-                SizedBox(height: spacing.xs),
-                TextFormField(
-                  controller: _skuCtrl,
-                  decoration: InputDecoration(hintText: l.adminProductSkuHint),
-                ),
-                SizedBox(height: spacing.md),
-
-                // -------- Product Type --------
-                Text(l.adminProductTypeLabel, style: text.titleMedium),
-                SizedBox(height: spacing.xs),
-                _buildProductTypeDropdown(context, tokens, l),
-                SizedBox(height: spacing.md),
-
-                // -------- Flags --------
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    l.adminProductVirtualLabel,
-                    style: text.bodyMedium,
-                  ),
-                  value: _virtualProduct,
-                  onChanged: (v) => setState(() => _virtualProduct = v),
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    l.adminProductDownloadableLabel,
-                    style: text.bodyMedium,
-                  ),
-                  value: _downloadable,
-                  onChanged: (v) {
+                // SKU + type + flags
+                AdminProductConfigSection(
+                  tokens: tokens,
+                  l: l,
+                  skuCtrl: _skuCtrl,
+                  selectedProductType: _selectedProductType,
+                  onProductTypeChanged: (val) {
+                    setState(() {
+                      _selectedProductType = val;
+                      if (val != ProductTypeDto.external) {
+                        _externalUrlCtrl.clear();
+                        _buttonTextCtrl.clear();
+                      }
+                    });
+                  },
+                  virtualProduct: _virtualProduct,
+                  onVirtualChanged: (v) => setState(() => _virtualProduct = v),
+                  downloadable: _downloadable,
+                  onDownloadableChanged: (v) {
                     setState(() {
                       _downloadable = v;
                       if (!v) _downloadUrlCtrl.clear();
                     });
                   },
+                  downloadUrlCtrl: _downloadUrlCtrl,
+                  externalUrlCtrl: _externalUrlCtrl,
+                  buttonTextCtrl: _buttonTextCtrl,
                 ),
-                SizedBox(height: spacing.sm),
 
-                if (_downloadable) ...[
-                  Text(l.adminProductDownloadUrlLabel, style: text.titleMedium),
-                  SizedBox(height: spacing.xs),
-                  TextFormField(
-                    controller: _downloadUrlCtrl,
-                    decoration: InputDecoration(
-                      hintText: l.adminProductDownloadUrlHint,
-                    ),
-                  ),
-                  SizedBox(height: spacing.md),
-                ],
+                SizedBox(height: spacing.md),
 
-                if (_selectedProductType == ProductTypeDto.external) ...[
-                  Text(l.adminProductExternalUrlLabel, style: text.titleMedium),
-                  SizedBox(height: spacing.xs),
-                  TextFormField(
-                    controller: _externalUrlCtrl,
-                    decoration: InputDecoration(
-                      hintText: l.adminProductExternalUrlHint,
-                    ),
-                  ),
-                  SizedBox(height: spacing.md),
-                  Text(l.adminProductButtonTextLabel, style: text.titleMedium),
-                  SizedBox(height: spacing.xs),
-                  TextFormField(
-                    controller: _buttonTextCtrl,
-                    decoration: InputDecoration(
-                      hintText: l.adminProductButtonTextHint,
-                    ),
-                  ),
-                  SizedBox(height: spacing.md),
-                ],
-
-                // -------- Sale --------
-                Text(l.adminProductSaleSectionTitle, style: text.titleMedium),
-                SizedBox(height: spacing.sm),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _salePriceCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        decoration: InputDecoration(
-                          labelText: l.adminProductSalePriceLabel,
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: spacing.md),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _saleStartCtrl,
-                        readOnly: true,
-                        decoration: InputDecoration(
-                          labelText: l.adminProductSaleStartLabel,
-                          hintText: 'YYYY-MM-DD',
-                          suffixIcon: const Icon(Icons.calendar_today),
-                        ),
-                        onTap: _pickSaleStartDate,
-                      ),
-                    ),
-                  ],
+                // Sale
+                AdminProductSaleSection(
+                  tokens: tokens,
+                  l: l,
+                  salePriceCtrl: _salePriceCtrl,
+                  saleStartCtrl: _saleStartCtrl,
+                  saleEndCtrl: _saleEndCtrl,
+                  onPickSaleStart: _pickSaleStartDate,
+                  onPickSaleEnd: _pickSaleEndDate,
                 ),
-                SizedBox(height: spacing.sm),
-                TextFormField(
-                  controller: _saleEndCtrl,
-                  readOnly: true,
-                  decoration: InputDecoration(
-                    labelText: l.adminProductSaleEndLabel,
-                    hintText: 'YYYY-MM-DD',
-                    suffixIcon: const Icon(Icons.calendar_today),
-                  ),
-                  onTap: _pickSaleEndDate,
-                ),
-                SizedBox(height: spacing.lg),
 
-                // -------- Attributes --------
-                Text(l.adminProductAttributesTitle, style: text.titleMedium),
-                SizedBox(height: spacing.sm),
-                ..._buildAttributeRows(context, tokens, l),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: _addAttributeRow,
-                    icon: const Icon(Icons.add),
-                    label: Text(l.adminProductAddAttribute),
-                  ),
+                SizedBox(height: spacing.md),
+
+                // Attributes
+                AdminProductAttributesSection(
+                  tokens: tokens,
+                  l: l,
+                  attributes: _attributes,
+                  allowedAttributeCodes: _allowedAttributeCodes,
+                  onAddAttribute: _addAttributeRow,
+                  onRemoveAttribute: _removeAttributeRow,
                 ),
+
                 SizedBox(height: spacing.lg),
 
                 if (_errorMessage != null)
                   Padding(
                     padding: EdgeInsets.only(bottom: spacing.md),
-                    child: Text(
-                      _errorMessage!,
-                      style: text.bodyMedium.copyWith(color: c.danger),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        _errorMessage!,
+                        style: text.bodyMedium.copyWith(color: c.danger),
+                      ),
                     ),
                   ),
 
@@ -1045,338 +933,900 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       ),
     );
   }
+}
 
-  Widget _buildImagePicker(dynamic tokens, AppLocalizations l) {
-    final c = tokens.colors;
-    final spacing = tokens.spacing;
+// ---------------- Shared Card Wrapper ----------------
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          height: 160,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: c.surface,
-            borderRadius: BorderRadius.circular(tokens.card.radius),
-            border: Border.all(color: c.border.withOpacity(0.4)),
-          ),
-          child: _pickedImage != null
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(tokens.card.radius),
-                  child: Image.file(
-                    File(_pickedImage!.path),
-                    fit: BoxFit.cover,
-                  ),
-                )
-              : Center(
-                  child: Icon(
-                    Icons.image_outlined,
-                    color: c.muted.withOpacity(0.7),
-                    size: 36,
-                  ),
-                ),
-        ),
-        SizedBox(height: spacing.sm),
-        Row(
-          children: [
-            OutlinedButton.icon(
-              onPressed: _pickImage,
-              icon: const Icon(Icons.upload),
-              label: Text(l.adminProductPickImage),
-            ),
-            SizedBox(width: spacing.sm),
-            if (_pickedImage != null)
-              TextButton.icon(
-                onPressed: _removePickedImage,
-                icon: const Icon(Icons.close),
-                label: Text(l.adminRemove),
-              ),
-          ],
-        ),
-      ],
-    );
-  }
+class AdminFormSectionCard extends StatelessWidget {
+  final dynamic tokens;
+  final Widget child;
+  final String? title;
+  final String? subtitle;
+  final IconData? icon;
 
-  // ---------------- UI helpers ----------------
-  Widget _buildCategorySection(
-    BuildContext context,
-    dynamic tokens,
-    AppLocalizations l,
-  ) {
+  const AdminFormSectionCard({
+    super.key,
+    required this.tokens,
+    required this.child,
+    this.title,
+    this.subtitle,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final c = tokens.colors;
     final spacing = tokens.spacing;
     final text = tokens.typography;
-
-    if (_loadingCategories) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 8.0),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    if (_categories.isEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l.adminNoCategories,
-            style: text.bodyMedium.copyWith(color: c.danger),
-          ),
-          TextButton.icon(
-            onPressed: _showCreateCategoryDialog,
-            icon: const Icon(Icons.add),
-            label: Text(l.adminCreateCategory),
-          ),
-        ],
-      );
-    }
-
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: spacing.sm,
-              vertical: spacing.xs,
-            ),
-            decoration: BoxDecoration(
-              color: c.surface,
-              borderRadius: BorderRadius.circular(tokens.card.radius),
-              border: Border.all(color: c.border.withOpacity(0.4)),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<int>(
-                value: _selectedCategoryId,
-                isExpanded: true,
-                items: _categories
-                    .map(
-                      (cat) => DropdownMenuItem<int>(
-                        value: cat.id,
-                        child: Text(cat.name),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (val) async {
-                  if (val == null) return;
-                  setState(() {
-                    _selectedCategoryId = val;
-                    _selectedItemTypeId = null;
-                  });
-                  await _loadItemTypesForCategory(val);
-                },
-              ),
-            ),
-          ),
-        ),
-        SizedBox(width: spacing.sm),
-        IconButton(
-          onPressed: _showCreateCategoryDialog,
-          icon: const Icon(Icons.add),
-          color: c.primary,
-          tooltip: l.adminCreateCategory,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildItemTypeSection(
-    BuildContext context,
-    dynamic tokens,
-    AppLocalizations l,
-  ) {
-    final c = tokens.colors;
-    final spacing = tokens.spacing;
-    final text = tokens.typography;
-
-    if (_loadingItemTypes) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 8.0),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    if (_itemTypes.isEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l.adminNoItemTypes,
-            style: text.bodyMedium.copyWith(color: c.danger),
-          ),
-          TextButton.icon(
-            onPressed: _showCreateItemTypeDialog,
-            icon: const Icon(Icons.add),
-            label: Text(l.adminCreateItemType),
-          ),
-        ],
-      );
-    }
-
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: spacing.sm,
-              vertical: spacing.xs,
-            ),
-            decoration: BoxDecoration(
-              color: c.surface,
-              borderRadius: BorderRadius.circular(tokens.card.radius),
-              border: Border.all(color: c.border.withOpacity(0.4)),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<int>(
-                value: _selectedItemTypeId,
-                isExpanded: true,
-                items: _itemTypes
-                    .map(
-                      (t) => DropdownMenuItem<int>(
-                        value: t.id,
-                        child: Text(t.name),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (val) {
-                  if (val == null) return;
-                  setState(() => _selectedItemTypeId = val);
-                },
-              ),
-            ),
-          ),
-        ),
-        SizedBox(width: spacing.sm),
-        IconButton(
-          onPressed: _showCreateItemTypeDialog,
-          icon: const Icon(Icons.add),
-          color: c.primary,
-          tooltip: l.adminCreateItemType,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProductTypeDropdown(
-    BuildContext context,
-    dynamic tokens,
-    AppLocalizations l,
-  ) {
-    final c = tokens.colors;
-    final spacing = tokens.spacing;
 
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: spacing.sm,
-        vertical: spacing.xs,
-      ),
+      width: double.infinity,
+      padding: EdgeInsets.all(spacing.md),
       decoration: BoxDecoration(
         color: c.surface,
         borderRadius: BorderRadius.circular(tokens.card.radius),
         border: Border.all(color: c.border.withOpacity(0.4)),
+        boxShadow: [
+          BoxShadow(
+            color: c.label.withOpacity(0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<ProductTypeDto>(
-          value: _selectedProductType,
-          isExpanded: true,
-          items: [
-            DropdownMenuItem(
-              value: ProductTypeDto.simple,
-              child: Text(l.adminProductTypeSimple),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (title != null) ...[
+            Row(
+              children: [
+                if (icon != null)
+                  Padding(
+                    padding: EdgeInsets.only(right: spacing.xs),
+                    child: Icon(icon, size: 18, color: c.primary),
+                  ),
+                Text(
+                  title!,
+                  style: text.titleMedium.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ],
             ),
-            DropdownMenuItem(
-              value: ProductTypeDto.variable,
-              child: Text(l.adminProductTypeVariable),
-            ),
-            DropdownMenuItem(
-              value: ProductTypeDto.grouped,
-              child: Text(l.adminProductTypeGrouped),
-            ),
-            DropdownMenuItem(
-              value: ProductTypeDto.external,
-              child: Text(l.adminProductTypeExternal),
-            ),
+            if (subtitle != null) ...[
+              SizedBox(height: spacing.xs),
+              Text(subtitle!, style: text.bodySmall.copyWith(color: c.muted)),
+            ],
+            SizedBox(height: spacing.sm),
           ],
-          onChanged: (val) {
-            if (val == null) return;
-            setState(() {
-              _selectedProductType = val;
-              if (val != ProductTypeDto.external) {
-                _externalUrlCtrl.clear();
-                _buttonTextCtrl.clear();
-              }
-            });
-          },
-        ),
+          child,
+        ],
       ),
     );
   }
+}
 
-  List<Widget> _buildAttributeRows(
-    BuildContext context,
-    dynamic tokens,
-    AppLocalizations l,
-  ) {
+// ---------------- Header ----------------
+
+class _AdminFormHeader extends StatelessWidget {
+  final dynamic tokens;
+  final AppLocalizations l;
+  final bool isEdit;
+
+  const _AdminFormHeader({
+    required this.tokens,
+    required this.l,
+    required this.isEdit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final text = tokens.typography;
     final c = tokens.colors;
     final spacing = tokens.spacing;
 
-    return _attributes.asMap().entries.map((entry) {
-      final index = entry.key;
-      final row = entry.value;
+    return Row(
+      children: [
+        Icon(
+          isEdit ? Icons.edit_outlined : Icons.add_box_outlined,
+          color: c.primary,
+          size: 28,
+        ),
+        SizedBox(width: spacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isEdit ? l.adminProductEditTitle : l.adminProductCreateTitle,
+                style: text.headlineSmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: c.label,
+                ),
+              ),
+              SizedBox(height: spacing.xs),
+              Text(
+                isEdit
+                    ? l.adminProductEditSubtitle
+                    : l.adminProductCreateSubtitle,
+                style: text.bodySmall.copyWith(color: c.muted),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
 
-      return Padding(
-        padding: EdgeInsets.only(bottom: spacing.sm),
-        child: Row(
-          children: [
-            Expanded(
-              flex: 2,
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: spacing.sm,
-                  vertical: spacing.xs,
+// ---------------- Sections ----------------
+
+class AdminProductBasicInfoSection extends StatelessWidget {
+  final dynamic tokens;
+  final AppLocalizations l;
+  final TextEditingController nameCtrl;
+  final TextEditingController descriptionCtrl;
+
+  const AdminProductBasicInfoSection({
+    super.key,
+    required this.tokens,
+    required this.l,
+    required this.nameCtrl,
+    required this.descriptionCtrl,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final spacing = tokens.spacing;
+    final text = tokens.typography;
+
+    return AdminFormSectionCard(
+      tokens: tokens,
+      title: l.adminProductSectionBasicInfoTitle,
+      subtitle: l.adminProductSectionBasicInfoSubtitle,
+      icon: Icons.text_fields_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l.adminProductNameLabel, style: text.titleMedium),
+          SizedBox(height: spacing.xs),
+          TextFormField(
+            controller: nameCtrl,
+            decoration: InputDecoration(hintText: l.adminProductNameHint),
+            validator: (v) => v == null || v.trim().isEmpty
+                ? l.adminProductNameRequired
+                : null,
+          ),
+          SizedBox(height: spacing.md),
+          Text(l.adminProductDescriptionLabel, style: text.titleMedium),
+          SizedBox(height: spacing.xs),
+          TextFormField(
+            controller: descriptionCtrl,
+            maxLines: 3,
+            decoration: InputDecoration(
+              hintText: l.adminProductDescriptionHint,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class AdminProductCategoryTypeSection extends StatelessWidget {
+  final dynamic tokens;
+  final AppLocalizations l;
+
+  final List<_CategoryOption> categories;
+  final int? selectedCategoryId;
+  final bool loadingCategories;
+
+  final List<ItemType> itemTypes;
+  final int? selectedItemTypeId;
+  final bool loadingItemTypes;
+
+  final String? metaError;
+
+  final Future<void> Function(int? id) onCategoryChanged;
+  final Future<void> Function() onCreateCategory;
+  final Future<void> Function() onCreateItemType;
+
+  const AdminProductCategoryTypeSection({
+    super.key,
+    required this.tokens,
+    required this.l,
+    required this.categories,
+    required this.selectedCategoryId,
+    required this.loadingCategories,
+    required this.itemTypes,
+    required this.selectedItemTypeId,
+    required this.loadingItemTypes,
+    required this.metaError,
+    required this.onCategoryChanged,
+    required this.onCreateCategory,
+    required this.onCreateItemType,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = tokens.colors;
+    final spacing = tokens.spacing;
+    final text = tokens.typography;
+
+    return AdminFormSectionCard(
+      tokens: tokens,
+      title: l.adminProductSectionMetaTitle,
+      subtitle: l.adminProductSectionMetaSubtitle,
+      icon: Icons.category_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Category
+          Text(l.adminProductCategoryLabel, style: text.titleMedium),
+          SizedBox(height: spacing.xs),
+          if (loadingCategories)
+            const Center(child: CircularProgressIndicator())
+          else if (categories.isEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.adminNoCategories,
+                  style: text.bodyMedium.copyWith(color: c.danger),
                 ),
-                decoration: BoxDecoration(
-                  color: c.surface,
-                  borderRadius: BorderRadius.circular(tokens.card.radius),
-                  border: Border.all(color: c.border.withOpacity(0.4)),
+                TextButton.icon(
+                  onPressed: onCreateCategory,
+                  icon: const Icon(Icons.add),
+                  label: Text(l.adminCreateCategory),
                 ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: row.selectedCode ?? _allowedAttributeCodes.first,
-                    isExpanded: true,
-                    items: _allowedAttributeCodes
-                        .map(
-                          (code) =>
-                              DropdownMenuItem(value: code, child: Text(code)),
-                        )
-                        .toList(),
-                    onChanged: (val) {
-                      if (val == null) return;
-                      setState(() => row.selectedCode = val);
-                    },
+              ],
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: spacing.sm,
+                      vertical: spacing.xs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: c.surface,
+                      borderRadius: BorderRadius.circular(tokens.card.radius),
+                      border: Border.all(color: c.border.withOpacity(0.4)),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        value: selectedCategoryId,
+                        isExpanded: true,
+                        items: categories
+                            .map(
+                              (cat) => DropdownMenuItem<int>(
+                                value: cat.id,
+                                child: Text(cat.name),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: onCategoryChanged,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: spacing.sm),
+                IconButton(
+                  onPressed: onCreateCategory,
+                  icon: const Icon(Icons.add),
+                  color: c.primary,
+                  tooltip: l.adminCreateCategory,
+                ),
+              ],
+            ),
+
+          SizedBox(height: spacing.md),
+
+          // Item type
+          Text(l.adminProductItemTypeLabel, style: text.titleMedium),
+          SizedBox(height: spacing.xs),
+          if (selectedCategoryId == null)
+            Text(
+              l.adminSelectCategoryFirst,
+              style: text.bodySmall.copyWith(color: c.muted),
+            )
+          else if (loadingItemTypes)
+            const Center(child: CircularProgressIndicator())
+          else if (itemTypes.isEmpty)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.adminNoItemTypes,
+                  style: text.bodyMedium.copyWith(color: c.danger),
+                ),
+                TextButton.icon(
+                  onPressed: onCreateItemType,
+                  icon: const Icon(Icons.add),
+                  label: Text(l.adminCreateItemType),
+                ),
+              ],
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: spacing.sm,
+                      vertical: spacing.xs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: c.surface,
+                      borderRadius: BorderRadius.circular(tokens.card.radius),
+                      border: Border.all(color: c.border.withOpacity(0.4)),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        value: selectedItemTypeId,
+                        isExpanded: true,
+                        items: itemTypes
+                            .map(
+                              (t) => DropdownMenuItem<int>(
+                                value: t.id,
+                                child: Text(t.name),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) {
+                          // parent handles state
+                          onCategoryChanged(selectedCategoryId);
+                          // we can't set itemType directly here, parent will handle
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: spacing.sm),
+                IconButton(
+                  onPressed: onCreateItemType,
+                  icon: const Icon(Icons.add),
+                  color: c.primary,
+                  tooltip: l.adminCreateItemType,
+                ),
+              ],
+            ),
+
+          if (metaError != null) ...[
+            SizedBox(height: spacing.sm),
+            Text(metaError!, style: text.bodySmall.copyWith(color: c.danger)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class AdminProductPricingSection extends StatelessWidget {
+  final dynamic tokens;
+  final AppLocalizations l;
+  final TextEditingController priceCtrl;
+  final TextEditingController stockCtrl;
+  final bool loadingCurrency;
+  final String? currencyLabel;
+
+  const AdminProductPricingSection({
+    super.key,
+    required this.tokens,
+    required this.l,
+    required this.priceCtrl,
+    required this.stockCtrl,
+    required this.loadingCurrency,
+    required this.currencyLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final spacing = tokens.spacing;
+    final text = tokens.typography;
+    final c = tokens.colors;
+
+    return AdminFormSectionCard(
+      tokens: tokens,
+      title: l.adminProductSectionPricingTitle,
+      subtitle: l.adminProductSectionPricingSubtitle,
+      icon: Icons.sell_outlined,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(l.adminProductPriceLabel, style: text.titleMedium),
+                    const SizedBox(width: 6),
+                    if (loadingCurrency)
+                      const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    else if (currencyLabel != null)
+                      Text(
+                        ' ($currencyLabel)',
+                        style: text.bodySmall.copyWith(
+                          color: c.muted.withOpacity(0.8),
+                        ),
+                      ),
+                  ],
+                ),
+                SizedBox(height: spacing.xs),
+                TextFormField(
+                  controller: priceCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(hintText: '120.00'),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return l.adminProductPriceRequired;
+                    }
+                    final value = double.tryParse(v.trim());
+                    if (value == null || value <= 0) {
+                      return l.adminProductPriceInvalid;
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: spacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l.adminProductStockLabel, style: text.titleMedium),
+                SizedBox(height: spacing.xs),
+                TextFormField(
+                  controller: stockCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(hintText: l.adminStockHint),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class AdminProductImageSection extends StatelessWidget {
+  final dynamic tokens;
+  final AppLocalizations l;
+  final XFile? pickedImage;
+  final String? existingImageUrl;
+  final VoidCallback onPickImage;
+  final VoidCallback onRemoveImage;
+
+  const AdminProductImageSection({
+    super.key,
+    required this.tokens,
+    required this.l,
+    required this.pickedImage,
+    required this.existingImageUrl,
+    required this.onPickImage,
+    required this.onRemoveImage,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = tokens.colors;
+    final spacing = tokens.spacing;
+
+    Widget placeholderIcon() =>
+        Icon(Icons.image_outlined, color: c.muted.withOpacity(0.7), size: 36);
+
+    return AdminFormSectionCard(
+      tokens: tokens,
+      title: l.adminProductImageSectionTitle,
+      subtitle: l.adminProductImageSectionSubtitle,
+      icon: Icons.image_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 170,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: c.surface,
+              borderRadius: BorderRadius.circular(tokens.card.radius),
+              border: Border.all(color: c.border.withOpacity(0.4)),
+            ),
+            child: pickedImage != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(tokens.card.radius),
+                    child: Image.file(
+                      File(pickedImage!.path),
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : existingImageUrl != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(tokens.card.radius),
+                    child: Image.network(
+                      existingImageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          Center(child: placeholderIcon()),
+                    ),
+                  )
+                : Center(child: placeholderIcon()),
+          ),
+          SizedBox(height: spacing.sm),
+          Row(
+            children: [
+              OutlinedButton.icon(
+                onPressed: onPickImage,
+                icon: const Icon(Icons.upload),
+                label: Text(l.adminProductPickImage),
+              ),
+              SizedBox(width: spacing.sm),
+              if (pickedImage != null)
+                TextButton.icon(
+                  onPressed: onRemoveImage,
+                  icon: const Icon(Icons.close),
+                  label: Text(l.adminRemove),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class AdminProductConfigSection extends StatelessWidget {
+  final dynamic tokens;
+  final AppLocalizations l;
+
+  final TextEditingController skuCtrl;
+
+  final ProductTypeDto selectedProductType;
+  final ValueChanged<ProductTypeDto> onProductTypeChanged;
+
+  final bool virtualProduct;
+  final ValueChanged<bool> onVirtualChanged;
+
+  final bool downloadable;
+  final ValueChanged<bool> onDownloadableChanged;
+
+  final TextEditingController downloadUrlCtrl;
+  final TextEditingController externalUrlCtrl;
+  final TextEditingController buttonTextCtrl;
+
+  const AdminProductConfigSection({
+    super.key,
+    required this.tokens,
+    required this.l,
+    required this.skuCtrl,
+    required this.selectedProductType,
+    required this.onProductTypeChanged,
+    required this.virtualProduct,
+    required this.onVirtualChanged,
+    required this.downloadable,
+    required this.onDownloadableChanged,
+    required this.downloadUrlCtrl,
+    required this.externalUrlCtrl,
+    required this.buttonTextCtrl,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final spacing = tokens.spacing;
+    final text = tokens.typography;
+
+    return AdminFormSectionCard(
+      tokens: tokens,
+      title: l.adminProductSectionConfigTitle,
+      subtitle: l.adminProductSectionConfigSubtitle,
+      icon: Icons.settings_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // SKU
+          Text(l.adminProductSkuLabel, style: text.titleMedium),
+          SizedBox(height: spacing.xs),
+          TextFormField(
+            controller: skuCtrl,
+            decoration: InputDecoration(hintText: l.adminProductSkuHint),
+          ),
+          SizedBox(height: spacing.md),
+
+          // Product type
+          Text(l.adminProductTypeLabel, style: text.titleMedium),
+          SizedBox(height: spacing.xs),
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: spacing.sm,
+              vertical: spacing.xs,
+            ),
+            decoration: BoxDecoration(
+              color: tokens.colors.surface,
+              borderRadius: BorderRadius.circular(tokens.card.radius),
+              border: Border.all(color: tokens.colors.border.withOpacity(0.4)),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<ProductTypeDto>(
+                value: selectedProductType,
+                isExpanded: true,
+                items: [
+                  DropdownMenuItem(
+                    value: ProductTypeDto.simple,
+                    child: Text(l.adminProductTypeSimple),
+                  ),
+                  DropdownMenuItem(
+                    value: ProductTypeDto.variable,
+                    child: Text(l.adminProductTypeVariable),
+                  ),
+                  DropdownMenuItem(
+                    value: ProductTypeDto.grouped,
+                    child: Text(l.adminProductTypeGrouped),
+                  ),
+                  DropdownMenuItem(
+                    value: ProductTypeDto.external,
+                    child: Text(l.adminProductTypeExternal),
+                  ),
+                ],
+                onChanged: (val) {
+                  if (val == null) return;
+                  onProductTypeChanged(val);
+                },
+              ),
+            ),
+          ),
+
+          SizedBox(height: spacing.md),
+
+          // Flags
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(l.adminProductVirtualLabel, style: text.bodyMedium),
+            value: virtualProduct,
+            onChanged: onVirtualChanged,
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              l.adminProductDownloadableLabel,
+              style: text.bodyMedium,
+            ),
+            value: downloadable,
+            onChanged: onDownloadableChanged,
+          ),
+
+          if (downloadable) ...[
+            SizedBox(height: spacing.sm),
+            Text(l.adminProductDownloadUrlLabel, style: text.titleMedium),
+            SizedBox(height: spacing.xs),
+            TextFormField(
+              controller: downloadUrlCtrl,
+              decoration: InputDecoration(
+                hintText: l.adminProductDownloadUrlHint,
+              ),
+            ),
+          ],
+
+          if (selectedProductType == ProductTypeDto.external) ...[
+            SizedBox(height: spacing.md),
+            Text(l.adminProductExternalUrlLabel, style: text.titleMedium),
+            SizedBox(height: spacing.xs),
+            TextFormField(
+              controller: externalUrlCtrl,
+              decoration: InputDecoration(
+                hintText: l.adminProductExternalUrlHint,
+              ),
+            ),
+            SizedBox(height: spacing.md),
+            Text(l.adminProductButtonTextLabel, style: text.titleMedium),
+            SizedBox(height: spacing.xs),
+            TextFormField(
+              controller: buttonTextCtrl,
+              decoration: InputDecoration(
+                hintText: l.adminProductButtonTextHint,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class AdminProductSaleSection extends StatelessWidget {
+  final dynamic tokens;
+  final AppLocalizations l;
+  final TextEditingController salePriceCtrl;
+  final TextEditingController saleStartCtrl;
+  final TextEditingController saleEndCtrl;
+  final Future<void> Function() onPickSaleStart;
+  final Future<void> Function() onPickSaleEnd;
+
+  const AdminProductSaleSection({
+    super.key,
+    required this.tokens,
+    required this.l,
+    required this.salePriceCtrl,
+    required this.saleStartCtrl,
+    required this.saleEndCtrl,
+    required this.onPickSaleStart,
+    required this.onPickSaleEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final spacing = tokens.spacing;
+
+    return AdminFormSectionCard(
+      tokens: tokens,
+      title: l.adminProductSaleSectionTitle,
+      subtitle: l.adminProductSaleSectionSubtitle,
+      icon: Icons.local_offer_outlined,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: salePriceCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: l.adminProductSalePriceLabel,
                   ),
                 ),
               ),
-            ),
-            SizedBox(width: spacing.sm),
-            Expanded(
-              flex: 3,
-              child: TextFormField(
-                controller: row.valueCtrl,
-                decoration: InputDecoration(
-                  labelText: l.adminProductAttributeValueLabel,
-                  hintText: 'Samsung',
+              SizedBox(width: spacing.md),
+              Expanded(
+                child: TextFormField(
+                  controller: saleStartCtrl,
+                  readOnly: true,
+                  decoration: InputDecoration(
+                    labelText: l.adminProductSaleStartLabel,
+                    hintText: 'YYYY-MM-DD',
+                    suffixIcon: const Icon(Icons.calendar_today),
+                  ),
+                  onTap: onPickSaleStart,
                 ),
               ),
+            ],
+          ),
+          SizedBox(height: spacing.sm),
+          TextFormField(
+            controller: saleEndCtrl,
+            readOnly: true,
+            decoration: InputDecoration(
+              labelText: l.adminProductSaleEndLabel,
+              hintText: 'YYYY-MM-DD',
+              suffixIcon: const Icon(Icons.calendar_today),
             ),
-            IconButton(
-              onPressed: () => _removeAttributeRow(index),
-              icon: Icon(Icons.delete, color: c.danger),
+            onTap: onPickSaleEnd,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class AdminProductAttributesSection extends StatelessWidget {
+  final dynamic tokens;
+  final AppLocalizations l;
+  final List<_AttributeRow> attributes;
+  final List<String> allowedAttributeCodes;
+  final VoidCallback onAddAttribute;
+  final void Function(int index) onRemoveAttribute;
+
+  const AdminProductAttributesSection({
+    super.key,
+    required this.tokens,
+    required this.l,
+    required this.attributes,
+    required this.allowedAttributeCodes,
+    required this.onAddAttribute,
+    required this.onRemoveAttribute,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final spacing = tokens.spacing;
+    final c = tokens.colors;
+    final text = tokens.typography;
+
+    return AdminFormSectionCard(
+      tokens: tokens,
+      title: l.adminProductAttributesTitle,
+      subtitle: l.adminProductAttributesSubtitle,
+      icon: Icons.tune_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (attributes.isEmpty)
+            Padding(
+              padding: EdgeInsets.only(bottom: spacing.sm),
+              child: Text(
+                l.adminProductNoAttributesHint,
+                style: text.bodySmall.copyWith(color: c.muted),
+              ),
             ),
-          ],
-        ),
-      );
-    }).toList();
+          ...attributes.asMap().entries.map((entry) {
+            final index = entry.key;
+            final row = entry.value;
+
+            return Padding(
+              padding: EdgeInsets.only(bottom: spacing.sm),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: spacing.sm,
+                        vertical: spacing.xs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: c.surface,
+                        borderRadius: BorderRadius.circular(tokens.card.radius),
+                        border: Border.all(color: c.border.withOpacity(0.4)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value:
+                              row.selectedCode ?? allowedAttributeCodes.first,
+                          isExpanded: true,
+                          items: allowedAttributeCodes
+                              .map(
+                                (code) => DropdownMenuItem(
+                                  value: code,
+                                  child: Text(code),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (val) {
+                            if (val == null) return;
+                            row.selectedCode = val;
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: spacing.sm),
+                  Expanded(
+                    flex: 3,
+                    child: TextFormField(
+                      controller: row.valueCtrl,
+                      decoration: InputDecoration(
+                        labelText: l.adminProductAttributeValueLabel,
+                        hintText: 'Samsung',
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => onRemoveAttribute(index),
+                    icon: Icon(Icons.delete, color: c.danger),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: onAddAttribute,
+              icon: const Icon(Icons.add),
+              label: Text(l.adminProductAddAttribute),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

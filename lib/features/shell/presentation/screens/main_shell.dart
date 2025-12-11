@@ -31,6 +31,9 @@ import 'package:build4front/features/profile/domain/usecases/update_user_status.
 import 'package:build4front/features/profile/data/services/user_profile_service.dart';
 import 'package:build4front/features/profile/data/repositories/user_profile_repository_impl.dart';
 
+// ✅ Cart screen
+import 'package:build4front/features/cart/presentation/screens/cart_screen.dart';
+
 class MainShell extends StatefulWidget {
   final AppConfig appConfig;
 
@@ -84,6 +87,9 @@ class _MainShellState extends State<MainShell> {
 
         case 'explore':
           return ExploreScreen(appConfig: widget.appConfig);
+
+        case 'cart': // ✅ Cart tab
+          return const CartScreen();
 
         case 'profile':
           // Profile tab wrapper (no appConfig passed here anymore)
@@ -142,7 +148,7 @@ class _MainShellState extends State<MainShell> {
       case 'user':
         return Icons.person_rounded;
       case 'bag':
-        return Icons.shopping_bag_rounded;
+        return Icons.shopping_bag_rounded; // ✅ used for cart
       case 'chat':
         return Icons.chat_bubble_outline_rounded;
       default:
@@ -201,15 +207,7 @@ class _ProfileTabShell extends StatelessWidget {
     // 1. Not logged in
     // -----------------------
     if (!authState.isLoggedIn || user == null || token == null) {
-      return Scaffold(
-        body: Center(
-          child: Text(
-            // if you don't have this key yet, you can just put a literal:
-            // "Please login first",
-            tr.profile_login_required,
-          ),
-        ),
-      );
+      return Scaffold(body: Center(child: Text(tr.profile_login_required)));
     }
 
     // -----------------------

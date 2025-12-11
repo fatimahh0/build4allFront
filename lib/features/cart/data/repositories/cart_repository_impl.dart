@@ -1,48 +1,69 @@
-import 'package:build4front/features/cart/domain/entities/cart_entity.dart';
+// lib/features/cart/data/repositories/cart_repository_impl.dart
+import 'package:build4front/features/cart/data/services/cart_api_service.dart';
+import 'package:build4front/features/cart/domain/entities/cart.dart';
+import 'package:build4front/features/cart/domain/entities/cart_item.dart';
+
 import 'package:build4front/features/cart/domain/repositories/cart_repository.dart';
 
+
 import '../models/cart_model.dart';
-import '../services/cart_api_service.dart';
+import '../models/cart_item_model.dart';
 
 class CartRepositoryImpl implements CartRepository {
   final CartApiService api;
 
   CartRepositoryImpl(this.api);
 
-  @override
-  Future<CartEntity> getCart() async {
-    final CartModel model = await api.getCart();
-    return model.toEntity();
-  }
-
-  @override
-  Future<CartEntity> addItem({
-    required int itemId,
-    required int quantity,
-  }) async {
-    final CartModel model = await api.addItem(
-      itemId: itemId,
-      quantity: quantity,
+  Cart _mapCart(CartModel model) {
+    return Cart(
+      id: model.cartId,
+      status: model.status,
+      totalPrice: model.totalPrice,
+      currencySymbol: model.currencySymbol,
+      items: model.items.map(_mapCartItem).toList(),
     );
-    return model.toEntity();
+  }
+
+  CartItem _mapCartItem(CartItemModel m) {
+    return CartItem(
+      cartItemId: m.cartItemId,
+      itemId: m.itemId,
+      itemName: m.itemName,
+      imageUrl: m.imageUrl,
+      quantity: m.quantity,
+      unitPrice: m.unitPrice,
+      lineTotal: m.lineTotal,
+    );
   }
 
   @override
-  Future<CartEntity> updateItemQuantity({
+  Future<Cart> getMyCart() async {
+    final model = await api.getMyCart();
+    return _mapCart(model);
+  }
+
+  @override
+  Future<Cart> addToCart({required int itemId, int quantity = 1}) async {
+    final model = await api.addToCart(itemId: itemId, quantity: quantity);
+    return _mapCart(model);
+  }
+
+  @override
+  Future<Cart> updateCartItem({
     required int cartItemId,
     required int quantity,
   }) async {
-    final CartModel model = await api.updateItemQuantity(
+    final model = await api.updateCartItem(
       cartItemId: cartItemId,
       quantity: quantity,
     );
-    return model.toEntity();
+    return _mapCart(model);
   }
 
   @override
-  Future<CartEntity> removeItem({required int cartItemId}) async {
-    final CartModel model = await api.removeItem(cartItemId: cartItemId);
-    return model.toEntity();
+  Future<Cart> removeCartItem({required int cartItemId}) async {
+    final model = await api.removeCartItem(cartItemId: cartItemId);
+    return _mapCart(model);
   }
 
   @override

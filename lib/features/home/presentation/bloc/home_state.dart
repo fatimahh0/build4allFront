@@ -1,7 +1,7 @@
-// lib/features/home/presentation/bloc/home_state.dart
-
 import 'package:equatable/equatable.dart';
+
 import '../../../items/domain/entities/item_summary.dart';
+import '../../../catalog/domain/entities/category.dart';
 
 class HomeState extends Equatable {
   final bool isLoading;
@@ -14,8 +14,11 @@ class HomeState extends Equatable {
   /// Later: real interest-based; for now can mirror popular.
   final List<ItemSummary> recommendedItems;
 
-  /// Category labels used by chips.
+  /// Category labels used by chips (names only).
   final List<String> categories;
+
+  /// Full category entities (with id) for filtering.
+  final List<Category> categoryEntities;
 
   /// Flash sale / discounted items.
   final List<ItemSummary> flashSaleItems;
@@ -36,6 +39,7 @@ class HomeState extends Equatable {
     required this.popularItems,
     required this.recommendedItems,
     required this.categories,
+    required this.categoryEntities,
     required this.flashSaleItems,
     required this.newArrivalsItems,
     required this.bestSellersItems,
@@ -49,6 +53,7 @@ class HomeState extends Equatable {
     popularItems: <ItemSummary>[],
     recommendedItems: <ItemSummary>[],
     categories: <String>[],
+    categoryEntities: <Category>[],
     flashSaleItems: <ItemSummary>[],
     newArrivalsItems: <ItemSummary>[],
     bestSellersItems: <ItemSummary>[],
@@ -62,6 +67,7 @@ class HomeState extends Equatable {
     List<ItemSummary>? popularItems,
     List<ItemSummary>? recommendedItems,
     List<String>? categories,
+    List<Category>? categoryEntities,
     List<ItemSummary>? flashSaleItems,
     List<ItemSummary>? newArrivalsItems,
     List<ItemSummary>? bestSellersItems,
@@ -74,6 +80,7 @@ class HomeState extends Equatable {
       popularItems: popularItems ?? this.popularItems,
       recommendedItems: recommendedItems ?? this.recommendedItems,
       categories: categories ?? this.categories,
+      categoryEntities: categoryEntities ?? this.categoryEntities,
       flashSaleItems: flashSaleItems ?? this.flashSaleItems,
       newArrivalsItems: newArrivalsItems ?? this.newArrivalsItems,
       bestSellersItems: bestSellersItems ?? this.bestSellersItems,
@@ -89,6 +96,7 @@ class HomeState extends Equatable {
     popularItems,
     recommendedItems,
     categories,
+    categoryEntities,
     flashSaleItems,
     newArrivalsItems,
     bestSellersItems,

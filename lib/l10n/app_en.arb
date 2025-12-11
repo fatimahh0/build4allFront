@@ -489,11 +489,59 @@
   "adminHomeBannerTargetProductLabel": "Product",
   "adminHomeBannerTargetProductHint": "Select product",
   "adminHomeBannerProductRequired": "Product is required",
+  
 
   "adminActiveLabel": "Active",
   "adminNoOptions": "No options",
   "noResultsLabel": "No results",
-  "searchLabel": "Search..."
+  "searchLabel": "Search...",
+  "adminProductsSearchHint": "Search products...",
+  "adminProductsFilterAll": "All products",
+  "adminProductEditSubtitle": "Update product details",
+  "adminProductCreateSubtitle": "Add a new product",
+  "adminProductSectionBasicInfoTitle": "Basic info",
+  "adminProductSectionPricingTitle": "Pricing",
+  "adminProductSectionBasicInfoSubtitle": "Name, description, type, SKU",
+  "adminProductSectionPricingSubtitle": "Price, sale, stock",
+  "adminProductSectionMetaTitle": "Meta",
+  "adminProductSectionMetaSubtitle": "SEO title & description",
+  "adminSelectCategoryFirst": "Select category first",
+  "adminProductImageSectionTitle": "Product image",
+  "adminProductImageSectionSubtitle": "Upload product image",
+  "adminProductSectionConfigTitle": "Product configuration",
+  "adminProductSectionConfigSubtitle": "Virtual, downloadable, external",
+  "adminProductSaleSectionSubtitle": "Set sale price and duration",
+  "adminProductAttributesSubtitle": "Add custom attributes",
+  "cart_title": "Shopping Cart",
+  "cart_empty_message": "Your cart is empty. Start adding items!",
+  "cart_total_label": "Total:",
+  "cart_checkout_button": "Proceed to Checkout",
+  "cart_item_added": "Item added to cart",
+  "cart_item_removed": "Item removed from cart",
+  "cart_clear_confirmation": "Are you sure you want to clear the cart?",
+  "cart_item_quantity_label": "Quantity:",
+  "cart_item_updated": "Cart item updated",
+"cart_checkout": "Checkout",
+"cart_clear": "Clear Cart",
+"cart_empty_cta": "Browse Products",
+"cart_cleared": "Cart has been cleared",
+"adminProductNoAttributesHint": "No attributes added yet.",
+"cart_add_button": "Add to Cart",
+
+"home_book_now_button": "Book Now",
+
+"home_view_details_button": "View Details",
+
+"cart_login_required_title": "Login Required",
+
+"cart_login_required_message": "Please log in to proceed to checkout.",
+
+"cancel_button": "Cancel",
+
+"login_button": "Log In",
+
+"cart_item_added_snackbar": "Item added to cart"
+
 
 
 }

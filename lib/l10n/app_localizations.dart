@@ -2136,6 +2136,240 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Search...'**
   String get searchLabel;
+
+  /// No description provided for @adminProductsSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search products...'**
+  String get adminProductsSearchHint;
+
+  /// No description provided for @adminProductsFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All products'**
+  String get adminProductsFilterAll;
+
+  /// No description provided for @adminProductEditSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update product details'**
+  String get adminProductEditSubtitle;
+
+  /// No description provided for @adminProductCreateSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a new product'**
+  String get adminProductCreateSubtitle;
+
+  /// No description provided for @adminProductSectionBasicInfoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Basic info'**
+  String get adminProductSectionBasicInfoTitle;
+
+  /// No description provided for @adminProductSectionPricingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pricing'**
+  String get adminProductSectionPricingTitle;
+
+  /// No description provided for @adminProductSectionBasicInfoSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Name, description, type, SKU'**
+  String get adminProductSectionBasicInfoSubtitle;
+
+  /// No description provided for @adminProductSectionPricingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Price, sale, stock'**
+  String get adminProductSectionPricingSubtitle;
+
+  /// No description provided for @adminProductSectionMetaTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Meta'**
+  String get adminProductSectionMetaTitle;
+
+  /// No description provided for @adminProductSectionMetaSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'SEO title & description'**
+  String get adminProductSectionMetaSubtitle;
+
+  /// No description provided for @adminSelectCategoryFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Select category first'**
+  String get adminSelectCategoryFirst;
+
+  /// No description provided for @adminProductImageSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Product image'**
+  String get adminProductImageSectionTitle;
+
+  /// No description provided for @adminProductImageSectionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload product image'**
+  String get adminProductImageSectionSubtitle;
+
+  /// No description provided for @adminProductSectionConfigTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Product configuration'**
+  String get adminProductSectionConfigTitle;
+
+  /// No description provided for @adminProductSectionConfigSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Virtual, downloadable, external'**
+  String get adminProductSectionConfigSubtitle;
+
+  /// No description provided for @adminProductSaleSectionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set sale price and duration'**
+  String get adminProductSaleSectionSubtitle;
+
+  /// No description provided for @adminProductAttributesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add custom attributes'**
+  String get adminProductAttributesSubtitle;
+
+  /// No description provided for @cart_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Shopping Cart'**
+  String get cart_title;
+
+  /// No description provided for @cart_empty_message.
+  ///
+  /// In en, this message translates to:
+  /// **'Your cart is empty. Start adding items!'**
+  String get cart_empty_message;
+
+  /// No description provided for @cart_total_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Total:'**
+  String get cart_total_label;
+
+  /// No description provided for @cart_checkout_button.
+  ///
+  /// In en, this message translates to:
+  /// **'Proceed to Checkout'**
+  String get cart_checkout_button;
+
+  /// No description provided for @cart_item_added.
+  ///
+  /// In en, this message translates to:
+  /// **'Item added to cart'**
+  String get cart_item_added;
+
+  /// No description provided for @cart_item_removed.
+  ///
+  /// In en, this message translates to:
+  /// **'Item removed from cart'**
+  String get cart_item_removed;
+
+  /// No description provided for @cart_clear_confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to clear the cart?'**
+  String get cart_clear_confirmation;
+
+  /// No description provided for @cart_item_quantity_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity:'**
+  String get cart_item_quantity_label;
+
+  /// No description provided for @cart_item_updated.
+  ///
+  /// In en, this message translates to:
+  /// **'Cart item updated'**
+  String get cart_item_updated;
+
+  /// No description provided for @cart_checkout.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkout'**
+  String get cart_checkout;
+
+  /// No description provided for @cart_clear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Cart'**
+  String get cart_clear;
+
+  /// No description provided for @cart_empty_cta.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse Products'**
+  String get cart_empty_cta;
+
+  /// No description provided for @cart_cleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Cart has been cleared'**
+  String get cart_cleared;
+
+  /// No description provided for @adminProductNoAttributesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No attributes added yet.'**
+  String get adminProductNoAttributesHint;
+
+  /// No description provided for @cart_add_button.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to Cart'**
+  String get cart_add_button;
+
+  /// No description provided for @home_book_now_button.
+  ///
+  /// In en, this message translates to:
+  /// **'Book Now'**
+  String get home_book_now_button;
+
+  /// No description provided for @home_view_details_button.
+  ///
+  /// In en, this message translates to:
+  /// **'View Details'**
+  String get home_view_details_button;
+
+  /// No description provided for @cart_login_required_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Login Required'**
+  String get cart_login_required_title;
+
+  /// No description provided for @cart_login_required_message.
+  ///
+  /// In en, this message translates to:
+  /// **'Please log in to proceed to checkout.'**
+  String get cart_login_required_message;
+
+  /// No description provided for @cancel_button.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel_button;
+
+  /// No description provided for @login_button.
+  ///
+  /// In en, this message translates to:
+  /// **'Log In'**
+  String get login_button;
+
+  /// No description provided for @cart_item_added_snackbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Item added to cart'**
+  String get cart_item_added_snackbar;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

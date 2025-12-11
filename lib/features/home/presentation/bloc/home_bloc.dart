@@ -1,5 +1,3 @@
-// lib/features/home/presentation/bloc/home_bloc.dart
-
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/config/env.dart';
@@ -86,8 +84,9 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       // 6) Top rated: for now we simply reuse best sellers.
       final List<ItemSummary> topRatedItems = bestSellersItems;
 
-      // 7) Build categories list (labels for chips).
+      // 7) Build categories list (labels for chips + entities for filtering).
       List<String> categoryLabels = <String>[];
+      List<Category> categoryEntities = <Category>[];
 
       if (projectId > 0) {
         // These are available if you need them later.
@@ -116,6 +115,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
                   .toList();
 
         categoryLabels = filteredCategories.map((c) => c.name).toList();
+        categoryEntities = filteredCategories;
       }
 
       emit(
@@ -126,6 +126,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
           popularItems: popularItems,
           recommendedItems: recommendedItems,
           categories: categoryLabels,
+          categoryEntities: categoryEntities,
           flashSaleItems: flashSaleItems,
           newArrivalsItems: newArrivalsItems,
           bestSellersItems: bestSellersItems,

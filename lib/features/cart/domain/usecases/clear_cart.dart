@@ -1,3 +1,4 @@
+// lib/features/cart/domain/usecases/clear_cart.dart
 import '../repositories/cart_repository.dart';
 
 class ClearCart {
@@ -5,7 +6,5 @@ class ClearCart {
 
   ClearCart(this.repo);
 
-  Future<void> call() {
-    return repo.clearCart();
-  }
+  Future<void> call() => repo.clearCart();
 }

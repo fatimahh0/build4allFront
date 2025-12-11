@@ -1,70 +1,40 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:build4front/core/theme/theme_cubit.dart';
 
-class HomeCategoryChips extends StatefulWidget {
+class HomeCategoryChips extends StatelessWidget {
+  /// Category names only (e.g. ["All", "Sports", "Music"])
   final List<String> categories;
-  final ValueChanged<String>? onCategoryTap;
+
+  /// Called when a chip is tapped, passes back the selected category name.
+  final ValueChanged<String> onCategoryTap;
 
   const HomeCategoryChips({
     super.key,
     required this.categories,
-    this.onCategoryTap,
+    required this.onCategoryTap,
   });
 
   @override
-  State<HomeCategoryChips> createState() => _HomeCategoryChipsState();
-}
-
-class _HomeCategoryChipsState extends State<HomeCategoryChips> {
-  String? _selected;
-
-  @override
   Widget build(BuildContext context) {
-    if (widget.categories.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    final theme = Theme.of(context);
+    final c = theme.colorScheme;
 
-    final themeState = context.watch<ThemeCubit>().state;
-    final spacing = themeState.tokens.spacing;
-    final c = Theme.of(context).colorScheme;
-    final t = Theme.of(context).textTheme;
-
-    return Container(
-      margin: EdgeInsets.only(bottom: spacing.lg),
-      height: 40,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: widget.categories.length,
-        separatorBuilder: (_, __) => SizedBox(width: spacing.sm),
-        itemBuilder: (context, index) {
-          final category = widget.categories[index];
-          final isSelected = _selected == category;
-
-          return ChoiceChip(
-            label: Text(
-              category,
-              style: t.bodySmall?.copyWith(
-                color: isSelected ? c.onPrimary : c.onSurface,
-              ),
-            ),
-            selected: isSelected,
-            onSelected: (_) {
-              setState(() {
-                _selected = category;
-              });
-              widget.onCategoryTap?.call(category);
-            },
-            selectedColor: c.primary,
-            backgroundColor: c.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(999),
-              side: BorderSide(
-                color: isSelected ? c.primary : c.outline.withOpacity(0.3),
-              ),
+    // You can track selected chip outside (like you already do with _selectedCategoryId),
+    // or add local selection here if needed.
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: categories.map((name) {
+          return Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: ChoiceChip(
+              label: Text(name),
+              selected: false, // you can wire this with state if needed
+              onSelected: (_) => onCategoryTap(name),
+              labelStyle: theme.textTheme.bodyMedium,
+              selectedColor: c.primary.withOpacity(0.1),
             ),
           );
-        },
+        }).toList(),
       ),
     );
   }

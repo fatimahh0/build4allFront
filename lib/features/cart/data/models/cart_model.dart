@@ -1,38 +1,40 @@
-import '../../../cart/domain/entities/cart_entity.dart';
+// lib/features/cart/data/models/cart_model.dart
 import 'cart_item_model.dart';
 
 class CartModel {
-  final int id;
+  final int cartId;
+  final String status;
+  final double totalPrice;
+  final String? currencySymbol;
   final List<CartItemModel> items;
-  final double itemsSubtotal;
-  final String currencySymbol;
 
-  CartModel({
-    required this.id,
-    required this.items,
-    required this.itemsSubtotal,
+  const CartModel({
+    required this.cartId,
+    required this.status,
+    required this.totalPrice,
     required this.currencySymbol,
+    required this.items,
   });
 
   factory CartModel.fromJson(Map<String, dynamic> json) {
-    final itemsJson = (json['items'] as List? ?? []);
-
     return CartModel(
-      id: (json['id'] as num).toInt(),
-      items: itemsJson
+      cartId: (json['cartId'] ?? json['id']) as int,
+      status: (json['status'] ?? 'ACTIVE') as String,
+      totalPrice: (json['totalPrice'] as num?)?.toDouble() ?? 0.0,
+      currencySymbol: json['currencySymbol'] as String?,
+      items: (json['items'] as List<dynamic>? ?? [])
           .map((e) => CartItemModel.fromJson(e as Map<String, dynamic>))
           .toList(),
-      itemsSubtotal: (json['itemsSubtotal'] as num?)?.toDouble() ?? 0.0,
-      currencySymbol: json['currencySymbol'] as String? ?? '',
     );
   }
 
-  CartEntity toEntity() {
-    return CartEntity(
-      id: id,
-      items: items.map((m) => m.toEntity()).toList(),
-      itemsSubtotal: itemsSubtotal,
-      currencySymbol: currencySymbol,
-    );
+  Map<String, dynamic> toJson() {
+    return {
+      'cartId': cartId,
+      'status': status,
+      'totalPrice': totalPrice,
+      'currencySymbol': currencySymbol,
+      'items': items.map((e) => e.toJson()).toList(),
+    };
   }
 }

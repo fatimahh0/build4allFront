@@ -1,39 +1,53 @@
+// lib/features/cart/presentation/bloc/cart_event.dart
 import 'package:equatable/equatable.dart';
 
-class CartEvent extends Equatable {
+abstract class CartEvent extends Equatable {
+  const CartEvent();
+
   @override
   List<Object?> get props => [];
 }
 
-class CartLoadRequested extends CartEvent {}
+class CartStarted extends CartEvent {
+  const CartStarted();
+}
+
+class CartRefreshed extends CartEvent {
+  const CartRefreshed();
+}
 
 class CartAddItemRequested extends CartEvent {
   final int itemId;
   final int quantity;
 
-  CartAddItemRequested({required this.itemId, this.quantity = 1});
+  const CartAddItemRequested({required this.itemId, this.quantity = 1});
 
   @override
   List<Object?> get props => [itemId, quantity];
 }
 
-class CartUpdateItemRequested extends CartEvent {
+class CartItemQuantityChanged extends CartEvent {
   final int cartItemId;
   final int quantity;
 
-  CartUpdateItemRequested({required this.cartItemId, required this.quantity});
+  const CartItemQuantityChanged({
+    required this.cartItemId,
+    required this.quantity,
+  });
 
   @override
   List<Object?> get props => [cartItemId, quantity];
 }
 
-class CartRemoveItemRequested extends CartEvent {
+class CartItemRemoved extends CartEvent {
   final int cartItemId;
 
-  CartRemoveItemRequested(this.cartItemId);
+  const CartItemRemoved({required this.cartItemId});
 
   @override
   List<Object?> get props => [cartItemId];
 }
 
-class CartClearRequested extends CartEvent {}
+class CartCleared extends CartEvent {
+  const CartCleared();
+}

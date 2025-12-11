@@ -1,4 +1,5 @@
-import '../entities/cart_entity.dart';
+// lib/features/cart/domain/usecases/add_to_cart.dart
+import '../entities/cart.dart';
 import '../repositories/cart_repository.dart';
 
 class AddToCart {
@@ -6,7 +7,7 @@ class AddToCart {
 
   AddToCart(this.repo);
 
-  Future<CartEntity> call({required int itemId, int quantity = 1}) {
-    return repo.addItem(itemId: itemId, quantity: quantity);
+  Future<Cart> call({required int itemId, int quantity = 1}) {
+    return repo.addToCart(itemId: itemId, quantity: quantity);
   }
 }
