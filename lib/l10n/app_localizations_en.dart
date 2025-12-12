@@ -1157,4 +1157,87 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cart_item_added_snackbar => 'Item added to cart';
+
+  @override
+  String get coupons_title => 'Coupons';
+
+  @override
+  String get coupons_saved => 'Coupon saved successfully';
+
+  @override
+  String get coupons_deleted => 'Coupon deleted successfully';
+
+  @override
+  String get coupons_empty => 'No coupons yet. Create your first one!';
+
+  @override
+  String get coupons_type_percent => 'Percentage';
+
+  @override
+  String get coupons_type_fixed => 'Fixed amount';
+
+  @override
+  String get coupons_type_free_shipping => 'Free shipping';
+
+  @override
+  String get coupons_inactive_badge => 'Inactive';
+
+  @override
+  String get coupons_delete_title => 'Delete coupon';
+
+  @override
+  String coupons_delete_confirm(Object code) {
+    return 'Are you sure you want to delete coupon $code?';
+  }
+
+  @override
+  String get delete => 'Delete';
+
+  @override
+  String get coupons_add => 'Add coupon';
+
+  @override
+  String get coupons_edit => 'Edit coupon';
+
+  @override
+  String get coupons_code => 'Code';
+
+  @override
+  String get coupons_code_required => 'Coupon code is required';
+
+  @override
+  String get coupons_description => 'Description';
+
+  @override
+  String get coupons_type => 'Discount type';
+
+  @override
+  String get coupons_value_percent => 'Discount (%)';
+
+  @override
+  String get coupons_value_amount => 'Discount amount';
+
+  @override
+  String get coupons_value_required => 'Discount value is required';
+
+  @override
+  String get coupons_value_invalid => 'Enter a valid discount value';
+
+  @override
+  String get coupons_max_uses => 'Max uses';
+
+  @override
+  String get coupons_min_order_amount => 'Min order amount';
+
+  @override
+  String get coupons_max_discount_amount => 'Max discount amount';
+
+  @override
+  String get coupons_active => 'Active';
+
+  @override
+  String get common_save => 'Save';
+
+  @override
+  String get adminCouponsTitle => 'Coupons';
 }

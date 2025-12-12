@@ -5,14 +5,25 @@ import 'cart_item.dart';
 class Cart extends Equatable {
   final int id;
   final String status;
-  final double totalPrice;
+
+  /// Breakdown
+  final double itemsTotal;
+  final double shippingTotal;
+  final double taxTotal;
+  final double? discountTotal;
+  final double grandTotal;
+
   final String? currencySymbol;
   final List<CartItem> items;
 
   const Cart({
     required this.id,
     required this.status,
-    required this.totalPrice,
+    required this.itemsTotal,
+    required this.shippingTotal,
+    required this.taxTotal,
+    required this.discountTotal,
+    required this.grandTotal,
     required this.currencySymbol,
     required this.items,
   });
@@ -20,5 +31,15 @@ class Cart extends Equatable {
   bool get isEmpty => items.isEmpty;
 
   @override
-  List<Object?> get props => [id, status, totalPrice, currencySymbol, items];
+  List<Object?> get props => [
+    id,
+    status,
+    itemsTotal,
+    shippingTotal,
+    taxTotal,
+    discountTotal,
+    grandTotal,
+    currencySymbol,
+    items,
+  ];
 }

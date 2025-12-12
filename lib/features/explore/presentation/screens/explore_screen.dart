@@ -1,3 +1,4 @@
+// lib/features/explore/presentation/screens/explore_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -11,6 +12,12 @@ import 'package:build4front/features/home/presentation/bloc/home_event.dart';
 import 'package:build4front/features/items/domain/entities/item_summary.dart';
 import 'package:build4front/common/widgets/app_search_field.dart';
 import 'package:build4front/common/widgets/ItemCard.dart';
+
+// 🔥 Auth + Cart + Toast
+import 'package:build4front/features/auth/presentation/login/bloc/auth_bloc.dart';
+import 'package:build4front/features/cart/presentation/bloc/cart_bloc.dart';
+import 'package:build4front/features/cart/presentation/bloc/cart_event.dart';
+import 'package:build4front/common/widgets/app_toast.dart';
 
 /// Sort options for Explore
 enum ExploreSortOption { relevance, priceLowHigh, priceHighLow, dateSoonest }
@@ -45,7 +52,13 @@ class ExploreScreen extends StatefulWidget {
 
 class _ExploreScreenState extends State<ExploreScreen> {
   late String _searchQuery;
-  String? _selectedCategory; // null = All
+
+  /// Label shown in chips
+  String? _selectedCategoryLabel;
+
+  /// Actual category id used for filtering (like Home)
+  int? _selectedCategoryId;
+
   ExploreSortOption _sortOption = ExploreSortOption.relevance;
 
   @override
@@ -54,7 +67,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
     // Initialize from navigation arguments
     _searchQuery = (widget.initialQuery ?? '').trim();
-    _selectedCategory = widget.initialCategoryLabel;
+    _selectedCategoryLabel = widget.initialCategoryLabel;
+    _selectedCategoryId = widget.initialCategoryId;
     _sortOption = ExploreSortOption.relevance;
 
     // Make sure HomeBloc has data (in case Explore is opened first)
@@ -87,7 +101,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 : homeState.popularItems;
 
             final items = _buildFilteredAndSortedItems(baseItems);
-            final categories = homeState.categories;
+            final categories = homeState.categories; // list of labels
+            final categoryEntities =
+                homeState.categoryEntities; // with id + name
 
             return RefreshIndicator(
               onRefresh: () async {
@@ -113,9 +129,23 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   if (categories.isNotEmpty)
                     _ExploreCategoryChips(
                       categories: categories,
-                      selectedCategory: _selectedCategory,
-                      onCategorySelected: (value) {
-                        setState(() => _selectedCategory = value);
+                      selectedCategoryLabel: _selectedCategoryLabel,
+                      onCategorySelected: (label) {
+                        int? foundId;
+
+                        if (label != null && label.trim().isNotEmpty) {
+                          for (final cat in categoryEntities) {
+                            if (cat.name == label) {
+                              foundId = cat.id;
+                              break;
+                            }
+                          }
+                        }
+
+                        setState(() {
+                          _selectedCategoryLabel = label;
+                          _selectedCategoryId = foundId;
+                        });
                       },
                     ),
 
@@ -148,7 +178,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       message: l10n.explore_empty_message, // add to l10n
                     )
                   else
-                    _ExploreItemsGrid(items: items),
+                    _ExploreItemsGrid(
+                      items: items,
+                      ctaLabelFor: _ctaLabelFor,
+                      onCtaPressed: _handleCtaPressed,
+                    ),
                 ],
               ),
             );
@@ -158,6 +192,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
+  /// Filter + sort (same style as Home: categoryId-based)
   List<ItemSummary> _buildFilteredAndSortedItems(List<ItemSummary> base) {
     List<ItemSummary> result = base;
 
@@ -166,20 +201,19 @@ class _ExploreScreenState extends State<ExploreScreen> {
       final query = _searchQuery.toLowerCase();
       result = result.where((item) {
         final title = (item.title).toLowerCase();
+        final subtitle = (item.subtitle ?? '').toLowerCase();
         final location = (item.location ?? '').toLowerCase();
-        return title.contains(query) || location.contains(query);
+        return title.contains(query) ||
+            subtitle.contains(query) ||
+            location.contains(query);
       }).toList();
     }
 
-    // 2) Filter by category (if any selected)
-    if (_selectedCategory != null && _selectedCategory!.trim().isNotEmpty) {
-      final cat = _selectedCategory!.toLowerCase();
-      result = result.where((item) {
-        // For now: match in title or location.
-        final title = (item.title).toLowerCase();
-        final location = (item.location ?? '').toLowerCase();
-        return title.contains(cat) || location.contains(cat);
-      }).toList();
+    // 2) Filter by categoryId (exactly like Home)
+    if (_selectedCategoryId != null) {
+      result = result
+          .where((item) => item.categoryId == _selectedCategoryId)
+          .toList();
     }
 
     // 3) Sort
@@ -220,7 +254,60 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
     return result;
   }
-}
+
+  /// CTA label: same logic as Home
+  String _ctaLabelFor(BuildContext context, ItemSummary item) {
+    final l10n = AppLocalizations.of(context)!;
+
+    switch (item.kind) {
+      case ItemKind.product:
+        return l10n.cart_add_button; // "Add to cart"
+      case ItemKind.activity:
+        return l10n.home_book_now_button; // "Book now"
+      case ItemKind.service:
+      case ItemKind.unknown:
+      default:
+        return l10n.home_view_details_button; // "View details"
+    }
+  }
+
+  /// 🔥 Handle "Add to cart" / "Book now" with AppToast
+void _handleCtaPressed(BuildContext context, ItemSummary item) {
+    final l10n = AppLocalizations.of(context)!;
+    final authState = context.read<AuthBloc>().state;
+
+    // 1) Not logged in → toast only
+    if (!authState.isLoggedIn) {
+      AppToast.show(context, l10n.cart_login_required_message, isError: true);
+      return;
+    }
+
+    // 2) PRODUCT → add to cart only, stay on Explore
+    if (item.kind == ItemKind.product) {
+      context.read<CartBloc>().add(
+        CartAddItemRequested(itemId: item.id, quantity: 1),
+      );
+
+      AppToast.show(context, l10n.cart_item_added_snackbar);
+
+      // ❌ remove this for now:
+      // Navigator.of(context).pushNamed('/cart');
+
+      return;
+    }
+
+    // 3) ACTIVITY (future booking logic)
+    if (item.kind == ItemKind.activity) {
+      AppToast.show(context, l10n.home_book_now_button);
+      return;
+    }
+  }
+
+
+    // 4) Other kinds → maybe open details later
+    // Navigator.of(context).pushNamed('/item-details', arguments: item.id);
+  }
+
 
 /// =======================
 ///  Category chips (Explore)
@@ -228,13 +315,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
 class _ExploreCategoryChips extends StatelessWidget {
   final List<String> categories;
-  final String? selectedCategory;
+  final String? selectedCategoryLabel;
   final ValueChanged<String?> onCategorySelected;
 
   const _ExploreCategoryChips({
     super.key,
     required this.categories,
-    required this.selectedCategory,
+    required this.selectedCategoryLabel,
     required this.onCategorySelected,
   });
 
@@ -255,8 +342,8 @@ class _ExploreCategoryChips extends StatelessWidget {
         itemBuilder: (context, index) {
           final cat = allCats[index]; // null = All
           final bool isSelected =
-              (cat == null && selectedCategory == null) ||
-              (cat != null && cat == selectedCategory);
+              (cat == null && selectedCategoryLabel == null) ||
+              (cat != null && cat == selectedCategoryLabel);
 
           final label =
               cat ?? AppLocalizations.of(context)!.explore_category_all;
@@ -357,7 +444,15 @@ class _SortDropdown extends StatelessWidget {
 class _ExploreItemsGrid extends StatelessWidget {
   final List<ItemSummary> items;
 
-  const _ExploreItemsGrid({super.key, required this.items});
+  final String Function(BuildContext, ItemSummary) ctaLabelFor;
+  final void Function(BuildContext, ItemSummary) onCtaPressed;
+
+  const _ExploreItemsGrid({
+    super.key,
+    required this.items,
+    required this.ctaLabelFor,
+    required this.onCtaPressed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -383,10 +478,12 @@ class _ExploreItemsGrid extends StatelessWidget {
           imageUrl: item.imageUrl,
           badgeLabel: priceLabel,
           metaLabel: meta,
+          ctaLabel: ctaLabelFor(context, item),
           onTap: () {
             // TODO: navigate to item details
             // Navigator.pushNamed(context, '/itemDetails', arguments: item.id);
           },
+          onCtaPressed: () => onCtaPressed(context, item),
         );
       },
     );

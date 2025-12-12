@@ -1,4 +1,3 @@
-// lib/common/widgets/app_text_field.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -6,18 +5,28 @@ import '../../core/theme/theme_cubit.dart';
 
 class AppTextField extends StatefulWidget {
   final String label;
+  final String? hintText;
   final TextEditingController controller;
   final TextInputType keyboardType;
   final bool obscureText;
   final String? Function(String?)? validator;
 
+  // ✅ NEW
+  final int maxLines;
+  final int? minLines;
+  final TextInputAction? textInputAction;
+
   const AppTextField({
     super.key,
     required this.label,
     required this.controller,
+    this.hintText,
     this.keyboardType = TextInputType.text,
     this.obscureText = false,
     this.validator,
+    this.maxLines = 1,
+    this.minLines,
+    this.textInputAction,
   });
 
   @override
@@ -38,8 +47,9 @@ class _AppTextFieldState extends State<AppTextField> {
     final themeState = context.watch<ThemeCubit>().state;
     final colors = themeState.tokens.colors;
     final card = themeState.tokens.card;
-
     final t = Theme.of(context).textTheme;
+
+    final canToggleObscure = widget.obscureText && widget.maxLines == 1;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,9 +59,13 @@ class _AppTextFieldState extends State<AppTextField> {
         TextFormField(
           controller: widget.controller,
           keyboardType: widget.keyboardType,
-          obscureText: _obscure,
+          obscureText: canToggleObscure ? _obscure : false,
           validator: widget.validator,
+          maxLines: widget.maxLines,
+          minLines: widget.minLines,
+          textInputAction: widget.textInputAction,
           decoration: InputDecoration(
+            hintText: widget.hintText,
             filled: true,
             fillColor: colors.surface,
             border: OutlineInputBorder(
@@ -66,17 +80,13 @@ class _AppTextFieldState extends State<AppTextField> {
               borderRadius: BorderRadius.circular(card.radius),
               borderSide: BorderSide(color: colors.primary, width: 1.4),
             ),
-            suffixIcon: widget.obscureText
+            suffixIcon: canToggleObscure
                 ? IconButton(
                     icon: Icon(
                       _obscure ? Icons.visibility_off : Icons.visibility,
                       color: colors.body.withOpacity(0.8),
                     ),
-                    onPressed: () {
-                      setState(() {
-                        _obscure = !_obscure;
-                      });
-                    },
+                    onPressed: () => setState(() => _obscure = !_obscure),
                   )
                 : null,
           ),

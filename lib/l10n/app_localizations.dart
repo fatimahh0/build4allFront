@@ -2370,6 +2370,168 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Item added to cart'**
   String get cart_item_added_snackbar;
+
+  /// No description provided for @coupons_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Coupons'**
+  String get coupons_title;
+
+  /// No description provided for @coupons_saved.
+  ///
+  /// In en, this message translates to:
+  /// **'Coupon saved successfully'**
+  String get coupons_saved;
+
+  /// No description provided for @coupons_deleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Coupon deleted successfully'**
+  String get coupons_deleted;
+
+  /// No description provided for @coupons_empty.
+  ///
+  /// In en, this message translates to:
+  /// **'No coupons yet. Create your first one!'**
+  String get coupons_empty;
+
+  /// No description provided for @coupons_type_percent.
+  ///
+  /// In en, this message translates to:
+  /// **'Percentage'**
+  String get coupons_type_percent;
+
+  /// No description provided for @coupons_type_fixed.
+  ///
+  /// In en, this message translates to:
+  /// **'Fixed amount'**
+  String get coupons_type_fixed;
+
+  /// No description provided for @coupons_type_free_shipping.
+  ///
+  /// In en, this message translates to:
+  /// **'Free shipping'**
+  String get coupons_type_free_shipping;
+
+  /// No description provided for @coupons_inactive_badge.
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive'**
+  String get coupons_inactive_badge;
+
+  /// No description provided for @coupons_delete_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete coupon'**
+  String get coupons_delete_title;
+
+  /// No description provided for @coupons_delete_confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete coupon {code}?'**
+  String coupons_delete_confirm(Object code);
+
+  /// No description provided for @delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get delete;
+
+  /// No description provided for @coupons_add.
+  ///
+  /// In en, this message translates to:
+  /// **'Add coupon'**
+  String get coupons_add;
+
+  /// No description provided for @coupons_edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit coupon'**
+  String get coupons_edit;
+
+  /// No description provided for @coupons_code.
+  ///
+  /// In en, this message translates to:
+  /// **'Code'**
+  String get coupons_code;
+
+  /// No description provided for @coupons_code_required.
+  ///
+  /// In en, this message translates to:
+  /// **'Coupon code is required'**
+  String get coupons_code_required;
+
+  /// No description provided for @coupons_description.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get coupons_description;
+
+  /// No description provided for @coupons_type.
+  ///
+  /// In en, this message translates to:
+  /// **'Discount type'**
+  String get coupons_type;
+
+  /// No description provided for @coupons_value_percent.
+  ///
+  /// In en, this message translates to:
+  /// **'Discount (%)'**
+  String get coupons_value_percent;
+
+  /// No description provided for @coupons_value_amount.
+  ///
+  /// In en, this message translates to:
+  /// **'Discount amount'**
+  String get coupons_value_amount;
+
+  /// No description provided for @coupons_value_required.
+  ///
+  /// In en, this message translates to:
+  /// **'Discount value is required'**
+  String get coupons_value_required;
+
+  /// No description provided for @coupons_value_invalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid discount value'**
+  String get coupons_value_invalid;
+
+  /// No description provided for @coupons_max_uses.
+  ///
+  /// In en, this message translates to:
+  /// **'Max uses'**
+  String get coupons_max_uses;
+
+  /// No description provided for @coupons_min_order_amount.
+  ///
+  /// In en, this message translates to:
+  /// **'Min order amount'**
+  String get coupons_min_order_amount;
+
+  /// No description provided for @coupons_max_discount_amount.
+  ///
+  /// In en, this message translates to:
+  /// **'Max discount amount'**
+  String get coupons_max_discount_amount;
+
+  /// No description provided for @coupons_active.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get coupons_active;
+
+  /// No description provided for @common_save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get common_save;
+
+  /// No description provided for @adminCouponsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Coupons'**
+  String get adminCouponsTitle;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

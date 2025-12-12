@@ -137,24 +137,41 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  IconData _mapIconName(String name) {
-    switch (name) {
+ IconData _mapIconName(String name) {
+    switch (name.toLowerCase()) {
       case 'home':
         return Icons.home_rounded;
+
       case 'search':
+      case 'explore':
         return Icons.search_rounded;
+
+      // ✅ profile
+      case 'user':
+      case 'person':
+      case 'profile':
+        return Icons.person_rounded;
+
+      // ✅ cart
+      case 'bag':
+      case 'cart':
+      case 'shopping_cart':
+      case 'shopping-bag':
+      case 'shopping_bag':
+        return Icons.shopping_bag_rounded;
+
       case 'ticket':
         return Icons.confirmation_num_rounded;
-      case 'user':
-        return Icons.person_rounded;
-      case 'bag':
-        return Icons.shopping_bag_rounded; // ✅ used for cart
+
       case 'chat':
         return Icons.chat_bubble_outline_rounded;
+
       default:
-        return Icons.circle_rounded;
+        return Icons
+            .help_outline_rounded;
     }
   }
+
 }
 
 class NavItemView {

@@ -1,5 +1,4 @@
 // lib/features/home/presentation/widgets/home_items_section.dart
-import 'package:build4front/features/cart/presentation/bloc/cart_event.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -8,10 +7,12 @@ import 'package:build4front/features/items/domain/entities/item_summary.dart';
 import 'package:build4front/common/widgets/ItemCard.dart';
 import 'home_section_header.dart';
 
-// 🔥 Auth + Cart + l10n
+// 🔥 Auth + Cart + l10n + Toast
 import 'package:build4front/features/auth/presentation/login/bloc/auth_bloc.dart';
 import 'package:build4front/features/cart/presentation/bloc/cart_bloc.dart';
+import 'package:build4front/features/cart/presentation/bloc/cart_event.dart';
 import 'package:build4front/l10n/app_localizations.dart';
+import 'package:build4front/common/widgets/app_toast.dart';
 
 class HomeItemsSection extends StatelessWidget {
   final String title;
@@ -159,15 +160,13 @@ class HomeItemsSection extends StatelessWidget {
 
     switch (item.kind) {
       case ItemKind.product:
-        // TODO: create a proper key in l10n
-        return l10n
-            .cart_add_button; // or just 'Add to cart' if key not yet created
+        return l10n.cart_add_button; // e.g. "Add to cart"
       case ItemKind.activity:
-        return l10n.home_book_now_button; // or a literal 'Book now'
+        return l10n.home_book_now_button; // e.g. "Book now"
       case ItemKind.service:
       case ItemKind.unknown:
       default:
-        return l10n.home_view_details_button; // or 'View details'
+        return l10n.home_view_details_button; // e.g. "View details"
     }
   }
 
@@ -209,63 +208,45 @@ class HomeItemsSection extends StatelessWidget {
     }
   }
 
-  /// 🔥 Handle "Add to cart" / "Book now" logic
+  /// 🔥 Handle "Add to cart" / "Book now" logic with AppToast
   void _handleCtaPressed(BuildContext context, ItemSummary item) {
     final l10n = AppLocalizations.of(context)!;
     final authState = context.read<AuthBloc>().state;
 
-    // 1) Not logged in → show dialog
+    // 1) Not logged in → show toast error
     if (!authState.isLoggedIn) {
-      showDialog(
-        context: context,
-        builder: (ctx) {
-          return AlertDialog(
-            title: Text(l10n.cart_login_required_title),
-            content: Text(l10n.cart_login_required_message),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: Text(l10n.cancel_button),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(ctx).pop();
-                  // TODO: navigate to your login route if you want
-                  // Navigator.of(context).pushNamed('/login');
-                },
-                child: Text(l10n.login_button),
-              ),
-            ],
-          );
-        },
+      AppToast.show(
+        context,
+        l10n.cart_login_required_message, // e.g. "Please login to continue"
+        isError: true,
       );
       return;
     }
 
     // 2) If item is a PRODUCT → add to cart via CartBloc
     if (item.kind == ItemKind.product) {
-      // This event name assumes your CartBloc has something like this.
-      // If your events differ, just adapt:
       context.read<CartBloc>().add(
         CartAddItemRequested(itemId: item.id, quantity: 1),
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.cart_item_added_snackbar),
-          duration: const Duration(seconds: 2),
-        ),
+      AppToast.show(
+        context,
+        l10n.cart_item_added_snackbar, // reuse same text, just toast now
       );
       return;
     }
 
-    // 3) If item is an ACTIVITY → here you can later open booking flow
+    // 3) If item is an ACTIVITY → later open booking flow
     if (item.kind == ItemKind.activity) {
-      // Navigator.of(context).pushNamed('/activity-details', arguments: item.id);
+      // TODO: route to booking / details
+      AppToast.show(
+        context,
+        l10n.home_book_now_button, // placeholder, or create a specific message
+      );
       return;
     }
 
-    // 4) Others → maybe open details
+    // 4) Others → maybe open details (later)
     // Navigator.of(context).pushNamed('/item-details', arguments: item.id);
   }
 }

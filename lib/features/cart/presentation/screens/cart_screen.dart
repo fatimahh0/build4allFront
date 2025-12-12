@@ -122,12 +122,16 @@ class CartScreen extends StatelessWidget {
                   ),
                   SizedBox(height: spacing.md),
                   CartSummaryCard(
-                    totalPrice: cart.totalPrice,
+                    itemsTotal: cart.itemsTotal,
+                    shippingTotal: cart.shippingTotal,
+                    taxTotal: cart.taxTotal,
+                    discountTotal: cart.discountTotal,
+                    grandTotal: cart.grandTotal,
                     currencySymbol: cart.currencySymbol,
                     isUpdating: state.isUpdating,
                     checkoutLabel: l10n.cart_checkout,
                     onCheckout: () {
-                      // TODO: navigate to Checkout flow later
+                      // here we will call /checkout (next step)
                     },
                   ),
                 ],

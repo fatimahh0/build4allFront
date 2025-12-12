@@ -5,7 +5,6 @@ import 'package:build4front/features/cart/domain/entities/cart_item.dart';
 
 import 'package:build4front/features/cart/domain/repositories/cart_repository.dart';
 
-
 import '../models/cart_model.dart';
 import '../models/cart_item_model.dart';
 
@@ -18,7 +17,11 @@ class CartRepositoryImpl implements CartRepository {
     return Cart(
       id: model.cartId,
       status: model.status,
-      totalPrice: model.totalPrice,
+      itemsTotal: model.itemsTotal,
+      shippingTotal: model.shippingTotal,
+      taxTotal: model.taxTotal,
+      discountTotal: model.discountTotal,
+      grandTotal: model.grandTotal,
       currencySymbol: model.currencySymbol,
       items: model.items.map(_mapCartItem).toList(),
     );

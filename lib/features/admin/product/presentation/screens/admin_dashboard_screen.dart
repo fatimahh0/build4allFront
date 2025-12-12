@@ -1,3 +1,5 @@
+// lib/features/admin/product/presentation/screens/admin_dashboard_screen.dart
+
 import 'package:build4front/features/admin/home_banner/presentation/screens/admin_home_banners_screen.dart';
 import 'package:build4front/features/admin/shipping/prensentation/screens/admin_shipping_methods_screen.dart';
 import 'package:build4front/features/admin/tax/presentation/screens/admin_tax_rules_screen.dart';
@@ -10,6 +12,15 @@ import 'package:build4front/core/config/env.dart';
 import 'package:build4front/features/auth/data/services/admin_token_store.dart';
 
 import 'package:build4front/features/admin/product/presentation/screens/admin_products_list_screen.dart';
+
+// 🔹 NEW: Coupons imports
+import 'package:build4front/features/admin/coupons/presentations/screens/admin_coupons_screen.dart';
+import 'package:build4front/features/admin/coupons/presentations/bloc/coupon_bloc.dart';
+import 'package:build4front/features/admin/coupons/data/services/coupon_api_service.dart';
+import 'package:build4front/features/admin/coupons/data/repositories/coupon_repository_impl.dart';
+import 'package:build4front/features/admin/coupons/domain/usecases/get_coupons.dart';
+import 'package:build4front/features/admin/coupons/domain/usecases/save_coupon.dart';
+import 'package:build4front/features/admin/coupons/domain/usecases/delete_coupon.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -110,7 +121,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   },
                 ),
 
-                // ✅ NEW SHIPPING TILE
+                // ✅ SHIPPING TILE
                 _AdminTile(
                   icon: Icons.local_shipping_outlined,
                   title: l10n.adminShippingTitle,
@@ -134,6 +145,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   card: card,
                   onTap: () {},
                 ),
+
+                // ✅ TAXES TILE
                 _AdminTile(
                   icon: Icons.receipt_long_outlined,
                   title: l10n.adminTaxesTitle,
@@ -149,7 +162,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     );
                   },
                 ),
-                // ✅ NEW HOME BANNERS TILE
+
+                // ✅ HOME BANNERS TILE
                 _AdminTile(
                   icon: Icons.view_carousel_outlined,
                   title: l10n.adminHomeBannersTitle,
@@ -163,6 +177,39 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             AdminHomeBannersScreen(ownerProjectId: ownerId),
                       ),
                     );
+                  },
+                ),
+
+                // ✅ NEW: COUPONS TILE (with BlocProvider)
+                _AdminTile(
+                  icon: Icons.card_giftcard_outlined,
+                  title: l10n.adminCouponsTitle,
+                  colors: colors,
+                  card: card,
+                  onTap: () {
+                 final api = CouponApiService();
+                    final repo = CouponRepositoryImpl(
+                      api: api,
+                      getToken: () =>
+                          _store.getToken(), // ✅ THIS is the missing line
+                    );
+
+                    final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => BlocProvider<CouponBloc>(
+                          create: (_) => CouponBloc(
+                            getCouponsUc: GetCoupons(repo),
+                            saveCouponUc: SaveCoupon(repo),
+                            deleteCouponUc: DeleteCoupon(repo),
+                            ownerProjectId: ownerId,
+                          ),
+                          child: const AdminCouponsScreen(),
+                        ),
+                      ),
+                    );
+
                   },
                 ),
               ],
