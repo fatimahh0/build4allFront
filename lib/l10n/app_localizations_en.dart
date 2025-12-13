@@ -1240,4 +1240,100 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get adminCouponsTitle => 'Coupons';
+
+  @override
+  String get checkoutTitle => 'Checkout';
+
+  @override
+  String get checkoutLoading => 'Loading checkout…';
+
+  @override
+  String get checkoutEmptyCart => 'Your cart is empty.';
+
+  @override
+  String get checkoutGoBack => 'Go back';
+
+  @override
+  String get checkoutItemsTitle => 'Items';
+
+  @override
+  String get checkoutAddressTitle => 'Shipping Address';
+
+  @override
+  String get checkoutCountryIdLabel => 'Country ID';
+
+  @override
+  String get checkoutCountryIdHint => 'Optional';
+
+  @override
+  String get checkoutRegionIdLabel => 'Region ID';
+
+  @override
+  String get checkoutRegionIdHint => 'Optional';
+
+  @override
+  String get checkoutCityLabel => 'City';
+
+  @override
+  String get checkoutCityHint => 'Enter city';
+
+  @override
+  String get checkoutPostalCodeLabel => 'Postal Code';
+
+  @override
+  String get checkoutPostalCodeHint => 'Optional';
+
+  @override
+  String get checkoutApplyAddress => 'Update shipping';
+
+  @override
+  String get checkoutCouponTitle => 'Coupon';
+
+  @override
+  String get checkoutCouponLabel => 'Coupon Code';
+
+  @override
+  String get checkoutCouponHint => 'Enter coupon (optional)';
+
+  @override
+  String get checkoutShippingTitle => 'Shipping';
+
+  @override
+  String get checkoutNoShippingMethods => 'No shipping methods found. Update address then refresh.';
+
+  @override
+  String get checkoutRefreshShipping => 'Refresh shipping';
+
+  @override
+  String get checkoutSelectShipping => 'Please select a shipping method';
+
+  @override
+  String get checkoutPaymentTitle => 'Payment';
+
+  @override
+  String get checkoutPaymentCash => 'Cash on delivery';
+
+  @override
+  String get checkoutStripeNote => 'Stripe requires payment confirmation (coming next).';
+
+  @override
+  String get checkoutSelectPayment => 'Please select a payment method';
+
+  @override
+  String get checkoutSummaryTitle => 'Order Summary';
+
+  @override
+  String get checkoutSubtotal => 'Subtotal';
+
+  @override
+  String get checkoutShipping => 'Shipping';
+
+  @override
+  String get checkoutTax => 'Tax';
+
+  @override
+  String get checkoutTotal => 'Total';
+
+  @override
+  String get checkoutPlaceOrder => 'Place Order';
 }

@@ -1,6 +1,9 @@
 // lib/app/app.dart
 
 import 'package:build4front/features/cart/data/services/cart_api_service.dart';
+import 'package:build4front/features/checkout/data/repositories/checkout_repository_impl.dart';
+import 'package:build4front/features/checkout/data/services/checkout_api_service.dart';
+import 'package:build4front/features/checkout/models/repositories/checkout_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -107,9 +110,15 @@ class Build4AllFrontApp extends StatelessWidget {
         RepositoryProvider<CategoryApiService>.value(value: categoryApi),
         RepositoryProvider<CategoryRepository>.value(value: categoryRepo),
 
-        // ✅ Cart
+        //  Cart
         RepositoryProvider<CartApiService>.value(value: cartApi),
         RepositoryProvider<CartRepository>.value(value: cartRepo),
+        RepositoryProvider<CheckoutApiService>.value(
+          value: CheckoutApiService(),
+        ),
+        RepositoryProvider<CheckoutRepository>.value(
+          value: CheckoutRepositoryImpl(CheckoutApiService()),
+        ),
       ],
       child: MultiBlocProvider(
         providers: [

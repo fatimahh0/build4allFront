@@ -574,7 +574,44 @@
   "coupons_max_discount_amount": "Max discount amount",
   "coupons_active": "Active",
   "common_save": "Save",
-  "adminCouponsTitle": "Coupons"
+  "adminCouponsTitle": "Coupons",
+    "checkoutTitle": "Checkout",
+  "checkoutLoading": "Loading checkout…",
+  "checkoutEmptyCart": "Your cart is empty.",
+  "checkoutGoBack": "Go back",
+
+  "checkoutItemsTitle": "Items",
+  "checkoutAddressTitle": "Shipping Address",
+  "checkoutCountryIdLabel": "Country ID",
+  "checkoutCountryIdHint": "Optional",
+  "checkoutRegionIdLabel": "Region ID",
+  "checkoutRegionIdHint": "Optional",
+  "checkoutCityLabel": "City",
+  "checkoutCityHint": "Enter city",
+  "checkoutPostalCodeLabel": "Postal Code",
+  "checkoutPostalCodeHint": "Optional",
+  "checkoutApplyAddress": "Update shipping",
+
+  "checkoutCouponTitle": "Coupon",
+  "checkoutCouponLabel": "Coupon Code",
+  "checkoutCouponHint": "Enter coupon (optional)",
+
+  "checkoutShippingTitle": "Shipping",
+  "checkoutNoShippingMethods": "No shipping methods found. Update address then refresh.",
+  "checkoutRefreshShipping": "Refresh shipping",
+  "checkoutSelectShipping": "Please select a shipping method",
+
+  "checkoutPaymentTitle": "Payment",
+  "checkoutPaymentCash": "Cash on delivery",
+  "checkoutStripeNote": "Stripe requires payment confirmation (coming next).",
+  "checkoutSelectPayment": "Please select a payment method",
+
+  "checkoutSummaryTitle": "Order Summary",
+  "checkoutSubtotal": "Subtotal",
+  "checkoutShipping": "Shipping",
+  "checkoutTax": "Tax",
+  "checkoutTotal": "Total",
+  "checkoutPlaceOrder": "Place Order"
 
 
 

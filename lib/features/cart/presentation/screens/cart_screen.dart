@@ -1,7 +1,7 @@
-// lib/features/cart/presentation/screens/cart_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:build4front/core/config/env.dart';
 import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/l10n/app_localizations.dart';
 
@@ -11,51 +11,39 @@ import '../bloc/cart_state.dart';
 import '../widgets/cart_item_tile.dart';
 import '../widgets/cart_summary_card.dart';
 
-class CartScreen extends StatelessWidget {
+class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
+
+  @override
+  State<CartScreen> createState() => _CartScreenState();
+}
+
+class _CartScreenState extends State<CartScreen> {
+  bool _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final bloc = context.read<CartBloc>();
+      if (!bloc.state.isLoading && bloc.state.cart == null) {
+        bloc.add(const CartStarted());
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final themeState = context.watch<ThemeCubit>().state;
-    final spacing = themeState.tokens.spacing;
-
-    // trigger load on first open
-    final cartBloc = context.read<CartBloc>();
-    if (!cartBloc.state.isLoading && cartBloc.state.cart == null) {
-      cartBloc.add(const CartStarted());
-    }
+    final spacing = context.watch<ThemeCubit>().state.tokens.spacing;
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.cart_title)),
       body: BlocConsumer<CartBloc, CartState>(
         listener: (context, state) {
-          if (state.lastMessage != null) {
-            final msgKey = state.lastMessage;
-            String text;
-            switch (msgKey) {
-              case 'cart_item_added':
-                text = l10n.cart_item_added;
-                break;
-              case 'cart_item_updated':
-                text = l10n.cart_item_updated;
-                break;
-              case 'cart_item_removed':
-                text = l10n.cart_item_removed;
-                break;
-              case 'cart_cleared':
-                text = l10n.cart_cleared;
-                break;
-              default:
-                text = '';
-            }
-            if (text.isNotEmpty) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text(text)));
-            }
-          }
-
           if (state.errorMessage != null) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -75,9 +63,7 @@ class CartScreen extends StatelessWidget {
             return _EmptyCartView(
               message: l10n.cart_empty_message,
               cta: l10n.cart_empty_cta,
-              onGoShopping: () {
-                Navigator.of(context).pop(); // back to home
-              },
+              onGoShopping: () => Navigator.of(context).pop(),
             );
           }
 
@@ -86,12 +72,7 @@ class CartScreen extends StatelessWidget {
               context.read<CartBloc>().add(const CartRefreshed());
             },
             child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                spacing.lg,
-                spacing.lg,
-                spacing.lg,
-                spacing.lg,
-              ),
+              padding: EdgeInsets.all(spacing.lg),
               child: Column(
                 children: [
                   Expanded(
@@ -131,7 +112,16 @@ class CartScreen extends StatelessWidget {
                     isUpdating: state.isUpdating,
                     checkoutLabel: l10n.cart_checkout,
                     onCheckout: () {
-                      // here we will call /checkout (next step)
+                      final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+                      final currencyId = int.tryParse(Env.currencyId) ?? 1;
+
+                      Navigator.of(context).pushNamed(
+                        '/checkout',
+                        arguments: {
+                          'ownerProjectId': ownerId,
+                          'currencyId': currencyId,
+                        },
+                      );
                     },
                   ),
                 ],

@@ -2532,6 +2532,198 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Coupons'**
   String get adminCouponsTitle;
+
+  /// No description provided for @checkoutTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkout'**
+  String get checkoutTitle;
+
+  /// No description provided for @checkoutLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading checkout…'**
+  String get checkoutLoading;
+
+  /// No description provided for @checkoutEmptyCart.
+  ///
+  /// In en, this message translates to:
+  /// **'Your cart is empty.'**
+  String get checkoutEmptyCart;
+
+  /// No description provided for @checkoutGoBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Go back'**
+  String get checkoutGoBack;
+
+  /// No description provided for @checkoutItemsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Items'**
+  String get checkoutItemsTitle;
+
+  /// No description provided for @checkoutAddressTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shipping Address'**
+  String get checkoutAddressTitle;
+
+  /// No description provided for @checkoutCountryIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Country ID'**
+  String get checkoutCountryIdLabel;
+
+  /// No description provided for @checkoutCountryIdHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get checkoutCountryIdHint;
+
+  /// No description provided for @checkoutRegionIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Region ID'**
+  String get checkoutRegionIdLabel;
+
+  /// No description provided for @checkoutRegionIdHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get checkoutRegionIdHint;
+
+  /// No description provided for @checkoutCityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'City'**
+  String get checkoutCityLabel;
+
+  /// No description provided for @checkoutCityHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter city'**
+  String get checkoutCityHint;
+
+  /// No description provided for @checkoutPostalCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Postal Code'**
+  String get checkoutPostalCodeLabel;
+
+  /// No description provided for @checkoutPostalCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get checkoutPostalCodeHint;
+
+  /// No description provided for @checkoutApplyAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Update shipping'**
+  String get checkoutApplyAddress;
+
+  /// No description provided for @checkoutCouponTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Coupon'**
+  String get checkoutCouponTitle;
+
+  /// No description provided for @checkoutCouponLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Coupon Code'**
+  String get checkoutCouponLabel;
+
+  /// No description provided for @checkoutCouponHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter coupon (optional)'**
+  String get checkoutCouponHint;
+
+  /// No description provided for @checkoutShippingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shipping'**
+  String get checkoutShippingTitle;
+
+  /// No description provided for @checkoutNoShippingMethods.
+  ///
+  /// In en, this message translates to:
+  /// **'No shipping methods found. Update address then refresh.'**
+  String get checkoutNoShippingMethods;
+
+  /// No description provided for @checkoutRefreshShipping.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh shipping'**
+  String get checkoutRefreshShipping;
+
+  /// No description provided for @checkoutSelectShipping.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a shipping method'**
+  String get checkoutSelectShipping;
+
+  /// No description provided for @checkoutPaymentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment'**
+  String get checkoutPaymentTitle;
+
+  /// No description provided for @checkoutPaymentCash.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash on delivery'**
+  String get checkoutPaymentCash;
+
+  /// No description provided for @checkoutStripeNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Stripe requires payment confirmation (coming next).'**
+  String get checkoutStripeNote;
+
+  /// No description provided for @checkoutSelectPayment.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a payment method'**
+  String get checkoutSelectPayment;
+
+  /// No description provided for @checkoutSummaryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Order Summary'**
+  String get checkoutSummaryTitle;
+
+  /// No description provided for @checkoutSubtotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtotal'**
+  String get checkoutSubtotal;
+
+  /// No description provided for @checkoutShipping.
+  ///
+  /// In en, this message translates to:
+  /// **'Shipping'**
+  String get checkoutShipping;
+
+  /// No description provided for @checkoutTax.
+  ///
+  /// In en, this message translates to:
+  /// **'Tax'**
+  String get checkoutTax;
+
+  /// No description provided for @checkoutTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get checkoutTotal;
+
+  /// No description provided for @checkoutPlaceOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Place Order'**
+  String get checkoutPlaceOrder;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
