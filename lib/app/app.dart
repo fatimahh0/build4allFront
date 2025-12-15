@@ -3,7 +3,7 @@
 import 'package:build4front/features/cart/data/services/cart_api_service.dart';
 import 'package:build4front/features/checkout/data/repositories/checkout_repository_impl.dart';
 import 'package:build4front/features/checkout/data/services/checkout_api_service.dart';
-import 'package:build4front/features/checkout/models/repositories/checkout_repository.dart';
+import 'package:build4front/features/checkout/domain/repositories/checkout_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 

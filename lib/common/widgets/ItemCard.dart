@@ -1,4 +1,3 @@
-// lib/features/items/presentation/widgets/item_card.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -9,15 +8,21 @@ class ItemCard extends StatelessWidget {
   final String title;
   final String? subtitle;
   final String? imageUrl;
+
+  /// Current price label (top-right overlay)
   final String? badgeLabel;
+
+  /// Old price label (shown inside card with line-through)
+  final String? oldPriceLabel;
+
+  /// Small tag on image (top-left): e.g. "SALE" or "-30%"
+  final String? tagLabel;
+
   final String? metaLabel;
   final double? width;
   final VoidCallback? onTap;
 
-  /// NEW: label for CTA button (e.g. "Add to cart", "Book now")
   final String? ctaLabel;
-
-  /// NEW: callback when CTA button is pressed
   final VoidCallback? onCtaPressed;
 
   const ItemCard({
@@ -26,6 +31,8 @@ class ItemCard extends StatelessWidget {
     this.subtitle,
     this.imageUrl,
     this.badgeLabel,
+    this.oldPriceLabel,
+    this.tagLabel,
     this.metaLabel,
     this.width,
     this.onTap,
@@ -38,7 +45,6 @@ class ItemCard extends StatelessWidget {
     final c = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
 
-    // Read design tokens from ThemeCubit (card + spacing)
     final themeState = context.read<ThemeCubit>().state;
     final cardTokens = themeState.tokens.card;
     final spacing = themeState.tokens.spacing;
@@ -75,7 +81,7 @@ class ItemCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ---------- IMAGE AREA ----------
+              // IMAGE
               ClipRRect(
                 borderRadius: BorderRadius.vertical(
                   top: Radius.circular(cardTokens.radius),
@@ -92,18 +98,8 @@ class ItemCard extends StatelessWidget {
                           resolvedImageUrl!,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
-                            // Fallback if image fails to load
                             return Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    c.errorContainer.withOpacity(0.1),
-                                    c.error.withOpacity(0.15),
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                              ),
+                              color: c.surface,
                               child: Icon(
                                 Icons.broken_image_outlined,
                                 color: c.error,
@@ -113,26 +109,40 @@ class ItemCard extends StatelessWidget {
                           },
                         )
                       else
-                        // Fallback if no image URL at all
                         Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                c.primary.withOpacity(0.18),
-                                c.primaryContainer.withOpacity(0.25),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                          ),
+                          color: c.surface,
                           child: Icon(
                             Icons.image_outlined,
-                            color: c.primary.withOpacity(0.9),
+                            color: c.primary,
                             size: 32,
                           ),
                         ),
 
-                      // Price / badge (top-right)
+                      // TAG (top-left)
+                      if (tagLabel != null && tagLabel!.trim().isNotEmpty)
+                        Positioned(
+                          top: spacing.xs,
+                          left: spacing.xs,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: spacing.sm,
+                              vertical: spacing.xs,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.55),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              tagLabel!,
+                              style: t.labelSmall?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      // PRICE (top-right)
                       if (badgeLabel != null && badgeLabel!.isNotEmpty)
                         Positioned(
                           top: spacing.xs,
@@ -150,7 +160,7 @@ class ItemCard extends StatelessWidget {
                               badgeLabel!,
                               style: t.labelSmall?.copyWith(
                                 color: Colors.white,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ),
@@ -160,42 +170,51 @@ class ItemCard extends StatelessWidget {
                 ),
               ),
 
-              // ---------- CONTENT AREA ----------
+              // CONTENT
               Padding(
                 padding: EdgeInsets.all(cardTokens.padding),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Title
                     Text(
                       title,
                       style: t.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     SizedBox(height: spacing.xs),
 
-                    // Subtitle (optional, e.g. location / short desc)
                     if (subtitle != null && subtitle!.isNotEmpty) ...[
                       Text(
                         subtitle!,
                         style: t.bodySmall?.copyWith(
                           color: c.onSurface.withOpacity(0.75),
                         ),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                       SizedBox(height: spacing.xs),
                     ],
 
-                    // Meta info (optional, e.g. date/time)
+                    // Old price line-through (if sale)
+                    if (oldPriceLabel != null && oldPriceLabel!.isNotEmpty) ...[
+                      Text(
+                        oldPriceLabel!,
+                        style: t.bodySmall?.copyWith(
+                          decoration: TextDecoration.lineThrough,
+                          color: c.onSurface.withOpacity(0.55),
+                        ),
+                      ),
+                      SizedBox(height: spacing.xs),
+                    ],
+
                     if (metaLabel != null && metaLabel!.isNotEmpty) ...[
                       Row(
                         children: [
                           Icon(
-                            Icons.schedule_outlined,
+                            Icons.info_outline,
                             size: 14,
                             color: c.onSurface.withOpacity(0.6),
                           ),
@@ -215,7 +234,6 @@ class ItemCard extends StatelessWidget {
                       SizedBox(height: hasCta ? spacing.sm : 0),
                     ],
 
-                    // ---------- CTA BUTTON (optional) ----------
                     if (hasCta)
                       SizedBox(
                         width: double.infinity,
@@ -235,7 +253,7 @@ class ItemCard extends StatelessWidget {
                           child: Text(
                             ctaLabel!,
                             style: t.labelLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),

@@ -6,14 +6,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:build4front/core/config/app_config.dart';
 import 'package:build4front/core/config/env.dart';
 
-import 'package:build4front/features/checkout/models/repositories/checkout_repository.dart';
+import 'package:build4front/features/checkout/domain/repositories/checkout_repository.dart';
 
 
-import 'package:build4front/features/checkout/models/usecases/get_checkout_cart.dart';
-import 'package:build4front/features/checkout/models/usecases/get_payment_methods.dart';
-import 'package:build4front/features/checkout/models/usecases/get_shipping_quotes.dart';
-import 'package:build4front/features/checkout/models/usecases/preview_tax.dart';
-import 'package:build4front/features/checkout/models/usecases/place_order.dart';
+import 'package:build4front/features/checkout/domain/usecases/get_checkout_cart.dart';
+import 'package:build4front/features/checkout/domain/usecases/get_payment_methods.dart';
+import 'package:build4front/features/checkout/domain/usecases/get_shipping_quotes.dart';
+import 'package:build4front/features/checkout/domain/usecases/preview_tax.dart';
+import 'package:build4front/features/checkout/domain/usecases/place_order.dart';
 
 import '../bloc/checkout_bloc.dart';
 import 'checkout_screen.dart';

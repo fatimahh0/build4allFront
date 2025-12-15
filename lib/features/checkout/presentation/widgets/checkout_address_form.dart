@@ -13,7 +13,7 @@ import 'package:build4front/features/catalog/data/models/country_model.dart';
 import 'package:build4front/features/catalog/data/models/region_model.dart';
 import 'package:build4front/features/catalog/data/services/catalog_api_service.dart';
 import 'package:build4front/features/auth/data/services/auth_token_store.dart';
-import 'package:build4front/features/checkout/models/entities/checkout_entities.dart';
+import 'package:build4front/features/checkout/domain/entities/checkout_entities.dart';
 
 class CheckoutAddressForm extends StatefulWidget {
   final ShippingAddress initial;

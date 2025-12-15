@@ -1,8 +1,9 @@
-import 'package:build4front/features/checkout/models/entities/checkout_entities.dart';
-import 'package:build4front/features/checkout/models/repositories/checkout_repository.dart';
+import 'package:build4front/features/checkout/domain/entities/checkout_entities.dart';
+import 'package:build4front/features/checkout/domain/repositories/checkout_repository.dart';
 
 import '../services/checkout_api_service.dart';
 import '../models/checkout_models.dart';
+import '../models/checkout_summary_model.dart';
 
 class CheckoutRepositoryImpl implements CheckoutRepository {
   final CheckoutApiService api;
@@ -34,20 +35,18 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
     );
   }
 
-  // ✅ Your ShippingAddress does NOT have shippingMethodId
-  // So we only serialize the fields that exist.
   Map<String, dynamic> _addressToJson(ShippingAddress a) => {
-    'countryId': a.countryId,
-    'regionId': a.regionId,
-    'city': a.city,
-    'postalCode': a.postalCode,
-  };
+        'countryId': a.countryId,
+        'regionId': a.regionId,
+        'city': a.city,
+        'postalCode': a.postalCode,
+      };
 
   Map<String, dynamic> _lineToJson(CartLine l) => {
-    'itemId': l.itemId,
-    'quantity': l.quantity,
-    'unitPrice': l.unitPrice,
-  };
+        'itemId': l.itemId,
+        'quantity': l.quantity,
+        'unitPrice': l.unitPrice,
+      };
 
   @override
   Future<List<ShippingQuote>> getShippingQuotes({
@@ -110,7 +109,7 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
   }
 
   @override
-  Future<int> checkout({
+  Future<CheckoutSummaryModel> checkout({
     required int currencyId,
     required String paymentMethod,
     String? stripePaymentId,
@@ -123,17 +122,12 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
     final body = <String, dynamic>{
       'currencyId': currencyId,
       'paymentMethod': paymentMethod,
-
-      // ✅ backend needs this at root
       'shippingMethodId': shippingMethodId,
-
-      // ✅ backend needs this inside shippingAddress too (based on your Postman/log)
       'shippingAddress': {
         ..._addressToJson(shippingAddress),
         'shippingMethodId': shippingMethodId,
         'shippingMethodName': shippingMethodName,
       },
-
       'lines': lines.map(_lineToJson).toList(),
     };
 
@@ -144,8 +138,6 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
     if (s.isNotEmpty) body['stripePaymentId'] = s;
 
     final json = await api.checkout(body);
-
-    final rawId = (json['orderId'] ?? json['id']);
-    return (rawId as num).toInt();
+    return CheckoutSummaryModel.fromJson(json);
   }
 }

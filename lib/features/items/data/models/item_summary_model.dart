@@ -8,9 +8,17 @@ class ItemSummaryModel {
   final String? imageUrl;
   final String? location;
   final DateTime? start;
-  final num? price;
 
-  /// NEW: backend category id (ProductResponse.categoryId for e-commerce)
+  final num? price;
+  final num? salePrice;
+  final DateTime? saleStart;
+  final DateTime? saleEnd;
+  final num? effectivePrice;
+  final bool onSale;
+
+  final int? stock;
+  final String? sku;
+
   final int? categoryId;
 
   ItemSummaryModel({
@@ -21,6 +29,13 @@ class ItemSummaryModel {
     this.location,
     this.start,
     this.price,
+    this.salePrice,
+    this.saleStart,
+    this.saleEnd,
+    this.effectivePrice,
+    this.onSale = false,
+    this.stock,
+    this.sku,
     this.categoryId,
   });
 
@@ -40,16 +55,27 @@ class ItemSummaryModel {
       return int.tryParse('$v');
     }
 
+    bool _bool(dynamic v) {
+      if (v == null) return false;
+      if (v is bool) return v;
+      return '$v'.toLowerCase() == 'true';
+    }
+
     return ItemSummaryModel(
       id: j['id'] is int ? j['id'] as int : int.parse('${j['id']}'),
-      // for activities we used itemName, for products we use name
       title: (j['itemName'] ?? j['name'] ?? '').toString(),
       subtitle: j['description']?.toString(),
       imageUrl: j['imageUrl']?.toString(),
       location: j['location']?.toString(),
       start: _dt(j['startDatetime']),
-      price: _num(j['price'] ?? j['effectivePrice']),
-      // 🔥 NEW: read categoryId if backend sends it (ProductResponse has it)
+      price: _num(j['price']),
+      salePrice: _num(j['salePrice']),
+      saleStart: _dt(j['saleStart']),
+      saleEnd: _dt(j['saleEnd']),
+      effectivePrice: _num(j['effectivePrice']),
+      onSale: _bool(j['onSale']),
+      stock: _intOrNull(j['stock']),
+      sku: j['sku']?.toString(),
       categoryId: _intOrNull(j['categoryId']),
     );
   }
@@ -63,6 +89,13 @@ class ItemSummaryModel {
       location: location,
       start: start,
       price: price,
+      salePrice: salePrice,
+      saleStart: saleStart,
+      saleEnd: saleEnd,
+      effectivePrice: effectivePrice,
+      onSale: onSale,
+      stock: stock,
+      sku: sku,
       kind: currentItemKindFromEnv(),
       categoryId: categoryId,
     );

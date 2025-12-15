@@ -1,7 +1,9 @@
 // lib/features/items/data/repositories/items_repository_impl.dart
 
+import '../../domain/entities/item_details.dart';
 import '../../domain/entities/item_summary.dart';
 import '../../domain/repositories/items_repository.dart';
+import '../models/item_details_model.dart';
 import '../models/item_summary_model.dart';
 import '../services/items_api_service.dart';
 
@@ -47,6 +49,17 @@ class ItemsRepositoryImpl implements ItemsRepository {
     return _mapList(data);
   }
 
+  @override
+  Future<ItemDetails> getById(int id) async {
+    final data = await api.getById(id);
+    return ItemDetailsModel.fromJson(data).toEntity();
+  }
+
+@override
+  Future<ItemDetails> getDetails(int id, {String? token}) async {
+    final json = await api.getDetails(id, token: token);
+    return ItemDetailsModel.fromJson(json).toEntity();
+  }
   @override
   Future<List<ItemSummary>> getNewArrivals({int? categoryId, int? days}) async {
     final data = await api.getNewArrivals(categoryId: categoryId, days: days);

@@ -1,3 +1,5 @@
+import 'package:build4front/features/checkout/data/models/checkout_summary_model.dart';
+
 import '../entities/checkout_entities.dart';
 
 abstract class CheckoutRepository {
@@ -18,8 +20,7 @@ abstract class CheckoutRepository {
 
   Future<List<PaymentMethod>> getEnabledPaymentMethods();
 
-  // ✅ matches /api/orders/checkout body
-  Future<int> checkout({
+  Future<CheckoutSummaryModel> checkout({
     required int currencyId,
     required String paymentMethod,
     String? stripePaymentId,

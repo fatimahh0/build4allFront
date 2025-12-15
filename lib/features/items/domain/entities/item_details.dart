@@ -1,39 +1,40 @@
-enum ItemKind { activity, product, service, unknown }
+class ItemAttribute {
+  final String code;
+  final String value;
+  const ItemAttribute({required this.code, required this.value});
+}
 
-class ItemSummary {
+class ItemDetails {
   final int id;
-  final String title;
-  final String? subtitle;
+  final String name;
+  final String? description;
   final String? imageUrl;
-  final String? location;
-  final DateTime? start;
 
-  /// base price
   final num? price;
-
-  /// product sale fields
   final num? salePrice;
   final DateTime? saleStart;
   final DateTime? saleEnd;
   final num? effectivePrice;
   final bool onSale;
 
-  /// extra useful summary fields
   final int? stock;
   final String? sku;
 
-  final ItemKind kind;
+  final bool taxable;
+  final String? taxClass;
 
-  /// category id of this item (for filtering chips)
-  final int? categoryId;
+  final num? weightKg;
+  final num? widthCm;
+  final num? heightCm;
+  final num? lengthCm;
 
-  const ItemSummary({
+  final List<ItemAttribute> attributes;
+
+  const ItemDetails({
     required this.id,
-    required this.title,
-    this.subtitle,
+    required this.name,
+    this.description,
     this.imageUrl,
-    this.location,
-    this.start,
     this.price,
     this.salePrice,
     this.saleStart,
@@ -42,8 +43,13 @@ class ItemSummary {
     this.onSale = false,
     this.stock,
     this.sku,
-    this.kind = ItemKind.unknown,
-    this.categoryId,
+    this.taxable = false,
+    this.taxClass,
+    this.weightKg,
+    this.widthCm,
+    this.heightCm,
+    this.lengthCm,
+    this.attributes = const [],
   });
 
   bool get isSaleActiveNow {

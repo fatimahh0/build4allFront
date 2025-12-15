@@ -26,6 +26,9 @@ dependencies:
   dio: ^5.7.0
   connectivity_plus: ^6.0.3
   shared_preferences: ^2.1.1
+  pdf: ^3.11.0
+  printing: ^5.13.0
+  
 
   
 dev_dependencies:

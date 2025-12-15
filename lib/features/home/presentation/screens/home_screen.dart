@@ -38,10 +38,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  /// Current text from search.
   String _searchQuery = '';
-
-  /// Currently selected categoryId (from chips), null = no filter.
   int? _selectedCategoryId;
 
   @override
@@ -50,17 +47,14 @@ class _HomeScreenState extends State<HomeScreen> {
     final l10n = AppLocalizations.of(context)!;
     final enabled = widget.appConfig.enabledFeatures.toSet();
 
-    // Read spacing tokens once at screen level.
     final themeState = context.watch<ThemeCubit>().state;
     final spacing = themeState.tokens.spacing;
 
-    // Filter visible sections based on enabled features.
     final visibleSections = widget.sections.where((s) {
       if (s.feature == null) return true;
       return enabled.contains(s.feature);
     }).toList();
 
-    // Trigger home data loading on first build.
     final homeBloc = context.read<HomeBloc>();
     if (!homeBloc.state.hasLoaded && !homeBloc.state.isLoading) {
       homeBloc.add(const HomeStarted());
@@ -69,14 +63,13 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: SafeArea(
         child: BlocBuilder<AuthBloc, AuthState>(
-          builder: (context, authStateBloc) {
+          builder: (context, authBlocState) {
             String? fullName;
             String? avatarUrl;
 
-            final UserEntity? user = authStateBloc.user as UserEntity?;
+            final UserEntity? user = authBlocState.user as UserEntity?;
 
-            // Prepare user display name and avatar if logged in as USER.
-            if (authStateBloc.isLoggedIn && user != null) {
+            if (authBlocState.isLoggedIn && user != null) {
               final hasFirst = (user.firstName ?? '').trim().isNotEmpty;
               final hasLast = (user.lastName ?? '').trim().isNotEmpty;
 
@@ -102,7 +95,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                 return RefreshIndicator(
                   onRefresh: () async {
-                    // Optional: reset filters on pull-to-refresh
                     setState(() {
                       _searchQuery = '';
                       _selectedCategoryId = null;
@@ -150,7 +142,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     switch (section.type) {
       case HomeSectionType.header:
-        // ✅ Show user name if available, otherwise owner/app fallback inside HomeHeader.
         return HomeHeader(
           appName: widget.appConfig.appName,
           fullName: fullName,
@@ -164,23 +155,25 @@ class _HomeScreenState extends State<HomeScreen> {
           child: AppSearchField(
             hintText: l10n.home_search_hint,
             onSubmitted: (value) {
-              setState(() {
-                _searchQuery = value.trim();
-              });
+              setState(() => _searchQuery = value.trim());
             },
           ),
         );
 
-     case HomeSectionType.categoryChips:
+      case HomeSectionType.categoryChips:
         return HomeCategoryChips(
-          categories: homeState.categories,
+          categories: [l10n.explore_category_all, ...homeState.categories],
+
           onCategoryTap: (categoryName) {
             final selected = categoryName.trim();
-            if (selected.isEmpty) {
+
+            // "All" -> clear filter
+            if (selected.isEmpty || selected == l10n.explore_category_all) {
               setState(() => _selectedCategoryId = null);
               return;
             }
 
+            // map name -> id using categoryEntities
             int? foundId;
             for (final cat in homeState.categoryEntities) {
               if (cat.name == selected) {
@@ -189,28 +182,23 @@ class _HomeScreenState extends State<HomeScreen> {
               }
             }
 
-            setState(() {
-              _selectedCategoryId = foundId;
-            });
+            setState(() => _selectedCategoryId = foundId);
           },
         );
-
 
       case HomeSectionType.banner:
         return HomeBannerSlider(
           ownerProjectId: widget.appConfig.ownerProjectId ?? 1,
           token: authState.token ?? '',
           onBannerTap: (banner) {
-            // Example: you can still route to explore if you want for banners.
             if (banner.targetType == 'CATEGORY' && banner.targetId != null) {
-              // Could also set _selectedCategoryId here instead of navigate.
               Navigator.of(context).pushNamed(
                 '/explore',
                 arguments: {'categoryId': banner.targetId},
               );
             } else if (banner.targetType == 'URL' &&
                 (banner.targetUrl ?? '').isNotEmpty) {
-              // TODO: integrate url_launcher for external URLs.
+              // TODO: url_launcher
             }
           },
         );
@@ -219,10 +207,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final rawItems = _mapItemsForSection(section, homeState);
         final itemsForSection = _applyFilters(rawItems);
 
-        if (itemsForSection.isEmpty) {
-          // If filtering removed all, just don't render section.
-          return const SizedBox.shrink();
-        }
+        if (itemsForSection.isEmpty) return const SizedBox.shrink();
 
         final sectionTitle =
             section.title ??
@@ -251,7 +236,6 @@ class _HomeScreenState extends State<HomeScreen> {
           trailingText: trailing.text,
           trailingIcon: trailing.icon,
           onTrailingTap: () {
-            // You *could* still navigate to Explore for "See all", or later show a full list dialog.
             Navigator.of(
               context,
             ).pushNamed('/explore', arguments: {'sectionId': section.id});
@@ -270,18 +254,15 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Apply search + category filtering on items.
   List<ItemSummary> _applyFilters(List<ItemSummary> items) {
     var result = items;
 
-    // Category filter by categoryId.
     if (_selectedCategoryId != null) {
       result = result
           .where((item) => item.categoryId == _selectedCategoryId)
           .toList();
     }
 
-    // Search filter on title / subtitle / location.
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
       result = result.where((item) {
@@ -297,54 +278,46 @@ class _HomeScreenState extends State<HomeScreen> {
     return result;
   }
 
-  /// Map a home section to the item list it should display.
   List<ItemSummary> _mapItemsForSection(
     HomeSectionConfig section,
     HomeState homeState,
   ) {
     switch (section.id) {
       case 'recommended':
-        if (homeState.recommendedItems.isNotEmpty) {
-          return homeState.recommendedItems;
-        }
-        return homeState.popularItems;
+        return homeState.recommendedItems.isNotEmpty
+            ? homeState.recommendedItems
+            : homeState.popularItems;
 
       case 'popular':
         return homeState.popularItems;
 
       case 'flash_sale':
-        if (homeState.flashSaleItems.isNotEmpty) {
-          return homeState.flashSaleItems;
-        }
-        return homeState.popularItems;
+        return homeState.flashSaleItems.isNotEmpty
+            ? homeState.flashSaleItems
+            : homeState.popularItems;
 
       case 'new_arrivals':
-        if (homeState.newArrivalsItems.isNotEmpty) {
-          return homeState.newArrivalsItems;
-        }
-        return homeState.popularItems;
+        return homeState.newArrivalsItems.isNotEmpty
+            ? homeState.newArrivalsItems
+            : homeState.popularItems;
 
       case 'best_sellers':
-        if (homeState.bestSellersItems.isNotEmpty) {
-          return homeState.bestSellersItems;
-        }
-        return homeState.popularItems;
+        return homeState.bestSellersItems.isNotEmpty
+            ? homeState.bestSellersItems
+            : homeState.popularItems;
 
       case 'top_rated':
-        if (homeState.topRatedItems.isNotEmpty) {
-          return homeState.topRatedItems;
-        }
-        if (homeState.bestSellersItems.isNotEmpty) {
-          return homeState.bestSellersItems;
-        }
-        return homeState.popularItems;
+        return homeState.topRatedItems.isNotEmpty
+            ? homeState.topRatedItems
+            : (homeState.bestSellersItems.isNotEmpty
+                  ? homeState.bestSellersItems
+                  : homeState.popularItems);
 
       default:
         return homeState.popularItems;
     }
   }
 
-  /// Choose a leading icon for each item section.
   IconData _iconForSection(HomeSectionConfig section) {
     switch (section.id) {
       case 'flash_sale':
@@ -364,11 +337,9 @@ class _HomeScreenState extends State<HomeScreen> {
 class _TrailingData {
   final String? text;
   final IconData? icon;
-
   const _TrailingData({this.text, this.icon});
 }
 
-/// Decide trailing label/icon for item sections like "See all".
 _TrailingData _trailingForSection(HomeSectionConfig section) {
   switch (section.id) {
     case 'flash_sale':
@@ -385,21 +356,15 @@ _TrailingData _trailingForSection(HomeSectionConfig section) {
   }
 }
 
-/// ===================
-///  Booking section
-/// ===================
 class _BookingSection extends StatelessWidget {
   final String title;
-
   const _BookingSection({required this.title});
 
   @override
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
-
-    final themeState = context.read<ThemeCubit>().state;
-    final spacing = themeState.tokens.spacing;
+    final spacing = context.read<ThemeCubit>().state.tokens.spacing;
 
     return Container(
       margin: EdgeInsets.only(bottom: spacing.lg),
@@ -434,21 +399,15 @@ class _BookingSection extends StatelessWidget {
   }
 }
 
-/// ===================
-///  Why Shop With Us section
-/// ===================
 class _WhyShopWithUsSection extends StatelessWidget {
   final String title;
-
   const _WhyShopWithUsSection({required this.title});
 
   @override
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
-
-    final themeState = context.read<ThemeCubit>().state;
-    final spacing = themeState.tokens.spacing;
+    final spacing = context.read<ThemeCubit>().state.tokens.spacing;
     final l10n = AppLocalizations.of(context)!;
 
     final cards = [
@@ -478,44 +437,42 @@ class _WhyShopWithUsSection extends StatelessWidget {
           ),
           SizedBox(height: spacing.md),
           Column(
-            children: cards
-                .map(
-                  (card) => Container(
-                    margin: EdgeInsets.only(bottom: spacing.sm),
-                    padding: EdgeInsets.all(spacing.lg),
-                    decoration: BoxDecoration(
-                      color: c.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: c.outline.withOpacity(0.12)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: c.onSurface.withOpacity(0.04),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+            children: cards.map((card) {
+              return Container(
+                margin: EdgeInsets.only(bottom: spacing.sm),
+                padding: EdgeInsets.all(spacing.lg),
+                decoration: BoxDecoration(
+                  color: c.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: c.outline.withOpacity(0.12)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: c.onSurface.withOpacity(0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          card.$1,
-                          style: t.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        SizedBox(height: spacing.xs),
-                        Text(
-                          card.$2,
-                          style: t.bodySmall?.copyWith(
-                            color: c.onSurface.withOpacity(0.7),
-                          ),
-                        ),
-                      ],
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      card.$1,
+                      style: t.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                )
-                .toList(),
+                    SizedBox(height: spacing.xs),
+                    Text(
+                      card.$2,
+                      style: t.bodySmall?.copyWith(
+                        color: c.onSurface.withOpacity(0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
           ),
         ],
       ),

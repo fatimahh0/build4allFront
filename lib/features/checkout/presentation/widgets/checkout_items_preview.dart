@@ -1,4 +1,4 @@
-import 'package:build4front/features/checkout/models/entities/checkout_entities.dart';
+import 'package:build4front/features/checkout/domain/entities/checkout_entities.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 

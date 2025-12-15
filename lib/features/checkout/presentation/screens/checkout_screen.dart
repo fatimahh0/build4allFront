@@ -1,4 +1,5 @@
 import 'package:build4front/core/config/app_config.dart';
+import 'package:build4front/features/checkout/presentation/screens/order_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -58,26 +59,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final spacing = tokens.spacing;
     final colors = tokens.colors;
 
-    return BlocListener<CheckoutBloc, CheckoutState>(
-      listenWhen: (prev, curr) =>
-          prev.error != curr.error || prev.orderId != curr.orderId,
-      listener: (context, state) {
-        if (state.error != null && state.error!.trim().isNotEmpty) {
-          AppToast.show(context, state.error!, isError: true);
-        }
+return BlocListener<CheckoutBloc, CheckoutState>(
+  listenWhen: (prev, curr) =>
+      prev.error != curr.error || prev.orderSummary != curr.orderSummary,
+  listener: (context, state) {
+    if (state.error != null && state.error!.trim().isNotEmpty) {
+      AppToast.show(context, state.error!, isError: true);
+    }
 
-        // ✅ success: toast + refresh cart + go back
-        if (state.orderId != null) {
-          AppToast.show(context, 'Order placed ✅ (#${state.orderId})');
+    if (state.orderSummary != null) {
+      AppToast.show(context, 'Order placed ✅ (#${state.orderSummary!.orderId})');
 
-          // refresh cart (backend already cleared it)
-          context.read<CartBloc>().add(const CartRefreshed());
+      context.read<CartBloc>().add(const CartRefreshed());
 
-          // go back to cart
-          Navigator.pop(context);
-        }
-      },
-      child: Scaffold(
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OrderDetailsScreen(summary: state.orderSummary!),
+        ),
+      );
+    }
+  },
+  child: Scaffold(
+ 
+   
+
         appBar: AppBar(title: Text(l10n.checkoutTitle)),
         body: BlocBuilder<CheckoutBloc, CheckoutState>(
           builder: (context, state) {

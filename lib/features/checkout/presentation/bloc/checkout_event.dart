@@ -1,4 +1,4 @@
-import 'package:build4front/features/checkout/models/entities/checkout_entities.dart';
+import 'package:build4front/features/checkout/domain/entities/checkout_entities.dart';
 
 
 

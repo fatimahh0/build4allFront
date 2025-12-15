@@ -1,11 +1,11 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:build4front/features/checkout/models/entities/checkout_entities.dart';
-import 'package:build4front/features/checkout/models/usecases/get_checkout_cart.dart';
-import 'package:build4front/features/checkout/models/usecases/get_payment_methods.dart';
-import 'package:build4front/features/checkout/models/usecases/get_shipping_quotes.dart';
-import 'package:build4front/features/checkout/models/usecases/place_order.dart';
-import 'package:build4front/features/checkout/models/usecases/preview_tax.dart';
+import 'package:build4front/features/checkout/domain/entities/checkout_entities.dart';
+import 'package:build4front/features/checkout/domain/usecases/get_checkout_cart.dart';
+import 'package:build4front/features/checkout/domain/usecases/get_payment_methods.dart';
+import 'package:build4front/features/checkout/domain/usecases/get_shipping_quotes.dart';
+import 'package:build4front/features/checkout/domain/usecases/place_order.dart';
+import 'package:build4front/features/checkout/domain/usecases/preview_tax.dart';
 
 import 'checkout_event.dart';
 import 'checkout_state.dart';
@@ -60,7 +60,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
 
     final quotes = await getShippingQuotes(
       ownerProjectId: ownerProjectId,
-      address: s.address.copyWithShippingMethod(preferMethodId),
+      address: s.address, // ShippingAddress doesn't include shippingMethodId
       lines: lines,
     );
 
@@ -74,7 +74,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
 
     final tax = await previewTax(
       ownerProjectId: ownerProjectId,
-      address: s.address.copyWithShippingMethod(chosen?.methodId),
+      address: s.address,
       lines: lines,
       shippingTotal: chosen?.price ?? 0.0,
     );
@@ -93,7 +93,14 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     CheckoutStarted e,
     Emitter<CheckoutState> emit,
   ) async {
-    emit(state.copyWith(loading: true, clearError: true, clearOrderId: true));
+    emit(
+      state.copyWith(
+        loading: true,
+        clearError: true,
+        clearOrderId: true,
+        clearOrderSummary: true,
+      ),
+    );
 
     try {
       final cart = await getCart();
@@ -161,7 +168,6 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
   }
 
   void _onCouponChanged(CheckoutCouponChanged e, Emitter<CheckoutState> emit) {
-    // ✅ now it will actually update because the field calls onChanged
     emit(state.copyWith(coupon: e.coupon, clearError: true));
   }
 
@@ -248,7 +254,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
 
       final lines = _linesFromCart(cart);
 
-      final orderId = await placeOrder(
+      final summary = await placeOrder(
         currencyId: currencyId ?? 1,
         paymentMethod: pm,
         couponCode: state.coupon.trim().isEmpty ? null : state.coupon.trim(),
@@ -259,22 +265,37 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
         lines: lines,
       );
 
-      // ✅ SUCCESS: store orderId so UI can toast + pop back
-      emit(state.copyWith(placing: false, orderId: orderId, clearError: true));
+      // ✅ Fill missing item names from cart (before cart gets cleared)
+      final nameById = <int, String>{};
+      for (final it in cart.items) {
+        final n = (it.itemName ?? '').trim();
+        if (n.isNotEmpty) nameById[it.itemId] = n;
+      }
+
+      final fixedLines = summary.lines.map((l) {
+        final fixedName = (l.itemName ?? '').trim().isNotEmpty
+            ? l.itemName
+            : nameById[l.itemId] ?? 'Item #${l.itemId}';
+
+        final fixedSubtotal = l.lineSubtotal != 0
+            ? l.lineSubtotal
+            : (l.unitPrice * l.quantity);
+
+        return l.copyWith(itemName: fixedName, lineSubtotal: fixedSubtotal);
+      }).toList();
+
+      final fixedSummary = summary.copyWith(lines: fixedLines);
+
+      emit(
+        state.copyWith(
+          placing: false,
+          orderId: fixedSummary.orderId,
+          orderSummary: fixedSummary,
+          clearError: true,
+        ),
+      );
     } catch (err) {
       emit(state.copyWith(placing: false, error: err.toString()));
     }
-  }
-}
-
-extension _AddrCopy on ShippingAddress {
-  ShippingAddress copyWithShippingMethod(int? methodId) {
-    return ShippingAddress(
-      countryId: countryId,
-      regionId: regionId,
-      
-      city: city,
-      postalCode: postalCode,
-    );
   }
 }

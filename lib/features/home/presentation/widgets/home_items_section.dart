@@ -1,4 +1,4 @@
-// lib/features/home/presentation/widgets/home_items_section.dart
+import 'package:build4front/features/itemsDetails/presentation/screens/item_details_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -6,6 +6,8 @@ import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/features/items/domain/entities/item_summary.dart';
 import 'package:build4front/common/widgets/ItemCard.dart';
 import 'home_section_header.dart';
+
+
 
 // 🔥 Auth + Cart + l10n + Toast
 import 'package:build4front/features/auth/presentation/login/bloc/auth_bloc.dart';
@@ -16,13 +18,10 @@ import 'package:build4front/common/widgets/app_toast.dart';
 
 class HomeItemsSection extends StatelessWidget {
   final String title;
-  final String layout; // "horizontal" / "vertical"
+  final String layout;
   final List<ItemSummary> items;
 
-  /// Icon used in the section header (different per section)
   final IconData icon;
-
-  /// Optional trailing label / icon in the header.
   final String? trailingText;
   final IconData? trailingIcon;
   final VoidCallback? onTrailingTap;
@@ -41,13 +40,9 @@ class HomeItemsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isHorizontal = layout.toLowerCase() == 'horizontal';
+    if (items.isEmpty) return const SizedBox.shrink();
 
-    if (items.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final themeState = context.read<ThemeCubit>().state;
-    final spacing = themeState.tokens.spacing;
+    final spacing = context.read<ThemeCubit>().state.tokens.spacing;
 
     return Container(
       margin: EdgeInsets.only(bottom: spacing.lg),
@@ -63,20 +58,12 @@ class HomeItemsSection extends StatelessWidget {
           ),
           SizedBox(height: spacing.sm),
 
-          // ====================
-          //   HORIZONTAL LIST
-          // ====================
           if (isHorizontal)
             LayoutBuilder(
               builder: (context, constraints) {
                 final maxWidth = constraints.maxWidth;
-
-                // Card width ~55% of the section width, clamped for phones/tablets
-                double cardWidth = maxWidth * 0.55;
-                cardWidth = cardWidth.clamp(170.0, 230.0);
-
-                // Enough height → no overflow
-                final double cardHeight = cardWidth * 1.6;
+                double cardWidth = (maxWidth * 0.55).clamp(170.0, 230.0);
+                final cardHeight = cardWidth * 1.6;
 
                 return SizedBox(
                   height: cardHeight,
@@ -86,23 +73,23 @@ class HomeItemsSection extends StatelessWidget {
                     separatorBuilder: (_, __) => SizedBox(width: spacing.md),
                     itemBuilder: (context, index) {
                       final item = items[index];
+                      final pricing = _pricingFor(item);
+
                       return SizedBox(
                         width: cardWidth,
                         child: ItemCard(
                           title: item.title,
                           subtitle: _subtitleFor(item),
                           imageUrl: item.imageUrl,
-                          badgeLabel: item.price != null
-                              ? '${item.price} \$'
-                              : null,
+
+                          badgeLabel: pricing.currentLabel,
+                          oldPriceLabel: pricing.oldLabel,
+                          tagLabel: pricing.tagLabel,
+
                           metaLabel: _metaLabelFor(item),
                           ctaLabel: _ctaLabelFor(context, item),
-                          onTap: () {
-                            // TODO: navigate to item details
-                          },
-                          onCtaPressed: () {
-                            _handleCtaPressed(context, item);
-                          },
+                          onTap: () => _openDetails(context, item.id),
+                          onCtaPressed: () => _handleCtaPressed(context, item),
                         ),
                       );
                     },
@@ -110,9 +97,6 @@ class HomeItemsSection extends StatelessWidget {
                 );
               },
             )
-          // ====================
-          //   VERTICAL GRID (2 per row)
-          // ====================
           else
             LayoutBuilder(
               builder: (context, constraints) {
@@ -123,23 +107,23 @@ class HomeItemsSection extends StatelessWidget {
                   spacing: spacing.md,
                   runSpacing: spacing.md,
                   children: items.map((item) {
+                    final pricing = _pricingFor(item);
+
                     return SizedBox(
                       width: itemWidth,
                       child: ItemCard(
                         title: item.title,
                         subtitle: _subtitleFor(item),
                         imageUrl: item.imageUrl,
-                        badgeLabel: item.price != null
-                            ? '${item.price} \$'
-                            : null,
+
+                        badgeLabel: pricing.currentLabel,
+                        oldPriceLabel: pricing.oldLabel,
+                        tagLabel: pricing.tagLabel,
+
                         metaLabel: _metaLabelFor(item),
                         ctaLabel: _ctaLabelFor(context, item),
-                        onTap: () {
-                          // TODO: navigate to item details
-                        },
-                        onCtaPressed: () {
-                          _handleCtaPressed(context, item);
-                        },
+                        onTap: () => _openDetails(context, item.id),
+                        onCtaPressed: () => _handleCtaPressed(context, item),
                       ),
                     );
                   }).toList(),
@@ -151,43 +135,84 @@ class HomeItemsSection extends StatelessWidget {
     );
   }
 
-  /// CTA label:
-  /// - Products → Add to cart
-  /// - Activities → Book now
-  /// - Others   → View details
+  void _openDetails(BuildContext context, int itemId) {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => ItemDetailsPage(itemId: itemId)));
+  }
+
+  bool _isSaleActiveNow(ItemSummary item) {
+    final now = DateTime.now();
+    final start = item.saleStart;
+    final end = item.saleEnd;
+
+    if (start == null && end == null) return item.onSale;
+
+    if (start != null && end == null) return !now.isBefore(start);
+    if (start == null && end != null) return !now.isAfter(end);
+
+    return !now.isBefore(start!) && !now.isAfter(end!);
+  }
+
+  _PricingView _pricingFor(ItemSummary item) {
+    final saleActive = item.onSale && _isSaleActiveNow(item);
+
+    num? current = saleActive
+        ? (item.effectivePrice ?? item.salePrice ?? item.price)
+        : item.price;
+
+    final currentLabel = current != null
+        ? '${current.toStringAsFixed(2)} \$'
+        : null;
+
+    String? oldLabel;
+    if (saleActive &&
+        item.price != null &&
+        current != null &&
+        item.price! > current) {
+      oldLabel = '${item.price!.toStringAsFixed(2)} \$';
+    }
+
+    String? tagLabel;
+    if (saleActive &&
+        item.price != null &&
+        current != null &&
+        item.price! > 0) {
+      final percent = ((1 - (current / item.price!)) * 100).round();
+      tagLabel = percent > 0 ? '-$percent%' : 'SALE';
+    }
+
+    return _PricingView(
+      currentLabel: currentLabel,
+      oldLabel: oldLabel,
+      tagLabel: tagLabel,
+    );
+  }
+
   String _ctaLabelFor(BuildContext context, ItemSummary item) {
     final l10n = AppLocalizations.of(context)!;
 
     switch (item.kind) {
       case ItemKind.product:
-        return l10n.cart_add_button; // e.g. "Add to cart"
+        return l10n.cart_add_button;
       case ItemKind.activity:
-        return l10n.home_book_now_button; // e.g. "Book now"
-      case ItemKind.service:
-      case ItemKind.unknown:
+        return l10n.home_book_now_button;
       default:
-        return l10n.home_view_details_button; // e.g. "View details"
+        return l10n.home_view_details_button;
     }
   }
 
-  /// Subtitle:
-  /// - Activities: location
-  /// - Products:  short description
-  /// - Fallback:  subtitle or location
   String? _subtitleFor(ItemSummary item) {
     switch (item.kind) {
       case ItemKind.activity:
         return item.location;
       case ItemKind.product:
         return item.subtitle;
-      case ItemKind.service:
-      case ItemKind.unknown:
       default:
         return item.subtitle ?? item.location;
     }
   }
 
-  /// Meta label only for activities (date/time).
   String? _metaLabelFor(ItemSummary item) {
     switch (item.kind) {
       case ItemKind.activity:
@@ -199,54 +224,45 @@ class HomeItemsSection extends StatelessWidget {
         final hh = dt.hour.toString().padLeft(2, '0');
         final mm = dt.minute.toString().padLeft(2, '0');
         return '$d/$m/$y  $hh:$mm';
+
       case ItemKind.product:
-        return null;
-      case ItemKind.service:
-      case ItemKind.unknown:
+        if (item.stock == null) return null;
+        return 'Stock: ${item.stock}';
+
       default:
         return null;
     }
   }
 
-  /// 🔥 Handle "Add to cart" / "Book now" logic with AppToast
   void _handleCtaPressed(BuildContext context, ItemSummary item) {
     final l10n = AppLocalizations.of(context)!;
-    final authState = context.read<AuthBloc>().state;
+    final auth = context.read<AuthBloc>().state;
 
-    // 1) Not logged in → show toast error
-    if (!authState.isLoggedIn) {
-      AppToast.show(
-        context,
-        l10n.cart_login_required_message, // e.g. "Please login to continue"
-        isError: true,
-      );
+    if (!auth.isLoggedIn) {
+      AppToast.show(context, l10n.cart_login_required_message, isError: true);
       return;
     }
 
-    // 2) If item is a PRODUCT → add to cart via CartBloc
     if (item.kind == ItemKind.product) {
       context.read<CartBloc>().add(
         CartAddItemRequested(itemId: item.id, quantity: 1),
       );
-
-      AppToast.show(
-        context,
-        l10n.cart_item_added_snackbar, // reuse same text, just toast now
-      );
+      AppToast.show(context, l10n.cart_item_added_snackbar);
       return;
     }
 
-    // 3) If item is an ACTIVITY → later open booking flow
-    if (item.kind == ItemKind.activity) {
-      // TODO: route to booking / details
-      AppToast.show(
-        context,
-        l10n.home_book_now_button, // placeholder, or create a specific message
-      );
-      return;
-    }
-
-    // 4) Others → maybe open details (later)
-    // Navigator.of(context).pushNamed('/item-details', arguments: item.id);
+    _openDetails(context, item.id);
   }
+}
+
+class _PricingView {
+  final String? currentLabel;
+  final String? oldLabel;
+  final String? tagLabel;
+
+  const _PricingView({
+    required this.currentLabel,
+    required this.oldLabel,
+    required this.tagLabel,
+  });
 }

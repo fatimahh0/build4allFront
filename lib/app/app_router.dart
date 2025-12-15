@@ -19,11 +19,11 @@ import 'package:build4front/features/admin/product/presentation/screens/admin_pr
 import 'package:build4front/features/checkout/presentation/screens/checkout_screen.dart';
 import 'package:build4front/features/checkout/presentation/bloc/checkout_bloc.dart';
 
-import 'package:build4front/features/checkout/models/usecases/get_checkout_cart.dart';
-import 'package:build4front/features/checkout/models/usecases/get_payment_methods.dart';
-import 'package:build4front/features/checkout/models/usecases/get_shipping_quotes.dart';
-import 'package:build4front/features/checkout/models/usecases/preview_tax.dart';
-import 'package:build4front/features/checkout/models/usecases/place_order.dart';
+import 'package:build4front/features/checkout/domain/usecases/get_checkout_cart.dart';
+import 'package:build4front/features/checkout/domain/usecases/get_payment_methods.dart';
+import 'package:build4front/features/checkout/domain/usecases/get_shipping_quotes.dart';
+import 'package:build4front/features/checkout/domain/usecases/preview_tax.dart';
+import 'package:build4front/features/checkout/domain/usecases/place_order.dart';
 
 
 class AppRouter {

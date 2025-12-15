@@ -136,6 +136,66 @@ class ItemsApiService {
     }
   }
 
+  Future<Map<String, dynamic>> getById(int id) async {
+    final path = '$_base/$id';
+
+    try {
+      final res = await _fetch.fetch(HttpMethod.get, path);
+      final data = res.data;
+
+      if (data is! Map) {
+        throw ServerException(
+          'Invalid response format for item details',
+          statusCode: res.statusCode ?? 200,
+        );
+      }
+
+      return Map<String, dynamic>.from(data as Map);
+    } on AppException {
+      rethrow;
+    } catch (e) {
+      throw AppException('Failed to load item details', original: e);
+    }
+  }
+
+Future<Map<String, dynamic>> getDetails(int id, {String? token}) async {
+    final ownerId = _ownerId();
+
+    final headers = <String, String>{};
+    final raw = token?.trim();
+    if (raw != null && raw.isNotEmpty) {
+      headers['Authorization'] = raw.startsWith('Bearer ')
+          ? raw
+          : 'Bearer $raw';
+    }
+
+    final query = <String, dynamic>{};
+    String path;
+
+    if (_isEcommerce) {
+      path = '$_base/$id'; // /api/products/{id}
+    } else {
+      path = '$_base/$id'; // /api/items/{id}
+      query['ownerProjectLinkId'] = ownerId;
+    }
+
+    final res = await _fetch.fetch(
+      HttpMethod.get,
+      path,
+      headers: headers.isEmpty ? null : headers,
+      data: query.isEmpty ? null : query,
+    );
+
+    final data = res.data;
+    if (data is! Map) {
+      throw ServerException(
+        'Invalid response format for item details',
+        statusCode: res.statusCode ?? 200,
+      );
+    }
+    return Map<String, dynamic>.from(data as Map);
+  }
+
   // ---------------------------------------------------------------------------
   //  getInterestBased
   //
