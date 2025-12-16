@@ -1,7 +1,6 @@
 import 'package:build4front/features/checkout/data/models/checkout_summary_model.dart';
 import 'package:build4front/features/checkout/domain/entities/checkout_entities.dart';
 
-
 class CheckoutState {
   final bool loading;
   final bool placing;
@@ -17,15 +16,13 @@ class CheckoutState {
   final TaxPreview? tax;
 
   final List<PaymentMethod> paymentMethods;
-  final String? selectedPaymentCode;
+  final int? selectedPaymentIndex; // ✅ index
 
   final String coupon;
 
   final String? error;
 
   final int? orderId;
-
- 
   final CheckoutSummaryModel? orderSummary;
 
   const CheckoutState({
@@ -38,7 +35,7 @@ class CheckoutState {
     required this.selectedQuote,
     required this.tax,
     required this.paymentMethods,
-    required this.selectedPaymentCode,
+    required this.selectedPaymentIndex,
     required this.coupon,
     required this.error,
     required this.orderId,
@@ -56,7 +53,7 @@ class CheckoutState {
       selectedQuote: null,
       tax: null,
       paymentMethods: const [],
-      selectedPaymentCode: null,
+      selectedPaymentIndex: null, // ✅ no default
       coupon: '',
       error: null,
       orderId: null,
@@ -74,7 +71,7 @@ class CheckoutState {
     ShippingQuote? selectedQuote,
     TaxPreview? tax,
     List<PaymentMethod>? paymentMethods,
-    String? selectedPaymentCode,
+    int? selectedPaymentIndex,
     String? coupon,
     String? error,
     bool clearError = false,
@@ -94,7 +91,7 @@ class CheckoutState {
       selectedQuote: selectedQuote ?? this.selectedQuote,
       tax: tax ?? this.tax,
       paymentMethods: paymentMethods ?? this.paymentMethods,
-      selectedPaymentCode: selectedPaymentCode ?? this.selectedPaymentCode,
+      selectedPaymentIndex: selectedPaymentIndex ?? this.selectedPaymentIndex,
       coupon: coupon ?? this.coupon,
       error: clearError ? null : (error ?? this.error),
       orderId: clearOrderId ? null : (orderId ?? this.orderId),

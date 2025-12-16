@@ -7,7 +7,6 @@ import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/l10n/app_localizations.dart';
 import 'package:build4front/common/widgets/app_text_field.dart';
 import 'package:build4front/common/widgets/app_search_field.dart';
-import 'package:build4front/common/widgets/app_toast.dart';
 
 import 'package:build4front/features/catalog/data/models/country_model.dart';
 import 'package:build4front/features/catalog/data/models/region_model.dart';
@@ -97,10 +96,12 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
       final token = await _tokenStore.getToken();
       if (!mounted) return;
 
+      final l10n = AppLocalizations.of(context)!;
+
       if (token == null || token.isEmpty) {
         setState(() {
           _loadingCatalog = false;
-          _catalogError = 'Missing user token';
+          _catalogError = l10n.missingUserToken;
         });
         return;
       }
@@ -134,7 +135,6 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
         _catalogError = null;
       });
 
-      // ✅ push initial selection to bloc
       _notifyParent();
     } catch (e) {
       if (!mounted) return;
@@ -194,7 +194,7 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
                 );
               },
               icon: const Icon(Icons.refresh_rounded),
-              label: Text(l10n.retry ?? 'Retry'),
+              label: Text(l10n.retry),
             ),
           ],
         ),
@@ -206,6 +206,7 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
       children: [
         Text(l10n.adminTaxCountryLabel),
         SizedBox(height: spacing.xs),
+
         _SearchablePicker<CountryModel>(
           items: _countries,
           value: _selectedCountry,
@@ -216,12 +217,15 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
               _selectedCountry = picked;
               _selectedRegion = null;
             });
-            _notifyParent(); // ✅ immediately update bloc
+            _notifyParent();
           },
         ),
+
         SizedBox(height: spacing.md),
+
         Text(l10n.adminTaxRegionLabel),
         SizedBox(height: spacing.xs),
+
         _SearchablePicker<RegionModel>(
           items: _filteredRegions,
           value: _selectedRegion,
@@ -230,9 +234,10 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
           hintText: l10n.adminShippingRegionHint,
           onChanged: (picked) {
             setState(() => _selectedRegion = picked);
-            _notifyParent(); // ✅ immediately update bloc
+            _notifyParent();
           },
         ),
+
         SizedBox(height: spacing.md),
 
         AppTextField(
@@ -241,7 +246,9 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
           hintText: l10n.checkoutCityHint,
           textInputAction: TextInputAction.next,
         ),
+
         SizedBox(height: spacing.sm),
+
         AppTextField(
           label: l10n.checkoutPostalCodeLabel,
           controller: _postalCtrl,
@@ -274,6 +281,7 @@ class _SearchablePicker<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final tokens = context.watch<ThemeCubit>().state.tokens;
     final c = tokens.colors;
     final text = tokens.typography;
@@ -312,7 +320,7 @@ class _SearchablePicker<T> extends StatelessWidget {
             Expanded(
               child: Text(
                 items.isEmpty
-                    ? 'No options'
+                    ? l10n.noOptions
                     : (value == null ? hintText : label(value as T)),
                 style: text.bodyMedium.copyWith(
                   color: items.isEmpty
@@ -374,6 +382,7 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final tokens = context.watch<ThemeCubit>().state.tokens;
     final c = tokens.colors;
     final spacing = tokens.spacing;
@@ -395,15 +404,21 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
               style: text.titleMedium.copyWith(color: c.label),
             ),
             SizedBox(height: spacing.md),
-            AppSearchField(hintText: 'Search...', controller: _searchCtrl),
+
+            AppSearchField(
+              hintText: l10n.searchLabel,
+              controller: _searchCtrl,
+            ),
+
             SizedBox(height: spacing.md),
+
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 420),
               child: _filtered.isEmpty
                   ? Padding(
                       padding: EdgeInsets.all(spacing.lg),
                       child: Text(
-                        'No results',
+                        l10n.noResultsLabel,
                         style: text.bodyMedium.copyWith(color: c.muted),
                       ),
                     )

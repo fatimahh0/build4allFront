@@ -1,9 +1,5 @@
-// lib/features/profile/data/models/profile_user_dto.dart
-
 import 'package:build4front/core/config/env.dart';
 import 'package:build4front/features/auth/domain/entities/user_entity.dart';
-
-
 
 class ProfileUserDto {
   final int id;
@@ -33,13 +29,11 @@ class ProfileUserDto {
     final st = m['status'];
     final name = st is Map ? st['name'] as String? : m['status'] as String?;
 
-    // try from payload, fallback to dart-define OWNER_PROJECT_LINK_ID
     final ownerProjectLinkId =
         (m['ownerProjectLinkId'] as num?)?.toInt() ??
         int.tryParse(Env.ownerProjectLinkId) ??
         0;
 
-    // support both keys: profilePictureUrl OR profileImageUrl
     final dynamic rawImage = m['profilePictureUrl'] ?? m['profileImageUrl'];
 
     return ProfileUserDto(

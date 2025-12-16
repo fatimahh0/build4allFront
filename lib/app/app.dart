@@ -1,17 +1,13 @@
 // lib/app/app.dart
 
-import 'package:build4front/features/cart/data/services/cart_api_service.dart';
-import 'package:build4front/features/checkout/data/repositories/checkout_repository_impl.dart';
-import 'package:build4front/features/checkout/data/services/checkout_api_service.dart';
-import 'package:build4front/features/checkout/domain/repositories/checkout_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:build4front/core/config/env.dart';
 import 'package:build4front/core/network/connecting(wifiORserver)/connection_cubit.dart';
 import 'package:build4front/core/network/globals.dart' as g;
-
-import '../core/config/app_config.dart';
-import '../core/theme/theme_cubit.dart';
+import 'package:build4front/core/theme/theme_cubit.dart';
+import 'package:build4front/core/config/app_config.dart';
 
 // ---------- AUTH ----------
 import 'package:build4front/features/auth/data/services/auth_token_store.dart';
@@ -27,8 +23,6 @@ import 'package:build4front/features/items/domain/repositories/items_repository.
 import 'package:build4front/features/items/domain/usecases/get_guest_upcoming_items.dart';
 import 'package:build4front/features/items/domain/usecases/get_interest_based_items.dart';
 import 'package:build4front/features/items/domain/usecases/get_items_by_type.dart';
-
-// ✅ NEW: items home use cases (e-commerce sections)
 import 'package:build4front/features/items/domain/usecases/get_new_arrivals_items.dart';
 import 'package:build4front/features/items/domain/usecases/get_best_sellers_items.dart';
 import 'package:build4front/features/items/domain/usecases/get_discounted_items.dart';
@@ -49,8 +43,8 @@ import 'package:build4front/features/catalog/domain/usecases/get_categories_by_p
 import 'package:build4front/features/home/presentation/bloc/home_bloc.dart';
 import 'package:build4front/features/home/presentation/bloc/home_event.dart';
 
-// ---------- CART (NEW) ----------
-
+// ---------- CART ----------
+import 'package:build4front/features/cart/data/services/cart_api_service.dart';
 import 'package:build4front/features/cart/data/repositories/cart_repository_impl.dart';
 import 'package:build4front/features/cart/domain/repositories/cart_repository.dart';
 import 'package:build4front/features/cart/domain/usecases/get_my_cart.dart';
@@ -60,6 +54,18 @@ import 'package:build4front/features/cart/domain/usecases/remove_cart_item.dart'
 import 'package:build4front/features/cart/domain/usecases/clear_cart.dart';
 import 'package:build4front/features/cart/presentation/bloc/cart_bloc.dart';
 
+// ---------- CHECKOUT ----------
+import 'package:build4front/features/checkout/data/services/checkout_api_service.dart';
+import 'package:build4front/features/checkout/data/repositories/checkout_repository_impl.dart';
+import 'package:build4front/features/checkout/domain/repositories/checkout_repository.dart';
+
+// ---------- CURRENCY (GLOBAL) ----------
+import 'package:build4front/features/catalog/cubit/currency_cubit.dart';
+import 'package:build4front/features/catalog/data/services/currency_api_service.dart';
+import 'package:build4front/features/catalog/data/repositories/currency_repository_impl.dart';
+import 'package:build4front/features/catalog/domain/repositories/currency_repository.dart';
+import 'package:build4front/features/catalog/domain/usecases/get_currency_by_id.dart';
+
 import 'app_view.dart';
 
 class Build4AllFrontApp extends StatelessWidget {
@@ -67,7 +73,6 @@ class Build4AllFrontApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Read static build-time config (owner/project/app type, etc.)
     final appConfig = AppConfig.fromEnv();
 
     // ---------- AUTH LAYER ----------
@@ -87,9 +92,17 @@ class Build4AllFrontApp extends StatelessWidget {
     final categoryApi = CategoryApiService();
     final categoryRepo = CategoryRepositoryImpl(api: categoryApi);
 
-    // ---------- CART LAYER (NEW) ----------
+    // ---------- CART LAYER ----------
     final cartApi = CartApiService();
     final cartRepo = CartRepositoryImpl(cartApi);
+
+    // ---------- CHECKOUT LAYER (single instances) ----------
+    final checkoutApi = CheckoutApiService();
+    final checkoutRepo = CheckoutRepositoryImpl(checkoutApi);
+
+    // ---------- CURRENCY LAYER (single instances) ----------
+    final currencyApi = CurrencyApiService();
+    final currencyRepo = CurrencyRepositoryImpl(api: currencyApi);
 
     return MultiRepositoryProvider(
       providers: [
@@ -110,32 +123,31 @@ class Build4AllFrontApp extends StatelessWidget {
         RepositoryProvider<CategoryApiService>.value(value: categoryApi),
         RepositoryProvider<CategoryRepository>.value(value: categoryRepo),
 
-        //  Cart
+        // Cart
         RepositoryProvider<CartApiService>.value(value: cartApi),
         RepositoryProvider<CartRepository>.value(value: cartRepo),
-        RepositoryProvider<CheckoutApiService>.value(
-          value: CheckoutApiService(),
-        ),
-        RepositoryProvider<CheckoutRepository>.value(
-          value: CheckoutRepositoryImpl(CheckoutApiService()),
-        ),
+
+        // Checkout
+        RepositoryProvider<CheckoutApiService>.value(value: checkoutApi),
+        RepositoryProvider<CheckoutRepository>.value(value: checkoutRepo),
+
+        // Currency
+        RepositoryProvider<CurrencyApiService>.value(value: currencyApi),
+        RepositoryProvider<CurrencyRepository>.value(value: currencyRepo),
       ],
       child: MultiBlocProvider(
         providers: [
-          // Global theme (design tokens, colors, typography...)
+          // ✅ ONE ThemeCubit globally (don’t create another one in main.dart)
           BlocProvider<ThemeCubit>(create: (_) => ThemeCubit()),
 
-          // Connectivity watcher (WiFi/server availability)
           BlocProvider<ConnectionCubit>(
             create: (_) {
               final cubit = ConnectionCubit();
-              // Expose globally so the network layer can check connectivity
               g.registerConnectionCubit(cubit);
               return cubit;
             },
           ),
 
-          // Auth bloc: handles login/logout and user session
           BlocProvider<AuthBloc>(
             create: (ctx) => AuthBloc(
               loginWithEmail: LoginWithEmail(
@@ -145,50 +157,35 @@ class Build4AllFrontApp extends StatelessWidget {
             ),
           ),
 
-          // Home bloc: items + types + categories for the Home screen
           BlocProvider<HomeBloc>(
             create: (ctx) => HomeBloc(
-              // Popular / upcoming items (guest)
               getGuestUpcomingItems: GetGuestUpcomingItems(
                 ctx.read<ItemsRepository>(),
               ),
-
-              // Interest-based items (when user is logged in)
               getInterestBasedItems: GetInterestBasedItems(
                 ctx.read<ItemsRepository>(),
               ),
-
-              // Items by type/category (for filters / Explore)
               getItemsByType: GetItemsByType(ctx.read<ItemsRepository>()),
 
-              // Item types per project (for future use if needed)
               getItemTypesByProject: GetItemTypesByProject(
                 ctx.read<ItemTypeRepository>(),
               ),
-
-              // Categories per project → used for Home chips
               getCategoriesByProject: GetCategoriesByProject(
                 ctx.read<CategoryRepository>(),
               ),
 
-              // ✅ New arrivals section (e-commerce)
               getNewArrivalsItems: GetNewArrivalsItems(
                 ctx.read<ItemsRepository>(),
               ),
-
-              // ✅ Best sellers section (e-commerce)
               getBestSellersItems: GetBestSellersItems(
                 ctx.read<ItemsRepository>(),
               ),
-
-              // ✅ Discounted / flash sale section (e-commerce)
               getDiscountedItems: GetDiscountedItems(
                 ctx.read<ItemsRepository>(),
               ),
-            )..add(const HomeStarted()), // Initial load when app opens
+            )..add(const HomeStarted()),
           ),
 
-          // ✅ Cart bloc: global cart state for the app
           BlocProvider<CartBloc>(
             create: (ctx) => CartBloc(
               getMyCart: GetMyCart(ctx.read<CartRepository>()),
@@ -198,9 +195,19 @@ class Build4AllFrontApp extends StatelessWidget {
               clearCartUc: ClearCart(ctx.read<CartRepository>()),
             ),
           ),
-        ],
 
-        // Main app view (MaterialApp + router + shell)
+          // ✅ Global CurrencyCubit (loads ONCE for the whole app)
+          BlocProvider<CurrencyCubit>(
+            create: (ctx) {
+              final currencyId = int.tryParse(Env.currencyId) ?? 1;
+              return CurrencyCubit(
+                getCurrencyById: GetCurrencyById(
+                  ctx.read<CurrencyRepository>(),
+                ),
+              )..load(currencyId);
+            },
+          ),
+        ],
         child: AppView(appConfig: appConfig),
       ),
     );

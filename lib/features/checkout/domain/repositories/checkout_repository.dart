@@ -4,6 +4,7 @@ import '../entities/checkout_entities.dart';
 
 abstract class CheckoutRepository {
   Future<CheckoutCart> getMyCart();
+  Future<List<PaymentMethod>> getEnabledPaymentMethods();
 
   Future<List<ShippingQuote>> getShippingQuotes({
     required int ownerProjectId,
@@ -18,7 +19,7 @@ abstract class CheckoutRepository {
     required double shippingTotal,
   });
 
-  Future<List<PaymentMethod>> getEnabledPaymentMethods();
+  
 
   Future<CheckoutSummaryModel> checkout({
     required int currencyId,

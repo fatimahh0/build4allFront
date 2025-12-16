@@ -1,5 +1,3 @@
-// lib/features/profile/presentation/screens/user_profile_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -12,7 +10,7 @@ import 'package:build4front/features/profile/presentation/bloc/user_profile_stat
 import 'package:build4front/features/profile/presentation/widgets/user_profile_header.dart';
 import 'package:build4front/features/profile/presentation/widgets/deactivate_user_dialog.dart';
 
-class UserProfileScreen extends StatelessWidget {
+class UserProfileScreen extends StatefulWidget {
   final String token;
   final int userId;
   final void Function(Locale) onChangeLocale;
@@ -27,11 +25,74 @@ class UserProfileScreen extends StatelessWidget {
   });
 
   @override
+  State<UserProfileScreen> createState() => _UserProfileScreenState();
+}
+
+class _UserProfileScreenState extends State<UserProfileScreen> {
+  String _lastToken = '';
+  int _lastUserId = 0;
+
+  void _kickLoadIfNeeded() {
+    final token = widget.token.trim();
+    final id = widget.userId;
+
+    if (token.isEmpty || id <= 0) return;
+
+    if (token == _lastToken && id == _lastUserId) return;
+
+    _lastToken = token;
+    _lastUserId = id;
+
+    context.read<UserProfileBloc>().add(LoadUserProfile(token, id));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _kickLoadIfNeeded();
+  }
+
+  @override
+  void didUpdateWidget(covariant UserProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // ✅ if AuthBloc hydrates later, this catches it
+    if (oldWidget.token != widget.token || oldWidget.userId != widget.userId) {
+      _kickLoadIfNeeded();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final tr = AppLocalizations.of(context)!;
 
-    // ensure load (simple + dirty but fine for now)
-    context.read<UserProfileBloc>().add(LoadUserProfile(token, userId));
+    // if still not hydrated -> show login required
+    if (widget.token.trim().isEmpty || widget.userId <= 0) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.lock_outline, size: 48),
+                const SizedBox(height: 12),
+                Text(
+                  'Please log in to view your profile.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                const SizedBox(height: 12),
+                FilledButton(
+                  onPressed: widget.onLogout,
+                  child: Text(tr.logout),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return BlocBuilder<UserProfileBloc, UserProfileState>(
       builder: (context, state) {
@@ -43,6 +104,14 @@ class UserProfileScreen extends StatelessWidget {
 
         if (state is UserProfileError) {
           final theme = Theme.of(context);
+          final lower = state.message.toLowerCase();
+
+          final loginRequired =
+              lower.contains('please login') ||
+              lower.contains('please log in') ||
+              lower.contains('unauthorized') ||
+              lower.contains('401');
+
           return Scaffold(
             body: Center(
               child: Padding(
@@ -50,20 +119,29 @@ class UserProfileScreen extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.person_off_outlined, size: 48),
+                    Icon(
+                      loginRequired
+                          ? Icons.lock_outline
+                          : Icons.person_off_outlined,
+                      size: 48,
+                    ),
                     const SizedBox(height: 12),
                     Text(
-                      tr.profile_load_error,
+                      loginRequired
+                          ? 'Session expired. Please log in again.'
+                          : tr.profile_load_error,
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyLarge,
                     ),
                     const SizedBox(height: 12),
                     FilledButton.icon(
-                      onPressed: () => context.read<UserProfileBloc>().add(
-                        LoadUserProfile(token, userId),
-                      ),
-                      icon: const Icon(Icons.refresh),
-                      label: Text(tr.retry),
+                      onPressed: loginRequired
+                          ? widget.onLogout
+                          : () => context.read<UserProfileBloc>().add(
+                              LoadUserProfile(widget.token, widget.userId),
+                            ),
+                      icon: Icon(loginRequired ? Icons.logout : Icons.refresh),
+                      label: Text(loginRequired ? tr.logout : tr.retry),
                     ),
                     const SizedBox(height: 8),
                     if (state.message.isNotEmpty)
@@ -98,6 +176,7 @@ class UserProfileScreen extends StatelessWidget {
                 children: [
                   UserProfileHeader(user: user),
                   const SizedBox(height: 16),
+
                   Center(
                     child: Text(
                       tr.profileMotto,
@@ -107,9 +186,9 @@ class UserProfileScreen extends StatelessWidget {
                       textAlign: TextAlign.center,
                     ),
                   ),
+
                   const SizedBox(height: 16),
 
-                  // ===== Simple menu tiles =====
                   _tile(
                     context,
                     icon: Icons.language,
@@ -138,7 +217,7 @@ class UserProfileScreen extends StatelessWidget {
                             : tr.profileMakePublic,
                         onTap: () => context.read<UserProfileBloc>().add(
                           ToggleVisibilityPressed(
-                            token,
+                            widget.token,
                             !(user.isPublicProfile ?? true),
                           ),
                         ),
@@ -148,20 +227,16 @@ class UserProfileScreen extends StatelessWidget {
                         icon: Icons.power_settings_new,
                         title: tr.setInactive,
                         onTap: () async {
-                          // 🔴 THIS IS THE IMPORTANT PART
                           final ok = await showDialog<bool>(
                             context: context,
                             barrierDismissible: false,
                             builder: (ctx) => DeactivateUserDialog(
-                              token: token,
-                              userId: userId,
+                              token: widget.token,
+                              userId: widget.userId,
                             ),
                           );
 
-                          // ✅ If backend accepted INACTIVE → log out
-                          if (ok == true) {
-                            onLogout();
-                          }
+                          if (ok == true) widget.onLogout();
                         },
                       ),
                     ],
@@ -177,8 +252,6 @@ class UserProfileScreen extends StatelessWidget {
     );
   }
 
- 
-  /// Simple reusable ListTile builder for profile menu entries.
   Widget _tile(
     BuildContext context, {
     required IconData icon,
@@ -198,7 +271,6 @@ class UserProfileScreen extends StatelessWidget {
     );
   }
 
-  /// Language bottom sheet
   void _showLanguageSelector(BuildContext context) {
     final tr = AppLocalizations.of(context)!;
 
@@ -212,28 +284,28 @@ class UserProfileScreen extends StatelessWidget {
               title: const Text('English'),
               onTap: () {
                 Navigator.pop(ctx);
-                onChangeLocale(const Locale('en'));
+                widget.onChangeLocale(const Locale('en'));
               },
             ),
             ListTile(
               title: const Text('Français'),
               onTap: () {
                 Navigator.pop(ctx);
-                onChangeLocale(const Locale('fr'));
+                widget.onChangeLocale(const Locale('fr'));
               },
             ),
             ListTile(
               title: const Text('العربية'),
               onTap: () {
                 Navigator.pop(ctx);
-                onChangeLocale(const Locale('ar'));
+                widget.onChangeLocale(const Locale('ar'));
               },
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: 12),
               child: Text(
-                tr.language_note, // optional hint key
+                tr.language_note,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
@@ -243,7 +315,6 @@ class UserProfileScreen extends StatelessWidget {
     );
   }
 
-  /// Logout confirmation dialog
   Future<void> _confirmLogout(BuildContext context) async {
     final tr = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
@@ -269,33 +340,6 @@ class UserProfileScreen extends StatelessWidget {
       ),
     );
 
-    if (confirmed == true) {
-      onLogout();
-    }
+    if (confirmed == true) widget.onLogout();
   }
-}
-
-/// Detect if the backend error is basically "login required".
-bool _isLoginRequiredMessage(String raw) {
-  final lower = raw.toLowerCase();
-  return lower.contains('please login first') ||
-      lower.contains('please log in first') ||
-      lower.contains('unauthorized') ||
-      lower.contains('401');
-}
-
-/// Map a raw error message to a user-friendly one.
-String _mapErrorMessage(
-  String raw,
-  AppLocalizations tr, {
-  required String fallback,
-}) {
-  if (_isLoginRequiredMessage(raw)) {
-    // You can add this key in your ARB:
-    // "profile_login_required": "Please log in to view your profile."
-    return "";
-  }
-
-  // For other cases, just use the generic fallback text (e.g. "Could not load profile").
-  return fallback;
 }

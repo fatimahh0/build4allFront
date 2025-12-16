@@ -1,7 +1,6 @@
-// lib/features/auth/presentation/login/screens/user_login_screen.dart
-
 import 'package:build4front/features/auth/data/repository/auth_repository_impl.dart';
 import 'package:build4front/features/auth/data/services/admin_token_store.dart';
+import 'package:build4front/features/auth/data/services/session_role_store.dart';
 import 'package:build4front/features/auth/domain/usecases/send_verification_code.dart';
 import 'package:build4front/features/auth/presentation/register/bloc/register_bloc.dart';
 import 'package:build4front/features/auth/presentation/register/screens/user_register_screen.dart';
@@ -42,6 +41,8 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
 
+  final _roleStore = SessionRoleStore();
+
   LoginMethod _method = LoginMethod.email;
   String? _fullPhone;
 
@@ -66,14 +67,12 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
     }
 
     try {
-      // Show loading dialog
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (_) => const Center(child: CircularProgressIndicator()),
       );
 
-      // Get repository + underlying AuthApiService
       final repo = context.read<AuthRepositoryImpl>();
       final authApi = repo.api;
 
@@ -89,7 +88,7 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
         ownerProjectLinkId: int.tryParse(Env.ownerProjectLinkId) ?? 0,
       );
 
-      if (mounted) Navigator.of(context).pop(); // close loader
+      if (mounted) Navigator.of(context).pop();
 
       if (result.none) {
         AppToast.show(
@@ -100,7 +99,6 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
         return;
       }
 
-      // Helper: hydrate AuthBloc with user + token
       Future<void> _hydrateUserAuth(bool wasInactiveFlag) async {
         final user = result.userEntity;
         if (user == null) return;
@@ -118,28 +116,27 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
         );
       }
 
-      // Helper: full flow when "User" is chosen (or only user exists)
       Future<void> _enterUserFlow(bool wasInactiveUser) async {
         final user = result.userEntity;
         if (user == null) return;
 
         if (wasInactiveUser) {
-          // Ask if they want to reactivate
           final confirm = await _showReactivateSheet(context);
           if (confirm != true) {
-            // User refused to reactivate → stay on login.
+            // ✅ IMPORTANT: clear stored session so AuthGate won't auto-enter
+            await authApi.clearAuth();
+
             return;
           }
 
           try {
-            // Call backend: /api/auth/reactivate
             await authApi.reactivateUser(userId: user.id);
-
             if (!mounted) return;
+
             AppToast.show(context, l10n.loginInactiveSuccess);
 
-            // Now status is ACTIVE and backend returned a fresh token.
             await _hydrateUserAuth(true);
+            await _roleStore.saveRole('user');
             _goToUserHome(context);
           } catch (e) {
             if (!mounted) return;
@@ -147,13 +144,13 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
             AppToast.show(context, msg, isError: true);
           }
         } else {
-          // Normal active user
           await _hydrateUserAuth(false);
+          await _roleStore.saveRole('user');
           _goToUserHome(context);
         }
       }
 
-      // ========================= CASE: BOTH ADMIN & USER =========================
+      // BOTH
       if (result.both) {
         final choice = await showModalBottomSheet<String>(
           context: context,
@@ -224,49 +221,47 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
         );
 
         if (choice == 'admin') {
+          await _roleStore.saveRole('admin');
           _goToAdmin(
             context,
             role: result.adminRole!,
             admin: result.adminData!,
           );
         } else if (choice == 'user') {
-          // Here we apply the inactive check ONLY on user
           await _enterUserFlow(result.wasInactiveUser);
         }
         return;
       }
 
-      // ========================= CASE: ONLY ADMIN =========================
+      // ONLY ADMIN
       if (result.adminOk && !result.userOk) {
+        await _roleStore.saveRole('admin');
         _goToAdmin(context, role: result.adminRole!, admin: result.adminData!);
         return;
       }
 
-      // ========================= CASE: ONLY USER =========================
+      // ONLY USER
       if (result.userOk && !result.adminOk) {
         await _enterUserFlow(result.wasInactiveUser);
         return;
       }
 
-      // Fallback (should never reach here, but just in case)
       AppToast.show(context, l10n.authErrorGeneric, isError: true);
     } catch (e) {
       if (Navigator.of(context).canPop()) {
-        Navigator.of(context).pop(); // close loader if still open
+        Navigator.of(context).pop();
       }
       final msg = ExceptionMapper.toMessage(e);
       AppToast.show(context, msg, isError: true);
     }
   }
 
-  /// Navigate to main user shell.
   void _goToUserHome(BuildContext context) {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => MainShell(appConfig: widget.appConfig)),
     );
   }
 
-  /// Navigate to unified admin dashboard, regardless of owner/manager/super-admin.
   void _goToAdmin(
     BuildContext context, {
     required String role,
@@ -275,7 +270,6 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
     Navigator.of(context).pushNamedAndRemoveUntil('/admin', (_) => false);
   }
 
-  /// Bottom sheet that asks the user if they want to reactivate the inactive account.
   Future<bool?> _showReactivateSheet(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final themeState = context.read<ThemeCubit>().state;
@@ -375,7 +369,6 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: BlocConsumer<AuthBloc, AuthState>(
               listener: (context, state) {
-                // Keep only error here; navigation handled in _onLoginPressed
                 if (state.error != null) {
                   final msg = ExceptionMapper.toMessage(state.error!);
                   AppToast.show(context, msg, isError: true);
@@ -385,7 +378,6 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                 return Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Top avatar / logo
                     CircleAvatar(
                       radius: 28,
                       backgroundColor: colors.primary.withOpacity(0.1),
@@ -412,7 +404,6 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Card wrapper
                     Container(
                       width: double.infinity,
                       padding: EdgeInsets.all(card.padding),
@@ -471,9 +462,8 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                                 validator: (value) {
                                   final v = value?.trim() ?? '';
                                   if (v.isEmpty) return l10n.fieldRequired;
-                                  if (!v.contains('@')) {
+                                  if (!v.contains('@'))
                                     return l10n.invalidEmail;
-                                  }
                                   return null;
                                 },
                               )
@@ -494,35 +484,12 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                               controller: _passwordCtrl,
                               obscureText: true,
                               validator: (value) {
-                                if (value == null || value.isEmpty) {
+                                if (value == null || value.isEmpty)
                                   return l10n.fieldRequired;
-                                }
-                                if (value.length < 6) {
+                                if (value.length < 6)
                                   return l10n.passwordTooShort;
-                                }
                                 return null;
                               },
-                            ),
-
-                            const SizedBox(height: 12),
-
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton(
-                                onPressed: () {
-                                  // TODO: navigate to Forgot Password
-                                },
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                ),
-                                child: Text(
-                                  l10n.forgotPassword,
-                                  style: t.bodyMedium?.copyWith(
-                                    color: colors.primary,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
                             ),
 
                             const SizedBox(height: 16),
@@ -586,6 +553,7 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
   }
 }
 
+// --- UI helpers (same as you had) ---
 class _LoginMethodToggle extends StatelessWidget {
   final LoginMethod method;
   final ValueChanged<LoginMethod> onChanged;
@@ -724,12 +692,9 @@ class _PhoneFieldIntl extends StatelessWidget {
       flagsButtonPadding: const EdgeInsets.only(left: 8),
       onChanged: (phone) => onChanged(phone.completeNumber),
       validator: (phone) {
-        if (phone == null || phone.number.trim().isEmpty) {
+        if (phone == null || phone.number.trim().isEmpty)
           return l10n.fieldRequired;
-        }
-        if (phone.number.trim().length < 6) {
-          return l10n.invalidPhone;
-        }
+        if (phone.number.trim().length < 6) return l10n.invalidPhone;
         return null;
       },
     );

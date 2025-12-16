@@ -63,7 +63,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   /// Hydrate auth state after an external login flow (DualLoginOrchestrator).
-  void _onLoginHydrated(AuthLoginHydrated event, Emitter<AuthState> emit) {
+void _onLoginHydrated(AuthLoginHydrated event, Emitter<AuthState> emit) {
     emit(
       state.copyWith(
         isLoading: false,
@@ -75,6 +75,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       ),
     );
   }
+
 
   /// Reset auth state to initial.
   void _onLoggedOut(AuthLoggedOut event, Emitter<AuthState> emit) {

@@ -1,40 +1,57 @@
-import 'package:build4front/features/checkout/data/models/checkout_summary_model.dart';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 
+import 'package:build4front/l10n/app_localizations.dart';
 
+import 'package:build4front/features/checkout/data/models/checkout_summary_model.dart';
 import '../utils/invoice_pdf.dart';
 
 class OrderDetailsScreen extends StatelessWidget {
   final CheckoutSummaryModel summary;
   const OrderDetailsScreen({super.key, required this.summary});
 
-  String money(double v) => "${summary.currencySymbol}${v.toStringAsFixed(2)}";
+  String _money(double v) => "${summary.currencySymbol}${v.toStringAsFixed(2)}";
+
+  double _effectiveUnit(CheckoutLineSummaryModel l) {
+    if (l.quantity <= 0) return l.unitPrice;
+    return l.lineSubtotal / l.quantity; // selling/effective
+  }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     final totalTax = summary.itemTaxTotal + summary.shippingTaxTotal;
 
     final couponCode = (summary.couponCode ?? '').trim();
     final discount = summary.couponDiscount ?? 0.0;
-    final showCoupon = couponCode.isNotEmpty; // ✅ show even if discount = 0
+    final showCoupon = couponCode.isNotEmpty;
+
+    final dateValue = (summary.orderDate ?? '').trim();
+    final shownDate = dateValue.isEmpty ? l10n.commonDash : dateValue;
 
     return Scaffold(
-      appBar: AppBar(title: Text("Order #${summary.orderId}")),
+      appBar: AppBar(title: Text(l10n.orderDetailsTitle(summary.orderId))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text("Date: ${summary.orderDate ?? '-'}"),
+          Text(l10n.orderDetailsDateLine(shownDate)),
           const SizedBox(height: 12),
 
-          const Text(
-            "Items",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+          Text(
+            l10n.orderDetailsItemsTitle,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 8),
 
-          ...summary.lines.map(
-            (l) => Container(
+          ...summary.lines.map((l) {
+            final unit = _effectiveUnit(l);
+
+            final name = ((l.itemName ?? '').trim().isEmpty)
+                ? l10n.orderDetailsItemFallback(l.itemId)
+                : l.itemName!.trim();
+
+            return Container(
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -49,36 +66,56 @@ class OrderDetailsScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          ((l.itemName ?? '').trim().isEmpty)
-                              ? 'Item #${l.itemId}'
-                              : l.itemName!,
+                          name,
                           style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          "Qty: ${l.quantity}  •  Unit: ${money(l.unitPrice)}",
+                          l10n.orderDetailsQtyUnitLine(
+                            l.quantity,
+                            _money(unit),
+                          ),
                         ),
                       ],
                     ),
                   ),
                   Text(
-                    money(l.lineSubtotal),
+                    _money(l.lineSubtotal),
                     style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                 ],
               ),
-            ),
-          ),
+            );
+          }),
 
           const Divider(height: 24),
 
-          _row("Subtotal", money(summary.itemsSubtotal)),
-          _row("Shipping", money(summary.shippingTotal)),
-          _row("Tax", money(totalTax)),
-          if (showCoupon) _row("Coupon ($couponCode)", "-${money(discount)}"),
+          _row(
+            context,
+            l10n.orderDetailsSubtotal,
+            _money(summary.itemsSubtotal),
+          ),
+          _row(
+            context,
+            l10n.orderDetailsShipping,
+            _money(summary.shippingTotal),
+          ),
+          _row(context, l10n.orderDetailsTax, _money(totalTax)),
+
+          if (showCoupon)
+            _row(
+              context,
+              l10n.orderDetailsCouponLine(couponCode),
+              "-${_money(discount)}",
+            ),
 
           const SizedBox(height: 6),
-          _row("Grand Total", money(summary.grandTotal), bold: true),
+          _row(
+            context,
+            l10n.orderDetailsGrandTotal,
+            _money(summary.grandTotal),
+            bold: true,
+          ),
 
           const SizedBox(height: 20),
 
@@ -90,14 +127,19 @@ class OrderDetailsScreen extends StatelessWidget {
                 filename: "invoice-${summary.orderId}.pdf",
               );
             },
-            child: const Text("Download Invoice PDF"),
+            child: Text(l10n.orderDetailsDownloadInvoice),
           ),
         ],
       ),
     );
   }
 
-  Widget _row(String left, String right, {bool bold = false}) {
+  Widget _row(
+    BuildContext context,
+    String left,
+    String right, {
+    bool bold = false,
+  }) {
     final style = TextStyle(
       fontWeight: bold ? FontWeight.w800 : FontWeight.w400,
     );

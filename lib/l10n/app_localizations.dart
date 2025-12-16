@@ -2724,6 +2724,264 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Place Order'**
   String get checkoutPlaceOrder;
+
+  /// No description provided for @orderSummaryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Order summary'**
+  String get orderSummaryTitle;
+
+  /// No description provided for @secureCheckout.
+  ///
+  /// In en, this message translates to:
+  /// **'Secure checkout'**
+  String get secureCheckout;
+
+  /// No description provided for @itemsSubtotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Items subtotal'**
+  String get itemsSubtotalLabel;
+
+  /// No description provided for @shippingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Shipping'**
+  String get shippingLabel;
+
+  /// No description provided for @taxLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tax'**
+  String get taxLabel;
+
+  /// No description provided for @discountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Discount'**
+  String get discountLabel;
+
+  /// No description provided for @totalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get totalLabel;
+
+  /// No description provided for @taxesShippingNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Taxes and shipping are calculated based on your address.'**
+  String get taxesShippingNote;
+
+  /// No description provided for @searchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search...'**
+  String get searchHint;
+
+  /// No description provided for @noOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'No options'**
+  String get noOptions;
+
+  /// No description provided for @noResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No results'**
+  String get noResults;
+
+  /// No description provided for @missingUserToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing user token'**
+  String get missingUserToken;
+
+  /// No description provided for @itemNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Item #{id}'**
+  String itemNumber(int id);
+
+  /// No description provided for @qtyPriceLine.
+  ///
+  /// In en, this message translates to:
+  /// **'x{qty} • {price}'**
+  String qtyPriceLine(int qty, String price);
+
+  /// No description provided for @checkoutOrderPlacedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Order placed ✅ (# {orderId})'**
+  String checkoutOrderPlacedToast(int orderId);
+
+  /// No description provided for @orderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Order #{orderId}'**
+  String orderTitle(int orderId);
+
+  /// No description provided for @orderDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Date: {date}'**
+  String orderDateLabel(String date);
+
+  /// No description provided for @orderItemsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Items'**
+  String get orderItemsTitle;
+
+  /// No description provided for @orderQtyUnitLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Qty: {qty} • Unit: {unit}'**
+  String orderQtyUnitLine(int qty, String unit);
+
+  /// No description provided for @grandTotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Grand Total'**
+  String get grandTotalLabel;
+
+  /// No description provided for @downloadInvoicePdf.
+  ///
+  /// In en, this message translates to:
+  /// **'Download Invoice PDF'**
+  String get downloadInvoicePdf;
+
+  /// No description provided for @checkoutErrorCartEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Cart is empty'**
+  String get checkoutErrorCartEmpty;
+
+  /// No description provided for @checkoutErrorSelectPayment.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a payment method'**
+  String get checkoutErrorSelectPayment;
+
+  /// No description provided for @checkoutErrorSelectCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a country'**
+  String get checkoutErrorSelectCountry;
+
+  /// No description provided for @checkoutErrorSelectRegion.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a region'**
+  String get checkoutErrorSelectRegion;
+
+  /// No description provided for @checkoutErrorEnterCity.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter city'**
+  String get checkoutErrorEnterCity;
+
+  /// No description provided for @checkoutErrorEnterPostalCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter postal code'**
+  String get checkoutErrorEnterPostalCode;
+
+  /// No description provided for @checkoutErrorSelectShipping.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a shipping method'**
+  String get checkoutErrorSelectShipping;
+
+  /// No description provided for @checkoutErrorShippingMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Shipping method is missing'**
+  String get checkoutErrorShippingMissing;
+
+  /// No description provided for @checkoutErrorStripeNotReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Stripe not wired yet'**
+  String get checkoutErrorStripeNotReady;
+
+  /// No description provided for @commonDash.
+  ///
+  /// In en, this message translates to:
+  /// **'-'**
+  String get commonDash;
+
+  /// No description provided for @orderDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Order #{orderId}'**
+  String orderDetailsTitle(Object orderId);
+
+  /// No description provided for @orderDetailsDateLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Date: {date}'**
+  String orderDetailsDateLine(Object date);
+
+  /// No description provided for @orderDetailsItemsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Items'**
+  String get orderDetailsItemsTitle;
+
+  /// No description provided for @orderDetailsItemFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Item #{itemId}'**
+  String orderDetailsItemFallback(Object itemId);
+
+  /// No description provided for @orderDetailsQtyUnitLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Qty: {qty}  •  Unit: {unitPrice}'**
+  String orderDetailsQtyUnitLine(Object qty, Object unitPrice);
+
+  /// No description provided for @orderDetailsSubtotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtotal'**
+  String get orderDetailsSubtotal;
+
+  /// No description provided for @orderDetailsShipping.
+  ///
+  /// In en, this message translates to:
+  /// **'Shipping'**
+  String get orderDetailsShipping;
+
+  /// No description provided for @orderDetailsTax.
+  ///
+  /// In en, this message translates to:
+  /// **'Tax'**
+  String get orderDetailsTax;
+
+  /// No description provided for @orderDetailsCouponLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Coupon ({code})'**
+  String orderDetailsCouponLine(Object code);
+
+  /// No description provided for @orderDetailsGrandTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Grand Total'**
+  String get orderDetailsGrandTotal;
+
+  /// No description provided for @orderDetailsDownloadInvoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Download Invoice PDF'**
+  String get orderDetailsDownloadInvoice;
+
+  /// No description provided for @common_stock_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Stock: {stock}'**
+  String common_stock_label(Object stock);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

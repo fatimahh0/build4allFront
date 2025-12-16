@@ -306,7 +306,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profile_load_error => 'Couldn\'t load your profile. Please try again.';
 
   @override
-  String get retry => 'Retry';
+  String get retry => 'إعادة المحاولة';
 
   @override
   String get manageAccount => 'Manage account';
@@ -1336,4 +1336,157 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get checkoutPlaceOrder => 'Place Order';
+
+  @override
+  String get orderSummaryTitle => 'ملخص الطلب';
+
+  @override
+  String get secureCheckout => 'دفع آمن';
+
+  @override
+  String get itemsSubtotalLabel => 'المجموع الفرعي للمنتجات';
+
+  @override
+  String get shippingLabel => 'الشحن';
+
+  @override
+  String get taxLabel => 'الضريبة';
+
+  @override
+  String get discountLabel => 'الخصم';
+
+  @override
+  String get totalLabel => 'الإجمالي';
+
+  @override
+  String get taxesShippingNote => 'يتم احتساب الضرائب والشحن حسب عنوانك.';
+
+  @override
+  String get searchHint => 'بحث...';
+
+  @override
+  String get noOptions => 'لا توجد خيارات';
+
+  @override
+  String get noResults => 'لا توجد نتائج';
+
+  @override
+  String get missingUserToken => 'رمز المستخدم مفقود';
+
+  @override
+  String itemNumber(int id) {
+    return 'عنصر رقم #$id';
+  }
+
+  @override
+  String qtyPriceLine(int qty, String price) {
+    return '×$qty • $price';
+  }
+
+  @override
+  String checkoutOrderPlacedToast(int orderId) {
+    return 'تم إنشاء الطلب ✅ (#$orderId)';
+  }
+
+  @override
+  String orderTitle(int orderId) {
+    return 'طلب رقم #$orderId';
+  }
+
+  @override
+  String orderDateLabel(String date) {
+    return 'التاريخ: $date';
+  }
+
+  @override
+  String get orderItemsTitle => 'المنتجات';
+
+  @override
+  String orderQtyUnitLine(int qty, String unit) {
+    return 'الكمية: $qty • السعر للوحدة: $unit';
+  }
+
+  @override
+  String get grandTotalLabel => 'الإجمالي النهائي';
+
+  @override
+  String get downloadInvoicePdf => 'تحميل فاتورة PDF';
+
+  @override
+  String get checkoutErrorCartEmpty => 'السلة فارغة';
+
+  @override
+  String get checkoutErrorSelectPayment => 'اختر طريقة دفع';
+
+  @override
+  String get checkoutErrorSelectCountry => 'اختر الدولة';
+
+  @override
+  String get checkoutErrorSelectRegion => 'اختر المنطقة';
+
+  @override
+  String get checkoutErrorEnterCity => 'أدخل المدينة';
+
+  @override
+  String get checkoutErrorEnterPostalCode => 'أدخل الرمز البريدي';
+
+  @override
+  String get checkoutErrorSelectShipping => 'اختر طريقة الشحن';
+
+  @override
+  String get checkoutErrorShippingMissing => 'طريقة الشحن غير موجودة';
+
+  @override
+  String get checkoutErrorStripeNotReady => 'Stripe غير مُجهّز بعد';
+
+  @override
+  String get commonDash => '-';
+
+  @override
+  String orderDetailsTitle(Object orderId) {
+    return 'Order #$orderId';
+  }
+
+  @override
+  String orderDetailsDateLine(Object date) {
+    return 'Date: $date';
+  }
+
+  @override
+  String get orderDetailsItemsTitle => 'Items';
+
+  @override
+  String orderDetailsItemFallback(Object itemId) {
+    return 'Item #$itemId';
+  }
+
+  @override
+  String orderDetailsQtyUnitLine(Object qty, Object unitPrice) {
+    return 'Qty: $qty  •  Unit: $unitPrice';
+  }
+
+  @override
+  String get orderDetailsSubtotal => 'Subtotal';
+
+  @override
+  String get orderDetailsShipping => 'Shipping';
+
+  @override
+  String get orderDetailsTax => 'Tax';
+
+  @override
+  String orderDetailsCouponLine(Object code) {
+    return 'Coupon ($code)';
+  }
+
+  @override
+  String get orderDetailsGrandTotal => 'Grand Total';
+
+  @override
+  String get orderDetailsDownloadInvoice => 'Download Invoice PDF';
+
+  @override
+  String common_stock_label(Object stock) {
+    return 'Stock: $stock';
+  }
 }

@@ -1,7 +1,5 @@
 import 'package:build4front/features/checkout/domain/entities/checkout_entities.dart';
 
-
-
 abstract class CheckoutEvent {
   const CheckoutEvent();
 }
@@ -26,8 +24,8 @@ class CheckoutCouponChanged extends CheckoutEvent {
 }
 
 class CheckoutPaymentSelected extends CheckoutEvent {
-  final String code;
-  const CheckoutPaymentSelected(this.code);
+  final int index; // ✅ index not code
+  const CheckoutPaymentSelected(this.index);
 }
 
 class CheckoutRefreshRequested extends CheckoutEvent {

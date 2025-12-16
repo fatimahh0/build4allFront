@@ -26,7 +26,7 @@ class AuthLoginSubmitted extends AuthEvent {
 /// (e.g. DualLoginOrchestrator) and we just want to
 /// hydrate the AuthBloc with user + token + wasInactive flag.
 class AuthLoginHydrated extends AuthEvent {
-  final UserEntity user;
+  final UserEntity? user; 
   final String token;
   final bool wasInactive;
 
@@ -39,6 +39,7 @@ class AuthLoginHydrated extends AuthEvent {
   @override
   List<Object?> get props => [user, token, wasInactive];
 }
+
 
 /// Clear the auth state (e.g. on logout, or when user cancels reactivation).
 class AuthLoggedOut extends AuthEvent {

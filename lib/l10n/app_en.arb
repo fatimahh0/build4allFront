@@ -611,7 +611,72 @@
   "checkoutShipping": "Shipping",
   "checkoutTax": "Tax",
   "checkoutTotal": "Total",
-  "checkoutPlaceOrder": "Place Order"
+  "checkoutPlaceOrder": "Place Order",
+    "orderSummaryTitle": "Order summary",
+  "secureCheckout": "Secure checkout",
+  "itemsSubtotalLabel": "Items subtotal",
+  "shippingLabel": "Shipping",
+  "taxLabel": "Tax",
+  "discountLabel": "Discount",
+  "totalLabel": "Total",
+  "taxesShippingNote": "Taxes and shipping are calculated based on your address.",
+
+  "searchHint": "Search...",
+  "noOptions": "No options",
+  "noResults": "No results",
+  "retry": "Retry",
+  "missingUserToken": "Missing user token",
+
+  "itemNumber": "Item #{id}",
+  "@itemNumber": { "placeholders": { "id": { "type": "int" } } },
+
+  "qtyPriceLine": "x{qty} • {price}",
+  "@qtyPriceLine": { "placeholders": { "qty": { "type": "int" }, "price": { "type": "String" } } },
+
+  "checkoutOrderPlacedToast": "Order placed ✅ (#{orderId})",
+  "@checkoutOrderPlacedToast": { "placeholders": { "orderId": { "type": "int" } } },
+
+  "orderTitle": "Order #{orderId}",
+  "@orderTitle": { "placeholders": { "orderId": { "type": "int" } } },
+
+  "orderDateLabel": "Date: {date}",
+  "@orderDateLabel": { "placeholders": { "date": { "type": "String" } } },
+
+  "orderItemsTitle": "Items",
+  "orderQtyUnitLine": "Qty: {qty} • Unit: {unit}",
+  "@orderQtyUnitLine": { "placeholders": { "qty": { "type": "int" }, "unit": { "type": "String" } } },
+
+  "grandTotalLabel": "Grand Total",
+  "downloadInvoicePdf": "Download Invoice PDF",
+
+  "checkoutErrorCartEmpty": "Cart is empty",
+  "checkoutErrorSelectPayment": "Select a payment method",
+  "checkoutErrorSelectCountry": "Select a country",
+  "checkoutErrorSelectRegion": "Select a region",
+  "checkoutErrorEnterCity": "Enter city",
+  "checkoutErrorEnterPostalCode": "Enter postal code",
+  "checkoutErrorSelectShipping": "Select a shipping method",
+  "checkoutErrorShippingMissing": "Shipping method is missing",
+  "checkoutErrorStripeNotReady": "Stripe not wired yet",
+  "commonDash": "-",
+
+  "checkoutOrderPlacedToast": "Order placed ✅ (# {orderId})",
+
+  "orderDetailsTitle": "Order #{orderId}",
+  "orderDetailsDateLine": "Date: {date}",
+  "orderDetailsItemsTitle": "Items",
+  "orderDetailsItemFallback": "Item #{itemId}",
+  "orderDetailsQtyUnitLine": "Qty: {qty}  •  Unit: {unitPrice}",
+
+  "orderDetailsSubtotal": "Subtotal",
+  "orderDetailsShipping": "Shipping",
+  "orderDetailsTax": "Tax",
+  "orderDetailsCouponLine": "Coupon ({code})",
+  "orderDetailsGrandTotal": "Grand Total",
+  "orderDetailsDownloadInvoice": "Download Invoice PDF",
+  "common_stock_label": "Stock: {stock}"
+  
+
 
 
 

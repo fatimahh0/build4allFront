@@ -59,31 +59,30 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final spacing = tokens.spacing;
     final colors = tokens.colors;
 
-return BlocListener<CheckoutBloc, CheckoutState>(
-  listenWhen: (prev, curr) =>
-      prev.error != curr.error || prev.orderSummary != curr.orderSummary,
-  listener: (context, state) {
-    if (state.error != null && state.error!.trim().isNotEmpty) {
-      AppToast.show(context, state.error!, isError: true);
-    }
+    return BlocListener<CheckoutBloc, CheckoutState>(
+      listenWhen: (prev, curr) =>
+          prev.error != curr.error || prev.orderSummary != curr.orderSummary,
+      listener: (context, state) {
+        if (state.error != null && state.error!.trim().isNotEmpty) {
+          AppToast.show(context, state.error!, isError: true);
+        }
 
-    if (state.orderSummary != null) {
-      AppToast.show(context, 'Order placed ✅ (#${state.orderSummary!.orderId})');
+        if (state.orderSummary != null) {
+          final id = state.orderSummary!.orderId;
 
-      context.read<CartBloc>().add(const CartRefreshed());
+          AppToast.show(context, l10n.checkoutOrderPlacedToast(id));
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => OrderDetailsScreen(summary: state.orderSummary!),
-        ),
-      );
-    }
-  },
-  child: Scaffold(
- 
-   
+          context.read<CartBloc>().add(const CartRefreshed());
 
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => OrderDetailsScreen(summary: state.orderSummary!),
+            ),
+          );
+        }
+      },
+      child: Scaffold(
         appBar: AppBar(title: Text(l10n.checkoutTitle)),
         body: BlocBuilder<CheckoutBloc, CheckoutState>(
           builder: (context, state) {
@@ -155,6 +154,7 @@ return BlocListener<CheckoutBloc, CheckoutState>(
                     child: CheckoutItemsPreview(cart: cart),
                   ),
                   SizedBox(height: spacing.md),
+
                   CheckoutSectionCard(
                     title: l10n.checkoutAddressTitle,
                     child: CheckoutAddressForm(
@@ -167,6 +167,7 @@ return BlocListener<CheckoutBloc, CheckoutState>(
                     ),
                   ),
                   SizedBox(height: spacing.md),
+
                   CheckoutSectionCard(
                     title: l10n.checkoutCouponTitle,
                     child: CheckoutCouponField(
@@ -179,6 +180,7 @@ return BlocListener<CheckoutBloc, CheckoutState>(
                     ),
                   ),
                   SizedBox(height: spacing.md),
+
                   CheckoutSectionCard(
                     title: l10n.checkoutShippingTitle,
                     child: CheckoutShippingMethods(
@@ -193,17 +195,20 @@ return BlocListener<CheckoutBloc, CheckoutState>(
                     ),
                   ),
                   SizedBox(height: spacing.md),
+
+                  // ✅ Payment section wrapped in card again (consistent UI)
                   CheckoutSectionCard(
                     title: l10n.checkoutPaymentTitle,
                     child: CheckoutPaymentMethods(
                       methods: state.paymentMethods,
-                      selectedCode: state.selectedPaymentCode,
-                      onSelect: (code) => context.read<CheckoutBloc>().add(
-                        CheckoutPaymentSelected(code),
+                      selectedIndex: state.selectedPaymentIndex,
+                      onSelectIndex: (i) => context.read<CheckoutBloc>().add(
+                        CheckoutPaymentSelected(i),
                       ),
                     ),
                   ),
                   SizedBox(height: spacing.md),
+
                   CheckoutSectionCard(
                     title: l10n.checkoutSummaryTitle,
                     child: CheckoutOrderSummary(
@@ -218,11 +223,13 @@ return BlocListener<CheckoutBloc, CheckoutState>(
             );
           },
         ),
+
         bottomNavigationBar: BlocBuilder<CheckoutBloc, CheckoutState>(
           builder: (context, state) {
             final cart = state.cart;
-            if (cart == null || cart.items.isEmpty)
+            if (cart == null || cart.items.isEmpty) {
               return const SizedBox.shrink();
+            }
 
             return CheckoutBottomBar(
               cart: cart,
@@ -230,7 +237,10 @@ return BlocListener<CheckoutBloc, CheckoutState>(
               tax: state.tax,
               isPlacing: state.placing,
               onPlaceOrder: () {
-                if ((state.selectedPaymentCode ?? '').isEmpty) {
+                // ✅ ALWAYS validate using latest bloc state at click time
+                final s = context.read<CheckoutBloc>().state;
+
+                if (s.selectedPaymentIndex == null) {
                   AppToast.show(
                     context,
                     l10n.checkoutSelectPayment,
@@ -238,8 +248,9 @@ return BlocListener<CheckoutBloc, CheckoutState>(
                   );
                   return;
                 }
-                if (state.shippingQuotes.isNotEmpty &&
-                    state.selectedShippingMethodId == null) {
+
+                if (s.shippingQuotes.isNotEmpty &&
+                    s.selectedShippingMethodId == null) {
                   AppToast.show(
                     context,
                     l10n.checkoutSelectShipping,
@@ -247,6 +258,7 @@ return BlocListener<CheckoutBloc, CheckoutState>(
                   );
                   return;
                 }
+
                 context.read<CheckoutBloc>().add(
                   const CheckoutPlaceOrderPressed(),
                 );

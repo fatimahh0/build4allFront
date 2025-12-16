@@ -1336,4 +1336,157 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get checkoutPlaceOrder => 'Place Order';
+
+  @override
+  String get orderSummaryTitle => 'Order summary';
+
+  @override
+  String get secureCheckout => 'Secure checkout';
+
+  @override
+  String get itemsSubtotalLabel => 'Items subtotal';
+
+  @override
+  String get shippingLabel => 'Shipping';
+
+  @override
+  String get taxLabel => 'Tax';
+
+  @override
+  String get discountLabel => 'Discount';
+
+  @override
+  String get totalLabel => 'Total';
+
+  @override
+  String get taxesShippingNote => 'Taxes and shipping are calculated based on your address.';
+
+  @override
+  String get searchHint => 'Search...';
+
+  @override
+  String get noOptions => 'No options';
+
+  @override
+  String get noResults => 'No results';
+
+  @override
+  String get missingUserToken => 'Missing user token';
+
+  @override
+  String itemNumber(int id) {
+    return 'Item #$id';
+  }
+
+  @override
+  String qtyPriceLine(int qty, String price) {
+    return 'x$qty • $price';
+  }
+
+  @override
+  String checkoutOrderPlacedToast(int orderId) {
+    return 'Order placed ✅ (# $orderId)';
+  }
+
+  @override
+  String orderTitle(int orderId) {
+    return 'Order #$orderId';
+  }
+
+  @override
+  String orderDateLabel(String date) {
+    return 'Date: $date';
+  }
+
+  @override
+  String get orderItemsTitle => 'Items';
+
+  @override
+  String orderQtyUnitLine(int qty, String unit) {
+    return 'Qty: $qty • Unit: $unit';
+  }
+
+  @override
+  String get grandTotalLabel => 'Grand Total';
+
+  @override
+  String get downloadInvoicePdf => 'Download Invoice PDF';
+
+  @override
+  String get checkoutErrorCartEmpty => 'Cart is empty';
+
+  @override
+  String get checkoutErrorSelectPayment => 'Select a payment method';
+
+  @override
+  String get checkoutErrorSelectCountry => 'Select a country';
+
+  @override
+  String get checkoutErrorSelectRegion => 'Select a region';
+
+  @override
+  String get checkoutErrorEnterCity => 'Enter city';
+
+  @override
+  String get checkoutErrorEnterPostalCode => 'Enter postal code';
+
+  @override
+  String get checkoutErrorSelectShipping => 'Select a shipping method';
+
+  @override
+  String get checkoutErrorShippingMissing => 'Shipping method is missing';
+
+  @override
+  String get checkoutErrorStripeNotReady => 'Stripe not wired yet';
+
+  @override
+  String get commonDash => '-';
+
+  @override
+  String orderDetailsTitle(Object orderId) {
+    return 'Order #$orderId';
+  }
+
+  @override
+  String orderDetailsDateLine(Object date) {
+    return 'Date: $date';
+  }
+
+  @override
+  String get orderDetailsItemsTitle => 'Items';
+
+  @override
+  String orderDetailsItemFallback(Object itemId) {
+    return 'Item #$itemId';
+  }
+
+  @override
+  String orderDetailsQtyUnitLine(Object qty, Object unitPrice) {
+    return 'Qty: $qty  •  Unit: $unitPrice';
+  }
+
+  @override
+  String get orderDetailsSubtotal => 'Subtotal';
+
+  @override
+  String get orderDetailsShipping => 'Shipping';
+
+  @override
+  String get orderDetailsTax => 'Tax';
+
+  @override
+  String orderDetailsCouponLine(Object code) {
+    return 'Coupon ($code)';
+  }
+
+  @override
+  String get orderDetailsGrandTotal => 'Grand Total';
+
+  @override
+  String get orderDetailsDownloadInvoice => 'Download Invoice PDF';
+
+  @override
+  String common_stock_label(Object stock) {
+    return 'Stock: $stock';
+  }
 }

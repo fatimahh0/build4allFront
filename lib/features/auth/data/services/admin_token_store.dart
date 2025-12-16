@@ -1,28 +1,25 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AdminTokenStore {
-  static const _kAdminToken = 'admin_token';
-  static const _kAdminRole = 'admin_role';
+  final FlutterSecureStorage _storage;
+
+  const AdminTokenStore({FlutterSecureStorage? storage})
+    : _storage = storage ?? const FlutterSecureStorage();
+
+  static const _keyToken = 'admin_token';
+  static const _keyRole = 'admin_role';
 
   Future<void> save({required String token, required String role}) async {
-    final sp = await SharedPreferences.getInstance();
-    await sp.setString(_kAdminToken, token);
-    await sp.setString(_kAdminRole, role);
+    await _storage.write(key: _keyToken, value: token);
+    await _storage.write(key: _keyRole, value: role);
   }
 
-  Future<String?> getToken() async {
-    final sp = await SharedPreferences.getInstance();
-    return sp.getString(_kAdminToken);
-  }
+  Future<String?> getToken() => _storage.read(key: _keyToken);
 
-  Future<String?> getRole() async {
-    final sp = await SharedPreferences.getInstance();
-    return sp.getString(_kAdminRole);
-  }
+  Future<String?> getRole() => _storage.read(key: _keyRole);
 
   Future<void> clear() async {
-    final sp = await SharedPreferences.getInstance();
-    await sp.remove(_kAdminToken);
-    await sp.remove(_kAdminRole);
+    await _storage.delete(key: _keyToken);
+    await _storage.delete(key: _keyRole);
   }
 }

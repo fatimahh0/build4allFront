@@ -13,11 +13,17 @@ class CheckoutCartModel {
     this.currencySymbol,
   });
 
+  static double _toDouble(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0.0;
+  }
+
   factory CheckoutCartModel.fromJson(Map<String, dynamic> json) {
     return CheckoutCartModel(
       cartId: (json['cartId'] as num?)?.toInt() ?? 0,
       status: (json['status'] ?? '').toString(),
-      totalPrice: (json['totalPrice'] as num?)?.toDouble() ?? 0.0,
+      totalPrice: _toDouble(json['totalPrice']),
       currencySymbol: json['currencySymbol']?.toString(),
       items: (json['items'] as List? ?? [])
           .map((e) => CheckoutCartItemModel.fromJson(e as Map<String, dynamic>))
@@ -32,7 +38,11 @@ class CheckoutCartItemModel {
   final String? itemName;
   final String? imageUrl;
   final int quantity;
+
+  /// ✅ we will store the SELLING unit price here (if backend provides it)
   final double unitPrice;
+
+  /// ✅ total for the line (should match selling * qty)
   final double lineTotal;
 
   CheckoutCartItemModel({
@@ -45,9 +55,40 @@ class CheckoutCartItemModel {
     this.imageUrl,
   });
 
+  static double _toDouble(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0.0;
+  }
+
   factory CheckoutCartItemModel.fromJson(Map<String, dynamic> json) {
     final qty = (json['quantity'] as num?)?.toInt() ?? 0;
-    final unit = (json['unitPrice'] as num?)?.toDouble() ?? 0.0;
+
+    // base unit price (often original price)
+    final baseUnit = _toDouble(json['unitPrice']);
+
+    // ✅ try common “selling/effective” keys (depends on your backend)
+    final effectiveUnit = _toDouble(
+      json['effectiveUnitPrice'] ??
+          json['sellingUnitPrice'] ??
+          json['discountedUnitPrice'] ??
+          json['finalUnitPrice'] ??
+          json['displayUnitPrice'],
+    );
+
+    // choose selling if exists, else base
+    final unit = (effectiveUnit > 0) ? effectiveUnit : baseUnit;
+
+    // line total from backend (if provided)
+    final backendLine = _toDouble(
+      json['lineTotal'] ??
+          json['lineSubtotal'] ??
+          json['total'] ??
+          json['subtotal'],
+    );
+
+    // if backend didn't send a correct line total, compute from unit*qty
+    final computedLine = (backendLine > 0) ? backendLine : (unit * qty);
 
     return CheckoutCartItemModel(
       cartItemId: (json['cartItemId'] as num?)?.toInt() ?? 0,
@@ -56,7 +97,7 @@ class CheckoutCartItemModel {
       imageUrl: json['imageUrl']?.toString(),
       quantity: qty,
       unitPrice: unit,
-      lineTotal: (json['lineTotal'] as num?)?.toDouble() ?? (unit * qty),
+      lineTotal: computedLine,
     );
   }
 }
@@ -74,11 +115,17 @@ class ShippingQuoteModel {
     this.currencySymbol,
   });
 
+  static double _toDouble(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0.0;
+  }
+
   factory ShippingQuoteModel.fromJson(Map<String, dynamic> json) {
     return ShippingQuoteModel(
       methodId: (json['methodId'] as num?)?.toInt(),
       methodName: (json['methodName'] ?? '').toString(),
-      price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      price: _toDouble(json['price']),
       currencySymbol: json['currencySymbol']?.toString(),
     );
   }
@@ -95,14 +142,20 @@ class TaxPreviewModel {
     required this.totalTax,
   });
 
+  static double _toDouble(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0.0;
+  }
+
   factory TaxPreviewModel.fromJson(Map<String, dynamic> json) {
-    final items = (json['itemsTaxTotal'] as num?)?.toDouble() ?? 0.0;
-    final ship = (json['shippingTaxTotal'] as num?)?.toDouble() ?? 0.0;
-    final total = (json['totalTax'] as num?)?.toDouble() ?? (items + ship);
+    final items = _toDouble(json['itemsTaxTotal']);
+    final ship = _toDouble(json['shippingTaxTotal']);
+    final total = _toDouble(json['totalTax']);
     return TaxPreviewModel(
       itemsTaxTotal: items,
       shippingTaxTotal: ship,
-      totalTax: total,
+      totalTax: total == 0 ? (items + ship) : total,
     );
   }
 }

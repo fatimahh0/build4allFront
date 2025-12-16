@@ -226,5 +226,51 @@
   "adminProductAttributeValueLabel": "Valeur de l’attribut",
   "adminProductAddAttribute": "Ajouter un attribut",
 
-  "adminProductSaveButton": "Enregistrer le produit"
+  "adminProductSaveButton": "Enregistrer le produit",
+   "orderSummaryTitle": "Récapitulatif",
+  "secureCheckout": "Paiement sécurisé",
+  "itemsSubtotalLabel": "Sous-total articles",
+  "shippingLabel": "Livraison",
+  "taxLabel": "Taxe",
+  "discountLabel": "Remise",
+  "totalLabel": "Total",
+  "taxesShippingNote": "Les taxes et la livraison sont calculées selon votre adresse.",
+
+  "searchHint": "Rechercher...",
+  "noOptions": "Aucune option",
+  "noResults": "Aucun résultat",
+  "retry": "Réessayer",
+  "missingUserToken": "Jeton utilisateur manquant",
+
+  "itemNumber": "Article #{id}",
+  "@itemNumber": { "placeholders": { "id": { "type": "int" } } },
+
+  "qtyPriceLine": "x{qty} • {price}",
+  "@qtyPriceLine": { "placeholders": { "qty": { "type": "int" }, "price": { "type": "String" } } },
+
+  "checkoutOrderPlacedToast": "Commande passée ✅ (#{orderId})",
+  "@checkoutOrderPlacedToast": { "placeholders": { "orderId": { "type": "int" } } },
+
+  "orderTitle": "Commande #{orderId}",
+  "@orderTitle": { "placeholders": { "orderId": { "type": "int" } } },
+
+  "orderDateLabel": "Date : {date}",
+  "@orderDateLabel": { "placeholders": { "date": { "type": "String" } } },
+
+  "orderItemsTitle": "Articles",
+  "orderQtyUnitLine": "Qté : {qty} • Unité : {unit}",
+  "@orderQtyUnitLine": { "placeholders": { "qty": { "type": "int" }, "unit": { "type": "String" } } },
+
+  "grandTotalLabel": "Total général",
+  "downloadInvoicePdf": "Télécharger la facture PDF",
+
+  "checkoutErrorCartEmpty": "Le panier est vide",
+  "checkoutErrorSelectPayment": "Choisissez un mode de paiement",
+  "checkoutErrorSelectCountry": "Choisissez un pays",
+  "checkoutErrorSelectRegion": "Choisissez une région",
+  "checkoutErrorEnterCity": "Entrez la ville",
+  "checkoutErrorEnterPostalCode": "Entrez le code postal",
+  "checkoutErrorSelectShipping": "Choisissez un mode de livraison",
+  "checkoutErrorShippingMissing": "Mode de livraison manquant",
+  "checkoutErrorStripeNotReady": "Stripe n'est pas encore configuré"
 }

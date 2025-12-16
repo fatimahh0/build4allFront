@@ -39,16 +39,17 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
   }
 
   List<CartLine> _linesFromCart(CheckoutCart cart) {
-    return cart.items
-        .where((x) => x.itemId != 0 && x.quantity > 0)
-        .map(
-          (x) => CartLine(
-            itemId: x.itemId,
-            quantity: x.quantity,
-            unitPrice: x.unitPrice,
-          ),
-        )
-        .toList();
+    return cart.items.where((x) => x.itemId != 0 && x.quantity > 0).map((x) {
+      final effectiveUnit = (x.lineTotal > 0 && x.quantity > 0)
+          ? (x.lineTotal / x.quantity)
+          : x.unitPrice;
+
+      return CartLine(
+        itemId: x.itemId,
+        quantity: x.quantity,
+        unitPrice: effectiveUnit,
+      );
+    }).toList();
   }
 
   Future<void> _loadQuotesAndTax(
@@ -60,7 +61,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
 
     final quotes = await getShippingQuotes(
       ownerProjectId: ownerProjectId,
-      address: s.address, // ShippingAddress doesn't include shippingMethodId
+      address: s.address,
       lines: lines,
     );
 
@@ -80,7 +81,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     );
 
     emit(
-      state.copyWith(
+      s.copyWith(
         shippingQuotes: quotes,
         selectedShippingMethodId: chosen?.methodId,
         selectedQuote: chosen,
@@ -104,24 +105,34 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
 
     try {
       final cart = await getCart();
+
+      // ✅ DB only (no fallback CASH)
       final pms = await getPaymentMethods();
-      final selectedPm = pms.isNotEmpty ? pms.first.code : 'CASH';
+
+      // ✅ no default payment selection
+      final prevIndex = state.selectedPaymentIndex;
+      final nextIndex =
+          (prevIndex != null && prevIndex >= 0 && prevIndex < pms.length)
+          ? prevIndex
+          : null;
 
       emit(
         state.copyWith(
           cart: cart,
           paymentMethods: pms,
-          selectedPaymentCode: selectedPm,
+          selectedPaymentIndex: nextIndex,
           loading: false,
           clearError: true,
         ),
       );
 
+      final s = state;
+
       if (!cart.isEmpty) {
         await _loadQuotesAndTax(
           cart,
-          state,
-          preferMethodId: state.selectedShippingMethodId,
+          s,
+          preferMethodId: s.selectedShippingMethodId,
         );
       }
     } catch (err) {
@@ -175,7 +186,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     CheckoutPaymentSelected e,
     Emitter<CheckoutState> emit,
   ) {
-    emit(state.copyWith(selectedPaymentCode: e.code, clearError: true));
+    emit(state.copyWith(selectedPaymentIndex: e.index, clearError: true));
   }
 
   Future<void> _onRefresh(
@@ -206,9 +217,15 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
       return;
     }
 
-    final pm = (state.selectedPaymentCode ?? '').trim();
-    if (pm.isEmpty) {
+    final idx = state.selectedPaymentIndex;
+    if (idx == null || idx < 0 || idx >= state.paymentMethods.length) {
       emit(state.copyWith(error: 'Select a payment method'));
+      return;
+    }
+
+    final pm = state.paymentMethods[idx].code.trim();
+    if (pm.isEmpty) {
+      emit(state.copyWith(error: 'Payment method code is missing'));
       return;
     }
 
@@ -265,32 +282,11 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
         lines: lines,
       );
 
-      // ✅ Fill missing item names from cart (before cart gets cleared)
-      final nameById = <int, String>{};
-      for (final it in cart.items) {
-        final n = (it.itemName ?? '').trim();
-        if (n.isNotEmpty) nameById[it.itemId] = n;
-      }
-
-      final fixedLines = summary.lines.map((l) {
-        final fixedName = (l.itemName ?? '').trim().isNotEmpty
-            ? l.itemName
-            : nameById[l.itemId] ?? 'Item #${l.itemId}';
-
-        final fixedSubtotal = l.lineSubtotal != 0
-            ? l.lineSubtotal
-            : (l.unitPrice * l.quantity);
-
-        return l.copyWith(itemName: fixedName, lineSubtotal: fixedSubtotal);
-      }).toList();
-
-      final fixedSummary = summary.copyWith(lines: fixedLines);
-
       emit(
         state.copyWith(
           placing: false,
-          orderId: fixedSummary.orderId,
-          orderSummary: fixedSummary,
+          orderId: summary.orderId,
+          orderSummary: summary,
           clearError: true,
         ),
       );

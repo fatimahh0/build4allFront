@@ -48,7 +48,7 @@ class AppView extends StatelessWidget {
 
           // Centralized routing
           initialRoute: AppRouter.initialRoute,
-          onGenerateRoute: AppRouter.onGenerateRoute,
+         onGenerateRoute: (settings) => AppRouter.onGenerateRoute(settings, appConfig),
 
           // Wrap the whole app with a top connection banner (like WhatsApp)
           builder: (context, child) {

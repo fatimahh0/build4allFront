@@ -5,18 +5,18 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/l10n/app_localizations.dart';
 
-
-
 class CheckoutPaymentMethods extends StatelessWidget {
   final List<PaymentMethod> methods;
-  final String? selectedCode;
-  final ValueChanged<String> onSelect;
+
+  // ✅ select ONE by index (unique)
+  final int? selectedIndex;
+  final ValueChanged<int> onSelectIndex;
 
   const CheckoutPaymentMethods({
     super.key,
     required this.methods,
-    required this.selectedCode,
-    required this.onSelect,
+    required this.selectedIndex,
+    required this.onSelectIndex,
   });
 
   @override
@@ -26,14 +26,31 @@ class CheckoutPaymentMethods extends StatelessWidget {
     final spacing = tokens.spacing;
     final colors = tokens.colors;
 
-    final list = methods.isEmpty
-        ? [PaymentMethod(code: 'CASH', name: l10n.checkoutPaymentCash)]
-        : methods;
+    final themed = Theme.of(context).copyWith(
+      radioTheme: RadioThemeData(
+        fillColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.selected)) return colors.primary;
+          return colors.muted;
+        }),
+      ),
+      unselectedWidgetColor: colors.muted,
+    );
+
+    // ✅ DB only: no fallback CASH
+    if (methods.isEmpty) {
+      return Text(
+        l10n.checkoutSelectPayment,
+        style: Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(color: colors.muted),
+      );
+    }
 
     return Column(
       children: [
-        ...list.map((m) {
-          final selected = (m.code == selectedCode);
+        ...List.generate(methods.length, (i) {
+          final m = methods[i];
+          final selected = (i == selectedIndex);
 
           return Container(
             margin: EdgeInsets.only(bottom: spacing.xs),
@@ -45,17 +62,22 @@ class CheckoutPaymentMethods extends StatelessWidget {
                     : colors.border.withOpacity(0.2),
               ),
             ),
-            child: ListTile(
-              onTap: () => onSelect(m.code),
-              leading: Icon(
-                selected ? Icons.radio_button_checked : Icons.radio_button_off,
-                color: selected ? colors.primary : colors.muted,
+            child: Theme(
+              data: themed,
+              child: RadioListTile<int>(
+                value: i, // ✅ unique
+                groupValue: selectedIndex,
+                onChanged: (v) {
+                  if (v != null) onSelectIndex(v);
+                },
+                title: Text(m.name),
+                subtitle: Text((m.code).toUpperCase()),
+                contentPadding: EdgeInsets.symmetric(horizontal: spacing.sm),
+                dense: true,
               ),
-              title: Text(m.name),
-              subtitle: Text(m.code.toUpperCase()),
             ),
           );
-        }).toList(),
+        }),
         SizedBox(height: spacing.sm),
         Text(
           l10n.checkoutStripeNote,

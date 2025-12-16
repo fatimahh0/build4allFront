@@ -224,6 +224,52 @@
   "adminProductAttributeValueLabel": "قيمة الخاصية",
   "adminProductAddAttribute": "إضافة خاصية",
 
-  "adminProductSaveButton": "حفظ المنتج"
+  "adminProductSaveButton": "حفظ المنتج",
+  "orderSummaryTitle": "ملخص الطلب",
+  "secureCheckout": "دفع آمن",
+  "itemsSubtotalLabel": "المجموع الفرعي للمنتجات",
+  "shippingLabel": "الشحن",
+  "taxLabel": "الضريبة",
+  "discountLabel": "الخصم",
+  "totalLabel": "الإجمالي",
+  "taxesShippingNote": "يتم احتساب الضرائب والشحن حسب عنوانك.",
+
+  "searchHint": "بحث...",
+  "noOptions": "لا توجد خيارات",
+  "noResults": "لا توجد نتائج",
+  "retry": "إعادة المحاولة",
+  "missingUserToken": "رمز المستخدم مفقود",
+
+  "itemNumber": "عنصر رقم #{id}",
+  "@itemNumber": { "placeholders": { "id": { "type": "int" } } },
+
+  "qtyPriceLine": "×{qty} • {price}",
+  "@qtyPriceLine": { "placeholders": { "qty": { "type": "int" }, "price": { "type": "String" } } },
+
+  "checkoutOrderPlacedToast": "تم إنشاء الطلب ✅ (#{orderId})",
+  "@checkoutOrderPlacedToast": { "placeholders": { "orderId": { "type": "int" } } },
+
+  "orderTitle": "طلب رقم #{orderId}",
+  "@orderTitle": { "placeholders": { "orderId": { "type": "int" } } },
+
+  "orderDateLabel": "التاريخ: {date}",
+  "@orderDateLabel": { "placeholders": { "date": { "type": "String" } } },
+
+  "orderItemsTitle": "المنتجات",
+  "orderQtyUnitLine": "الكمية: {qty} • السعر للوحدة: {unit}",
+  "@orderQtyUnitLine": { "placeholders": { "qty": { "type": "int" }, "unit": { "type": "String" } } },
+
+  "grandTotalLabel": "الإجمالي النهائي",
+  "downloadInvoicePdf": "تحميل فاتورة PDF",
+
+  "checkoutErrorCartEmpty": "السلة فارغة",
+  "checkoutErrorSelectPayment": "اختر طريقة دفع",
+  "checkoutErrorSelectCountry": "اختر الدولة",
+  "checkoutErrorSelectRegion": "اختر المنطقة",
+  "checkoutErrorEnterCity": "أدخل المدينة",
+  "checkoutErrorEnterPostalCode": "أدخل الرمز البريدي",
+  "checkoutErrorSelectShipping": "اختر طريقة الشحن",
+  "checkoutErrorShippingMissing": "طريقة الشحن غير موجودة",
+  "checkoutErrorStripeNotReady": "Stripe غير مُجهّز بعد"
   
 }

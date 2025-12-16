@@ -1,8 +1,9 @@
-// lib/features/cart/presentation/widgets/cart_summary_card.dart
+import 'package:build4front/features/catalog/cubit/money.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:build4front/core/theme/theme_cubit.dart';
+import 'package:build4front/l10n/app_localizations.dart';
 
 class CartSummaryCard extends StatelessWidget {
   final double itemsTotal;
@@ -31,12 +32,12 @@ class CartSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final themeState = context.read<ThemeCubit>().state;
     final spacing = themeState.tokens.spacing;
 
     final c = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
-    final currency = currencySymbol ?? '\$';
 
     final hasDiscount = (discountTotal ?? 0) > 0;
 
@@ -57,11 +58,10 @@ class CartSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Title + secure chip
           Row(
             children: [
               Text(
-                'Order summary',
+                l10n.orderSummaryTitle,
                 style: t.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: c.onSurface,
@@ -83,7 +83,7 @@ class CartSummaryCard extends StatelessWidget {
                     Icon(Icons.lock_rounded, size: 14, color: c.primary),
                     SizedBox(width: spacing.xs),
                     Text(
-                      'Secure checkout',
+                      l10n.secureCheckout,
                       style: t.labelSmall?.copyWith(
                         color: c.primary,
                         fontWeight: FontWeight.w500,
@@ -98,27 +98,32 @@ class CartSummaryCard extends StatelessWidget {
           SizedBox(height: spacing.md),
 
           _SummaryRow(
-            label: 'Items subtotal',
-            value: _format(currency, itemsTotal),
+            label: l10n.itemsSubtotalLabel,
+            value: money(context, itemsTotal, symbolFromApi: currencySymbol),
           ),
           SizedBox(height: spacing.xs),
 
           _SummaryRow(
-            label: 'Shipping',
-            value: shippingTotal > 0
-                ? _format(currency, shippingTotal)
-                : 'Free',
-            valueColor: shippingTotal > 0 ? c.onSurface : Colors.green.shade700,
+            label: l10n.shippingLabel,
+            value: money(
+              context,
+              shippingTotal,
+              symbolFromApi: currencySymbol,
+            ), // ✅ 0.00 not Free
           ),
           SizedBox(height: spacing.xs),
 
-          _SummaryRow(label: 'Tax', value: _format(currency, taxTotal)),
+          _SummaryRow(
+            label: l10n.taxLabel,
+            value: money(context, taxTotal, symbolFromApi: currencySymbol),
+          ),
 
           if (hasDiscount) ...[
             SizedBox(height: spacing.xs),
             _SummaryRow(
-              label: 'Discount',
-              value: '- ${_format(currency, discountTotal ?? 0)}',
+              label: l10n.discountLabel,
+              value:
+                  '- ${money(context, discountTotal ?? 0, symbolFromApi: currencySymbol)}',
               valueColor: Colors.green.shade700,
             ),
           ],
@@ -130,7 +135,7 @@ class CartSummaryCard extends StatelessWidget {
           Row(
             children: [
               Text(
-                'Total',
+                l10n.totalLabel,
                 style: t.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: c.onSurface,
@@ -138,7 +143,7 @@ class CartSummaryCard extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                _format(currency, grandTotal),
+                money(context, grandTotal, symbolFromApi: currencySymbol),
                 style: t.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: c.primary,
@@ -184,17 +189,13 @@ class CartSummaryCard extends StatelessWidget {
           SizedBox(height: spacing.sm),
 
           Text(
-            'Taxes and shipping are calculated based on your address.',
+            l10n.taxesShippingNote,
             textAlign: TextAlign.center,
             style: t.bodySmall?.copyWith(color: c.onSurface.withOpacity(0.6)),
           ),
         ],
       ),
     );
-  }
-
-  String _format(String currency, double value) {
-    return '$currency ${value.toStringAsFixed(2)}';
   }
 }
 

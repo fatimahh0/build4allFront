@@ -107,4 +107,38 @@ class PaymentMethod {
   final String name;
 
   const PaymentMethod({required this.code, required this.name});
+
+  factory PaymentMethod.fromJson(Map<String, dynamic> j) {
+    final nested = j['method'];
+
+    String pick(dynamic v) => (v ?? '').toString().trim();
+
+    final rawCode = pick(
+      j['code'] ??
+          j['methodCode'] ??
+          j['paymentCode'] ??
+          j['payment_method_code'] ??
+          j['payment_method'] ??
+          (nested is Map ? nested['code'] : null),
+    );
+
+    final rawName = pick(
+      j['name'] ??
+          j['label'] ??
+          j['paymentName'] ??
+          j['payment_method_name'] ??
+          (nested is Map ? nested['name'] : null),
+    );
+
+    final code = rawCode.toUpperCase();
+    final name = rawName.isEmpty ? (code.isEmpty ? 'Unknown' : code) : rawName;
+
+    return PaymentMethod(code: code, name: name);
+  }
+
+  Map<String, dynamic> toJson() => {'code': code, 'name': name};
+
+  PaymentMethod copyWith({String? code, String? name}) {
+    return PaymentMethod(code: code ?? this.code, name: name ?? this.name);
+  }
 }

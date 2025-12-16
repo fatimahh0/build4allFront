@@ -306,7 +306,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get profile_load_error => 'Couldn\'t load your profile. Please try again.';
 
   @override
-  String get retry => 'Retry';
+  String get retry => 'Réessayer';
 
   @override
   String get manageAccount => 'Manage account';
@@ -1336,4 +1336,157 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get checkoutPlaceOrder => 'Place Order';
+
+  @override
+  String get orderSummaryTitle => 'Récapitulatif';
+
+  @override
+  String get secureCheckout => 'Paiement sécurisé';
+
+  @override
+  String get itemsSubtotalLabel => 'Sous-total articles';
+
+  @override
+  String get shippingLabel => 'Livraison';
+
+  @override
+  String get taxLabel => 'Taxe';
+
+  @override
+  String get discountLabel => 'Remise';
+
+  @override
+  String get totalLabel => 'Total';
+
+  @override
+  String get taxesShippingNote => 'Les taxes et la livraison sont calculées selon votre adresse.';
+
+  @override
+  String get searchHint => 'Rechercher...';
+
+  @override
+  String get noOptions => 'Aucune option';
+
+  @override
+  String get noResults => 'Aucun résultat';
+
+  @override
+  String get missingUserToken => 'Jeton utilisateur manquant';
+
+  @override
+  String itemNumber(int id) {
+    return 'Article #$id';
+  }
+
+  @override
+  String qtyPriceLine(int qty, String price) {
+    return 'x$qty • $price';
+  }
+
+  @override
+  String checkoutOrderPlacedToast(int orderId) {
+    return 'Commande passée ✅ (#$orderId)';
+  }
+
+  @override
+  String orderTitle(int orderId) {
+    return 'Commande #$orderId';
+  }
+
+  @override
+  String orderDateLabel(String date) {
+    return 'Date : $date';
+  }
+
+  @override
+  String get orderItemsTitle => 'Articles';
+
+  @override
+  String orderQtyUnitLine(int qty, String unit) {
+    return 'Qté : $qty • Unité : $unit';
+  }
+
+  @override
+  String get grandTotalLabel => 'Total général';
+
+  @override
+  String get downloadInvoicePdf => 'Télécharger la facture PDF';
+
+  @override
+  String get checkoutErrorCartEmpty => 'Le panier est vide';
+
+  @override
+  String get checkoutErrorSelectPayment => 'Choisissez un mode de paiement';
+
+  @override
+  String get checkoutErrorSelectCountry => 'Choisissez un pays';
+
+  @override
+  String get checkoutErrorSelectRegion => 'Choisissez une région';
+
+  @override
+  String get checkoutErrorEnterCity => 'Entrez la ville';
+
+  @override
+  String get checkoutErrorEnterPostalCode => 'Entrez le code postal';
+
+  @override
+  String get checkoutErrorSelectShipping => 'Choisissez un mode de livraison';
+
+  @override
+  String get checkoutErrorShippingMissing => 'Mode de livraison manquant';
+
+  @override
+  String get checkoutErrorStripeNotReady => 'Stripe n\'est pas encore configuré';
+
+  @override
+  String get commonDash => '-';
+
+  @override
+  String orderDetailsTitle(Object orderId) {
+    return 'Order #$orderId';
+  }
+
+  @override
+  String orderDetailsDateLine(Object date) {
+    return 'Date: $date';
+  }
+
+  @override
+  String get orderDetailsItemsTitle => 'Items';
+
+  @override
+  String orderDetailsItemFallback(Object itemId) {
+    return 'Item #$itemId';
+  }
+
+  @override
+  String orderDetailsQtyUnitLine(Object qty, Object unitPrice) {
+    return 'Qty: $qty  •  Unit: $unitPrice';
+  }
+
+  @override
+  String get orderDetailsSubtotal => 'Subtotal';
+
+  @override
+  String get orderDetailsShipping => 'Shipping';
+
+  @override
+  String get orderDetailsTax => 'Tax';
+
+  @override
+  String orderDetailsCouponLine(Object code) {
+    return 'Coupon ($code)';
+  }
+
+  @override
+  String get orderDetailsGrandTotal => 'Grand Total';
+
+  @override
+  String get orderDetailsDownloadInvoice => 'Download Invoice PDF';
+
+  @override
+  String common_stock_label(Object stock) {
+    return 'Stock: $stock';
+  }
 }

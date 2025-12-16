@@ -492,6 +492,13 @@ class AuthApiService {
     throw AuthException(message, original: resp);
   }
 
+
+Future<void> clearUserSession() async {
+    await _tokenStore.clear();
+    g.setAuthToken('');
+  }
+
+
   Never _throwAuthFromLogin(http.Response resp, Map<String, dynamic> decoded) {
     final status = resp.statusCode;
     final backendMsg = _extractBackendMessage(decoded)?.toLowerCase() ?? '';

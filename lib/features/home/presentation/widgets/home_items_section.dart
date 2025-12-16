@@ -1,3 +1,4 @@
+import 'package:build4front/features/catalog/cubit/money.dart';
 import 'package:build4front/features/itemsDetails/presentation/screens/item_details_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -73,7 +74,7 @@ class HomeItemsSection extends StatelessWidget {
                     separatorBuilder: (_, __) => SizedBox(width: spacing.md),
                     itemBuilder: (context, index) {
                       final item = items[index];
-                      final pricing = _pricingFor(item);
+                      final pricing = _pricingFor(context, item);
 
                       return SizedBox(
                         width: cardWidth,
@@ -86,7 +87,7 @@ class HomeItemsSection extends StatelessWidget {
                           oldPriceLabel: pricing.oldLabel,
                           tagLabel: pricing.tagLabel,
 
-                          metaLabel: _metaLabelFor(item),
+                          metaLabel: _metaLabelFor(context, item),
                           ctaLabel: _ctaLabelFor(context, item),
                           onTap: () => _openDetails(context, item.id),
                           onCtaPressed: () => _handleCtaPressed(context, item),
@@ -107,7 +108,7 @@ class HomeItemsSection extends StatelessWidget {
                   spacing: spacing.md,
                   runSpacing: spacing.md,
                   children: items.map((item) {
-                    final pricing = _pricingFor(item);
+                    final pricing = _pricingFor(context, item);
 
                     return SizedBox(
                       width: itemWidth,
@@ -120,7 +121,7 @@ class HomeItemsSection extends StatelessWidget {
                         oldPriceLabel: pricing.oldLabel,
                         tagLabel: pricing.tagLabel,
 
-                        metaLabel: _metaLabelFor(item),
+                        metaLabel: _metaLabelFor(context, item),
                         ctaLabel: _ctaLabelFor(context, item),
                         onTap: () => _openDetails(context, item.id),
                         onCtaPressed: () => _handleCtaPressed(context, item),
@@ -154,32 +155,31 @@ class HomeItemsSection extends StatelessWidget {
     return !now.isBefore(start!) && !now.isAfter(end!);
   }
 
-  _PricingView _pricingFor(ItemSummary item) {
+  // ✅ NOW uses global money() (CurrencyCubit), no '$' anywhere
+  _PricingView _pricingFor(BuildContext context, ItemSummary item) {
+    final l10n = AppLocalizations.of(context)!;
+
     final saleActive = item.onSale && _isSaleActiveNow(item);
 
-    num? current = saleActive
-        ? (item.effectivePrice ?? item.salePrice ?? item.price)
-        : item.price;
+    final double? basePrice = item.price?.toDouble();
+    final double? current = saleActive
+        ? (item.effectivePrice ?? item.salePrice ?? item.price)?.toDouble()
+        : basePrice;
 
-    final currentLabel = current != null
-        ? '${current.toStringAsFixed(2)} \$'
-        : null;
+    final currentLabel = current == null ? null : money(context, current);
 
     String? oldLabel;
     if (saleActive &&
-        item.price != null &&
+        basePrice != null &&
         current != null &&
-        item.price! > current) {
-      oldLabel = '${item.price!.toStringAsFixed(2)} \$';
+        basePrice > current) {
+      oldLabel = money(context, basePrice);
     }
 
     String? tagLabel;
-    if (saleActive &&
-        item.price != null &&
-        current != null &&
-        item.price! > 0) {
-      final percent = ((1 - (current / item.price!)) * 100).round();
-      tagLabel = percent > 0 ? '-$percent%' : 'SALE';
+    if (saleActive && basePrice != null && current != null && basePrice > 0) {
+      final percent = ((1 - (current / basePrice)) * 100).round();
+      tagLabel = percent > 0 ? '-$percent%' : l10n.adminProductSalePriceLabel;
     }
 
     return _PricingView(
@@ -213,7 +213,9 @@ class HomeItemsSection extends StatelessWidget {
     }
   }
 
-  String? _metaLabelFor(ItemSummary item) {
+  String? _metaLabelFor(BuildContext context, ItemSummary item) {
+    final l10n = AppLocalizations.of(context)!;
+
     switch (item.kind) {
       case ItemKind.activity:
         if (item.start == null) return null;
@@ -227,7 +229,7 @@ class HomeItemsSection extends StatelessWidget {
 
       case ItemKind.product:
         if (item.stock == null) return null;
-        return 'Stock: ${item.stock}';
+        return l10n.common_stock_label(item.stock!); // ✅ localized
 
       default:
         return null;
