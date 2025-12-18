@@ -4,6 +4,10 @@ class HomeCategoryChips extends StatelessWidget {
   /// Category names only (e.g. ["All", "Sports", "Music"])
   final List<String> categories;
 
+  /// The currently selected category label (must match one of [categories])
+  /// Example: "All" OR "Sports"
+  final String? selectedCategory;
+
   /// Called when a chip is tapped, passes back the selected category name.
   final ValueChanged<String> onCategoryTap;
 
@@ -11,6 +15,7 @@ class HomeCategoryChips extends StatelessWidget {
     super.key,
     required this.categories,
     required this.onCategoryTap,
+    this.selectedCategory,
   });
 
   @override
@@ -18,23 +23,33 @@ class HomeCategoryChips extends StatelessWidget {
     final theme = Theme.of(context);
     final c = theme.colorScheme;
 
-    // You can track selected chip outside (like you already do with _selectedCategoryId),
-    // or add local selection here if needed.
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: categories.map((name) {
-          return Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: ChoiceChip(
-              label: Text(name),
-              selected: false, // you can wire this with state if needed
-              onSelected: (_) => onCategoryTap(name),
-              labelStyle: theme.textTheme.bodyMedium,
-              selectedColor: c.primary.withOpacity(0.1),
+    return SizedBox(
+      height: 42,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: categories.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final name = categories[index];
+          final isSelected = (selectedCategory ?? '') == name;
+
+          return ChoiceChip(
+            label: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+            selected: isSelected,
+            showCheckmark: false,
+            onSelected: (_) => onCategoryTap(name),
+            labelStyle: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              color: isSelected ? c.onPrimary : c.onSurface,
             ),
+            backgroundColor: c.surface,
+            selectedColor: c.primary,
+            side: BorderSide(
+              color: isSelected ? c.primary : c.outline.withOpacity(0.35),
+            ),
+            shape: const StadiumBorder(),
           );
-        }).toList(),
+        },
       ),
     );
   }

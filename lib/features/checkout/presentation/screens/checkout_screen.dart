@@ -1,4 +1,5 @@
 import 'package:build4front/core/config/app_config.dart';
+import 'package:build4front/core/config/env.dart';
 import 'package:build4front/features/checkout/presentation/screens/order_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -236,9 +237,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               selectedShipping: state.selectedQuote,
               tax: state.tax,
               isPlacing: state.placing,
-              onPlaceOrder: () {
-                // ✅ ALWAYS validate using latest bloc state at click time
+             onPlaceOrder: () {
                 final s = context.read<CheckoutBloc>().state;
+
+                // ✅ stop spam taps
+                if (s.placing) return;
 
                 if (s.selectedPaymentIndex == null) {
                   AppToast.show(
@@ -259,10 +262,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   return;
                 }
 
+                // ✅ extra: if Stripe selected but key missing
+                final idx = s.selectedPaymentIndex!;
+                final code = (idx >= 0 && idx < s.paymentMethods.length)
+                    ? s.paymentMethods[idx].code.trim().toUpperCase()
+                    : '';
+
+                if (code == 'STRIPE' && Env.stripePublishableKey.isEmpty) {
+                  AppToast.show(
+                    context,
+                    'Stripe key is missing in build config',
+                    isError: true,
+                  );
+                  return;
+                }
+
                 context.read<CheckoutBloc>().add(
                   const CheckoutPlaceOrderPressed(),
                 );
               },
+
             );
           },
         ),
