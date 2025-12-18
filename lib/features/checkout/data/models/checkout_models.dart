@@ -161,15 +161,33 @@ class TaxPreviewModel {
 }
 
 class PaymentMethodModel {
-  final String code;
+  final int? id;
+  final String code; // we will use NAME as CODE
   final String name;
+  final bool enabled;
 
-  PaymentMethodModel({required this.code, required this.name});
+  PaymentMethodModel({
+    this.id,
+    required this.code,
+    required this.name,
+    required this.enabled,
+  });
 
-  factory PaymentMethodModel.fromJson(Map<String, dynamic> json) {
-    final code = (json['code'] ?? json['paymentMethod'] ?? json['method'] ?? '')
-        .toString();
-    final name = (json['name'] ?? json['label'] ?? code).toString();
-    return PaymentMethodModel(code: code, name: name);
+  factory PaymentMethodModel.fromJson(Map<String, dynamic> j) {
+    String pick(dynamic v) => (v ?? '').toString().trim();
+
+    final name = pick(j['name'] ?? j['label']);
+    final code = pick(
+      j['code'] ?? j['paymentMethod'] ?? j['method'] ?? name,
+    ).toUpperCase();
+
+    final enabled = (j['enabled'] is bool) ? (j['enabled'] as bool) : true;
+
+    return PaymentMethodModel(
+      id: (j['id'] as num?)?.toInt(),
+      name: name.isEmpty ? code : name,
+      code: code.isEmpty ? name.toUpperCase() : code,
+      enabled: enabled,
+    );
   }
 }

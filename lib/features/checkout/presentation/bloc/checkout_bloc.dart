@@ -52,40 +52,44 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     }).toList();
   }
 
+  // ✅ FIX: do NOT accept a snapshot state (s). Always use latest `state`
+  // so selecting payment does not get wiped by async shipping/tax updates.
   Future<void> _loadQuotesAndTax(
-    CheckoutCart cart,
-    CheckoutState s, {
+    CheckoutCart cart, {
     int? preferMethodId,
   }) async {
     final lines = _linesFromCart(cart);
 
     final quotes = await getShippingQuotes(
       ownerProjectId: ownerProjectId,
-      address: s.address,
+      address: state.address, // ✅ latest address
       lines: lines,
     );
 
     ShippingQuote? chosen;
     if (quotes.isNotEmpty) {
+      final pref = preferMethodId ?? state.selectedShippingMethodId;
       chosen = quotes.firstWhere(
-        (q) => q.methodId != null && q.methodId == preferMethodId,
+        (q) => q.methodId != null && q.methodId == pref,
         orElse: () => quotes.first,
       );
     }
 
     final tax = await previewTax(
       ownerProjectId: ownerProjectId,
-      address: s.address,
+      address: state.address, // ✅ latest address
       lines: lines,
       shippingTotal: chosen?.price ?? 0.0,
     );
 
+    // ✅ IMPORTANT: emit using CURRENT state (keeps selectedPaymentIndex)
     emit(
-      s.copyWith(
+      state.copyWith(
         shippingQuotes: quotes,
         selectedShippingMethodId: chosen?.methodId,
         selectedQuote: chosen,
         tax: tax,
+        clearError: true,
       ),
     );
   }
@@ -109,7 +113,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
       // ✅ DB only (no fallback CASH)
       final pms = await getPaymentMethods();
 
-      // ✅ no default payment selection
+      // ✅ keep previous selection only if still valid
       final prevIndex = state.selectedPaymentIndex;
       final nextIndex =
           (prevIndex != null && prevIndex >= 0 && prevIndex < pms.length)
@@ -126,13 +130,10 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
         ),
       );
 
-      final s = state;
-
       if (!cart.isEmpty) {
         await _loadQuotesAndTax(
           cart,
-          s,
-          preferMethodId: s.selectedShippingMethodId,
+          preferMethodId: state.selectedShippingMethodId,
         );
       }
     } catch (err) {
@@ -152,7 +153,6 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     try {
       await _loadQuotesAndTax(
         cart,
-        state,
         preferMethodId: state.selectedShippingMethodId,
       );
     } catch (err) {
@@ -172,7 +172,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     if (cart == null || cart.isEmpty) return;
 
     try {
-      await _loadQuotesAndTax(cart, state, preferMethodId: e.methodId);
+      await _loadQuotesAndTax(cart, preferMethodId: e.methodId);
     } catch (err) {
       emit(state.copyWith(error: err.toString()));
     }
@@ -199,7 +199,6 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     try {
       await _loadQuotesAndTax(
         cart,
-        state,
         preferMethodId: state.selectedShippingMethodId,
       );
     } catch (err) {
@@ -271,7 +270,8 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
 
       final lines = _linesFromCart(cart);
 
-      final summary = await placeOrder(
+   final summary = await placeOrder(
+        ownerProjectId: ownerProjectId,
         currencyId: currencyId ?? 1,
         paymentMethod: pm,
         couponCode: state.coupon.trim().isEmpty ? null : state.coupon.trim(),
@@ -281,6 +281,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
         shippingAddress: addr,
         lines: lines,
       );
+
 
       emit(
         state.copyWith(

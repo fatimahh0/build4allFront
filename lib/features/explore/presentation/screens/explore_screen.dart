@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:build4front/features/itemsDetails/presentation/screens/item_details_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -49,6 +52,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
   int? _selectedCategoryId;
   ExploreSortOption _sortOption = ExploreSortOption.relevance;
 
+  // ✅ pagination (3 rows × 2 cols = 6 items per page)
+  static const int _rowsPerPage = 3;
+  static const int _itemsPerPage = _rowsPerPage * 2;
+  int _page = 1;
+
+  // ✅ typing debounce
+  Timer? _searchDebounce;
+
   @override
   void initState() {
     super.initState();
@@ -61,6 +72,27 @@ class _ExploreScreenState extends State<ExploreScreen> {
     if (!homeBloc.state.hasLoaded && !homeBloc.state.isLoading) {
       homeBloc.add(const HomeStarted());
     }
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    super.dispose();
+  }
+
+  void _resetToFirstPage() {
+    _page = 1;
+  }
+
+  void _onSearchChangedDebounced(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      setState(() {
+        _searchQuery = value.trim();
+        _resetToFirstPage();
+      });
+    });
   }
 
   @override
@@ -78,95 +110,172 @@ class _ExploreScreenState extends State<ExploreScreen> {
             }
 
             final baseItems = _baseItemsForExplore(homeState);
-            final items = _buildFilteredAndSortedItems(baseItems);
+            final filtered = _buildFilteredAndSortedItems(baseItems);
+
+            // ✅ keep highlight even if we came by categoryId only
+            final effectiveSelectedLabel =
+                _selectedCategoryLabel ??
+                _labelForCategoryId(homeState, _selectedCategoryId);
 
             final categories = homeState.categories;
             final categoryEntities = homeState.categoryEntities;
 
+            // ✅ pagination math
+            final totalItems = filtered.length;
+            final totalPages = totalItems == 0
+                ? 1
+                : ((totalItems / _itemsPerPage).ceil());
+
+            // clamp page
+            final safePage = _page.clamp(1, totalPages);
+            if (safePage != _page) {
+              // avoid setState loop: just use safePage locally
+            }
+
+            final start = (safePage - 1) * _itemsPerPage;
+            final end = math.min(start + _itemsPerPage, totalItems);
+            final pageItems = (totalItems == 0 || start >= totalItems)
+                ? <ItemSummary>[]
+                : filtered.sublist(start, end);
+
             return RefreshIndicator(
               onRefresh: () async {
                 context.read<HomeBloc>().add(const HomeRefreshRequested());
+                setState(() => _resetToFirstPage());
               },
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(
-                  spacing.lg,
-                  spacing.lg,
-                  spacing.lg,
-                  spacing.xl,
-                ),
-                children: [
-                  AppSearchField(
-                    hintText: l10n.explore_search_hint,
-                    initialValue: _searchQuery.isEmpty ? null : _searchQuery,
-                    onChanged: (value) =>
-                        setState(() => _searchQuery = value.trim()),
-                    onSubmitted: (value) =>
-                        setState(() => _searchQuery = value.trim()),
-                  ),
-                  SizedBox(height: spacing.md),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // ✅ like HomeScreen: keep nice width on tablets/desktop
+                  final maxW = constraints.maxWidth;
+                  final contentMaxWidth = maxW > 900 ? 900.0 : maxW;
 
-                  if (categories.isNotEmpty)
-                    _ExploreCategoryChips(
-                      categories: categories,
-                      selectedCategoryLabel: _selectedCategoryLabel,
-                      onCategorySelected: (label) {
-                        int? foundId;
-
-                        if (label != null && label.trim().isNotEmpty) {
-                          for (final cat in categoryEntities) {
-                            if (cat.name == label) {
-                              foundId = cat.id;
-                              break;
-                            }
-                          }
-                        }
-
-                        setState(() {
-                          _selectedCategoryLabel = label;
-                          _selectedCategoryId = foundId;
-                        });
-                      },
-                    ),
-
-                  SizedBox(height: spacing.sm),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          l10n.explore_results_label(items.length),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                  return Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: contentMaxWidth),
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: EdgeInsets.fromLTRB(
+                          spacing.lg,
+                          spacing.lg,
+                          spacing.lg,
+                          spacing.xl,
                         ),
-                      ),
-                      _SortDropdown(
-                        current: _sortOption,
-                        onChanged: (opt) => setState(() => _sortOption = opt),
-                      ),
-                    ],
-                  ),
+                        children: [
+                          // ✅ Search (typing)
+                          AppSearchField(
+                            hintText: l10n.explore_search_hint,
+                            initialValue: _searchQuery.isEmpty
+                                ? null
+                                : _searchQuery,
+                            onChanged: _onSearchChangedDebounced,
+                            onSubmitted: (value) {
+                              setState(() {
+                                _searchQuery = value.trim();
+                                _resetToFirstPage();
+                              });
+                            },
+                          ),
+                          SizedBox(height: spacing.md),
 
-                  SizedBox(height: spacing.md),
+                          // ✅ Category chips
+                          if (categories.isNotEmpty)
+                            _ExploreCategoryChips(
+                              categories: categories,
+                              selectedCategoryLabel: effectiveSelectedLabel,
+                              onCategorySelected: (label) {
+                                int? foundId;
 
-                  if (items.isEmpty)
-                    _EmptyExploreState(message: l10n.explore_empty_message)
-                  else
-                    _ExploreItemsGrid(
-                      items: items,
-                      pricingFor: _pricingFor,
-                      subtitleFor: _subtitleFor,
-                      metaFor: _metaLabelFor,
-                      ctaLabelFor: _ctaLabelFor,
-                      onTapItem: (id) => _openDetails(context, id),
-                      onCtaPressed: (item) => _handleCtaPressed(context, item),
+                                if (label != null && label.trim().isNotEmpty) {
+                                  for (final cat in categoryEntities) {
+                                    if (cat.name == label) {
+                                      foundId = cat.id;
+                                      break;
+                                    }
+                                  }
+                                }
+
+                                setState(() {
+                                  _selectedCategoryLabel = label;
+                                  _selectedCategoryId = foundId;
+                                  _resetToFirstPage();
+                                });
+                              },
+                            ),
+
+                          SizedBox(height: spacing.sm),
+
+                          // ✅ Results + Sort
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  l10n.explore_results_label(totalItems),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              _SortDropdown(
+                                current: _sortOption,
+                                onChanged: (opt) {
+                                  setState(() {
+                                    _sortOption = opt;
+                                    _resetToFirstPage();
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+
+                          SizedBox(height: spacing.md),
+
+                          if (filtered.isEmpty)
+                            _EmptyExploreState(
+                              message: l10n.explore_empty_message,
+                            )
+                          else ...[
+                            // ✅ Grid (always 2 per row)
+                            _ExploreItemsGrid(
+                              items: pageItems,
+                              pricingFor: _pricingFor,
+                              subtitleFor: _subtitleFor,
+                              metaFor: _metaLabelFor,
+                              ctaLabelFor: _ctaLabelFor,
+                              onTapItem: (id) => _openDetails(context, id),
+                              onCtaPressed: (item) =>
+                                  _handleCtaPressed(context, item),
+                            ),
+
+                            SizedBox(height: spacing.lg),
+
+                            // ✅ Pagination bar  ‹ 1 2 3 ›
+                            _PaginationBar(
+                              currentPage: safePage,
+                              totalPages: totalPages,
+                              onPageChanged: (p) {
+                                setState(() => _page = p);
+                              },
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                ],
+                  );
+                },
               ),
             );
           },
         ),
       ),
     );
+  }
+
+  String? _labelForCategoryId(HomeState homeState, int? id) {
+    if (id == null) return null;
+    for (final cat in homeState.categoryEntities) {
+      if (cat.id == id) return cat.name;
+    }
+    return null;
   }
 
   List<ItemSummary> _baseItemsForExplore(HomeState homeState) {
@@ -258,11 +367,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
     return result;
   }
-
-  void _openDetails(BuildContext context, int itemId) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => ItemDetailsPage(itemId: itemId)));
+void _openDetails(BuildContext context, int itemId) {
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => ItemDetailsPage(itemId: itemId),
+    ),
+  );
+  
   }
 
   String _ctaLabelFor(BuildContext context, ItemSummary item) {
@@ -553,40 +664,22 @@ class _ExploreItemsGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final spacing = context.read<ThemeCubit>().state.tokens.spacing;
 
-    // ✅ KEY FIX: responsive grid sizing + taller tiles
     return LayoutBuilder(
       builder: (context, constraints) {
-        final maxWidth = constraints.maxWidth;
+        final w = constraints.maxWidth;
 
-        // 1 col on super small, else auto columns
-        int crossAxisCount;
-        if (maxWidth < 360) {
-          crossAxisCount = 1;
-        } else {
-          // target width per tile (tweakable)
-          const targetTileWidth = 190.0;
-          crossAxisCount = (maxWidth / targetTileWidth).floor();
-          crossAxisCount = crossAxisCount.clamp(2, 4);
-        }
-
-        final tileWidth =
-            (maxWidth - (crossAxisCount - 1) * spacing.md) / crossAxisCount;
-
-        // Taller tiles on small widths to avoid Column overflow in ItemCard
-        final double heightFactor = tileWidth < 170
-            ? 2.05
-            : (tileWidth < 210 ? 1.9 : 1.78);
-
-        final childAspectRatio = 1 / heightFactor; // width / height
+        // ✅ always 2 per row
+        // ✅ responsive height: tall on phones, less tall on big screens
+        final double aspect = w <= 420 ? 0.52 : (w <= 700 ? 0.60 : 0.70);
 
         return GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
+            crossAxisCount: 2,
             mainAxisSpacing: spacing.md,
             crossAxisSpacing: spacing.md,
-            childAspectRatio: childAspectRatio,
+            childAspectRatio: aspect,
           ),
           itemCount: items.length,
           itemBuilder: (context, index) {
@@ -594,17 +687,13 @@ class _ExploreItemsGrid extends StatelessWidget {
             final pricing = pricingFor(item);
 
             return ItemCard(
-              // ✅ IMPORTANT: don’t force 160 width inside a grid cell
-              width: double.infinity,
-
+              width: double.infinity, // ✅ important for grid
               title: item.title,
               subtitle: subtitleFor(item),
               imageUrl: item.imageUrl,
-
               badgeLabel: pricing.currentLabel,
               oldPriceLabel: pricing.oldLabel,
               tagLabel: pricing.tagLabel,
-
               metaLabel: metaFor(item),
               ctaLabel: ctaLabelFor(context, item),
               onTap: () => onTapItem(item.id),
@@ -614,6 +703,127 @@ class _ExploreItemsGrid extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+class _PaginationBar extends StatelessWidget {
+  final int currentPage;
+  final int totalPages;
+  final ValueChanged<int> onPageChanged;
+
+  const _PaginationBar({
+    required this.currentPage,
+    required this.totalPages,
+    required this.onPageChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final spacing = context.read<ThemeCubit>().state.tokens.spacing;
+
+    List<int> pagesToShow() {
+      if (totalPages <= 5) {
+        return List.generate(totalPages, (i) => i + 1);
+      }
+      // window: 1 ... (current-1, current, current+1) ... last
+      final set = <int>{
+        1,
+        totalPages,
+        currentPage - 1,
+        currentPage,
+        currentPage + 1,
+      };
+      final list = set.where((p) => p >= 1 && p <= totalPages).toList()..sort();
+      return list;
+    }
+
+    final pages = pagesToShow();
+
+    Widget pageButton(int p) {
+      final selected = p == currentPage;
+      return InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => onPageChanged(p),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: spacing.md,
+            vertical: spacing.xs + 2,
+          ),
+          decoration: BoxDecoration(
+            color: selected ? c.primary : c.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected ? c.primary : c.outline.withOpacity(0.25),
+            ),
+          ),
+          child: Text(
+            '$p',
+            style: t.bodyMedium?.copyWith(
+              color: selected ? c.onPrimary : c.onSurface,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        IconButton(
+          tooltip: 'Prev',
+          onPressed: currentPage > 1
+              ? () => onPageChanged(currentPage - 1)
+              : null,
+          icon: const Icon(Icons.chevron_left_rounded),
+        ),
+        SizedBox(width: spacing.xs),
+
+        ..._withEllipsis(
+          pages,
+          (p) => Padding(
+            padding: EdgeInsets.symmetric(horizontal: spacing.xs),
+            child: pageButton(p),
+          ),
+          spacing: spacing,
+        ),
+
+        SizedBox(width: spacing.xs),
+        IconButton(
+          tooltip: 'Next',
+          onPressed: currentPage < totalPages
+              ? () => onPageChanged(currentPage + 1)
+              : null,
+          icon: const Icon(Icons.chevron_right_rounded),
+        ),
+      ],
+    );
+  }
+
+  static List<Widget> _withEllipsis(
+    List<int> pages,
+    Widget Function(int) buildPage, {
+    required dynamic spacing,
+  }) {
+    final widgets = <Widget>[];
+    for (var i = 0; i < pages.length; i++) {
+      widgets.add(buildPage(pages[i]));
+
+      if (i < pages.length - 1) {
+        final gap = pages[i + 1] - pages[i];
+        if (gap > 1) {
+          widgets.add(
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: spacing.xs),
+              child: const Text('…'),
+            ),
+          );
+        }
+      }
+    }
+    return widgets;
   }
 }
 

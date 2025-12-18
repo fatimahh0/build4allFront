@@ -8,9 +8,7 @@ import 'package:build4front/features/items/domain/entities/item_summary.dart';
 import 'package:build4front/common/widgets/ItemCard.dart';
 import 'home_section_header.dart';
 
-
-
-// 🔥 Auth + Cart + l10n + Toast
+// Auth + Cart + l10n + Toast
 import 'package:build4front/features/auth/presentation/login/bloc/auth_bloc.dart';
 import 'package:build4front/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:build4front/features/cart/presentation/bloc/cart_event.dart';
@@ -27,6 +25,9 @@ class HomeItemsSection extends StatelessWidget {
   final IconData? trailingIcon;
   final VoidCallback? onTrailingTap;
 
+  /// ✅ When true: force Grid with 2 items per row (New Arrivals)
+  final bool forceTwoColumns;
+
   const HomeItemsSection({
     super.key,
     required this.title,
@@ -36,14 +37,18 @@ class HomeItemsSection extends StatelessWidget {
     this.trailingText,
     this.trailingIcon,
     this.onTrailingTap,
+    this.forceTwoColumns = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isHorizontal = layout.toLowerCase() == 'horizontal';
-    if (items.isEmpty) return const SizedBox.shrink();
-
     final spacing = context.read<ThemeCubit>().state.tokens.spacing;
+
+    // ✅ If forceTwoColumns => ignore "horizontal" and always show grid 2 cols
+    final isHorizontal =
+        !forceTwoColumns && layout.toLowerCase() == 'horizontal';
+
+    if (items.isEmpty) return const SizedBox.shrink();
 
     return Container(
       margin: EdgeInsets.only(bottom: spacing.lg),
@@ -59,6 +64,7 @@ class HomeItemsSection extends StatelessWidget {
           ),
           SizedBox(height: spacing.sm),
 
+          // ✅ Horizontal list (only when NOT forced)
           if (isHorizontal)
             LayoutBuilder(
               builder: (context, constraints) {
@@ -82,11 +88,9 @@ class HomeItemsSection extends StatelessWidget {
                           title: item.title,
                           subtitle: _subtitleFor(item),
                           imageUrl: item.imageUrl,
-
                           badgeLabel: pricing.currentLabel,
                           oldPriceLabel: pricing.oldLabel,
                           tagLabel: pricing.tagLabel,
-
                           metaLabel: _metaLabelFor(context, item),
                           ctaLabel: _ctaLabelFor(context, item),
                           onTap: () => _openDetails(context, item.id),
@@ -99,35 +103,48 @@ class HomeItemsSection extends StatelessWidget {
               },
             )
           else
+            // ✅ GRID (New Arrivals forced to 2 per row)
             LayoutBuilder(
               builder: (context, constraints) {
-                final maxWidth = constraints.maxWidth;
-                final itemWidth = (maxWidth - spacing.md) / 2;
+                final w = constraints.maxWidth;
 
-                return Wrap(
-                  spacing: spacing.md,
-                  runSpacing: spacing.md,
-                  children: items.map((item) {
+                // ✅ Always 2 columns for New Arrivals
+                final cols = forceTwoColumns
+                    ? 2
+                    : (w < 520 ? 2 : (w < 900 ? 3 : 4));
+
+                // ✅ Aspect tuned to avoid huge white gaps
+                final aspect = forceTwoColumns
+                    ? (w < 520 ? 0.74 : 0.85)
+                    : (w < 520 ? 0.74 : (w < 900 ? 0.78 : 0.82));
+
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: items.length,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: cols,
+                    mainAxisSpacing: spacing.md,
+                    crossAxisSpacing: spacing.md,
+                    childAspectRatio: aspect,
+                  ),
+                  itemBuilder: (context, index) {
+                    final item = items[index];
                     final pricing = _pricingFor(context, item);
 
-                    return SizedBox(
-                      width: itemWidth,
-                      child: ItemCard(
-                        title: item.title,
-                        subtitle: _subtitleFor(item),
-                        imageUrl: item.imageUrl,
-
-                        badgeLabel: pricing.currentLabel,
-                        oldPriceLabel: pricing.oldLabel,
-                        tagLabel: pricing.tagLabel,
-
-                        metaLabel: _metaLabelFor(context, item),
-                        ctaLabel: _ctaLabelFor(context, item),
-                        onTap: () => _openDetails(context, item.id),
-                        onCtaPressed: () => _handleCtaPressed(context, item),
-                      ),
+                    return ItemCard(
+                      title: item.title,
+                      subtitle: _subtitleFor(item),
+                      imageUrl: item.imageUrl,
+                      badgeLabel: pricing.currentLabel,
+                      oldPriceLabel: pricing.oldLabel,
+                      tagLabel: pricing.tagLabel,
+                      metaLabel: _metaLabelFor(context, item),
+                      ctaLabel: _ctaLabelFor(context, item),
+                      onTap: () => _openDetails(context, item.id),
+                      onCtaPressed: () => _handleCtaPressed(context, item),
                     );
-                  }).toList(),
+                  },
                 );
               },
             ),
@@ -148,14 +165,11 @@ class HomeItemsSection extends StatelessWidget {
     final end = item.saleEnd;
 
     if (start == null && end == null) return item.onSale;
-
     if (start != null && end == null) return !now.isBefore(start);
     if (start == null && end != null) return !now.isAfter(end);
-
     return !now.isBefore(start!) && !now.isAfter(end!);
   }
 
-  // ✅ NOW uses global money() (CurrencyCubit), no '$' anywhere
   _PricingView _pricingFor(BuildContext context, ItemSummary item) {
     final l10n = AppLocalizations.of(context)!;
 
@@ -229,7 +243,7 @@ class HomeItemsSection extends StatelessWidget {
 
       case ItemKind.product:
         if (item.stock == null) return null;
-        return l10n.common_stock_label(item.stock!); // ✅ localized
+        return l10n.common_stock_label(item.stock!);
 
       default:
         return null;

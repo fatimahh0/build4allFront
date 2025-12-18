@@ -32,7 +32,11 @@ class CheckoutApiService {
       HttpMethod.get,
       '/api/payment-methods/enabled',
     );
+    print(res.data.runtimeType);
+    print(res.data);
+
     return (res.data as List? ?? []);
+    
   }
 
   // ✅ IMPORTANT: real endpoint you want

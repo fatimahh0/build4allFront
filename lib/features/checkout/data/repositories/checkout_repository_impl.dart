@@ -36,17 +36,17 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
   }
 
   Map<String, dynamic> _addressToJson(ShippingAddress a) => {
-        'countryId': a.countryId,
-        'regionId': a.regionId,
-        'city': a.city,
-        'postalCode': a.postalCode,
-      };
+    'countryId': a.countryId,
+    'regionId': a.regionId,
+    'city': a.city,
+    'postalCode': a.postalCode,
+  };
 
   Map<String, dynamic> _lineToJson(CartLine l) => {
-        'itemId': l.itemId,
-        'quantity': l.quantity,
-        'unitPrice': l.unitPrice,
-      };
+    'itemId': l.itemId,
+    'quantity': l.quantity,
+    'unitPrice': l.unitPrice,
+  };
 
   @override
   Future<List<ShippingQuote>> getShippingQuotes({
@@ -102,14 +102,30 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
   @override
   Future<List<PaymentMethod>> getEnabledPaymentMethods() async {
     final list = await api.getEnabledPaymentMethods();
-    return list
-        .map((e) => PaymentMethodModel.fromJson(e as Map<String, dynamic>))
+
+    final models = list
+        .where((e) => e is Map)
+        .map(
+          (e) =>
+              PaymentMethodModel.fromJson(Map<String, dynamic>.from(e as Map)),
+        )
+        .where((m) => m.enabled) // keep enabled only
+        .toList();
+
+    // ✅ DEBUG (temporary)
+    // ignore: avoid_print
+    print(
+      "Payment methods parsed: ${models.map((x) => '${x.code}:${x.name}').toList()}",
+    );
+
+    return models
         .map((m) => PaymentMethod(code: m.code, name: m.name))
         .toList();
   }
 
   @override
   Future<CheckoutSummaryModel> checkout({
+    required int ownerProjectId,
     required int currencyId,
     required String paymentMethod,
     String? stripePaymentId,
@@ -120,6 +136,7 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
     required List<CartLine> lines,
   }) async {
     final body = <String, dynamic>{
+      'ownerProjectId': ownerProjectId,
       'currencyId': currencyId,
       'paymentMethod': paymentMethod,
       'shippingMethodId': shippingMethodId,

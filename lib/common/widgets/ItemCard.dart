@@ -9,13 +9,8 @@ class ItemCard extends StatelessWidget {
   final String? subtitle;
   final String? imageUrl;
 
-  /// Current price label (top-right overlay)
   final String? badgeLabel;
-
-  /// Old price label (shown inside card with line-through)
   final String? oldPriceLabel;
-
-  /// Small tag on image (top-left): e.g. "SALE" or "-30%"
   final String? tagLabel;
 
   final String? metaLabel;
@@ -56,215 +51,252 @@ class ItemCard extends StatelessWidget {
 
     final hasCta = ctaLabel != null && ctaLabel!.trim().isNotEmpty;
 
-    return SizedBox(
-      width: width ?? 160,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(cardTokens.radius),
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            color: c.surface,
-            borderRadius: BorderRadius.circular(cardTokens.radius),
-            border: cardTokens.showBorder
-                ? Border.all(color: c.outline.withOpacity(0.18))
-                : null,
-            boxShadow: cardTokens.showShadow
-                ? [
-                    BoxShadow(
-                      color: c.shadow.withOpacity(0.04),
-                      blurRadius: cardTokens.elevation * 2,
-                      offset: const Offset(0, 4),
+    final bool inGrid = (width == double.infinity);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // ✅ adapt to tile height
+        final maxH = constraints.maxHeight;
+        final subtitleLines = inGrid ? 1 : 2;
+        final showMeta = (metaLabel != null && metaLabel!.trim().isNotEmpty);
+
+
+        // ✅ shrink image a bit when grid tile is small
+        final double imgH = inGrid
+            ? (maxH * 0.42).clamp(95.0, cardTokens.imageHeight.toDouble())
+            : cardTokens.imageHeight.toDouble();
+
+        final double contentPad = inGrid
+            ? (cardTokens.padding * 0.85)
+            : cardTokens.padding;
+
+        Widget card = InkWell(
+          borderRadius: BorderRadius.circular(cardTokens.radius),
+          onTap: onTap,
+          child: Container(
+            decoration: BoxDecoration(
+              color: c.surface,
+              borderRadius: BorderRadius.circular(cardTokens.radius),
+              border: cardTokens.showBorder
+                  ? Border.all(color: c.outline.withOpacity(0.18))
+                  : null,
+              boxShadow: cardTokens.showShadow
+                  ? [
+                      BoxShadow(
+                        color: c.shadow.withOpacity(0.04),
+                        blurRadius: cardTokens.elevation * 2,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // IMAGE
+                ClipRRect(
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(cardTokens.radius),
+                  ),
+                  child: SizedBox(
+                    height: imgH,
+                    width: double.infinity,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (resolvedImageUrl != null &&
+                            resolvedImageUrl!.isNotEmpty)
+                          Image.network(
+                            resolvedImageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: c.surface,
+                                child: Icon(
+                                  Icons.broken_image_outlined,
+                                  color: c.error,
+                                  size: 32,
+                                ),
+                              );
+                            },
+                          )
+                        else
+                          Container(
+                            color: c.surface,
+                            child: Icon(
+                              Icons.image_outlined,
+                              color: c.primary,
+                              size: 32,
+                            ),
+                          ),
+
+                        if (tagLabel != null && tagLabel!.trim().isNotEmpty)
+                          Positioned(
+                            top: spacing.xs,
+                            left: spacing.xs,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: spacing.sm,
+                                vertical: spacing.xs,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.55),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                tagLabel!,
+                                style: t.labelSmall?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+
+                        if (badgeLabel != null && badgeLabel!.isNotEmpty)
+                          Positioned(
+                            top: spacing.xs,
+                            right: spacing.xs,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: spacing.sm,
+                                vertical: spacing.xs,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.55),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                badgeLabel!,
+                                style: t.labelSmall?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                  ]
-                : null,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // IMAGE
-              ClipRRect(
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(cardTokens.radius),
-                ),
-                child: SizedBox(
-                  height: cardTokens.imageHeight,
-                  width: double.infinity,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      if (resolvedImageUrl != null &&
-                          resolvedImageUrl!.isNotEmpty)
-                        Image.network(
-                          resolvedImageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: c.surface,
-                              child: Icon(
-                                Icons.broken_image_outlined,
-                                color: c.error,
-                                size: 32,
-                              ),
-                            );
-                          },
-                        )
-                      else
-                        Container(
-                          color: c.surface,
-                          child: Icon(
-                            Icons.image_outlined,
-                            color: c.primary,
-                            size: 32,
-                          ),
-                        ),
-
-                      // TAG (top-left)
-                      if (tagLabel != null && tagLabel!.trim().isNotEmpty)
-                        Positioned(
-                          top: spacing.xs,
-                          left: spacing.xs,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: spacing.sm,
-                              vertical: spacing.xs,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.55),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              tagLabel!,
-                              style: t.labelSmall?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                      // PRICE (top-right)
-                      if (badgeLabel != null && badgeLabel!.isNotEmpty)
-                        Positioned(
-                          top: spacing.xs,
-                          right: spacing.xs,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: spacing.sm,
-                              vertical: spacing.xs,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.55),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              badgeLabel!,
-                              style: t.labelSmall?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
                   ),
                 ),
-              ),
 
-              // CONTENT
-              Padding(
-                padding: EdgeInsets.all(cardTokens.padding),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: t.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    SizedBox(height: spacing.xs),
-
-                    if (subtitle != null && subtitle!.isNotEmpty) ...[
-                      Text(
-                        subtitle!,
-                        style: t.bodySmall?.copyWith(
-                          color: c.onSurface.withOpacity(0.75),
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(height: spacing.xs),
-                    ],
-
-                    // Old price line-through (if sale)
-                    if (oldPriceLabel != null && oldPriceLabel!.isNotEmpty) ...[
-                      Text(
-                        oldPriceLabel!,
-                        style: t.bodySmall?.copyWith(
-                          decoration: TextDecoration.lineThrough,
-                          color: c.onSurface.withOpacity(0.55),
-                        ),
-                      ),
-                      SizedBox(height: spacing.xs),
-                    ],
-
-                    if (metaLabel != null && metaLabel!.isNotEmpty) ...[
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            size: 14,
-                            color: c.onSurface.withOpacity(0.6),
+                // CONTENT
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.all(contentPad),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: t.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
                           ),
-                          SizedBox(width: spacing.xs),
-                          Expanded(
-                            child: Text(
-                              metaLabel!,
-                              style: t.bodySmall?.copyWith(
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        SizedBox(height: spacing.xs),
+
+                        if (subtitle != null && subtitle!.isNotEmpty) ...[
+                          Text(
+                            subtitle!,
+                            style: t.bodySmall?.copyWith(
+                              color: c.onSurface.withOpacity(0.75),
+                            ),
+                            maxLines: subtitleLines,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: spacing.xs),
+                        ],
+
+                        if (oldPriceLabel != null &&
+                            oldPriceLabel!.isNotEmpty) ...[
+                          Text(
+                            oldPriceLabel!,
+                            style: t.bodySmall?.copyWith(
+                              decoration: TextDecoration.lineThrough,
+                              color: c.onSurface.withOpacity(0.55),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: spacing.xs),
+                        ],
+
+                        if (showMeta &&
+                            metaLabel != null &&
+                            metaLabel!.isNotEmpty) ...[
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                size: 14,
                                 color: c.onSurface.withOpacity(0.6),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                              SizedBox(width: spacing.xs),
+                              Expanded(
+                                child: Text(
+                                  metaLabel!,
+                                  style: t.bodySmall?.copyWith(
+                                    color: c.onSurface.withOpacity(0.6),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
+                          SizedBox(height: spacing.sm),
+                        ] else ...[
+                          const Spacer(),
                         ],
-                      ),
-                      SizedBox(height: hasCta ? spacing.sm : 0),
-                    ],
 
-                    if (hasCta)
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: onCtaPressed,
-                          style: ElevatedButton.styleFrom(
-                            padding: EdgeInsets.symmetric(vertical: spacing.sm),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                cardTokens.radius / 1.5,
+                        if (hasCta)
+                          SizedBox(
+                            width: double.infinity,
+                            height: 38, // ✅ stable height avoids overflow
+                            child: ElevatedButton(
+                              onPressed: onCtaPressed,
+                              style: ElevatedButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    cardTokens.radius / 1.5,
+                                  ),
+                                ),
+                                elevation: 0,
+                                backgroundColor: c.primary,
+                                foregroundColor: c.onPrimary,
+                              ),
+                              child: Text(
+                                ctaLabel!,
+                                style: t.labelLarge?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                softWrap: false,
                               ),
                             ),
-                            elevation: 0,
-                            backgroundColor: c.primary,
-                            foregroundColor: c.onPrimary,
                           ),
-                          child: Text(
-                            ctaLabel!,
-                            style: t.labelLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+
+        if (width != null && width != double.infinity) {
+          card = SizedBox(width: width, child: card);
+        }
+        return card;
+      },
     );
   }
 }

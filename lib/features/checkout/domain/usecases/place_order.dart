@@ -8,6 +8,7 @@ class PlaceOrder {
   PlaceOrder(this.repo);
 
   Future<CheckoutSummaryModel> call({
+    required int ownerProjectId, 
     required int currencyId,
     required String paymentMethod,
     String? stripePaymentId,
@@ -18,6 +19,7 @@ class PlaceOrder {
     required List<CartLine> lines,
   }) {
     return repo.checkout(
+      ownerProjectId: ownerProjectId, 
       currencyId: currencyId,
       paymentMethod: paymentMethod,
       stripePaymentId: stripePaymentId,
@@ -28,4 +30,5 @@ class PlaceOrder {
       lines: lines,
     );
   }
+
 }

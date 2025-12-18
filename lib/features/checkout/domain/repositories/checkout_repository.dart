@@ -21,14 +21,16 @@ abstract class CheckoutRepository {
 
   
 
-  Future<CheckoutSummaryModel> checkout({
-    required int currencyId,
-    required String paymentMethod,
-    String? stripePaymentId,
-    String? couponCode,
-    required int shippingMethodId,
-    required String shippingMethodName,
-    required ShippingAddress shippingAddress,
-    required List<CartLine> lines,
-  });
+Future<CheckoutSummaryModel> checkout({
+  required int ownerProjectId, 
+  required int currencyId,
+  required String paymentMethod,
+  String? stripePaymentId,
+  String? couponCode,
+  required int shippingMethodId,
+  required String shippingMethodName,
+  required ShippingAddress shippingAddress,
+  required List<CartLine> lines,
+});
+
 }
