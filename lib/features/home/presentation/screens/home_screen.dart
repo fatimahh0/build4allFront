@@ -1,3 +1,4 @@
+// lib/features/home/presentation/screens/home_screen.dart
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -23,13 +24,13 @@ import 'package:build4front/features/home/presentation/widgets/home_header.dart'
 import 'package:build4front/features/home/presentation/widgets/home_category_chips.dart';
 import 'package:build4front/features/home/homebanner/presentations/widgets/home_banner_slider.dart';
 
+import 'package:build4front/features/home/presentation/widgets/home_bottom_section.dart';
+
 import 'package:build4front/features/items/domain/entities/item_summary.dart';
 import 'package:build4front/common/widgets/ItemCard.dart';
 
-// ✅ Details page (same behavior as Explore)
 import 'package:build4front/features/itemsDetails/presentation/screens/item_details_page.dart';
 
-// ✅ CTA add-to-cart + toast
 import 'package:build4front/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:build4front/features/cart/presentation/bloc/cart_event.dart';
 import 'package:build4front/common/widgets/app_toast.dart';
@@ -38,10 +39,12 @@ class HomeScreen extends StatefulWidget {
   final AppConfig appConfig;
   final List<HomeSectionConfig> sections;
 
+  final VoidCallback? onOpenProfileTab;
   const HomeScreen({
     super.key,
     required this.appConfig,
     required this.sections,
+    this.onOpenProfileTab,
   });
 
   @override
@@ -52,10 +55,8 @@ class _HomeScreenState extends State<HomeScreen>
     with AutomaticKeepAliveClientMixin {
   String _searchQuery = '';
   int? _selectedCategoryId;
-
   Timer? _searchDebounce;
 
-  // ✅ used to reset per-section paging when filters change
   int _filterVersion = 0;
 
   @override
@@ -65,7 +66,6 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
 
-    // ✅ load ONCE
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final homeBloc = context.read<HomeBloc>();
       if (!homeBloc.state.hasLoaded && !homeBloc.state.isLoading) {
@@ -80,9 +80,7 @@ class _HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
-  void _resetPaging() {
-    _filterVersion++;
-  }
+  void _resetPaging() => _filterVersion++;
 
   void _onSearchChangedDebounced(String value) {
     _searchDebounce?.cancel();
@@ -101,8 +99,8 @@ class _HomeScreenState extends State<HomeScreen>
 
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
-    final enabled = widget.appConfig.enabledFeatures.toSet();
 
+    final enabled = widget.appConfig.enabledFeatures.toSet();
     final themeState = context.watch<ThemeCubit>().state;
     final spacing = themeState.tokens.spacing;
 
@@ -158,6 +156,10 @@ class _HomeScreenState extends State<HomeScreen>
                       final maxW = constraints.maxWidth;
                       final contentMaxWidth = maxW > 900 ? 900.0 : maxW;
 
+                      final hp = maxW < 390 ? spacing.md : spacing.lg;
+                      final top = maxW < 390 ? spacing.md : spacing.lg;
+                      final bottom = spacing.lg;
+
                       return Align(
                         alignment: Alignment.topCenter,
                         child: ConstrainedBox(
@@ -166,12 +168,7 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                           child: ListView.builder(
                             physics: const AlwaysScrollableScrollPhysics(),
-                            padding: EdgeInsets.fromLTRB(
-                              spacing.lg,
-                              spacing.lg,
-                              spacing.lg,
-                              spacing.xl,
-                            ),
+                            padding: EdgeInsets.fromLTRB(hp, top, hp, bottom),
                             itemCount: visibleSections.length,
                             itemBuilder: (context, index) {
                               final section = visibleSections[index];
@@ -212,16 +209,20 @@ class _HomeScreenState extends State<HomeScreen>
 
     switch (section.type) {
       case HomeSectionType.header:
-        return HomeHeader(
-          appName: widget.appConfig.appName,
-          fullName: fullName,
-          avatarUrl: avatarUrl,
-          welcomeText: l10n.home_welcome,
+        return Padding(
+          padding: EdgeInsets.only(bottom: spacing.xs),
+          child: HomeHeader(
+            appName: widget.appConfig.appName,
+            fullName: fullName,
+            avatarUrl: avatarUrl,
+            welcomeText: l10n.home_welcome,
+            onProfileTap: widget.onOpenProfileTab,
+          ),
         );
 
       case HomeSectionType.search:
-        return Container(
-          margin: EdgeInsets.only(bottom: spacing.md),
+        return Padding(
+          padding: EdgeInsets.only(bottom: spacing.xs),
           child: AppSearchField(
             hintText: l10n.home_search_hint,
             onChanged: _onSearchChangedDebounced,
@@ -235,7 +236,6 @@ class _HomeScreenState extends State<HomeScreen>
         );
 
       case HomeSectionType.categoryChips:
-        // ✅ label for highlight
         final selectedLabel = _selectedCategoryId == null
             ? l10n.explore_category_all
             : () {
@@ -245,38 +245,41 @@ class _HomeScreenState extends State<HomeScreen>
                 return l10n.explore_category_all;
               }();
 
-        return HomeCategoryChips(
-          categories: [l10n.explore_category_all, ...homeState.categories],
-          selectedCategory: selectedLabel, // ✅ highlight fixed
-          onCategoryTap: (categoryName) {
-            final selected = categoryName.trim();
+        return Padding(
+          padding: EdgeInsets.only(bottom: spacing.xs),
+          child: HomeCategoryChips(
+            categories: [l10n.explore_category_all, ...homeState.categories],
+            selectedCategory: selectedLabel,
+            onCategoryTap: (categoryName) {
+              final selected = categoryName.trim();
 
-            if (selected.isEmpty || selected == l10n.explore_category_all) {
+              if (selected.isEmpty || selected == l10n.explore_category_all) {
+                setState(() {
+                  _selectedCategoryId = null;
+                  _resetPaging();
+                });
+                return;
+              }
+
+              int? foundId;
+              for (final cat in homeState.categoryEntities) {
+                if (cat.name == selected) {
+                  foundId = cat.id;
+                  break;
+                }
+              }
+
               setState(() {
-                _selectedCategoryId = null;
+                _selectedCategoryId = foundId;
                 _resetPaging();
               });
-              return;
-            }
-
-            int? foundId;
-            for (final cat in homeState.categoryEntities) {
-              if (cat.name == selected) {
-                foundId = cat.id;
-                break;
-              }
-            }
-
-            setState(() {
-              _selectedCategoryId = foundId;
-              _resetPaging();
-            });
-          },
+            },
+          ),
         );
 
       case HomeSectionType.banner:
         return Padding(
-          padding: EdgeInsets.only(bottom: spacing.lg),
+          padding: EdgeInsets.only(bottom: spacing.xs),
           child: HomeBannerSlider(
             ownerProjectId: widget.appConfig.ownerProjectId ?? 1,
             token: authState.token ?? '',
@@ -317,15 +320,14 @@ class _HomeScreenState extends State<HomeScreen>
                 : l10n.home_items_default_title);
 
         final icon = _iconForSection(section);
-        final trailing = _trailingForSection(section);
+        final trailing = _trailingForSection(section, l10n);
 
-        // ✅ decide paging style
         final bool forceGridPager =
             (section.id == 'new_arrivals') ||
             ((section.layout ?? '').toLowerCase() == 'grid');
 
         return Padding(
-          padding: EdgeInsets.only(bottom: spacing.lg),
+          padding: EdgeInsets.only(bottom: spacing.xs),
           child: _HomePagedItemsSection(
             key: ValueKey('${section.id}::$_filterVersion'),
             title: sectionTitle,
@@ -340,10 +342,10 @@ class _HomeScreenState extends State<HomeScreen>
             items: itemsForSection,
             mode: forceGridPager
                 ? _HomePagerMode.gridPages
-                : _HomePagerMode.carousel,
-            pricingFor: _pricingFor,
+                : _HomePagerMode.carouselPages,
+            pricingFor: (item) => _pricingFor(context, item),
             subtitleFor: _subtitleFor,
-            metaFor: _metaLabelFor,
+            metaFor: (item) => _metaLabelFor(context, item),
             ctaLabelFor: (item) => _ctaLabelFor(context, item),
             onTapItem: (id) => _openDetails(context, id),
             onCtaPressed: (item) => _handleCtaPressed(context, item),
@@ -353,18 +355,14 @@ class _HomeScreenState extends State<HomeScreen>
       case HomeSectionType.bookingList:
         return _BookingSection(
           title: section.title ?? l10n.home_bookings_title,
+          placeholderText: l10n.home_bookings_placeholder,
         );
 
       case HomeSectionType.reviewList:
-        return _WhyShopWithUsSection(
-          title: section.title ?? l10n.home_why_shop_title,
-        );
+        // ✅ now this is only the 4-tiles grid (no review/thankyou/secure slider)
+        return const HomeBottomSection();
     }
   }
-
-  // =========================
-  // Filters
-  // =========================
 
   List<ItemSummary> _applyFilters(List<ItemSummary> items) {
     var result = items;
@@ -390,10 +388,6 @@ class _HomeScreenState extends State<HomeScreen>
     return result;
   }
 
-  // =========================
-  // Section mapping
-  // =========================
-
   List<ItemSummary> _mapItemsForSection(
     HomeSectionConfig section,
     HomeState homeState,
@@ -403,32 +397,26 @@ class _HomeScreenState extends State<HomeScreen>
         return homeState.recommendedItems.isNotEmpty
             ? homeState.recommendedItems
             : homeState.popularItems;
-
       case 'popular':
         return homeState.popularItems;
-
       case 'flash_sale':
         return homeState.flashSaleItems.isNotEmpty
             ? homeState.flashSaleItems
             : homeState.popularItems;
-
       case 'new_arrivals':
         return homeState.newArrivalsItems.isNotEmpty
             ? homeState.newArrivalsItems
             : homeState.popularItems;
-
       case 'best_sellers':
         return homeState.bestSellersItems.isNotEmpty
             ? homeState.bestSellersItems
             : homeState.popularItems;
-
       case 'top_rated':
         return homeState.topRatedItems.isNotEmpty
             ? homeState.topRatedItems
             : (homeState.bestSellersItems.isNotEmpty
                   ? homeState.bestSellersItems
                   : homeState.popularItems);
-
       default:
         return homeState.popularItems;
     }
@@ -449,12 +437,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  // =========================
-  // Details + CTA behavior
-  // =========================
-
   void _openDetails(BuildContext context, int itemId) {
-    // ✅ same as Explore: no route auth-guard issues
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => ItemDetailsPage(itemId: itemId)));
@@ -483,7 +466,9 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  String? _metaLabelFor(ItemSummary item) {
+  String? _metaLabelFor(BuildContext context, ItemSummary item) {
+    final l10n = AppLocalizations.of(context)!;
+
     switch (item.kind) {
       case ItemKind.activity:
         if (item.start == null) return null;
@@ -497,7 +482,7 @@ class _HomeScreenState extends State<HomeScreen>
 
       case ItemKind.product:
         if (item.stock == null) return null;
-        return 'Stock: ${item.stock}';
+        return l10n.home_stock_label(item.stock!);
 
       default:
         return null;
@@ -508,7 +493,6 @@ class _HomeScreenState extends State<HomeScreen>
     final l10n = AppLocalizations.of(context)!;
     final auth = context.read<AuthBloc>().state;
 
-    // ✅ CTA needs login, but item tap does NOT.
     if (!auth.isLoggedIn) {
       AppToast.show(context, l10n.cart_login_required_message, isError: true);
       return;
@@ -524,10 +508,6 @@ class _HomeScreenState extends State<HomeScreen>
 
     _openDetails(context, item.id);
   }
-
-  // =========================
-  // Pricing (sale window)
-  // =========================
 
   bool _isSaleActiveNow(ItemSummary item) {
     final now = DateTime.now();
@@ -548,7 +528,8 @@ class _HomeScreenState extends State<HomeScreen>
         : item.price;
   }
 
-  _PricingView _pricingFor(ItemSummary item) {
+  _PricingView _pricingFor(BuildContext context, ItemSummary item) {
+    final l10n = AppLocalizations.of(context)!;
     final saleActive = item.onSale && _isSaleActiveNow(item);
     final current = _currentPrice(item);
 
@@ -570,7 +551,7 @@ class _HomeScreenState extends State<HomeScreen>
         current != null &&
         item.price! > 0) {
       final percent = ((1 - (current / item.price!)) * 100).round();
-      tagLabel = percent > 0 ? '-$percent%' : 'SALE';
+      tagLabel = percent > 0 ? '-$percent%' : l10n.home_sale_tag;
     }
 
     return _PricingView(
@@ -579,13 +560,33 @@ class _HomeScreenState extends State<HomeScreen>
       tagLabel: tagLabel,
     );
   }
+
+  _TrailingData _trailingForSection(
+    HomeSectionConfig section,
+    AppLocalizations l10n,
+  ) {
+    switch (section.id) {
+      case 'flash_sale':
+        return _TrailingData(text: l10n.home_trailing_limited_time);
+      case 'new_arrivals':
+      case 'best_sellers':
+      case 'top_rated':
+        return _TrailingData(
+          text: l10n.home_trailing_see_all,
+          icon: Icons.chevron_right_rounded,
+        );
+      default:
+        return const _TrailingData();
+    }
+  }
 }
 
 // =========================
-// Paging section (friendly)
+// Pagination section
+// ✅ FIXED the weird LEFT GAP (padEnds=false + better viewportFraction)
 // =========================
 
-enum _HomePagerMode { carousel, gridPages }
+enum _HomePagerMode { carouselPages, gridPages }
 
 class _HomePagedItemsSection extends StatefulWidget {
   final String title;
@@ -628,26 +629,51 @@ class _HomePagedItemsSection extends StatefulWidget {
 }
 
 class _HomePagedItemsSectionState extends State<_HomePagedItemsSection> {
-  late final PageController _pageController;
+  late PageController _pageController;
   int _page = 0;
 
-  static const int _gridRowsPerPage = 3;
-  static const int _gridCols = 2;
-  static const int _gridItemsPerPage = _gridRowsPerPage * _gridCols;
+  double get _vf =>
+      widget.mode == _HomePagerMode.carouselPages ? 0.94 : 1.0; // ✅ less gap
 
   @override
   void initState() {
     super.initState();
-    // ✅ smooth swipe paging
-    _pageController = PageController(
-      viewportFraction: widget.mode == _HomePagerMode.carousel ? 0.78 : 1.0,
-    );
+    _pageController = PageController(viewportFraction: _vf);
+  }
+
+  @override
+  void didUpdateWidget(covariant _HomePagedItemsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.mode != widget.mode) {
+      final old = _pageController;
+      _pageController = PageController(viewportFraction: _vf);
+      _page = 0;
+      old.dispose();
+      return;
+    }
+
+    if (_page >= widget.items.length) {
+      _page = 0;
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(0);
+      }
+    }
   }
 
   @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  void _jumpTo(int page) {
+    if (!_pageController.hasClients) return;
+    _pageController.animateToPage(
+      page,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
@@ -657,15 +683,9 @@ class _HomePagedItemsSectionState extends State<_HomePagedItemsSection> {
     final spacing = context.read<ThemeCubit>().state.tokens.spacing;
 
     final items = widget.items;
+    if (items.isEmpty) return const SizedBox.shrink();
 
-    // pages count
-    final int totalPages = widget.mode == _HomePagerMode.gridPages
-        ? ((items.length / _gridItemsPerPage).ceil().clamp(1, 999999))
-        : (items.length.clamp(1, 999999));
-
-    final int safePage = _page.clamp(0, totalPages - 1);
-
-    Widget header = Row(
+    final header = Row(
       children: [
         Icon(widget.icon, size: 20, color: c.onSurface.withOpacity(0.85)),
         SizedBox(width: spacing.sm),
@@ -707,127 +727,192 @@ class _HomePagedItemsSectionState extends State<_HomePagedItemsSection> {
       ],
     );
 
-    Widget pager = widget.mode == _HomePagerMode.gridPages
-        ? _buildGridPager(context, items, totalPages)
-        : _buildCarouselPager(context, items, totalPages);
+    final bool single =
+        items.length == 1 && widget.mode == _HomePagerMode.carouselPages;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         header,
-        SizedBox(height: spacing.sm),
-        pager,
-        SizedBox(height: spacing.sm),
+        SizedBox(height: spacing.xs),
 
-        // ✅ friendly dots + counter (no < 12 .. >)
-        _DotsPager(currentPage: safePage + 1, totalPages: totalPages),
+        if (widget.mode == _HomePagerMode.gridPages)
+          _buildGridPager(context, items)
+        else if (single)
+          _buildSingleCard(context, items.first)
+        else
+          _buildCarouselPager(context, items),
       ],
     );
   }
 
-  Widget _buildCarouselPager(
-    BuildContext context,
-    List<ItemSummary> items,
-    int totalPages,
-  ) {
-    final spacing = context.read<ThemeCubit>().state.tokens.spacing;
+  Widget _buildSingleCard(BuildContext context, ItemSummary item) {
+    final pricing = widget.pricingFor(item);
 
-    return SizedBox(
-      height: 320,
-      child: PageView.builder(
-        controller: _pageController,
-        onPageChanged: (i) => setState(() => _page = i),
-        itemCount: items.length,
-        itemBuilder: (context, index) {
-          final item = items[index];
-          final pricing = widget.pricingFor(item);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        final h = (w * 0.86).clamp(280.0, 340.0);
 
-          return Padding(
-            padding: EdgeInsets.only(right: spacing.md),
-            child: ItemCard(
-              width: double.infinity,
-              title: item.title,
-              subtitle: widget.subtitleFor(item),
-              imageUrl: item.imageUrl,
-              badgeLabel: pricing.currentLabel,
-              oldPriceLabel: pricing.oldLabel,
-              tagLabel: pricing.tagLabel,
-              metaLabel: widget.metaFor(item),
-              ctaLabel: widget.ctaLabelFor(item),
-              onTap: () => widget.onTapItem(item.id),
-              onCtaPressed: () => widget.onCtaPressed(item),
-            ),
-          );
-        },
-      ),
+        return SizedBox(
+          height: h,
+          child: ItemCard(
+            width: double.infinity,
+            title: item.title,
+            subtitle: widget.subtitleFor(item),
+            imageUrl: item.imageUrl,
+            badgeLabel: pricing.currentLabel,
+            oldPriceLabel: pricing.oldLabel,
+            tagLabel: pricing.tagLabel,
+            metaLabel: widget.metaFor(item),
+            ctaLabel: widget.ctaLabelFor(item),
+            onTap: () => widget.onTapItem(item.id),
+            onCtaPressed: () => widget.onCtaPressed(item),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildGridPager(
-    BuildContext context,
-    List<ItemSummary> items,
-    int totalPages,
-  ) {
+  Widget _buildCarouselPager(BuildContext context, List<ItemSummary> items) {
+    final spacing = context.read<ThemeCubit>().state.tokens.spacing;
+
+    final totalPages = items.length.clamp(1, 999999);
+    final safePage = _page.clamp(0, totalPages - 1);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final w = constraints.maxWidth;
+            final cardH = (w * 0.86).clamp(280.0, 340.0);
+
+            return SizedBox(
+              height: cardH,
+              child: PageView.builder(
+                controller: _pageController,
+                padEnds: false, // ✅ THIS is the main fix for your left gap
+                allowImplicitScrolling: true,
+                physics: const PageScrollPhysics(),
+                onPageChanged: (i) => setState(() => _page = i),
+                itemCount: items.length,
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  final pricing = widget.pricingFor(item);
+
+                  return Padding(
+                    padding: EdgeInsets.only(right: spacing.md),
+                    child: ItemCard(
+                      width: double.infinity,
+                      title: item.title,
+                      subtitle: widget.subtitleFor(item),
+                      imageUrl: item.imageUrl,
+                      badgeLabel: pricing.currentLabel,
+                      oldPriceLabel: pricing.oldLabel,
+                      tagLabel: pricing.tagLabel,
+                      metaLabel: widget.metaFor(item),
+                      ctaLabel: widget.ctaLabelFor(item),
+                      onTap: () => widget.onTapItem(item.id),
+                      onCtaPressed: () => widget.onCtaPressed(item),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+        SizedBox(height: spacing.sm),
+        if (totalPages > 1)
+          _DotsPager(
+            currentPage0: safePage,
+            totalPages: totalPages,
+            onDotTap: (p0) => _jumpTo(p0),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildGridPager(BuildContext context, List<ItemSummary> items) {
     final spacing = context.read<ThemeCubit>().state.tokens.spacing;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
 
-        // ✅ same safe aspect as Explore
-        final double aspect = w <= 420 ? 0.52 : (w <= 700 ? 0.60 : 0.70);
+        final rowsPerPage = w < 390 ? 2 : 3;
+        const cols = 2;
+        final perPage = rowsPerPage * cols;
 
-        final double itemW = (w - spacing.md) / 2.0;
-        final double itemH = itemW / aspect;
+        final totalPages = (items.length / perPage).ceil().clamp(1, 999999);
+        final safePage = _page.clamp(0, totalPages - 1);
 
-        final double gridHeight =
-            (_gridRowsPerPage * itemH) + ((_gridRowsPerPage - 1) * spacing.md);
+        final aspect = w < 420 ? 0.66 : (w < 700 ? 0.74 : 0.82);
+        final itemW = (w - spacing.md) / 2.0;
+        final itemH = itemW / aspect;
+        final gridHeight =
+            (rowsPerPage * itemH) + ((rowsPerPage - 1) * spacing.md);
 
-        return SizedBox(
-          height: gridHeight,
-          child: PageView.builder(
-            controller: _pageController,
-            onPageChanged: (i) => setState(() => _page = i),
-            itemCount: totalPages,
-            itemBuilder: (context, pageIndex) {
-              final start = pageIndex * _gridItemsPerPage;
-              final end = math.min(start + _gridItemsPerPage, items.length);
-              final pageItems = start >= items.length
-                  ? <ItemSummary>[]
-                  : items.sublist(start, end);
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: gridHeight,
+              child: PageView.builder(
+                controller: _pageController,
+                padEnds: false,
+                allowImplicitScrolling: true,
+                physics: const PageScrollPhysics(),
+                onPageChanged: (i) => setState(() => _page = i),
+                itemCount: totalPages,
+                itemBuilder: (context, pageIndex) {
+                  final start = pageIndex * perPage;
+                  final end = math.min(start + perPage, items.length);
+                  final pageItems = start >= items.length
+                      ? <ItemSummary>[]
+                      : items.sublist(start, end);
 
-              return GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: EdgeInsets.zero,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: spacing.md,
-                  crossAxisSpacing: spacing.md,
-                  childAspectRatio: aspect,
-                ),
-                itemCount: pageItems.length,
-                itemBuilder: (context, index) {
-                  final item = pageItems[index];
-                  final pricing = widget.pricingFor(item);
+                  return GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: EdgeInsets.zero,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: spacing.md,
+                      crossAxisSpacing: spacing.md,
+                      childAspectRatio: aspect,
+                    ),
+                    itemCount: pageItems.length,
+                    itemBuilder: (context, i) {
+                      final item = pageItems[i];
+                      final pricing = widget.pricingFor(item);
 
-                  return ItemCard(
-                    width: double.infinity,
-                    title: item.title,
-                    subtitle: widget.subtitleFor(item),
-                    imageUrl: item.imageUrl,
-                    badgeLabel: pricing.currentLabel,
-                    oldPriceLabel: pricing.oldLabel,
-                    tagLabel: pricing.tagLabel,
-                    metaLabel: widget.metaFor(item),
-                    ctaLabel: widget.ctaLabelFor(item),
-                    onTap: () => widget.onTapItem(item.id),
-                    onCtaPressed: () => widget.onCtaPressed(item),
+                      return ItemCard(
+                        width: double.infinity,
+                        title: item.title,
+                        subtitle: widget.subtitleFor(item),
+                        imageUrl: item.imageUrl,
+                        badgeLabel: pricing.currentLabel,
+                        oldPriceLabel: pricing.oldLabel,
+                        tagLabel: pricing.tagLabel,
+                        metaLabel: widget.metaFor(item),
+                        ctaLabel: widget.ctaLabelFor(item),
+                        onTap: () => widget.onTapItem(item.id),
+                        onCtaPressed: () => widget.onCtaPressed(item),
+                      );
+                    },
                   );
                 },
-              );
-            },
-          ),
+              ),
+            ),
+            SizedBox(height: spacing.sm),
+            if (totalPages > 1)
+              _DotsPager(
+                currentPage0: safePage,
+                totalPages: totalPages,
+                onDotTap: (p0) => _jumpTo(p0),
+              ),
+          ],
         );
       },
     );
@@ -835,10 +920,15 @@ class _HomePagedItemsSectionState extends State<_HomePagedItemsSection> {
 }
 
 class _DotsPager extends StatelessWidget {
-  final int currentPage; // 1-based
+  final int currentPage0;
   final int totalPages;
+  final void Function(int page0)? onDotTap;
 
-  const _DotsPager({required this.currentPage, required this.totalPages});
+  const _DotsPager({
+    required this.currentPage0,
+    required this.totalPages,
+    this.onDotTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -846,53 +936,50 @@ class _DotsPager extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     final spacing = context.read<ThemeCubit>().state.tokens.spacing;
 
-    // ✅ if too many pages, show limited dots + counter
+    final current1 = currentPage0 + 1;
     final bool many = totalPages > 8;
 
-    List<int> dotsToShow() {
-      if (!many) return List.generate(totalPages, (i) => i + 1);
-
-      // window of 5 dots around current
-      final start = (currentPage - 2).clamp(1, totalPages).toInt();
-      final end = (currentPage + 2).clamp(1, totalPages).toInt();
+    List<int> dotsToShow0() {
+      if (!many) return List.generate(totalPages, (i) => i);
+      final start = (currentPage0 - 2).clamp(0, totalPages - 1);
+      final end = (currentPage0 + 2).clamp(0, totalPages - 1);
       final list = <int>[];
       for (int p = start; p <= end; p++) list.add(p);
       return list;
     }
 
-    final dots = dotsToShow();
+    final dots0 = dotsToShow0();
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Wrap(
           spacing: spacing.xs,
-          children: dots.map((p) {
-            final selected = p == currentPage;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              width: selected ? 16 : 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: selected ? c.primary : c.outline.withOpacity(0.35),
-                borderRadius: BorderRadius.circular(999),
+          children: dots0.map((p0) {
+            final selected = p0 == currentPage0;
+            return GestureDetector(
+              onTap: () => onDotTap?.call(p0),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: selected ? 16 : 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: selected ? c.primary : c.outline.withOpacity(0.35),
+                  borderRadius: BorderRadius.circular(999),
+                ),
               ),
             );
           }).toList(),
         ),
         SizedBox(width: spacing.sm),
         Text(
-          '$currentPage/$totalPages',
+          '$current1/$totalPages',
           style: t.bodySmall?.copyWith(color: c.onSurface.withOpacity(0.65)),
         ),
       ],
     );
   }
 }
-
-// =========================
-// Pricing view
-// =========================
 
 class _PricingView {
   final String? currentLabel;
@@ -906,39 +993,17 @@ class _PricingView {
   });
 }
 
-// =========================
-// Trailing helpers
-// =========================
-
 class _TrailingData {
   final String? text;
   final IconData? icon;
   const _TrailingData({this.text, this.icon});
 }
 
-_TrailingData _trailingForSection(HomeSectionConfig section) {
-  switch (section.id) {
-    case 'flash_sale':
-      return const _TrailingData(text: 'Limited time');
-    case 'new_arrivals':
-    case 'best_sellers':
-    case 'top_rated':
-      return const _TrailingData(
-        text: 'See all',
-        icon: Icons.chevron_right_rounded,
-      );
-    default:
-      return const _TrailingData();
-  }
-}
-
-// =========================
-// Existing info sections
-// =========================
-
 class _BookingSection extends StatelessWidget {
   final String title;
-  const _BookingSection({required this.title});
+  final String placeholderText;
+
+  const _BookingSection({required this.title, required this.placeholderText});
 
   @override
   Widget build(BuildContext context) {
@@ -947,7 +1012,7 @@ class _BookingSection extends StatelessWidget {
     final spacing = context.read<ThemeCubit>().state.tokens.spacing;
 
     return Container(
-      margin: EdgeInsets.only(bottom: spacing.lg),
+      margin: EdgeInsets.only(bottom: spacing.xs),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -967,95 +1032,9 @@ class _BookingSection extends StatelessWidget {
               children: [
                 const Icon(Icons.info_outline, size: 18),
                 SizedBox(width: spacing.sm),
-                Expanded(
-                  child: Text(
-                    'Bookings feed not wired yet.',
-                    style: t.bodySmall,
-                  ),
-                ),
+                Expanded(child: Text(placeholderText, style: t.bodySmall)),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WhyShopWithUsSection extends StatelessWidget {
-  final String title;
-  const _WhyShopWithUsSection({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = Theme.of(context).colorScheme;
-    final t = Theme.of(context).textTheme;
-    final spacing = context.read<ThemeCubit>().state.tokens.spacing;
-    final l10n = AppLocalizations.of(context)!;
-
-    final cards = [
-      (
-        l10n.home_why_shop_free_shipping_title,
-        l10n.home_why_shop_free_shipping_subtitle,
-      ),
-      (
-        l10n.home_why_shop_easy_returns_title,
-        l10n.home_why_shop_easy_returns_subtitle,
-      ),
-      (
-        l10n.home_why_shop_secure_payment_title,
-        l10n.home_why_shop_secure_payment_subtitle,
-      ),
-      (l10n.home_why_shop_support_title, l10n.home_why_shop_support_subtitle),
-    ];
-
-    return Container(
-      margin: EdgeInsets.only(bottom: spacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: t.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          SizedBox(height: spacing.md),
-          Column(
-            children: cards.map((card) {
-              return Container(
-                margin: EdgeInsets.only(bottom: spacing.sm),
-                padding: EdgeInsets.all(spacing.lg),
-                decoration: BoxDecoration(
-                  color: c.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: c.outline.withOpacity(0.12)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: c.onSurface.withOpacity(0.04),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      card.$1,
-                      style: t.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(height: spacing.xs),
-                    Text(
-                      card.$2,
-                      style: t.bodySmall?.copyWith(
-                        color: c.onSurface.withOpacity(0.7),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
           ),
         ],
       ),

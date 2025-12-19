@@ -1,13 +1,12 @@
 // lib/app/app_router.dart
 
-import 'package:build4front/features/auth/presentation/gate/auth_gate.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:build4front/core/config/app_config.dart';
 import 'package:build4front/core/config/env.dart';
 
-
+import 'package:build4front/features/auth/presentation/gate/auth_gate.dart';
 import 'package:build4front/features/auth/presentation/login/screens/user_login_screen.dart';
 
 import 'package:build4front/features/shell/presentation/screens/main_shell.dart';
@@ -29,6 +28,20 @@ import 'package:build4front/features/checkout/domain/usecases/get_shipping_quote
 import 'package:build4front/features/checkout/domain/usecases/preview_tax.dart';
 import 'package:build4front/features/checkout/domain/usecases/place_order.dart';
 
+// Orders
+import 'package:build4front/features/orders/orders_feature.dart';
+
+// ✅ Notifications (USER)
+import 'package:build4front/features/notifications/presentation/screens/notifications_screen.dart';
+import 'package:build4front/features/notifications/presentation/bloc/notifications_bloc.dart';
+import 'package:build4front/features/notifications/presentation/bloc/notifications_event.dart';
+
+import 'package:build4front/features/notifications/domain/repositories/notifications_repository.dart';
+import 'package:build4front/features/notifications/domain/usecases/get_user_notifications.dart';
+import 'package:build4front/features/notifications/domain/usecases/get_unread_count.dart';
+import 'package:build4front/features/notifications/domain/usecases/mark_notification_read.dart';
+import 'package:build4front/features/notifications/domain/usecases/delete_notification.dart';
+
 class AppRouter {
   // ✅ IMPORTANT: start from AuthGate so tokens can auto-route
   static const String initialRoute = '/';
@@ -42,6 +55,11 @@ class AppRouter {
 
   static const String explore = '/explore';
   static const String checkout = '/checkout';
+
+  static const String myOrders = '/my-orders';
+
+  // ✅ NEW
+  static const String notifications = '/notifications';
 
   static Route<dynamic> onGenerateRoute(
     RouteSettings settings,
@@ -106,6 +124,12 @@ class AppRouter {
           );
         }
 
+      case myOrders:
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => OrdersFeature(appConfig: appConfig),
+        );
+
       case checkout:
         {
           final args = settings.arguments as Map<String, dynamic>?;
@@ -142,6 +166,25 @@ class AppRouter {
             },
           );
         }
+
+      // ✅ NEW: Notifications screen (USER)
+      case notifications:
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (context) {
+            final repo = context.read<NotificationsRepository>();
+
+            return BlocProvider(
+              create: (_) => NotificationsBloc(
+                getNotifications: GetUserNotifications(repo),
+                getUnreadCount: GetUnreadCount(repo),
+                markRead: MarkNotificationRead(repo),
+                deleteNotif: DeleteNotification(repo),
+              )..add(const NotificationsStarted()),
+              child: const NotificationsScreen(),
+            );
+          },
+        );
 
       default:
         // if route unknown → go login

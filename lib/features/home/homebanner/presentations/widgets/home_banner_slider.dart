@@ -14,11 +14,16 @@ class HomeBannerSlider extends StatefulWidget {
   /// Optional: what happens when user taps a banner (open product / category / URL)
   final void Function(HomeBanner banner)? onBannerTap;
 
+  /// Optional cache-buster to force reload / bypass cached image.
+  /// Default = 0 so you DON'T have to pass it.
+  final int cacheBuster;
+
   const HomeBannerSlider({
     super.key,
     required this.ownerProjectId,
     required this.token,
     this.onBannerTap,
+    this.cacheBuster = 0, // ✅ not required anymore
   });
 
   @override
@@ -41,6 +46,18 @@ class _HomeBannerSliderState extends State<HomeBannerSlider> {
     _service = HomeBannersApiService.create();
     _pageController = PageController();
     _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeBannerSlider oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // ✅ if ownerProject/token/cacheBuster changes -> reload banners
+    if (oldWidget.ownerProjectId != widget.ownerProjectId ||
+        oldWidget.token != widget.token ||
+        oldWidget.cacheBuster != widget.cacheBuster) {
+      _load();
+    }
   }
 
   @override
@@ -69,6 +86,7 @@ class _HomeBannerSliderState extends State<HomeBannerSlider> {
       setState(() {
         _banners = list;
         _isLoading = false;
+        _currentIndex = 0;
       });
 
       _setupAutoSlide();
@@ -86,7 +104,7 @@ class _HomeBannerSliderState extends State<HomeBannerSlider> {
     _autoSlideTimer?.cancel();
     if (_banners.length <= 1) return;
 
-    _autoSlideTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    _autoSlideTimer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (!mounted || _banners.isEmpty) return;
 
       final nextIndex = (_currentIndex + 1) % _banners.length;
@@ -98,12 +116,20 @@ class _HomeBannerSliderState extends State<HomeBannerSlider> {
     });
   }
 
+  String _withCacheBuster(String url) {
+    final cb = widget.cacheBuster;
+    if (cb == 0) return url;
+
+    // Append ?cb= or &cb= safely
+    if (url.contains('?')) return '$url&cb=$cb';
+    return '$url?cb=$cb';
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
-    final themeState = context.read<ThemeCubit>().state;
-    final spacing = themeState.tokens.spacing;
+    final spacing = context.read<ThemeCubit>().state.tokens.spacing;
 
     if (_isLoading) {
       return Container(
@@ -142,7 +168,6 @@ class _HomeBannerSliderState extends State<HomeBannerSlider> {
     }
 
     if (_banners.isEmpty) {
-      // No banners: return empty to not break layout
       return const SizedBox.shrink();
     }
 
@@ -156,15 +181,14 @@ class _HomeBannerSliderState extends State<HomeBannerSlider> {
             itemCount: _banners.length,
             onPageChanged: (index) {
               if (!mounted) return;
-              setState(() {
-                _currentIndex = index;
-              });
+              setState(() => _currentIndex = index);
             },
             itemBuilder: (context, index) {
               final banner = _banners[index];
 
-              // ✅ حوّل الـ imageUrl النسبي لـ URL كامل
-              final resolvedImageUrl = net.resolveUrl(banner.imageUrl);
+              // ✅ resolve relative url + apply cache buster
+              final resolved = net.resolveUrl(banner.imageUrl);
+              final imageUrl = _withCacheBuster(resolved);
 
               return GestureDetector(
                 onTap: () => widget.onBannerTap?.call(banner),
@@ -174,7 +198,7 @@ class _HomeBannerSliderState extends State<HomeBannerSlider> {
                     fit: StackFit.expand,
                     children: [
                       Image.network(
-                        resolvedImageUrl,
+                        imageUrl,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => Container(
                           color: c.surfaceVariant,
@@ -186,7 +210,6 @@ class _HomeBannerSliderState extends State<HomeBannerSlider> {
                           ),
                         ),
                       ),
-                      // gradient overlay bottom
                       Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
@@ -199,7 +222,6 @@ class _HomeBannerSliderState extends State<HomeBannerSlider> {
                           ),
                         ),
                       ),
-                      // text
                       Positioned(
                         left: spacing.lg,
                         right: spacing.lg,
@@ -207,20 +229,18 @@ class _HomeBannerSliderState extends State<HomeBannerSlider> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (banner.title != null &&
-                                banner.title!.trim().isNotEmpty)
+                            if ((banner.title ?? '').trim().isNotEmpty)
                               Text(
-                                banner.title!,
+                                banner.title!.trim(),
                                 style: t.titleMedium?.copyWith(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                            if (banner.subtitle != null &&
-                                banner.subtitle!.trim().isNotEmpty) ...[
+                            if ((banner.subtitle ?? '').trim().isNotEmpty) ...[
                               SizedBox(height: spacing.xs),
                               Text(
-                                banner.subtitle!,
+                                banner.subtitle!.trim(),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: t.bodySmall?.copyWith(
@@ -238,7 +258,6 @@ class _HomeBannerSliderState extends State<HomeBannerSlider> {
             },
           ),
 
-          // dots indicator
           Positioned(
             bottom: spacing.sm,
             right: spacing.lg,

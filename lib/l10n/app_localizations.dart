@@ -2982,6 +2982,444 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Stock: {stock}'**
   String common_stock_label(Object stock);
+
+  /// No description provided for @ordersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My Orders'**
+  String get ordersTitle;
+
+  /// No description provided for @ordersLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading orders…'**
+  String get ordersLoading;
+
+  /// No description provided for @ordersEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No orders yet'**
+  String get ordersEmptyTitle;
+
+  /// No description provided for @ordersEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'When you place an order, it will show up here.'**
+  String get ordersEmptyBody;
+
+  /// No description provided for @ordersReload.
+  ///
+  /// In en, this message translates to:
+  /// **'Reload'**
+  String get ordersReload;
+
+  /// No description provided for @ordersFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get ordersFilterAll;
+
+  /// No description provided for @ordersFilterPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get ordersFilterPending;
+
+  /// No description provided for @ordersFilterCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get ordersFilterCompleted;
+
+  /// No description provided for @ordersFilterCanceled.
+  ///
+  /// In en, this message translates to:
+  /// **'Canceled'**
+  String get ordersFilterCanceled;
+
+  /// No description provided for @ordersNoResultsForFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'No orders match this filter.'**
+  String get ordersNoResultsForFilter;
+
+  /// No description provided for @ordersQtyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Qty'**
+  String get ordersQtyLabel;
+
+  /// No description provided for @ordersPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid'**
+  String get ordersPaid;
+
+  /// No description provided for @ordersUnpaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Unpaid'**
+  String get ordersUnpaid;
+
+  /// No description provided for @ordersStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get ordersStatusPending;
+
+  /// No description provided for @ordersStatusCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get ordersStatusCompleted;
+
+  /// No description provided for @ordersStatusCanceled.
+  ///
+  /// In en, this message translates to:
+  /// **'Canceled'**
+  String get ordersStatusCanceled;
+
+  /// No description provided for @ordersStatusUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get ordersStatusUnknown;
+
+  /// No description provided for @ordersUnknownItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Item'**
+  String get ordersUnknownItem;
+
+  /// No description provided for @ordersQty.
+  ///
+  /// In en, this message translates to:
+  /// **'Qty'**
+  String get ordersQty;
+
+  /// No description provided for @profileLoginRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please log in to view your profile.'**
+  String get profileLoginRequired;
+
+  /// No description provided for @sessionExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Session expired. Please log in again.'**
+  String get sessionExpired;
+
+  /// No description provided for @login.
+  ///
+  /// In en, this message translates to:
+  /// **'Login'**
+  String get login;
+
+  /// No description provided for @editProfileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Profile'**
+  String get editProfileTitle;
+
+  /// No description provided for @profileLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load profile.'**
+  String get profileLoadFailed;
+
+  /// No description provided for @username.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get username;
+
+  /// No description provided for @firstName.
+  ///
+  /// In en, this message translates to:
+  /// **'First name'**
+  String get firstName;
+
+  /// No description provided for @lastName.
+  ///
+  /// In en, this message translates to:
+  /// **'Last name'**
+  String get lastName;
+
+  /// No description provided for @publicProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Public profile'**
+  String get publicProfile;
+
+  /// No description provided for @save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
+  /// No description provided for @dangerZone.
+  ///
+  /// In en, this message translates to:
+  /// **'Danger zone'**
+  String get dangerZone;
+
+  /// No description provided for @password.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get password;
+
+  /// No description provided for @deleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get deleteAccount;
+
+  /// No description provided for @notifications_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notifications_title;
+
+  /// No description provided for @notifications_empty_title.
+  ///
+  /// In en, this message translates to:
+  /// **'No notifications yet'**
+  String get notifications_empty_title;
+
+  /// No description provided for @notifications_empty_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'When something happens, it’ll show up here. For now… peace and quiet 😌'**
+  String get notifications_empty_subtitle;
+
+  /// No description provided for @notifications_retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get notifications_retry;
+
+  /// No description provided for @privacy_policy_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy Policy'**
+  String get privacy_policy_title;
+
+  /// No description provided for @privacy_policy_intro_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Your privacy matters'**
+  String get privacy_policy_intro_title;
+
+  /// No description provided for @privacy_policy_intro_body.
+  ///
+  /// In en, this message translates to:
+  /// **'This policy explains what we collect, why we collect it, and how you control your data.'**
+  String get privacy_policy_intro_body;
+
+  /// No description provided for @privacy_policy_collect_title.
+  ///
+  /// In en, this message translates to:
+  /// **'What we collect'**
+  String get privacy_policy_collect_title;
+
+  /// No description provided for @privacy_policy_collect_body.
+  ///
+  /// In en, this message translates to:
+  /// **'Basic profile info (name, email/phone), account settings, and app usage needed to provide the service.'**
+  String get privacy_policy_collect_body;
+
+  /// No description provided for @privacy_policy_use_title.
+  ///
+  /// In en, this message translates to:
+  /// **'How we use your data'**
+  String get privacy_policy_use_title;
+
+  /// No description provided for @privacy_policy_use_body.
+  ///
+  /// In en, this message translates to:
+  /// **'To run the app, personalize your experience, improve features, and keep the platform secure.'**
+  String get privacy_policy_use_body;
+
+  /// No description provided for @privacy_policy_share_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Sharing'**
+  String get privacy_policy_share_title;
+
+  /// No description provided for @privacy_policy_share_body.
+  ///
+  /// In en, this message translates to:
+  /// **'We don’t sell your data. We only share what’s needed with trusted services (like hosting) to operate the app.'**
+  String get privacy_policy_share_body;
+
+  /// No description provided for @privacy_policy_security_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Security'**
+  String get privacy_policy_security_title;
+
+  /// No description provided for @privacy_policy_security_body.
+  ///
+  /// In en, this message translates to:
+  /// **'We use standard security practices, but no system is 100% perfect. Keep your password private.'**
+  String get privacy_policy_security_body;
+
+  /// No description provided for @privacy_policy_choices_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Your choices'**
+  String get privacy_policy_choices_title;
+
+  /// No description provided for @privacy_policy_choices_body.
+  ///
+  /// In en, this message translates to:
+  /// **'You can change visibility (public/private), update profile info, or request account actions based on the app features.'**
+  String get privacy_policy_choices_body;
+
+  /// No description provided for @privacy_policy_contact_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact'**
+  String get privacy_policy_contact_title;
+
+  /// No description provided for @privacy_policy_contact_body.
+  ///
+  /// In en, this message translates to:
+  /// **'If you have questions about privacy, contact the app support team.'**
+  String get privacy_policy_contact_body;
+
+  /// No description provided for @privacy_policy_last_updated.
+  ///
+  /// In en, this message translates to:
+  /// **'Last updated: Dec 19, 2025'**
+  String get privacy_policy_last_updated;
+
+  /// No description provided for @home_bottom_slide_thankyou_title.
+  ///
+  /// In en, this message translates to:
+  /// **'THANK YOU'**
+  String get home_bottom_slide_thankyou_title;
+
+  /// No description provided for @home_bottom_slide_thankyou_message.
+  ///
+  /// In en, this message translates to:
+  /// **'We appreciate your trust. Our team works daily to keep quality high and service fast.'**
+  String get home_bottom_slide_thankyou_message;
+
+  /// No description provided for @home_bottom_slide_secure_title.
+  ///
+  /// In en, this message translates to:
+  /// **'SECURE & SAFE'**
+  String get home_bottom_slide_secure_title;
+
+  /// No description provided for @home_bottom_slide_secure_message.
+  ///
+  /// In en, this message translates to:
+  /// **'Secure payments, controlled products, and clean packaging — the basics done right.'**
+  String get home_bottom_slide_secure_message;
+
+  /// No description provided for @home_bottom_slide_support_title.
+  ///
+  /// In en, this message translates to:
+  /// **'REAL SUPPORT'**
+  String get home_bottom_slide_support_title;
+
+  /// No description provided for @home_bottom_slide_support_message.
+  ///
+  /// In en, this message translates to:
+  /// **'Need help? We reply. No “seen” and disappear vibes 😅'**
+  String get home_bottom_slide_support_message;
+
+  /// No description provided for @home_bottom_benefit_contact.
+  ///
+  /// In en, this message translates to:
+  /// **'CONTACT AN\nACCREDITED EXPERT'**
+  String get home_bottom_benefit_contact;
+
+  /// No description provided for @home_bottom_benefit_secure_payments.
+  ///
+  /// In en, this message translates to:
+  /// **'SECURED\nPAYMENTS'**
+  String get home_bottom_benefit_secure_payments;
+
+  /// No description provided for @home_bottom_benefit_authentic_products.
+  ///
+  /// In en, this message translates to:
+  /// **'AUTHENTIC &\nCONTROLLED PRODUCTS'**
+  String get home_bottom_benefit_authentic_products;
+
+  /// No description provided for @home_bottom_benefit_free_delivery_above.
+  ///
+  /// In en, this message translates to:
+  /// **'FREE DELIVERY\nABOVE {amount}'**
+  String home_bottom_benefit_free_delivery_above(String amount);
+
+  /// No description provided for @home_trailing_limited_time.
+  ///
+  /// In en, this message translates to:
+  /// **'Limited time'**
+  String get home_trailing_limited_time;
+
+  /// No description provided for @home_trailing_see_all.
+  ///
+  /// In en, this message translates to:
+  /// **'See all'**
+  String get home_trailing_see_all;
+
+  /// No description provided for @home_sale_tag.
+  ///
+  /// In en, this message translates to:
+  /// **'SALE'**
+  String get home_sale_tag;
+
+  /// No description provided for @home_stock_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Stock: {count}'**
+  String home_stock_label(int count);
+
+  /// No description provided for @home_bookings_placeholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookings feed not wired yet.'**
+  String get home_bookings_placeholder;
+
+  /// No description provided for @home_footer_contact_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact us'**
+  String get home_footer_contact_title;
+
+  /// No description provided for @home_footer_contact_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Need help? We’re one message away.'**
+  String get home_footer_contact_desc;
+
+  /// No description provided for @home_footer_free_delivery_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Free delivery'**
+  String get home_footer_free_delivery_title;
+
+  /// No description provided for @home_footer_free_delivery_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Available on selected orders and areas.'**
+  String get home_footer_free_delivery_desc;
+
+  /// No description provided for @home_footer_returns_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Easy returns'**
+  String get home_footer_returns_title;
+
+  /// No description provided for @home_footer_returns_desc.
+  ///
+  /// In en, this message translates to:
+  /// **'Simple return policy on eligible items.'**
+  String get home_footer_returns_desc;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

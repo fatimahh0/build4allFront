@@ -385,13 +385,25 @@ class AuthApiService {
 
   // ============================= TOKEN HELPERS ==========================
 
-  Future<void> _storeAuthFromLogin(Map<String, dynamic> json) async {
+ Future<void> _storeAuthFromLogin(Map<String, dynamic> json) async {
     final token = json['token'] as String?;
     final wasInactive = json['wasInactive'] as bool? ?? false;
+
+    // ✅ try to get user map from the login payload
+    final user = (json['user'] as Map?)?.cast<String, dynamic>();
 
     if (token != null && token.isNotEmpty) {
       await _tokenStore.saveToken(token: token, wasInactive: wasInactive);
       g.setAuthToken(token);
+    }
+
+    // ✅ persist user json + userId if available
+    if (user != null && user.isNotEmpty) {
+      await _tokenStore.saveUserJson(user);
+
+      final id = user['id'];
+      if (id is num) await _tokenStore.saveUserId(id.toInt());
+      if (id is String) await _tokenStore.saveUserId(int.tryParse(id) ?? 0);
     }
   }
 

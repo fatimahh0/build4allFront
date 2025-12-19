@@ -270,6 +270,29 @@
   "checkoutErrorEnterPostalCode": "أدخل الرمز البريدي",
   "checkoutErrorSelectShipping": "اختر طريقة الشحن",
   "checkoutErrorShippingMissing": "طريقة الشحن غير موجودة",
-  "checkoutErrorStripeNotReady": "Stripe غير مُجهّز بعد"
+  "checkoutErrorStripeNotReady": "Stripe غير مُجهّز بعد",
+   "ordersTitle": "طلباتي",
+  "ordersLoading": "جارٍ تحميل الطلبات…",
+  "ordersEmptyTitle": "لا توجد طلبات بعد",
+  "ordersEmptyBody": "عند إنشاء طلب جديد، سيظهر هنا.",
+  "ordersReload": "إعادة تحميل",
+  "ordersFilterAll": "الكل",
+  "ordersFilterPending": "قيد الانتظار",
+  "ordersFilterCompleted": "مكتمل",
+  "ordersFilterCanceled": "ملغى",
+  "ordersNoResultsForFilter": "لا توجد طلبات تطابق هذا الفلتر.",
+  "ordersQtyLabel": "الكمية",
+  "ordersPaid": "مدفوع",
+  "ordersUnpaid": "غير مدفوع",
+  "ordersStatusPending": "قيد الانتظار",
+  "ordersStatusCompleted": "مكتمل",
+  "ordersStatusCanceled": "ملغى",
+  "ordersStatusUnknown": "غير معروف",
+  "ordersUnknownItem": "منتج",
+   "ordersQty": "الكمية",
+    "profileLoginRequired": "الرجاء تسجيل الدخول لعرض ملفك الشخصي.",
+  "sessionExpired": "انتهت الجلسة. الرجاء تسجيل الدخول من جديد.",
+  "login": "تسجيل الدخول"
+  
   
 }

@@ -154,8 +154,10 @@ class _AuthGateState extends State<AuthGate> {
     }
   }
 
-  void _hydrateUserAndGo(String token) {
-    // we don't need user object here for routing. token is enough for auth requests.
+ void _hydrateUserAndGo(String token) {
+    //  ALWAYS set global token so HomeHeader can decode immediately
+    g.setAuthToken(token);
+
     context.read<AuthBloc>().add(
       AuthLoginHydrated(user: null, token: token, wasInactive: false),
     );
@@ -164,6 +166,7 @@ class _AuthGateState extends State<AuthGate> {
       MaterialPageRoute(builder: (_) => MainShell(appConfig: widget.appConfig)),
     );
   }
+
 
   void _goAdmin() {
     Navigator.of(context).pushNamedAndRemoveUntil('/admin', (_) => false);

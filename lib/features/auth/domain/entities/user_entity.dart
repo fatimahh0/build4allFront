@@ -8,10 +8,10 @@ class UserEntity {
   final String? profilePictureUrl;
   final int ownerProjectLinkId;
 
-  /// NEW: visibility (public/private)
+  /// visibility (public/private)
   final bool? isPublicProfile;
 
-  /// NEW: status text: "ACTIVE", "INACTIVE", "DELETED", ...
+  /// status text: "ACTIVE", "INACTIVE", "DELETED", ...
   final String? status;
 
   const UserEntity({
@@ -23,11 +23,35 @@ class UserEntity {
     this.email,
     this.phoneNumber,
     this.profilePictureUrl,
-
-    // NEW optional fields
     this.isPublicProfile,
     this.status,
   });
+
+  /// ✅ NEW: copyWith for instant UI updates (AuthUserPatched)
+  UserEntity copyWith({
+    String? username,
+    String? firstName,
+    String? lastName,
+    String? email,
+    String? phoneNumber,
+    String? profilePictureUrl,
+    int? ownerProjectLinkId,
+    bool? isPublicProfile,
+    String? status,
+  }) {
+    return UserEntity(
+      id: id,
+      ownerProjectLinkId: ownerProjectLinkId ?? this.ownerProjectLinkId,
+      username: username ?? this.username,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      email: email ?? this.email,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      profilePictureUrl: profilePictureUrl ?? this.profilePictureUrl,
+      isPublicProfile: isPublicProfile ?? this.isPublicProfile,
+      status: status ?? this.status,
+    );
+  }
 
   /// Optional helper: nice display name for UI
   String get displayName {

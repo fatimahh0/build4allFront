@@ -1489,4 +1489,227 @@ class AppLocalizationsAr extends AppLocalizations {
   String common_stock_label(Object stock) {
     return 'Stock: $stock';
   }
+
+  @override
+  String get ordersTitle => 'طلباتي';
+
+  @override
+  String get ordersLoading => 'جارٍ تحميل الطلبات…';
+
+  @override
+  String get ordersEmptyTitle => 'لا توجد طلبات بعد';
+
+  @override
+  String get ordersEmptyBody => 'عند إنشاء طلب جديد، سيظهر هنا.';
+
+  @override
+  String get ordersReload => 'إعادة تحميل';
+
+  @override
+  String get ordersFilterAll => 'الكل';
+
+  @override
+  String get ordersFilterPending => 'قيد الانتظار';
+
+  @override
+  String get ordersFilterCompleted => 'مكتمل';
+
+  @override
+  String get ordersFilterCanceled => 'ملغى';
+
+  @override
+  String get ordersNoResultsForFilter => 'لا توجد طلبات تطابق هذا الفلتر.';
+
+  @override
+  String get ordersQtyLabel => 'الكمية';
+
+  @override
+  String get ordersPaid => 'مدفوع';
+
+  @override
+  String get ordersUnpaid => 'غير مدفوع';
+
+  @override
+  String get ordersStatusPending => 'قيد الانتظار';
+
+  @override
+  String get ordersStatusCompleted => 'مكتمل';
+
+  @override
+  String get ordersStatusCanceled => 'ملغى';
+
+  @override
+  String get ordersStatusUnknown => 'غير معروف';
+
+  @override
+  String get ordersUnknownItem => 'منتج';
+
+  @override
+  String get ordersQty => 'الكمية';
+
+  @override
+  String get profileLoginRequired => 'الرجاء تسجيل الدخول لعرض ملفك الشخصي.';
+
+  @override
+  String get sessionExpired => 'انتهت الجلسة. الرجاء تسجيل الدخول من جديد.';
+
+  @override
+  String get login => 'تسجيل الدخول';
+
+  @override
+  String get editProfileTitle => 'Edit Profile';
+
+  @override
+  String get profileLoadFailed => 'Failed to load profile.';
+
+  @override
+  String get username => 'Username';
+
+  @override
+  String get firstName => 'First name';
+
+  @override
+  String get lastName => 'Last name';
+
+  @override
+  String get publicProfile => 'Public profile';
+
+  @override
+  String get save => 'Save';
+
+  @override
+  String get dangerZone => 'Danger zone';
+
+  @override
+  String get password => 'Password';
+
+  @override
+  String get deleteAccount => 'Delete account';
+
+  @override
+  String get notifications_title => 'Notifications';
+
+  @override
+  String get notifications_empty_title => 'No notifications yet';
+
+  @override
+  String get notifications_empty_subtitle => 'When something happens, it’ll show up here. For now… peace and quiet 😌';
+
+  @override
+  String get notifications_retry => 'Retry';
+
+  @override
+  String get privacy_policy_title => 'Privacy Policy';
+
+  @override
+  String get privacy_policy_intro_title => 'Your privacy matters';
+
+  @override
+  String get privacy_policy_intro_body => 'This policy explains what we collect, why we collect it, and how you control your data.';
+
+  @override
+  String get privacy_policy_collect_title => 'What we collect';
+
+  @override
+  String get privacy_policy_collect_body => 'Basic profile info (name, email/phone), account settings, and app usage needed to provide the service.';
+
+  @override
+  String get privacy_policy_use_title => 'How we use your data';
+
+  @override
+  String get privacy_policy_use_body => 'To run the app, personalize your experience, improve features, and keep the platform secure.';
+
+  @override
+  String get privacy_policy_share_title => 'Sharing';
+
+  @override
+  String get privacy_policy_share_body => 'We don’t sell your data. We only share what’s needed with trusted services (like hosting) to operate the app.';
+
+  @override
+  String get privacy_policy_security_title => 'Security';
+
+  @override
+  String get privacy_policy_security_body => 'We use standard security practices, but no system is 100% perfect. Keep your password private.';
+
+  @override
+  String get privacy_policy_choices_title => 'Your choices';
+
+  @override
+  String get privacy_policy_choices_body => 'You can change visibility (public/private), update profile info, or request account actions based on the app features.';
+
+  @override
+  String get privacy_policy_contact_title => 'Contact';
+
+  @override
+  String get privacy_policy_contact_body => 'If you have questions about privacy, contact the app support team.';
+
+  @override
+  String get privacy_policy_last_updated => 'Last updated: Dec 19, 2025';
+
+  @override
+  String get home_bottom_slide_thankyou_title => 'THANK YOU';
+
+  @override
+  String get home_bottom_slide_thankyou_message => 'We appreciate your trust. Our team works daily to keep quality high and service fast.';
+
+  @override
+  String get home_bottom_slide_secure_title => 'SECURE & SAFE';
+
+  @override
+  String get home_bottom_slide_secure_message => 'Secure payments, controlled products, and clean packaging — the basics done right.';
+
+  @override
+  String get home_bottom_slide_support_title => 'REAL SUPPORT';
+
+  @override
+  String get home_bottom_slide_support_message => 'Need help? We reply. No “seen” and disappear vibes 😅';
+
+  @override
+  String get home_bottom_benefit_contact => 'CONTACT AN\nACCREDITED EXPERT';
+
+  @override
+  String get home_bottom_benefit_secure_payments => 'SECURED\nPAYMENTS';
+
+  @override
+  String get home_bottom_benefit_authentic_products => 'AUTHENTIC &\nCONTROLLED PRODUCTS';
+
+  @override
+  String home_bottom_benefit_free_delivery_above(String amount) {
+    return 'FREE DELIVERY\nABOVE $amount';
+  }
+
+  @override
+  String get home_trailing_limited_time => 'Limited time';
+
+  @override
+  String get home_trailing_see_all => 'See all';
+
+  @override
+  String get home_sale_tag => 'SALE';
+
+  @override
+  String home_stock_label(int count) {
+    return 'Stock: $count';
+  }
+
+  @override
+  String get home_bookings_placeholder => 'Bookings feed not wired yet.';
+
+  @override
+  String get home_footer_contact_title => 'Contact us';
+
+  @override
+  String get home_footer_contact_desc => 'Need help? We’re one message away.';
+
+  @override
+  String get home_footer_free_delivery_title => 'Free delivery';
+
+  @override
+  String get home_footer_free_delivery_desc => 'Available on selected orders and areas.';
+
+  @override
+  String get home_footer_returns_title => 'Easy returns';
+
+  @override
+  String get home_footer_returns_desc => 'Simple return policy on eligible items.';
 }

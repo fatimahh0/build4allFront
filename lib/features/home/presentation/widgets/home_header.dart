@@ -1,25 +1,26 @@
 // lib/features/home/presentation/widgets/home_header.dart
 import 'dart:convert';
 
+import 'package:build4front/app/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:build4front/core/network/globals.dart' as net;
 import 'package:build4front/core/theme/theme_cubit.dart';
 
+// ✅ Profile bloc/state/entity (optional)
+import 'package:build4front/features/profile/presentation/bloc/user_profile_bloc.dart';
+import 'package:build4front/features/profile/presentation/bloc/user_profile_state.dart';
+import 'package:build4front/features/auth/domain/entities/user_entity.dart';
+
 class HomeHeader extends StatelessWidget {
-  /// App name from AppConfig (dart-define). Used as a fallback label.
   final String appName;
-
-  /// If we are on the user app: pass user's firstName + lastName (or username).
-  /// If null, we will try to use USER name from JWT, then OWNER name, then appName.
   final String? fullName;
-
-  /// Optional profile picture (user side).
   final String? avatarUrl;
-
-  /// Localized welcome text (e.g. "Welcome 👋").
   final String welcomeText;
+
+  // ✅ NEW: tap to go profile tab
+  final VoidCallback? onProfileTap;
 
   const HomeHeader({
     super.key,
@@ -27,6 +28,7 @@ class HomeHeader extends StatelessWidget {
     this.fullName,
     this.avatarUrl,
     required this.welcomeText,
+    this.onProfileTap,
   });
 
   @override
@@ -37,85 +39,121 @@ class HomeHeader extends StatelessWidget {
     final themeState = context.read<ThemeCubit>().state;
     final spacing = themeState.tokens.spacing;
 
-    // 1) Name coming from the screen (AuthBloc user).
-    final userNameFromBloc = (fullName != null && fullName!.trim().isNotEmpty)
+    // ✅ Try read user from UserProfileBloc (if provided)
+    UserEntity? profileUser;
+    try {
+      final st = context.watch<UserProfileBloc>().state;
+      if (st is UserProfileLoaded) profileUser = st.user;
+    } catch (_) {
+      profileUser = null;
+    }
+
+    final nameFromProfile = _nameFromUserEntity(profileUser);
+    final nameFromWidget = (fullName != null && fullName!.trim().isNotEmpty)
         ? fullName!.trim()
         : null;
 
-    // 2) Name decoded from JWT if role = USER.
     final jwtUserName = _getUserNameFromJwt();
+    final ownerName = net.getOwnerNameFromJwt();
 
-    // 3) Owner name from JWT (for owner/admin side).
-    final ownerName = _getOwnerNameFromJwt();
+    final displayName =
+        nameFromProfile ??
+        nameFromWidget ??
+        jwtUserName ??
+        ownerName ??
+        (appName.trim().isNotEmpty ? appName.trim() : 'Owner');
 
-    // 4) Final priority:
-    //    userNameFromBloc  →  jwtUserName  →  ownerName  →  appName  → "Owner"
-    String displayName;
-    if (userNameFromBloc != null && userNameFromBloc.isNotEmpty) {
-      displayName = userNameFromBloc;
-    } else if (jwtUserName != null && jwtUserName.isNotEmpty) {
-      displayName = jwtUserName;
-    } else if (ownerName != null && ownerName.isNotEmpty) {
-      displayName = ownerName;
-    } else if (appName.trim().isNotEmpty) {
-      displayName = appName.trim();
-    } else {
-      displayName = 'Owner';
-    }
+    final profileAvatar = (profileUser?.profilePictureUrl ?? '').trim();
+    final widgetAvatar = (avatarUrl ?? '').trim();
+    final chosenAvatar = profileAvatar.isNotEmpty
+        ? profileAvatar
+        : widgetAvatar;
 
-    // Resolve avatar URL if provided.
     String? resolvedAvatar;
-    if (avatarUrl != null && avatarUrl!.trim().isNotEmpty) {
-      resolvedAvatar = net.resolveUrl(avatarUrl!);
-    }
+    if (chosenAvatar.isNotEmpty) resolvedAvatar = net.resolveUrl(chosenAvatar);
 
-    Widget avatar;
-    if (resolvedAvatar != null && resolvedAvatar.trim().isNotEmpty) {
-      avatar = CircleAvatar(
-        radius: 22,
-        backgroundColor: c.primary.withOpacity(0.15),
-        backgroundImage: NetworkImage(resolvedAvatar),
-      );
-    } else {
-      avatar = CircleAvatar(
-        radius: 22,
-        backgroundColor: c.primary.withOpacity(0.15),
-        child: Icon(Icons.person_rounded, color: c.primary),
-      );
-    }
+    final avatar = (resolvedAvatar != null && resolvedAvatar.trim().isNotEmpty)
+        ? CircleAvatar(
+            radius: 22,
+            backgroundColor: c.primary.withOpacity(0.15),
+            backgroundImage: NetworkImage(resolvedAvatar),
+            onBackgroundImageError: (_, __) {},
+          )
+        : CircleAvatar(
+            radius: 22,
+            backgroundColor: c.primary.withOpacity(0.15),
+            child: Icon(Icons.person_rounded, color: c.primary),
+          );
+
+    // ✅ Make ONLY the left part clickable (avatar + texts)
+    final leftClickable = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onProfileTap, // ✅ switch tab from MainShell
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            vertical: spacing.xs,
+            horizontal: spacing.xs,
+          ),
+          child: Row(
+            children: [
+              avatar,
+              SizedBox(width: spacing.md),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(welcomeText, style: t.labelLarge),
+                  SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.55,
+                    child: Text(
+                      displayName,
+                      style: t.titleMedium,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
 
     return Container(
       margin: EdgeInsets.only(bottom: spacing.md),
       child: Row(
         children: [
-          avatar,
-          SizedBox(width: spacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(welcomeText, style: t.labelLarge),
-                Text(
-                  displayName,
-                  style: t.titleMedium,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          IconButton(
+          Expanded(child: leftClickable),
+         IconButton(
             onPressed: () {
-              // TODO: open notifications screen when implemented.
+              Navigator.of(context).pushNamed(AppRouter.notifications);
             },
             icon: const Icon(Icons.notifications_none_rounded),
           ),
+
         ],
       ),
     );
   }
+
+  String? _nameFromUserEntity(UserEntity? user) {
+    if (user == null) return null;
+    final first = (user.firstName ?? '').trim();
+    final last = (user.lastName ?? '').trim();
+    final username = (user.username ?? '').trim();
+    final email = (user.email ?? '').trim();
+    final phone = (user.phoneNumber ?? '').trim();
+
+    if (first.isNotEmpty || last.isNotEmpty) return ('$first $last').trim();
+    if (username.isNotEmpty) return username;
+    if (email.isNotEmpty) return email;
+    if (phone.isNotEmpty) return phone;
+    return null;
+  }
 }
 
-/// Decode current JWT and extract USER full name (first + last or username).
 String? _getUserNameFromJwt() {
   final raw = net.readAuthToken();
   if (raw.isEmpty) return null;
@@ -140,41 +178,7 @@ String? _getUserNameFromJwt() {
     final username = (map['username'] as String?)?.trim() ?? '';
     final subject = (map['sub'] as String?)?.trim() ?? '';
 
-    if (first.isNotEmpty || last.isNotEmpty) {
-      return ('$first $last').trim();
-    }
-    if (username.isNotEmpty) return username;
-    if (subject.isNotEmpty) return subject;
-
-    return null;
-  } catch (_) {
-    return null;
-  }
-}
-
-/// Decode OWNER name from JWT (for owner/admin app header fallback).
-String? _getOwnerNameFromJwt() {
-  final raw = net.readAuthToken();
-  if (raw.isEmpty) return null;
-
-  try {
-    final token = raw
-        .replaceFirst(RegExp('^Bearer\\s+', caseSensitive: false), '')
-        .trim();
-    final parts = token.split('.');
-    if (parts.length != 3) return null;
-
-    final payloadJson = utf8.decode(
-      base64Url.decode(base64Url.normalize(parts[1])),
-    );
-    final map = jsonDecode(payloadJson) as Map<String, dynamic>;
-
-    final role = (map['role'] as String?)?.toUpperCase();
-    if (role != 'OWNER') return null;
-
-    final username = (map['username'] as String?)?.trim() ?? '';
-    final subject = (map['sub'] as String?)?.trim() ?? '';
-
+    if (first.isNotEmpty || last.isNotEmpty) return ('$first $last').trim();
     if (username.isNotEmpty) return username;
     if (subject.isNotEmpty) return subject;
 

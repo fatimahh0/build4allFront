@@ -1,5 +1,11 @@
 // lib/app/app.dart
 
+import 'package:build4front/features/notifications/data/repositories/notifications_repository_impl.dart';
+import 'package:build4front/features/notifications/data/services/notifications_api_service.dart';
+import 'package:build4front/features/notifications/domain/repositories/notifications_repository.dart';
+import 'package:build4front/features/orders/data/repositories/orders_repository_impl.dart';
+import 'package:build4front/features/orders/data/services/orders_api_service.dart';
+import 'package:build4front/features/orders/domain/repositories/orders_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -104,6 +110,16 @@ class Build4AllFrontApp extends StatelessWidget {
     final currencyApi = CurrencyApiService();
     final currencyRepo = CurrencyRepositoryImpl(api: currencyApi);
 
+    //order user
+    final ordersApi = OrdersApiService(tokenStore: tokenStore);
+    final ordersRepo = OrdersRepositoryImpl(api: ordersApi);
+
+    // ---------- NOTIFICATIONS LAYER ----------
+    final notificationsApi = NotificationsApiService();
+    final notificationsRepo = NotificationsRepositoryImpl(notificationsApi);
+
+
+
     return MultiRepositoryProvider(
       providers: [
         // Auth
@@ -134,6 +150,19 @@ class Build4AllFrontApp extends StatelessWidget {
         // Currency
         RepositoryProvider<CurrencyApiService>.value(value: currencyApi),
         RepositoryProvider<CurrencyRepository>.value(value: currencyRepo),
+
+        //orders user
+        RepositoryProvider<OrdersApiService>.value(value: ordersApi),
+        RepositoryProvider<OrdersRepository>.value(value: ordersRepo),
+        // Notifications
+        RepositoryProvider<NotificationsApiService>.value(
+          value: notificationsApi,
+        ),
+        RepositoryProvider<NotificationsRepository>.value(
+          value: notificationsRepo,
+        ),
+
+
       ],
       child: MultiBlocProvider(
         providers: [

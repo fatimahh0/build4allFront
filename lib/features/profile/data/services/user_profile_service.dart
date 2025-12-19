@@ -1,3 +1,5 @@
+// lib/features/profile/data/services/user_profile_service.dart
+
 import 'package:dio/dio.dart';
 import 'package:build4front/core/network/globals.dart' as g;
 import 'package:build4front/core/config/env.dart';
@@ -5,10 +7,16 @@ import 'package:build4front/core/config/env.dart';
 class UserProfileService {
   final Dio _dio = g.appDio!;
 
+  // ---- helpers ----
+  String _cleanToken(String token) {
+    final t = token.trim();
+    return t.toLowerCase().startsWith('bearer ') ? t.substring(7).trim() : t;
+  }
+
   String get _apiRoot {
     // g.appServerRoot might be "http://x:8080" OR "http://x:8080/api"
-    final raw = (g.appServerRoot ?? '').trim().isNotEmpty
-        ? (g.appServerRoot ?? '').trim()
+    final raw = g.appServerRoot.trim().isNotEmpty
+        ? g.appServerRoot.trim()
         : Env.apiBaseUrl.trim();
 
     final noTrail = raw.replaceFirst(RegExp(r'/+$'), '');
@@ -17,6 +25,8 @@ class UserProfileService {
   }
 
   String get _base => '$_apiRoot/users';
+
+  // ---- API ----
 
   Future<Map<String, dynamic>> fetchProfileMap({
     required String token,
@@ -27,12 +37,23 @@ class UserProfileService {
     final res = await _dio.get(
       '$_base/$userId',
       queryParameters: {'ownerProjectLinkId': ownerId},
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
+      options: Options(
+        headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
+        responseType: ResponseType.json,
+        validateStatus: (s) => s != null && s >= 200 && s < 300,
+      ),
     );
 
-    return (res.data as Map).cast<String, dynamic>();
+    final data = res.data;
+    if (data is Map) return data.cast<String, dynamic>();
+
+    throw DioException(
+      requestOptions: res.requestOptions,
+      message: 'Invalid profile response: expected JSON object',
+    );
   }
 
+  /// ✅ FIXED: prevent JSON parsing crash when backend returns empty body (204/200 empty)
   Future<void> updateVisibility({
     required String token,
     required bool isPublic,
@@ -42,7 +63,16 @@ class UserProfileService {
     await _dio.put(
       '$_base/profile-visibility',
       queryParameters: {'isPublic': isPublic, 'ownerProjectLinkId': ownerId},
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
+
+      // ✅ send empty json body (safe)
+      data: const {},
+
+      // ✅ critical: don't try to parse empty response as JSON
+      options: Options(
+        headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
+        responseType: ResponseType.plain,
+        validateStatus: (s) => s != null && s >= 200 && s < 300,
+      ),
     );
   }
 
@@ -63,7 +93,11 @@ class UserProfileService {
       '$_base/$userId/status',
       queryParameters: {'ownerProjectLinkId': ownerId},
       data: body,
-      options: Options(headers: {'Authorization': 'Bearer $token'}),
+      options: Options(
+        headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
+        responseType: ResponseType.json, // this one usually returns JSON
+        validateStatus: (s) => s != null && s >= 200 && s < 300,
+      ),
     );
   }
 }

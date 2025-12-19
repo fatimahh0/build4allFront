@@ -1,8 +1,8 @@
-// lib/features/auth/presentation/bloc/auth_bloc.dart
-
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../../core/config/env.dart';
 import '../../../domain/usecases/login_with_email.dart';
+import '../../../domain/entities/user_entity.dart';
+
 import 'auth_event.dart';
 import 'auth_state.dart';
 
@@ -15,12 +15,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc({required this.loginWithEmail}) : super(AuthState.initial()) {
     on<AuthLoginSubmitted>(_onLoginSubmitted);
     on<AuthLoginHydrated>(_onLoginHydrated);
+    on<AuthUserPatched>(_onUserPatched); // ✅ NEW
     on<AuthLoggedOut>(_onLoggedOut);
   }
 
   /// Direct login using email/password + ownerProjectLinkId.
-  /// (You are currently using DualLoginOrchestrator in the screen,
-  /// but we keep this flow working too.)
   Future<void> _onLoginSubmitted(
     AuthLoginSubmitted event,
     Emitter<AuthState> emit,
@@ -63,7 +62,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   /// Hydrate auth state after an external login flow (DualLoginOrchestrator).
-void _onLoginHydrated(AuthLoginHydrated event, Emitter<AuthState> emit) {
+  void _onLoginHydrated(AuthLoginHydrated event, Emitter<AuthState> emit) {
     emit(
       state.copyWith(
         isLoading: false,
@@ -76,6 +75,24 @@ void _onLoginHydrated(AuthLoginHydrated event, Emitter<AuthState> emit) {
     );
   }
 
+  /// ✅ NEW: Patch logged-in user fields (used after Edit Profile)
+  void _onUserPatched(AuthUserPatched event, Emitter<AuthState> emit) {
+    final current = state.user;
+    if (!state.isLoggedIn || current == null) return;
+
+    final updated = current.copyWith(
+      firstName: event.firstName,
+      lastName: event.lastName,
+      username: event.username,
+      profilePictureUrl: event.profilePictureUrl,
+      isPublicProfile: event.isPublicProfile,
+      status: event.status,
+    );
+
+    // Important: your copyWith() clears error if you don’t pass it
+    // so we keep it as-is to avoid wiping an existing error.
+    emit(state.copyWith(user: updated, error: state.error));
+  }
 
   /// Reset auth state to initial.
   void _onLoggedOut(AuthLoggedOut event, Emitter<AuthState> emit) {

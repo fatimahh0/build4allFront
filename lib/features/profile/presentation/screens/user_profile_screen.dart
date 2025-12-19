@@ -1,7 +1,17 @@
+import 'package:build4front/app/app_router.dart';
+import 'package:build4front/features/profile/presentation/screens/privacy_policy_screen.dart';
+import 'package:build4front/features/profile_edit/presentation/screens/edit_profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:build4front/l10n/app_localizations.dart';
+import 'package:build4front/core/network/globals.dart' as g;
+import 'package:build4front/core/utils/jwt_utils.dart';
+import 'package:build4front/features/auth/data/services/auth_token_store.dart';
+
+// ✅ Auth bloc patch imports
+import 'package:build4front/features/auth/presentation/login/bloc/auth_bloc.dart';
+import 'package:build4front/features/auth/presentation/login/bloc/auth_event.dart';
 
 import 'package:build4front/features/profile/presentation/bloc/user_profile_bloc.dart';
 import 'package:build4front/features/profile/presentation/bloc/user_profile_event.dart';
@@ -28,16 +38,100 @@ class UserProfileScreen extends StatefulWidget {
   State<UserProfileScreen> createState() => _UserProfileScreenState();
 }
 
-class _UserProfileScreenState extends State<UserProfileScreen> {
+class _UserProfileScreenState extends State<UserProfileScreen>
+    with WidgetsBindingObserver {
+  final AuthTokenStore _store = const AuthTokenStore();
+
+  bool _hydrating = true;
+
+  String _effectiveToken = '';
+  int _effectiveUserId = 0;
+
   String _lastToken = '';
   int _lastUserId = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _hydrateSession();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _hydrateSession();
+    }
+  }
+
+  String _firstNonEmpty(List<String> values) {
+    for (final v in values) {
+      final s = v.trim();
+      if (s.isNotEmpty) return s;
+    }
+    return '';
+  }
+
+  String _stripBearer(String t) {
+    final s = t.trim();
+    if (s.toLowerCase().startsWith('bearer ')) return s.substring(7).trim();
+    return s;
+  }
+
+  Future<void> _hydrateSession() async {
+    setState(() => _hydrating = true);
+
+    final tWidget = widget.token.trim();
+    final tGlobal = g.readAuthToken().trim();
+    final tStored = (await _store.getToken())?.trim() ?? '';
+
+    final tokenFull = _firstNonEmpty([tWidget, tGlobal, tStored]);
+    final tokenRaw = _stripBearer(tokenFull);
+
+    int id = widget.userId;
+
+    if (id <= 0 && tokenRaw.isNotEmpty) {
+      id = JwtUtils.userIdFromToken(tokenRaw) ?? 0;
+    }
+
+    if (id <= 0) {
+      final storedId = await _store.getUserId();
+      if (storedId > 0) id = storedId;
+    }
+
+    if (id <= 0) {
+      final uj = await _store.getUserJson();
+      final v = uj?['id'];
+      if (v is num) id = v.toInt();
+      if (v is String) id = int.tryParse(v.trim()) ?? 0;
+    }
+
+    if (tokenFull.isNotEmpty) {
+      g.setAuthToken(tokenFull);
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _effectiveToken = tokenRaw;
+      _effectiveUserId = id;
+      _hydrating = false;
+    });
+
+    _kickLoadIfNeeded();
+  }
+
   void _kickLoadIfNeeded() {
-    final token = widget.token.trim();
-    final id = widget.userId;
+    final token = _effectiveToken.trim();
+    final id = _effectiveUserId;
 
     if (token.isEmpty || id <= 0) return;
-
     if (token == _lastToken && id == _lastUserId) return;
 
     _lastToken = token;
@@ -46,28 +140,73 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     context.read<UserProfileBloc>().add(LoadUserProfile(token, id));
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _kickLoadIfNeeded();
+  void _goToLogin(BuildContext context) {
+    widget.onLogout();
+    Navigator.pushNamedAndRemoveUntil(context, AppRouter.startup, (_) => false);
   }
 
-  @override
-  void didUpdateWidget(covariant UserProfileScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
+  /// ✅ Patch AuthBloc from the profile dto we already have (most reliable).
+  void _patchAuthFromProfileDto(dynamic userDto) {
+    // userDto is state.user from UserProfileLoaded (your ProfileUserDto most likely)
+    // We read only fields we know exist in your dto.
+    try {
+      final firstName = (userDto.firstName as String?)?.trim();
+      final lastName = (userDto.lastName as String?)?.trim();
+      final username = (userDto.username as String?)?.trim(); // if exists
+      final profileUrl = (userDto.profileImageUrl as String?)
+          ?.trim(); // your dto uses this
+      final isPublic = (userDto.publicProfile as bool?);
+      final statusName = (userDto.statusName as String?)?.trim();
 
-    // ✅ if AuthBloc hydrates later, this catches it
-    if (oldWidget.token != widget.token || oldWidget.userId != widget.userId) {
-      _kickLoadIfNeeded();
+      context.read<AuthBloc>().add(
+        AuthUserPatched(
+          firstName: firstName,
+          lastName: lastName,
+          username: username,
+          profilePictureUrl: profileUrl,
+          isPublicProfile: isPublic,
+          status: statusName,
+        ),
+      );
+    } catch (_) {
+      // If dto shape differs, no crash. We still refresh profile UI anyway.
     }
+  }
+
+  // ✅ go to edit + refresh after pop + PATCH AuthBloc so HomeHeader updates
+  Future<void> _goToEditProfile(
+    BuildContext context,
+    int ownerProjectLinkId,
+  ) async {
+    // We don't rely on return value. Some edit screens return nothing.
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditProfileScreen(
+          userId: _effectiveUserId,
+          token: _effectiveToken,
+          ownerProjectLinkId: ownerProjectLinkId,
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    // ✅ refresh profile screen data
+    context.read<UserProfileBloc>().add(
+      LoadUserProfile(_effectiveToken, _effectiveUserId),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final tr = AppLocalizations.of(context)!;
 
-    // if still not hydrated -> show login required
-    if (widget.token.trim().isEmpty || widget.userId <= 0) {
+    if (_hydrating) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_effectiveToken.isEmpty || _effectiveUserId <= 0) {
       return Scaffold(
         body: Center(
           child: Padding(
@@ -78,14 +217,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 const Icon(Icons.lock_outline, size: 48),
                 const SizedBox(height: 12),
                 Text(
-                  'Please log in to view your profile.',
+                  tr.profileLoginRequired,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
                 const SizedBox(height: 12),
-                FilledButton(
-                  onPressed: widget.onLogout,
-                  child: Text(tr.logout),
+                FilledButton.icon(
+                  onPressed: () => _goToLogin(context),
+                  icon: const Icon(Icons.login),
+                  label: Text(tr.login),
                 ),
               ],
             ),
@@ -94,7 +234,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       );
     }
 
-    return BlocBuilder<UserProfileBloc, UserProfileState>(
+    return BlocConsumer<UserProfileBloc, UserProfileState>(
+      listener: (context, state) {
+        // ✅ When profile reloads after edit, patch AuthBloc immediately
+        if (state is UserProfileLoaded) {
+          _patchAuthFromProfileDto(state.user);
+        }
+      },
       builder: (context, state) {
         if (state is UserProfileLoading) {
           return const Scaffold(
@@ -104,13 +250,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
         if (state is UserProfileError) {
           final theme = Theme.of(context);
-          final lower = state.message.toLowerCase();
+          final msg = state.message.toLowerCase();
 
           final loginRequired =
-              lower.contains('please login') ||
-              lower.contains('please log in') ||
-              lower.contains('unauthorized') ||
-              lower.contains('401');
+              msg.contains('unauthorized') ||
+              msg.contains('401') ||
+              msg.contains('please log in') ||
+              msg.contains('please login');
 
           return Scaffold(
             body: Center(
@@ -127,21 +273,22 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      loginRequired
-                          ? 'Session expired. Please log in again.'
-                          : tr.profile_load_error,
+                      loginRequired ? tr.sessionExpired : tr.profile_load_error,
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyLarge,
                     ),
                     const SizedBox(height: 12),
                     FilledButton.icon(
                       onPressed: loginRequired
-                          ? widget.onLogout
+                          ? () => _goToLogin(context)
                           : () => context.read<UserProfileBloc>().add(
-                              LoadUserProfile(widget.token, widget.userId),
+                              LoadUserProfile(
+                                _effectiveToken,
+                                _effectiveUserId,
+                              ),
                             ),
-                      icon: Icon(loginRequired ? Icons.logout : Icons.refresh),
-                      label: Text(loginRequired ? tr.logout : tr.retry),
+                      icon: Icon(loginRequired ? Icons.login : Icons.refresh),
+                      label: Text(loginRequired ? tr.login : tr.retry),
                     ),
                     const SizedBox(height: 8),
                     if (state.message.isNotEmpty)
@@ -165,8 +312,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           final user = state.user;
           final theme = Theme.of(context);
 
+          // ✅ ownerProjectLinkId from profile dto
+          final ownerId = user.ownerProjectLinkId;
+
           return Scaffold(
             backgroundColor: theme.colorScheme.background,
+            appBar: AppBar(),
             body: SafeArea(
               child: ListView(
                 padding: const EdgeInsets.symmetric(
@@ -177,23 +328,39 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   UserProfileHeader(user: user),
                   const SizedBox(height: 16),
 
-                  Center(
-                    child: Text(
-                      tr.profileMotto,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontStyle: FontStyle.italic,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
+                  _tile(
+                    context,
+                    icon: Icons.edit,
+                    title: tr.editProfileTitle,
+                    onTap: () => _goToEditProfile(context, ownerId),
                   ),
-
-                  const SizedBox(height: 16),
 
                   _tile(
                     context,
                     icon: Icons.language,
                     title: tr.language,
                     onTap: () => _showLanguageSelector(context),
+                  ),
+
+                  _tile(
+                    context,
+                    icon: Icons.receipt_long_outlined,
+                    title: tr.ordersTitle,
+                    onTap: () =>
+                        Navigator.pushNamed(context, AppRouter.myOrders),
+                  ),
+
+                  _tile(
+                    context,
+                    icon: Icons.privacy_tip,
+                    title: tr.privacy_policy_title,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const PrivacyPolicyScreen(),
+                        ),
+                      );
+                    },
                   ),
 
                   _tile(
@@ -217,7 +384,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             : tr.profileMakePublic,
                         onTap: () => context.read<UserProfileBloc>().add(
                           ToggleVisibilityPressed(
-                            widget.token,
+                            _effectiveToken,
                             !(user.isPublicProfile ?? true),
                           ),
                         ),
@@ -231,11 +398,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             context: context,
                             barrierDismissible: false,
                             builder: (ctx) => DeactivateUserDialog(
-                              token: widget.token,
-                              userId: widget.userId,
+                              token: _effectiveToken,
+                              userId: _effectiveUserId,
                             ),
                           );
-
                           if (ok == true) widget.onLogout();
                         },
                       ),
@@ -247,7 +413,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           );
         }
 
-        return const SizedBox.shrink();
+        // if bloc didn't load yet, trigger it once
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _kickLoadIfNeeded(),
+        );
+        return const Scaffold(body: SizedBox.shrink());
       },
     );
   }
@@ -266,6 +436,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           trailing: const Icon(Icons.chevron_right),
           onTap: onTap,
         ),
+
         const Divider(height: 1),
       ],
     );
