@@ -36,6 +36,8 @@ class CheckoutApiService {
     return (res.data as List? ?? []);
   }
 
+  /// NEW: backend orchestrated checkout
+  /// POST /api/orders/checkout
   Future<Map<String, dynamic>> checkout(Map<String, dynamic> body) async {
     final res = await _fetch.fetch(
       HttpMethod.post,
@@ -45,11 +47,14 @@ class CheckoutApiService {
     return Map<String, dynamic>.from(res.data as Map);
   }
 
-  /// backend expects: price, currency, stripeAccountId
- Future<Map<String, dynamic>> createIntent({
+  /// ⚠️ Legacy endpoint (OLD flow: create intent from mobile).
+  /// If your backend moved fully to orchestrator, you can delete this safely.
+  /// Keeping it here does NOT hurt as long as it is not used by the bloc.
+  /*
+  Future<Map<String, dynamic>> createIntent({
     required double price,
-    required String currency, // "usd"
-    required String stripeAccountId, // "acct_..."
+    required String currency,
+    required String stripeAccountId,
     Map<String, dynamic>? metadata,
   }) async {
     final data = <String, dynamic>{
@@ -67,5 +72,5 @@ class CheckoutApiService {
 
     return Map<String, dynamic>.from(res.data as Map);
   }
-
+  */
 }

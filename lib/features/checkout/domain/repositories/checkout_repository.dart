@@ -1,5 +1,4 @@
 import 'package:build4front/features/checkout/data/models/checkout_summary_model.dart';
-
 import '../entities/checkout_entities.dart';
 
 abstract class CheckoutRepository {
@@ -19,18 +18,23 @@ abstract class CheckoutRepository {
     required double shippingTotal,
   });
 
-  
+  /// ✅ UPDATED:
+  /// destinationAccountId is optional and used only for Stripe Connect.
+  Future<CheckoutSummaryModel> checkout({
+    required int ownerProjectId,
+    required int currencyId,
+    required String paymentMethod,
 
-Future<CheckoutSummaryModel> checkout({
-  required int ownerProjectId, 
-  required int currencyId,
-  required String paymentMethod,
-  String? stripePaymentId,
-  String? couponCode,
-  required int shippingMethodId,
-  required String shippingMethodName,
-  required ShippingAddress shippingAddress,
-  required List<CartLine> lines,
-});
+    /// OLD flow field (keep optional for backward compatibility, but NEW flow sends null)
+    String? stripePaymentId,
 
+    String? couponCode,
+    required int shippingMethodId,
+    required String shippingMethodName,
+    required ShippingAddress shippingAddress,
+    required List<CartLine> lines,
+
+    /// ✅ NEW: Stripe Connect destination account (acct_...)
+    String? destinationAccountId,
+  });
 }

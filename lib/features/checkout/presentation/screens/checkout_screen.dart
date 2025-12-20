@@ -268,14 +268,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ? s.paymentMethods[idx].code.trim().toUpperCase()
                     : '';
 
-                if (code == 'STRIPE' && Env.stripePublishableKey.isEmpty) {
-                  AppToast.show(
-                    context,
-                    'Stripe key is missing in build config',
-                    isError: true,
-                  );
-                  return;
-                }
 
                 context.read<CheckoutBloc>().add(
                   const CheckoutPlaceOrderPressed(),

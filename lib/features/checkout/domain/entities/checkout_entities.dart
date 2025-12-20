@@ -1,3 +1,8 @@
+// lib/features/checkout/domain/entities/checkout_entities.dart
+
+/// Domain entities used by UI + Bloc.
+/// Keep them lightweight and stable (don’t depend on data-layer models).
+
 class CheckoutCart {
   final int cartId;
   final String status;
@@ -22,7 +27,11 @@ class CheckoutCartItem {
   final String? itemName;
   final String? imageUrl;
   final int quantity;
+
+  /// Selling/effective unit price (prefer discounted price if backend returns it)
   final double unitPrice;
+
+  /// Line total (should match unitPrice * qty in final selling logic)
   final double lineTotal;
 
   const CheckoutCartItem({
@@ -102,43 +111,44 @@ class TaxPreview {
   });
 }
 
+/// IMPORTANT:
+/// PaymentMethod must carry optional configMap (for Stripe Connect acct_... etc).
+/// UI uses name+code, Bloc may use configMap.
 class PaymentMethod {
+  final int? id;
   final String code;
   final String name;
 
-  const PaymentMethod({required this.code, required this.name});
+  /// Optional payment configuration returned by backend
+  /// Example for Stripe Connect:
+  /// { "stripeAccountId": "acct_..." }
+  final Map<String, dynamic>? configMap;
 
-  factory PaymentMethod.fromJson(Map<String, dynamic> j) {
-    final nested = j['method'];
+  const PaymentMethod({
+    this.id,
+    required this.code,
+    required this.name,
+    this.configMap,
+  });
 
-    String pick(dynamic v) => (v ?? '').toString().trim();
-
-    final rawCode = pick(
-      j['code'] ??
-          j['methodCode'] ??
-          j['paymentCode'] ??
-          j['payment_method_code'] ??
-          j['payment_method'] ??
-          (nested is Map ? nested['code'] : null),
+  PaymentMethod copyWith({
+    int? id,
+    String? code,
+    String? name,
+    Map<String, dynamic>? configMap,
+  }) {
+    return PaymentMethod(
+      id: id ?? this.id,
+      code: code ?? this.code,
+      name: name ?? this.name,
+      configMap: configMap ?? this.configMap,
     );
-
-    final rawName = pick(
-      j['name'] ??
-          j['label'] ??
-          j['paymentName'] ??
-          j['payment_method_name'] ??
-          (nested is Map ? nested['name'] : null),
-    );
-
-    final code = rawCode.toUpperCase();
-    final name = rawName.isEmpty ? (code.isEmpty ? 'Unknown' : code) : rawName;
-
-    return PaymentMethod(code: code, name: name);
   }
 
-  Map<String, dynamic> toJson() => {'code': code, 'name': name};
-
-  PaymentMethod copyWith({String? code, String? name}) {
-    return PaymentMethod(code: code ?? this.code, name: name ?? this.name);
-  }
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'code': code,
+        'name': name,
+        'configMap': configMap,
+      };
 }

@@ -1,9 +1,11 @@
+// lib/features/checkout/data/repositories/checkout_repository_impl.dart
+
 import 'package:build4front/features/checkout/domain/entities/checkout_entities.dart';
 import 'package:build4front/features/checkout/domain/repositories/checkout_repository.dart';
 
-import '../services/checkout_api_service.dart';
-import '../models/checkout_models.dart';
-import '../models/checkout_summary_model.dart';
+import 'package:build4front/features/checkout/data/models/checkout_models.dart';
+import 'package:build4front/features/checkout/data/models/checkout_summary_model.dart';
+import 'package:build4front/features/checkout/data/services/checkout_api_service.dart';
 
 class CheckoutRepositoryImpl implements CheckoutRepository {
   final CheckoutApiService api;
@@ -36,17 +38,17 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
   }
 
   Map<String, dynamic> _addressToJson(ShippingAddress a) => {
-    'countryId': a.countryId,
-    'regionId': a.regionId,
-    'city': a.city,
-    'postalCode': a.postalCode,
-  };
+        'countryId': a.countryId,
+        'regionId': a.regionId,
+        'city': a.city,
+        'postalCode': a.postalCode,
+      };
 
   Map<String, dynamic> _lineToJson(CartLine l) => {
-    'itemId': l.itemId,
-    'quantity': l.quantity,
-    'unitPrice': l.unitPrice,
-  };
+        'itemId': l.itemId,
+        'quantity': l.quantity,
+        'unitPrice': l.unitPrice,
+      };
 
   @override
   Future<List<ShippingQuote>> getShippingQuotes({
@@ -63,7 +65,8 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
     final list = await api.getShippingQuotes(body);
 
     return list
-        .map((e) => ShippingQuoteModel.fromJson(e as Map<String, dynamic>))
+        .whereType<Map>()
+        .map((e) => ShippingQuoteModel.fromJson(Map<String, dynamic>.from(e)))
         .map(
           (m) => ShippingQuote(
             methodId: m.methodId,
@@ -104,22 +107,20 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
     final list = await api.getEnabledPaymentMethods();
 
     final models = list
-        .where((e) => e is Map)
-        .map(
-          (e) =>
-              PaymentMethodModel.fromJson(Map<String, dynamic>.from(e as Map)),
-        )
-        .where((m) => m.enabled) // keep enabled only
+        .whereType<Map>()
+        .map((e) => PaymentMethodModel.fromJson(Map<String, dynamic>.from(e)))
+        .where((m) => m.enabled)
         .toList();
 
-    // ✅ DEBUG (temporary)
-    // ignore: avoid_print
-    print(
-      "Payment methods parsed: ${models.map((x) => '${x.code}:${x.name}').toList()}",
-    );
-
     return models
-        .map((m) => PaymentMethod(code: m.code, name: m.name))
+        .map(
+          (m) => PaymentMethod(
+            id: m.id,
+            code: m.code,
+            name: m.name,
+            configMap: m.configMap,
+          ),
+        )
         .toList();
   }
 
@@ -128,31 +129,43 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
     required int ownerProjectId,
     required int currencyId,
     required String paymentMethod,
-    String? stripePaymentId,
     String? couponCode,
+    String? stripePaymentId,
+    String? destinationAccountId,
     required int shippingMethodId,
     required String shippingMethodName,
     required ShippingAddress shippingAddress,
     required List<CartLine> lines,
   }) async {
+    /// This body matches backend checkout request.
+    /// If your backend expects different keys, adjust them here ONLY
+    /// (keep bloc/usecases stable).
     final body = <String, dynamic>{
       'ownerProjectId': ownerProjectId,
       'currencyId': currencyId,
       'paymentMethod': paymentMethod,
+
+      // shipping + address
       'shippingMethodId': shippingMethodId,
       'shippingAddress': {
         ..._addressToJson(shippingAddress),
         'shippingMethodId': shippingMethodId,
         'shippingMethodName': shippingMethodName,
       },
+
       'lines': lines.map(_lineToJson).toList(),
     };
 
     final c = (couponCode ?? '').trim();
     if (c.isNotEmpty) body['couponCode'] = c;
 
+    // Legacy: only if backend still supports "stripePaymentId" in request
     final s = (stripePaymentId ?? '').trim();
     if (s.isNotEmpty) body['stripePaymentId'] = s;
+
+    // Stripe Connect: destination account (acct_...)
+    final dest = (destinationAccountId ?? '').trim();
+    if (dest.isNotEmpty) body['destinationAccountId'] = dest;
 
     final json = await api.checkout(body);
     return CheckoutSummaryModel.fromJson(json);

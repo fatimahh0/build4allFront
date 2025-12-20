@@ -1,3 +1,9 @@
+// lib/features/checkout/data/models/checkout_models.dart
+import 'dart:convert';
+
+/// Data-layer models (parsing backend JSON).
+/// These are mapped into domain entities in the repository.
+
 class CheckoutCartModel {
   final int cartId;
   final String status;
@@ -26,7 +32,8 @@ class CheckoutCartModel {
       totalPrice: _toDouble(json['totalPrice']),
       currencySymbol: json['currencySymbol']?.toString(),
       items: (json['items'] as List? ?? [])
-          .map((e) => CheckoutCartItemModel.fromJson(e as Map<String, dynamic>))
+          .whereType<Map>()
+          .map((e) => CheckoutCartItemModel.fromJson(Map<String, dynamic>.from(e)))
           .toList(),
     );
   }
@@ -39,10 +46,10 @@ class CheckoutCartItemModel {
   final String? imageUrl;
   final int quantity;
 
-  /// ✅ we will store the SELLING unit price here (if backend provides it)
+  /// selling/effective unit
   final double unitPrice;
 
-  /// ✅ total for the line (should match selling * qty)
+  /// line total
   final double lineTotal;
 
   CheckoutCartItemModel({
@@ -64,10 +71,10 @@ class CheckoutCartItemModel {
   factory CheckoutCartItemModel.fromJson(Map<String, dynamic> json) {
     final qty = (json['quantity'] as num?)?.toInt() ?? 0;
 
-    // base unit price (often original price)
+    // base unit price (original)
     final baseUnit = _toDouble(json['unitPrice']);
 
-    // ✅ try common “selling/effective” keys (depends on your backend)
+    // selling/effective unit price if backend provides it
     final effectiveUnit = _toDouble(
       json['effectiveUnitPrice'] ??
           json['sellingUnitPrice'] ??
@@ -76,10 +83,9 @@ class CheckoutCartItemModel {
           json['displayUnitPrice'],
     );
 
-    // choose selling if exists, else base
     final unit = (effectiveUnit > 0) ? effectiveUnit : baseUnit;
 
-    // line total from backend (if provided)
+    // line total from backend (if present)
     final backendLine = _toDouble(
       json['lineTotal'] ??
           json['lineSubtotal'] ??
@@ -87,7 +93,6 @@ class CheckoutCartItemModel {
           json['subtotal'],
     );
 
-    // if backend didn't send a correct line total, compute from unit*qty
     final computedLine = (backendLine > 0) ? backendLine : (unit * qty);
 
     return CheckoutCartItemModel(
@@ -162,32 +167,47 @@ class TaxPreviewModel {
 
 class PaymentMethodModel {
   final int? id;
-  final String code; // we will use NAME as CODE
+  final String code;
   final String name;
   final bool enabled;
+
+  /// Backend config_json parsed to Map
+  final Map<String, dynamic>? configMap;
 
   PaymentMethodModel({
     this.id,
     required this.code,
     required this.name,
     required this.enabled,
+    this.configMap,
   });
 
   factory PaymentMethodModel.fromJson(Map<String, dynamic> j) {
     String pick(dynamic v) => (v ?? '').toString().trim();
 
     final name = pick(j['name'] ?? j['label']);
-    final code = pick(
-      j['code'] ?? j['paymentMethod'] ?? j['method'] ?? name,
-    ).toUpperCase();
+    final code = pick(j['code'] ?? j['paymentMethod'] ?? j['method'] ?? name).toUpperCase();
 
     final enabled = (j['enabled'] is bool) ? (j['enabled'] as bool) : true;
 
+    // config can come as Map or JSON string
+    Map<String, dynamic>? cfg;
+    final rawCfg = j['config'] ?? j['configMap'] ?? j['config_json'] ?? j['configJson'];
+    if (rawCfg is Map) {
+      cfg = Map<String, dynamic>.from(rawCfg);
+    } else if (rawCfg is String && rawCfg.trim().startsWith('{')) {
+      try {
+        final decoded = jsonDecode(rawCfg);
+        if (decoded is Map) cfg = Map<String, dynamic>.from(decoded);
+      } catch (_) {}
+    }
+
     return PaymentMethodModel(
       id: (j['id'] as num?)?.toInt(),
-      name: name.isEmpty ? code : name,
+      name: name.isEmpty ? (code.isEmpty ? 'Unknown' : code) : name,
       code: code.isEmpty ? name.toUpperCase() : code,
       enabled: enabled,
+      configMap: cfg,
     );
   }
 }
