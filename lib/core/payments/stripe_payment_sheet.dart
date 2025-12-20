@@ -2,17 +2,19 @@
 //
 // Stripe PaymentSheet helper.
 //
-// Why we do it this way:
-// - In multi-tenant Build4All, each ownerProject can have its own Stripe keys.
+// Multi-tenant note:
 // - Backend returns publishableKey (pk_...) and clientSecret per checkout.
 // - So we initialize Stripe right before presenting the PaymentSheet.
 
 import 'package:flutter_stripe/flutter_stripe.dart';
 
-class StripePaymentSheet {
-  static String? _lastPk; // remember the last applied pk_ to avoid redundant applySettings()
+enum StripePayStatus { paid, canceled }
 
-  static Future<void> pay({
+class StripePaymentSheet {
+  static String?
+  _lastPk; // remember the last applied pk_ to avoid redundant applySettings()
+
+  static Future<StripePayStatus> pay({
     required String publishableKey,
     required String clientSecret,
     required String merchantName,
@@ -34,15 +36,28 @@ class StripePaymentSheet {
       _lastPk = pk;
     }
 
-    // 1) Init PaymentSheet with PaymentIntent client secret
-    await Stripe.instance.initPaymentSheet(
-      paymentSheetParameters: SetupPaymentSheetParameters(
-        paymentIntentClientSecret: cs,
-        merchantDisplayName: merchantName,
-      ),
-    );
+    try {
+      // 1) Init PaymentSheet with PaymentIntent client secret
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          paymentIntentClientSecret: cs,
+          merchantDisplayName: merchantName,
+        ),
+      );
 
-    // 2) Present PaymentSheet
-    await Stripe.instance.presentPaymentSheet();
+      // 2) Present PaymentSheet
+      await Stripe.instance.presentPaymentSheet();
+
+      // ✅ If we reach here => payment completed successfully
+      return StripePayStatus.paid;
+    } on StripeException catch (e) {
+      // ✅ User cancelled (most common case)
+      if (e.error.code == FailureCode.Canceled) {
+        return StripePayStatus.canceled;
+      }
+
+      // Any other Stripe error -> throw (so caller shows error toast)
+      throw Exception(e.error.message ?? 'Stripe payment failed');
+    }
   }
 }

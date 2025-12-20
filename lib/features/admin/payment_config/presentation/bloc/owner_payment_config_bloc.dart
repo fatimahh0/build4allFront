@@ -1,0 +1,64 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../domain/usecases/get_owner_payment_methods.dart';
+import '../../domain/usecases/save_owner_payment_method_config.dart';
+import 'owner_payment_config_event.dart';
+import 'owner_payment_config_state.dart';
+
+class OwnerPaymentConfigBloc
+    extends Bloc<OwnerPaymentConfigEvent, OwnerPaymentConfigState> {
+  final GetOwnerPaymentMethods getMethods;
+  final SaveOwnerPaymentMethodConfig saveConfig;
+
+  OwnerPaymentConfigBloc({required this.getMethods, required this.saveConfig})
+    : super(OwnerPaymentConfigState.initial()) {
+    on<OwnerPaymentConfigLoad>(_onLoad);
+    on<OwnerPaymentConfigSave>(_onSave);
+  }
+
+  Future<void> _onLoad(
+    OwnerPaymentConfigLoad event,
+    Emitter<OwnerPaymentConfigState> emit,
+  ) async {
+    emit(state.copyWith(loading: true, error: null));
+    try {
+      final items = await getMethods(event.ownerProjectId);
+      emit(state.copyWith(loading: false, items: items, error: null));
+    } catch (e) {
+      emit(state.copyWith(loading: false, error: e.toString()));
+    }
+  }
+
+  Future<void> _onSave(
+    OwnerPaymentConfigSave event,
+    Emitter<OwnerPaymentConfigState> emit,
+  ) async {
+    final code = event.methodName.toUpperCase();
+    final nextSaving = {...state.savingCodes, code};
+    emit(state.copyWith(savingCodes: nextSaving, error: null));
+
+    try {
+      await saveConfig(
+        ownerProjectId: event.ownerProjectId,
+        methodName: event.methodName,
+        enabled: event.enabled,
+        configValues: event.configValues,
+      );
+
+      // update local state (optimistic)
+      final updated = state.items.map((it) {
+        if (it.name.toUpperCase() != code) return it;
+        return it.copyWith(
+          projectEnabled: event.enabled,
+          configValues: Map<String, dynamic>.from(event.configValues),
+        );
+      }).toList();
+
+      final afterSaving = {...state.savingCodes}..remove(code);
+      emit(state.copyWith(items: updated, savingCodes: afterSaving));
+    } catch (e) {
+      final afterSaving = {...state.savingCodes}..remove(code);
+      emit(state.copyWith(savingCodes: afterSaving, error: e.toString()));
+    }
+  }
+}

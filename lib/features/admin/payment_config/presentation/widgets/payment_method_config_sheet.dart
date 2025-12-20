@@ -1,0 +1,291 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:build4front/core/theme/theme_cubit.dart';
+import 'package:build4front/l10n/app_localizations.dart';
+import 'package:build4front/common/widgets/app_toast.dart';
+
+class PaymentMethodConfigSheet extends StatefulWidget {
+  final String methodName;
+  final Map<String, dynamic> schema;
+  final Map<String, dynamic> existingValues;
+
+  const PaymentMethodConfigSheet({
+    super.key,
+    required this.methodName,
+    required this.schema,
+    required this.existingValues,
+  });
+
+  @override
+  State<PaymentMethodConfigSheet> createState() =>
+      _PaymentMethodConfigSheetState();
+}
+
+class _PaymentMethodConfigSheetState extends State<PaymentMethodConfigSheet> {
+  late final List<Map<String, dynamic>> _fields;
+  final Map<String, TextEditingController> _controllers = {};
+  final Map<String, String> _selected = {};
+
+  @override
+  void initState() {
+    super.initState();
+
+    final rawFields = widget.schema['fields'];
+    _fields = (rawFields is List)
+        ? rawFields
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList()
+        : <Map<String, dynamic>>[];
+
+    for (final f in _fields) {
+      final key = (f['key'] ?? '').toString();
+      final type = (f['type'] ?? 'text').toString();
+
+      if (type == 'select') {
+        final existing = widget.existingValues[key]?.toString();
+        final def = f['default']?.toString();
+        _selected[key] = existing ?? def ?? '';
+      } else {
+        final existing = widget.existingValues[key]?.toString();
+        final def = f['default']?.toString();
+
+        // ✅ Password stays empty (don't show secrets)
+        final initialText = (type == 'password') ? '' : (existing ?? def ?? '');
+
+        _controllers[key] = TextEditingController(text: initialText);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = context.watch<ThemeCubit>().state.tokens;
+    final c = theme.colors;
+    final s = theme.spacing;
+    final l10n = AppLocalizations.of(context)!;
+
+    final title = (widget.schema['title'] ?? widget.methodName).toString();
+
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: s.lg,
+          right: s.lg,
+          top: s.lg,
+          bottom: MediaQuery.of(context).viewInsets.bottom + s.lg,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: c.label,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              SizedBox(height: s.sm),
+              Text(
+                l10n.paymentFillFields,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: c.body),
+              ),
+              SizedBox(height: s.sm),
+              Text(
+                l10n.paymentSavedKeepHint,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: c.muted),
+              ),
+              SizedBox(height: s.lg),
+
+              ..._fields.map((f) => _buildField(context, f)).toList(),
+
+              SizedBox(height: s.lg),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(l10n.paymentCancel),
+                    ),
+                  ),
+                  SizedBox(width: s.md),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: c.primary,
+                        foregroundColor: c.onPrimary,
+                        minimumSize: const Size.fromHeight(48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            theme.card.radius,
+                          ),
+                        ),
+                      ),
+                      onPressed: _onSave,
+                      child: Text(l10n.paymentSave),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildField(BuildContext context, Map<String, dynamic> f) {
+    final theme = context.watch<ThemeCubit>().state.tokens;
+    final c = theme.colors;
+    final s = theme.spacing;
+    final l10n = AppLocalizations.of(context)!;
+
+    final key = (f['key'] ?? '').toString();
+    final label = (f['label'] ?? key).toString();
+    final type = (f['type'] ?? 'text').toString();
+    final requiredField = (f['required'] == true);
+
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(theme.card.radius),
+      borderSide: BorderSide(color: c.border.withOpacity(0.25), width: 1),
+    );
+
+    Widget input;
+
+    if (type == 'select') {
+      final options = (f['options'] is List)
+          ? (f['options'] as List).map((e) => e.toString()).toList()
+          : <String>[];
+
+      final v = _selected[key] ?? (options.isNotEmpty ? options.first : '');
+
+      input = DropdownButtonFormField<String>(
+        value: options.contains(v)
+            ? v
+            : (options.isNotEmpty ? options.first : null),
+        items: options
+            .map((o) => DropdownMenuItem(value: o, child: Text(o)))
+            .toList(),
+        onChanged: (nv) => setState(() => _selected[key] = nv ?? ''),
+        decoration: InputDecoration(
+          border: border,
+          enabledBorder: border,
+          focusedBorder: border.copyWith(
+            borderSide: BorderSide(color: c.primary, width: 1),
+          ),
+        ),
+      );
+    } else {
+      final ctrl = _controllers[key]!;
+      final isPassword = type == 'password';
+      final isTextArea = type == 'textarea';
+      final isNumber = type == 'number';
+
+      input = TextField(
+        controller: ctrl,
+        obscureText: isPassword,
+        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+        maxLines: isTextArea ? 4 : 1,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: c.label),
+        decoration: InputDecoration(
+          hintText: (isPassword && widget.existingValues[key] != null)
+              ? l10n.paymentSavedKeepHint
+              : null,
+          filled: true,
+          fillColor: c.surface,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: s.md,
+            vertical: s.sm,
+          ),
+          border: border,
+          enabledBorder: border,
+          focusedBorder: border.copyWith(
+            borderSide: BorderSide(color: c.primary, width: 1),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: s.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            requiredField ? '$label *' : label,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: c.muted),
+          ),
+          SizedBox(height: s.xs),
+          input,
+        ],
+      ),
+    );
+  }
+
+  void _onSave() {
+    final out = <String, Object?>{};
+
+    for (final f in _fields) {
+      final key = (f['key'] ?? '').toString();
+      final type = (f['type'] ?? 'text').toString();
+      final requiredField = (f['required'] == true);
+
+      Object? finalValue;
+
+      if (type == 'select') {
+        finalValue = (_selected[key] ?? '').trim();
+        if ((finalValue as String).isEmpty) {
+          finalValue = widget.existingValues[key]?.toString() ?? '';
+        }
+      } else {
+        final raw = (_controllers[key]?.text ?? '').trim();
+
+        if (raw.isEmpty) {
+          // empty => keep existing (especially for passwords)
+          finalValue = widget.existingValues[key];
+        } else {
+          if (type == 'number') {
+            final parsed = num.tryParse(raw);
+            if (parsed == null) {
+              AppToast.show(context, 'Invalid number: $key', isError: true);
+              return;
+            }
+            finalValue = parsed;
+          } else {
+            finalValue = raw;
+          }
+        }
+      }
+
+      final missing =
+          finalValue == null || finalValue.toString().trim().isEmpty;
+
+      if (requiredField && missing) {
+        AppToast.show(context, 'Missing required field: $key', isError: true);
+        return;
+      }
+
+      if (!missing) {
+        out[key] = finalValue;
+      }
+    }
+
+    Navigator.pop<Map<String, Object?>>(context, out);
+  }
+}

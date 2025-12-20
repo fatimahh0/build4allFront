@@ -1,5 +1,4 @@
 import 'package:build4front/core/config/app_config.dart';
-import 'package:build4front/core/config/env.dart';
 import 'package:build4front/features/checkout/presentation/screens/order_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -42,6 +41,33 @@ class CheckoutScreen extends StatefulWidget {
 class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _started = false;
 
+  Future<bool> _confirmCartWillBeCleared(int itemCount) async {
+    final l10n = AppLocalizations.of(context)!;
+
+    final res = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text(l10n.checkoutConfirmDialogTitle),
+          content: Text(l10n.checkoutConfirmCartCleared(itemCount)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l10n.commonNo),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(l10n.commonYes),
+            ),
+          ],
+        );
+      },
+    );
+
+    return res == true;
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -72,7 +98,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           final id = state.orderSummary!.orderId;
 
           AppToast.show(context, l10n.checkoutOrderPlacedToast(id));
-
           context.read<CartBloc>().add(const CartRefreshed());
 
           Navigator.pushReplacement(
@@ -84,147 +109,151 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         }
       },
       child: Scaffold(
+        resizeToAvoidBottomInset: true,
         appBar: AppBar(title: Text(l10n.checkoutTitle)),
-        body: BlocBuilder<CheckoutBloc, CheckoutState>(
-          builder: (context, state) {
-            if (state.loading) {
-              return Center(
-                child: Padding(
-                  padding: EdgeInsets.all(spacing.lg),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const CircularProgressIndicator(),
-                      SizedBox(height: spacing.md),
-                      Text(
-                        l10n.checkoutLoading,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodyMedium?.copyWith(color: colors.body),
-                      ),
-                    ],
+        body: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: BlocBuilder<CheckoutBloc, CheckoutState>(
+            builder: (context, state) {
+              if (state.loading) {
+                return Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(spacing.lg),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(),
+                        SizedBox(height: spacing.md),
+                        Text(
+                          l10n.checkoutLoading,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodyMedium?.copyWith(color: colors.body),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            }
-
-            final cart = state.cart;
-            if (cart == null || cart.items.isEmpty) {
-              return Center(
-                child: Padding(
-                  padding: EdgeInsets.all(spacing.lg),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.shopping_cart_outlined,
-                        size: 44,
-                        color: colors.muted,
-                      ),
-                      SizedBox(height: spacing.sm),
-                      Text(
-                        l10n.checkoutEmptyCart,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.titleMedium?.copyWith(color: colors.label),
-                        textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: spacing.lg),
-                      PrimaryButton(
-                        label: l10n.checkoutGoBack,
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-
-            return RefreshIndicator(
-              onRefresh: () async {
-                context.read<CheckoutBloc>().add(
-                  const CheckoutRefreshRequested(),
                 );
-              },
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.all(spacing.md),
-                children: [
-                  CheckoutSectionCard(
-                    title: l10n.checkoutItemsTitle,
-                    child: CheckoutItemsPreview(cart: cart),
-                  ),
-                  SizedBox(height: spacing.md),
+              }
 
-                  CheckoutSectionCard(
-                    title: l10n.checkoutAddressTitle,
-                    child: CheckoutAddressForm(
-                      initial: state.address,
-                      onApply: (addr) {
-                        context.read<CheckoutBloc>().add(
-                          CheckoutAddressChanged(addr),
-                        );
-                      },
+              final cart = state.cart;
+              if (cart == null || cart.items.isEmpty) {
+                return Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(spacing.lg),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.shopping_cart_outlined,
+                          size: 44,
+                          color: colors.muted,
+                        ),
+                        SizedBox(height: spacing.sm),
+                        Text(
+                          l10n.checkoutEmptyCart,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(color: colors.label),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: spacing.lg),
+                        PrimaryButton(
+                          label: l10n.checkoutGoBack,
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
                     ),
                   ),
-                  SizedBox(height: spacing.md),
+                );
+              }
 
-                  CheckoutSectionCard(
-                    title: l10n.checkoutCouponTitle,
-                    child: CheckoutCouponField(
-                      initial: state.coupon,
-                      onChanged: (v) {
-                        context.read<CheckoutBloc>().add(
-                          CheckoutCouponChanged(v),
-                        );
-                      },
+              return RefreshIndicator(
+                onRefresh: () async {
+                  context.read<CheckoutBloc>().add(
+                    const CheckoutRefreshRequested(),
+                  );
+                },
+                child: ListView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.all(spacing.md),
+                  children: [
+                    CheckoutSectionCard(
+                      title: l10n.checkoutItemsTitle,
+                      child: CheckoutItemsPreview(cart: cart),
                     ),
-                  ),
-                  SizedBox(height: spacing.md),
+                    SizedBox(height: spacing.md),
 
-                  CheckoutSectionCard(
-                    title: l10n.checkoutShippingTitle,
-                    child: CheckoutShippingMethods(
-                      quotes: state.shippingQuotes,
-                      selectedMethodId: state.selectedShippingMethodId,
-                      onSelect: (id) => context.read<CheckoutBloc>().add(
-                        CheckoutShippingSelected(id),
+                    CheckoutSectionCard(
+                      title: l10n.checkoutAddressTitle,
+                      child: CheckoutAddressForm(
+                        initial: state.address,
+                        onApply: (addr) {
+                          context.read<CheckoutBloc>().add(
+                            CheckoutAddressChanged(addr),
+                          );
+                        },
                       ),
-                      onRefresh: () => context.read<CheckoutBloc>().add(
-                        const CheckoutRefreshRequested(),
+                    ),
+                    SizedBox(height: spacing.md),
+
+                    CheckoutSectionCard(
+                      title: l10n.checkoutCouponTitle,
+                      child: CheckoutCouponField(
+                        initial: state.coupon,
+                        onChanged: (v) {
+                          context.read<CheckoutBloc>().add(
+                            CheckoutCouponChanged(v),
+                          );
+                        },
                       ),
                     ),
-                  ),
-                  SizedBox(height: spacing.md),
+                    SizedBox(height: spacing.md),
 
-                  // ✅ Payment section wrapped in card again (consistent UI)
-                  CheckoutSectionCard(
-                    title: l10n.checkoutPaymentTitle,
-                    child: CheckoutPaymentMethods(
-                      methods: state.paymentMethods,
-                      selectedIndex: state.selectedPaymentIndex,
-                      onSelectIndex: (i) => context.read<CheckoutBloc>().add(
-                        CheckoutPaymentSelected(i),
+                    CheckoutSectionCard(
+                      title: l10n.checkoutShippingTitle,
+                      child: CheckoutShippingMethods(
+                        quotes: state.shippingQuotes,
+                        selectedMethodId: state.selectedShippingMethodId,
+                        onSelect: (id) => context.read<CheckoutBloc>().add(
+                          CheckoutShippingSelected(id),
+                        ),
+                        onRefresh: () => context.read<CheckoutBloc>().add(
+                          const CheckoutRefreshRequested(),
+                        ),
                       ),
                     ),
-                  ),
-                  SizedBox(height: spacing.md),
+                    SizedBox(height: spacing.md),
 
-                  CheckoutSectionCard(
-                    title: l10n.checkoutSummaryTitle,
-                    child: CheckoutOrderSummary(
-                      cart: cart,
-                      selectedShipping: state.selectedQuote,
-                      tax: state.tax,
+                    CheckoutSectionCard(
+                      title: l10n.checkoutPaymentTitle,
+                      child: CheckoutPaymentMethods(
+                        methods: state.paymentMethods,
+                        selectedIndex: state.selectedPaymentIndex,
+                        onSelectIndex: (i) => context.read<CheckoutBloc>().add(
+                          CheckoutPaymentSelected(i),
+                        ),
+                      ),
                     ),
-                  ),
-                  SizedBox(height: spacing.xl),
-                ],
-              ),
-            );
-          },
+                    SizedBox(height: spacing.md),
+
+                    CheckoutSectionCard(
+                      title: l10n.checkoutSummaryTitle,
+                      child: CheckoutOrderSummary(
+                        cart: cart,
+                        selectedShipping: state.selectedQuote,
+                        tax: state.tax,
+                      ),
+                    ),
+                    SizedBox(height: spacing.xl),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
-
         bottomNavigationBar: BlocBuilder<CheckoutBloc, CheckoutState>(
           builder: (context, state) {
             final cart = state.cart;
@@ -232,48 +261,51 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               return const SizedBox.shrink();
             }
 
-            return CheckoutBottomBar(
-              cart: cart,
-              selectedShipping: state.selectedQuote,
-              tax: state.tax,
-              isPlacing: state.placing,
-             onPlaceOrder: () {
-                final s = context.read<CheckoutBloc>().state;
+            return SafeArea(
+              top: false,
+              child: CheckoutBottomBar(
+                cart: cart,
+                selectedShipping: state.selectedQuote,
+                tax: state.tax,
+                isPlacing: state.placing,
+                onPlaceOrder: () async {
+                  final s = context.read<CheckoutBloc>().state;
 
-                // ✅ stop spam taps
-                if (s.placing) return;
+                  if (s.placing) return;
 
-                if (s.selectedPaymentIndex == null) {
-                  AppToast.show(
-                    context,
-                    l10n.checkoutSelectPayment,
-                    isError: true,
+                  if (s.selectedPaymentIndex == null) {
+                    AppToast.show(
+                      context,
+                      l10n.checkoutSelectPayment,
+                      isError: true,
+                    );
+                    return;
+                  }
+
+                  if (s.shippingQuotes.isNotEmpty &&
+                      s.selectedShippingMethodId == null) {
+                    AppToast.show(
+                      context,
+                      l10n.checkoutSelectShipping,
+                      isError: true,
+                    );
+                    return;
+                  }
+
+                  final itemCount = s.cart?.items.length ?? 0;
+
+                  final ok = await _confirmCartWillBeCleared(itemCount);
+                  if (!ok) return;
+                  if (!mounted) return;
+
+                  final latest = context.read<CheckoutBloc>().state;
+                  if (latest.placing) return;
+
+                  context.read<CheckoutBloc>().add(
+                    const CheckoutPlaceOrderPressed(),
                   );
-                  return;
-                }
-
-                if (s.shippingQuotes.isNotEmpty &&
-                    s.selectedShippingMethodId == null) {
-                  AppToast.show(
-                    context,
-                    l10n.checkoutSelectShipping,
-                    isError: true,
-                  );
-                  return;
-                }
-
-                // ✅ extra: if Stripe selected but key missing
-                final idx = s.selectedPaymentIndex!;
-                final code = (idx >= 0 && idx < s.paymentMethods.length)
-                    ? s.paymentMethods[idx].code.trim().toUpperCase()
-                    : '';
-
-
-                context.read<CheckoutBloc>().add(
-                  const CheckoutPlaceOrderPressed(),
-                );
-              },
-
+                },
+              ),
             );
           },
         ),

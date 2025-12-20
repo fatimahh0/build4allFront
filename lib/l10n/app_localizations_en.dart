@@ -1712,4 +1712,73 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get home_footer_returns_desc => 'Simple return policy on eligible items.';
+
+  @override
+  String get ownerPaymentSettingsTitle => 'Payment Methods';
+
+  @override
+  String get ownerPaymentSettingsDesc => 'Enable and configure gateways for this project';
+
+  @override
+  String get ownerPaymentConfigure => 'Configure';
+
+  @override
+  String get ownerPaymentIncomplete => 'Incomplete';
+
+  @override
+  String get ownerPaymentConfigHint => 'Configure fields below. Required fields must be filled.';
+
+  @override
+  String get paymentMethodsTitle => 'Payment Methods';
+
+  @override
+  String get paymentSearchHint => 'Search…';
+
+  @override
+  String get paymentNoResults => 'No results';
+
+  @override
+  String get paymentConfigure => 'Configure';
+
+  @override
+  String get paymentCancel => 'Cancel';
+
+  @override
+  String get paymentSave => 'Save';
+
+  @override
+  String get paymentFillFields => 'Fill the fields below, then Save.';
+
+  @override
+  String get paymentSavedKeepHint => 'Saved (leave empty to keep)';
+
+  @override
+  String get paymentRequiredLabel => '• required';
+
+  @override
+  String get paymentIncomplete => 'Incomplete';
+
+  @override
+  String get adminPaymentConfigTitle => 'Payment Methods';
+
+  @override
+  String get checkoutConfirmDialogTitle => 'Confirm checkout';
+
+  @override
+  String checkoutConfirmCartCleared(int itemCount) {
+    String _temp0 = intl.Intl.pluralLogic(
+      itemCount,
+      locale: localeName,
+      other: 'After checkout, your cart will become empty ($itemCount items).',
+      one: 'After checkout, your cart will become empty (1 item).',
+      zero: 'After checkout, your cart will become empty.',
+    );
+    return '$_temp0 Do you want to continue?';
+  }
+
+  @override
+  String get commonYes => 'Yes';
+
+  @override
+  String get commonNo => 'No';
 }

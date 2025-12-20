@@ -14,7 +14,7 @@ import 'package:build4front/features/explore/presentation/screens/explore_screen
 
 // Admin
 import 'package:build4front/features/admin/product/presentation/widgets/admin_gate.dart';
-import 'package:build4front/features/admin/product/presentation/screens/admin_dashboard_screen.dart';
+import 'package:build4front/features/admin/dashboard/screen/admin_dashboard_screen.dart';
 import 'package:build4front/features/admin/product/presentation/screens/admin_products_list_screen.dart';
 
 // Checkout

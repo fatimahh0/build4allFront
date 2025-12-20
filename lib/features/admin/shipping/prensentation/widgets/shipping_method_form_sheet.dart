@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -100,6 +100,20 @@ class _ShippingMethodFormSheetState extends State<ShippingMethodFormSheet> {
     super.dispose();
   }
 
+  CountryModel? _findLebanon(List<CountryModel> countries) {
+    final byIso = countries.where(
+      (c) => c.iso2Code.trim().toUpperCase() == 'LB',
+    );
+    if (byIso.isNotEmpty) return byIso.first;
+
+    final byName = countries.where(
+      (c) => c.name.trim().toLowerCase().contains('lebanon'),
+    );
+    if (byName.isNotEmpty) return byName.first;
+
+    return null;
+  }
+
   Future<void> _bootstrapCatalog({
     int? initialCountryId,
     int? initialRegionId,
@@ -135,6 +149,9 @@ class _ShippingMethodFormSheetState extends State<ShippingMethodFormSheet> {
             .where((c) => c.id == initRegion!.countryId)
             .firstOrNull;
       }
+
+      // ✅ DEFAULT Lebanon on create
+      initCountry ??= _findLebanon(countries);
 
       setState(() {
         _countries = countries;
@@ -185,8 +202,6 @@ class _ShippingMethodFormSheetState extends State<ShippingMethodFormSheet> {
       'pricePerKg': perKg,
       'freeShippingThreshold': threshold,
       'enabled': _enabled,
-
-      // ✅ FIX: IDs directly (like old tax)
       if (_selectedCountry != null) 'countryId': _selectedCountry!.id,
       if (_selectedRegion != null) 'regionId': _selectedRegion!.id,
     };
@@ -262,177 +277,158 @@ class _ShippingMethodFormSheetState extends State<ShippingMethodFormSheet> {
                   );
                 },
               )
-            : Form(
-                key: _formKey,
-                child: LayoutBuilder(
-                  builder: (ctx, constraints) {
-                    return SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: math.min(0, constraints.maxHeight),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              style: text.titleMedium.copyWith(color: c.label),
-                            ),
-                            SizedBox(height: spacing.md),
-
-                            AppTextField(
-                              label: l.adminShippingNameLabel ?? 'Name',
-                              controller: _nameCtrl,
-                              validator: (v) => (v == null || v.trim().isEmpty)
-                                  ? (l.adminShippingNameRequired ??
-                                        'Name is required')
-                                  : null,
-                            ),
-                            SizedBox(height: spacing.sm),
-
-                            AppTextField(
-                              label: l.adminShippingDescLabel ?? 'Description',
-                              controller: _descCtrl,
-                            ),
-                            SizedBox(height: spacing.md),
-
-                            Text(
-                              l.adminShippingTypeLabel ?? 'Method type',
-                              style: text.titleMedium,
-                            ),
-                            SizedBox(height: spacing.xs),
-                            DropdownButtonFormField<ShippingMethodTypeUi>(
-                              value: _type,
-                              decoration: InputDecoration(
-                                hintText:
-                                    l.adminShippingTypeHint ?? 'Select type',
-                              ),
-                              items: ShippingMethodTypeUi.values
-                                  .map(
-                                    (e) => DropdownMenuItem(
-                                      value: e,
-                                      child: Text(e.label(l)),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: (v) => setState(() => _type = v),
-                            ),
-                            SizedBox(height: spacing.md),
-
-                            if (_showFlat) ...[
-                              AppTextField(
-                                label:
-                                    l.adminShippingFlatRateLabel ?? 'Flat rate',
-                                controller: _flatCtrl,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                      decimal: true,
-                                    ),
-                              ),
-                              SizedBox(height: spacing.sm),
-                            ],
-
-                            if (_showPerKg) ...[
-                              AppTextField(
-                                label:
-                                    l.adminShippingPerKgLabel ?? 'Price per kg',
-                                controller: _perKgCtrl,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                      decimal: true,
-                                    ),
-                              ),
-                              SizedBox(height: spacing.sm),
-                            ],
-
-                            if (_showThreshold) ...[
-                              AppTextField(
-                                label:
-                                    l.adminShippingThresholdLabel ??
-                                    'Free over threshold',
-                                controller: _thresholdCtrl,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                      decimal: true,
-                                    ),
-                              ),
-                              SizedBox(height: spacing.sm),
-                            ],
-
-                            SizedBox(height: spacing.md),
-
-                            Text(
-                              l.adminShippingCountryLabel ?? 'Country',
-                              style: text.titleMedium,
-                            ),
-                            SizedBox(height: spacing.xs),
-                            _SearchablePicker<CountryModel>(
-                              items: _countries,
-                              value: _selectedCountry,
-                              label: (x) => '${x.name} (${x.iso2Code})',
-                              hintText:
-                                  l.adminShippingCountryHint ??
-                                  'Select country',
-                              onChanged: _onCountryChanged,
-                            ),
-                            SizedBox(height: spacing.md),
-
-                            Text(
-                              l.adminShippingRegionLabel ?? 'Region',
-                              style: text.titleMedium,
-                            ),
-                            SizedBox(height: spacing.xs),
-                            _SearchablePicker<RegionModel>(
-                              items: _filteredRegions,
-                              value: _selectedRegion,
-                              enabled: _selectedCountry != null,
-                              label: (x) => x.name,
-                              hintText: _selectedCountry == null
-                                  ? (l.adminShippingSelectCountryFirst ??
-                                        'Select country first')
-                                  : (l.adminShippingRegionHint ??
-                                        'Select region (optional)'),
-                              onChanged: (r) =>
-                                  setState(() => _selectedRegion = r),
-                            ),
-                            SizedBox(height: spacing.md),
-
-                            SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(
-                                l.adminShippingEnabledLabel ?? 'Enabled',
-                              ),
-                              value: _enabled,
-                              onChanged: (v) => setState(() => _enabled = v),
-                            ),
-
-                            SizedBox(height: spacing.lg),
-
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: Text(l.adminCancel ?? 'Cancel'),
-                                  ),
-                                ),
-                                SizedBox(width: spacing.sm),
-                                Expanded(
-                                  child: PrimaryButton(
-                                    label: _isEdit
-                                        ? (l.adminUpdate ?? 'Update')
-                                        : (l.adminCreate ?? 'Create'),
-                                    onPressed: () => _submit(l),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+            : SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: text.titleMedium.copyWith(color: c.label),
                       ),
-                    );
-                  },
+                      SizedBox(height: spacing.md),
+
+                      AppTextField(
+                        label: l.adminShippingNameLabel ?? 'Name',
+                        controller: _nameCtrl,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? (l.adminShippingNameRequired ??
+                                  'Name is required')
+                            : null,
+                      ),
+                      SizedBox(height: spacing.sm),
+
+                      AppTextField(
+                        label: l.adminShippingDescLabel ?? 'Description',
+                        controller: _descCtrl,
+                      ),
+                      SizedBox(height: spacing.md),
+
+                      Text(
+                        l.adminShippingTypeLabel ?? 'Method type',
+                        style: text.titleMedium,
+                      ),
+                      SizedBox(height: spacing.xs),
+                      DropdownButtonFormField<ShippingMethodTypeUi>(
+                        value: _type,
+                        decoration: InputDecoration(
+                          hintText: l.adminShippingTypeHint ?? 'Select type',
+                        ),
+                        items: ShippingMethodTypeUi.values
+                            .map(
+                              (e) => DropdownMenuItem(
+                                value: e,
+                                child: Text(e.label(l)),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (v) => setState(() => _type = v),
+                      ),
+                      SizedBox(height: spacing.md),
+
+                      if (_showFlat) ...[
+                        AppTextField(
+                          label: l.adminShippingFlatRateLabel ?? 'Flat rate',
+                          controller: _flatCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                        ),
+                        SizedBox(height: spacing.sm),
+                      ],
+
+                      if (_showPerKg) ...[
+                        AppTextField(
+                          label: l.adminShippingPerKgLabel ?? 'Price per kg',
+                          controller: _perKgCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                        ),
+                        SizedBox(height: spacing.sm),
+                      ],
+
+                      if (_showThreshold) ...[
+                        AppTextField(
+                          label:
+                              l.adminShippingThresholdLabel ??
+                              'Free over threshold',
+                          controller: _thresholdCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                        ),
+                        SizedBox(height: spacing.sm),
+                      ],
+
+                      SizedBox(height: spacing.md),
+
+                      Text(
+                        l.adminShippingCountryLabel ?? 'Country',
+                        style: text.titleMedium,
+                      ),
+                      SizedBox(height: spacing.xs),
+                      _SearchablePicker<CountryModel>(
+                        items: _countries,
+                        value: _selectedCountry,
+                        label: (x) => '${x.name} (${x.iso2Code})',
+                        hintText:
+                            l.adminShippingCountryHint ?? 'Select country',
+                        onChanged: _onCountryChanged,
+                      ),
+                      SizedBox(height: spacing.md),
+
+                      Text(
+                        l.adminShippingRegionLabel ?? 'Region',
+                        style: text.titleMedium,
+                      ),
+                      SizedBox(height: spacing.xs),
+                      _SearchablePicker<RegionModel>(
+                        items: _filteredRegions,
+                        value: _selectedRegion,
+                        enabled: _selectedCountry != null,
+                        label: (x) => x.name,
+                        hintText: _selectedCountry == null
+                            ? (l.adminShippingSelectCountryFirst ??
+                                  'Select country first')
+                            : (l.adminShippingRegionHint ??
+                                  'Select region (optional)'),
+                        onChanged: (r) => setState(() => _selectedRegion = r),
+                      ),
+                      SizedBox(height: spacing.md),
+
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(l.adminShippingEnabledLabel ?? 'Enabled'),
+                        value: _enabled,
+                        onChanged: (v) => setState(() => _enabled = v),
+                      ),
+
+                      SizedBox(height: spacing.lg),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: Text(l.adminCancel ?? 'Cancel'),
+                            ),
+                          ),
+                          SizedBox(width: spacing.sm),
+                          Expanded(
+                            child: PrimaryButton(
+                              label: _isEdit
+                                  ? (l.adminUpdate ?? 'Update')
+                                  : (l.adminCreate ?? 'Create'),
+                              onPressed: () => _submit(l),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
       ),
@@ -489,10 +485,7 @@ class _ErrorState extends StatelessWidget {
   }
 }
 
-/* ================= Searchable Picker ================= */
-/* Reuse your Tax picker if you already have it.
-   If not, paste same SearchablePicker + PickerSheet you used هناك.
-*/
+/* ================= Searchable Picker (SAFE) ================= */
 
 class _SearchablePicker<T> extends StatelessWidget {
   final List<T> items;
@@ -527,6 +520,8 @@ class _SearchablePicker<T> extends StatelessWidget {
               final picked = await showModalBottomSheet<T>(
                 context: context,
                 isScrollControlled: true,
+                useSafeArea: true,
+                backgroundColor: Colors.transparent,
                 builder: (_) => _PickerSheet<T>(
                   items: items,
                   label: label,
@@ -588,87 +583,131 @@ class _PickerSheet<T> extends StatefulWidget {
 
 class _PickerSheetState<T> extends State<_PickerSheet<T>> {
   final _searchCtrl = TextEditingController();
+  Timer? _debounce;
   late List<T> _filtered;
 
   @override
   void initState() {
     super.initState();
     _filtered = widget.items;
-    _searchCtrl.addListener(_apply);
+    _searchCtrl.addListener(_onSearch);
   }
 
-  void _apply() {
-    final q = _searchCtrl.text.trim().toLowerCase();
-    setState(() {
-      _filtered = q.isEmpty
-          ? widget.items
-          : widget.items
-                .where((i) => widget.label(i).toLowerCase().contains(q))
-                .toList();
+  void _onSearch() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 80), () {
+      if (!mounted) return;
+      final q = _searchCtrl.text.trim().toLowerCase();
+      setState(() {
+        _filtered = q.isEmpty
+            ? widget.items
+            : widget.items
+                  .where((i) => widget.label(i).toLowerCase().contains(q))
+                  .toList();
+      });
     });
   }
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.watch<ThemeCubit>().state.tokens;
+    final l = AppLocalizations.of(context)!;
+
+    // ✅ read not watch (no rebuild storms with keyboard)
+    final tokens = context.read<ThemeCubit>().state.tokens;
     final c = tokens.colors;
     final spacing = tokens.spacing;
     final text = tokens.typography;
 
+    final radius = tokens.card.radius;
+    final height = MediaQuery.of(context).size.height * 0.88;
+
     return SafeArea(
-      child: Padding(
+      top: false,
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
         padding: EdgeInsets.only(
-          left: spacing.lg,
-          right: spacing.lg,
-          top: spacing.lg,
-          bottom: MediaQuery.of(context).viewInsets.bottom + spacing.lg,
+          bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              widget.title,
-              style: text.titleMedium.copyWith(color: c.label),
-            ),
-            SizedBox(height: spacing.md),
+        child: Container(
+          height: height,
+          decoration: BoxDecoration(
+            color: c.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(radius)),
+          ),
+          child: Column(
+            children: [
+              SizedBox(height: spacing.sm),
+              Container(
+                width: 44,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: c.border.withOpacity(0.35),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+              SizedBox(height: spacing.md),
 
-            AppSearchField(hintText: 'Search...', controller: _searchCtrl),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: spacing.lg),
+                child: Text(
+                  widget.title,
+                  style: text.titleMedium.copyWith(
+                    color: c.label,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
 
-            SizedBox(height: spacing.md),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 420),
-              child: _filtered.isEmpty
-                  ? Padding(
-                      padding: EdgeInsets.all(spacing.lg),
-                      child: Text(
-                        'No results',
-                        style: text.bodyMedium.copyWith(color: c.muted),
+              SizedBox(height: spacing.md),
+
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: spacing.lg),
+                child: AppSearchField(
+                  hintText: l.searchLabel,
+                  controller: _searchCtrl,
+                ),
+              ),
+
+              SizedBox(height: spacing.md),
+
+              Expanded(
+                child: _filtered.isEmpty
+                    ? Center(
+                        child: Text(
+                          l.noResultsLabel,
+                          style: text.bodyMedium.copyWith(color: c.muted),
+                        ),
+                      )
+                    : ListView.separated(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        itemCount: _filtered.length,
+                        separatorBuilder: (_, __) => Divider(
+                          color: c.border.withOpacity(0.12),
+                          height: 1,
+                        ),
+                        itemBuilder: (_, i) {
+                          final item = _filtered[i];
+                          return ListTile(
+                            title: Text(
+                              widget.label(item),
+                              style: text.bodyMedium,
+                            ),
+                            onTap: () => Navigator.pop(context, item),
+                          );
+                        },
                       ),
-                    )
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: _filtered.length,
-                      separatorBuilder: (_, __) =>
-                          Divider(color: c.border.withOpacity(0.15)),
-                      itemBuilder: (_, i) {
-                        final item = _filtered[i];
-                        return ListTile(
-                          title: Text(
-                            widget.label(item),
-                            style: text.bodyMedium,
-                          ),
-                          onTap: () => Navigator.pop(context, item),
-                        );
-                      },
-                    ),
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );

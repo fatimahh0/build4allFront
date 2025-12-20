@@ -8,7 +8,6 @@ import 'package:build4front/core/config/env.dart';
 
 import 'package:build4front/features/checkout/domain/repositories/checkout_repository.dart';
 
-
 import 'package:build4front/features/checkout/domain/usecases/get_checkout_cart.dart';
 import 'package:build4front/features/checkout/domain/usecases/get_payment_methods.dart';
 import 'package:build4front/features/checkout/domain/usecases/get_shipping_quotes.dart';
@@ -26,17 +25,14 @@ class CheckoutPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // fallback to Env if not passed
     final int ownerId =
         ownerProjectId ?? (int.tryParse(Env.ownerProjectLinkId) ?? 0);
 
     final int? currencyId = int.tryParse(Env.currencyId);
 
-    // Data layer
     final CheckoutApiService api = CheckoutApiService();
     final CheckoutRepository repo = CheckoutRepositoryImpl(api);
 
-    // Domain/usecases
     final getCart = GetCheckoutCart(repo);
     final getPms = GetPaymentMethods(repo);
     final getQuotes = GetShippingQuotes(repo);

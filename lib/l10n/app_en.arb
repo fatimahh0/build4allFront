@@ -769,7 +769,34 @@
   "home_footer_free_delivery_desc": "Available on selected orders and areas.",
 
   "home_footer_returns_title": "Easy returns",
-  "home_footer_returns_desc": "Simple return policy on eligible items."
+  "home_footer_returns_desc": "Simple return policy on eligible items.",
+    "ownerPaymentSettingsTitle": "Payment Methods",
+  "ownerPaymentSettingsDesc": "Enable and configure gateways for this project",
+  "ownerPaymentConfigure": "Configure",
+  "ownerPaymentIncomplete": "Incomplete",
+  "ownerPaymentConfigHint": "Configure fields below. Required fields must be filled.",
+   "paymentMethodsTitle": "Payment Methods",
+  "paymentSearchHint": "Search…",
+  "paymentNoResults": "No results",
+  "paymentConfigure": "Configure",
+  "paymentCancel": "Cancel",
+  "paymentSave": "Save",
+  "paymentFillFields": "Fill the fields below, then Save.",
+  "paymentSavedKeepHint": "Saved (leave empty to keep)",
+  "paymentRequiredLabel": "• required",
+  "paymentIncomplete": "Incomplete",
+  "adminPaymentConfigTitle": "Payment Methods",
+   "checkoutConfirmDialogTitle": "Confirm checkout",
+  "checkoutConfirmCartCleared": "{itemCount, plural, =0{After checkout, your cart will become empty.} =1{After checkout, your cart will become empty (1 item).} other{After checkout, your cart will become empty ({itemCount} items).}} Do you want to continue?",
+  "commonYes": "Yes",
+  "commonNo": "No",
+
+  "@checkoutConfirmCartCleared": {
+    "description": "Warning shown before placing order: cart will be cleared after checkout.",
+    "placeholders": {
+      "itemCount": { "type": "int" }
+    }
+  }
 }
 
 

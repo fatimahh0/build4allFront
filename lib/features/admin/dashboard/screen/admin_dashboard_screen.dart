@@ -1,6 +1,7 @@
 // lib/features/admin/product/presentation/screens/admin_dashboard_screen.dart
 
 import 'package:build4front/features/admin/home_banner/presentation/screens/admin_home_banners_screen.dart';
+import 'package:build4front/features/admin/payment_config/presentation/screens/owner_payment_config_screen.dart';
 import 'package:build4front/features/admin/shipping/prensentation/screens/admin_shipping_methods_screen.dart';
 import 'package:build4front/features/admin/tax/presentation/screens/admin_tax_rules_screen.dart';
 import 'package:flutter/material.dart';
@@ -138,15 +139,29 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   },
                 ),
 
+              // PAYMENT CONFIG TILE
                 _AdminTile(
-                  icon: Icons.settings_outlined,
-                  title: l10n.adminSettings,
+                  icon: Icons.credit_card_outlined,
+                  title: l10n.adminPaymentConfigTitle,
                   colors: colors,
                   card: card,
-                  onTap: () {},
+                  onTap: () {
+                   final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => OwnerPaymentConfigScreen(
+                          ownerProjectId: ownerId,
+                          //  use admin token store (same as coupons)
+                          getToken: () => _store.getToken(),
+                        ),
+                      ),
+                    );
+                  },
                 ),
 
-                // ✅ TAXES TILE
+
+                // TAXES TILE
                 _AdminTile(
                   icon: Icons.receipt_long_outlined,
                   title: l10n.adminTaxesTitle,
@@ -163,7 +178,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   },
                 ),
 
-                // ✅ HOME BANNERS TILE
+                //  HOME BANNERS TILE
                 _AdminTile(
                   icon: Icons.view_carousel_outlined,
                   title: l10n.adminHomeBannersTitle,
@@ -180,7 +195,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   },
                 ),
 
-                // ✅ NEW: COUPONS TILE (with BlocProvider)
+                //  NEW: COUPONS TILE (with BlocProvider)
                 _AdminTile(
                   icon: Icons.card_giftcard_outlined,
                   title: l10n.adminCouponsTitle,
@@ -191,7 +206,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     final repo = CouponRepositoryImpl(
                       api: api,
                       getToken: () =>
-                          _store.getToken(), // ✅ THIS is the missing line
+                          _store.getToken(), //  THIS is the missing line
                     );
 
                     final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;

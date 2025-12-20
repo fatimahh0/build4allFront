@@ -105,6 +105,40 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
     );
   }
 
+  // ✅ PRO bottom sheet wrapper (no overflow when keyboard opens)
+  Future<T?> _showProSheet<T>(Widget sheet) async {
+    final tokens = context.read<ThemeCubit>().state.tokens;
+    final radius = tokens.card.radius;
+    final surface = tokens.colors.surface;
+
+    return showModalBottomSheet<T>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(radius)),
+      ),
+      builder: (ctx) {
+        final bottomInset = MediaQuery.of(ctx).viewInsets.bottom;
+        final h = MediaQuery.of(ctx).size.height;
+
+        return AnimatedPadding(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: EdgeInsets.only(bottom: bottomInset),
+          child: SizedBox(
+            height: h * 0.90,
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              child: sheet,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _openCreateSheet() async {
     if (_loadingToken) return;
 
@@ -113,11 +147,8 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
       return;
     }
 
-    final body = await showModalBottomSheet<Map<String, dynamic>>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) =>
-          ShippingMethodFormSheet(ownerProjectId: widget.ownerProjectId),
+    final body = await _showProSheet<Map<String, dynamic>>(
+      ShippingMethodFormSheet(ownerProjectId: widget.ownerProjectId),
     );
 
     if (body == null) return;
@@ -142,10 +173,8 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
       return;
     }
 
-    final body = await showModalBottomSheet<Map<String, dynamic>>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => ShippingMethodFormSheet(
+    final body = await _showProSheet<Map<String, dynamic>>(
+      ShippingMethodFormSheet(
         ownerProjectId: widget.ownerProjectId,
         initial: method,
       ),
@@ -293,6 +322,7 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
                 return RefreshIndicator(
                   onRefresh: _refresh,
                   child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: EdgeInsets.all(spacing.lg),
                     children: [
                       AdminShippingFiltersBar(
@@ -300,7 +330,6 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
                         onChangedShowAll: (v) => setState(() => _showAll = v),
                       ),
                       SizedBox(height: spacing.md),
-
                       if (filtered.isEmpty)
                         AdminShippingEmptyState(onAdd: _openCreateSheet)
                       else

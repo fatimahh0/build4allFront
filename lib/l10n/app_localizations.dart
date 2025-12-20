@@ -3420,6 +3420,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Simple return policy on eligible items.'**
   String get home_footer_returns_desc;
+
+  /// No description provided for @ownerPaymentSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment Methods'**
+  String get ownerPaymentSettingsTitle;
+
+  /// No description provided for @ownerPaymentSettingsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable and configure gateways for this project'**
+  String get ownerPaymentSettingsDesc;
+
+  /// No description provided for @ownerPaymentConfigure.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure'**
+  String get ownerPaymentConfigure;
+
+  /// No description provided for @ownerPaymentIncomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Incomplete'**
+  String get ownerPaymentIncomplete;
+
+  /// No description provided for @ownerPaymentConfigHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure fields below. Required fields must be filled.'**
+  String get ownerPaymentConfigHint;
+
+  /// No description provided for @paymentMethodsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment Methods'**
+  String get paymentMethodsTitle;
+
+  /// No description provided for @paymentSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search…'**
+  String get paymentSearchHint;
+
+  /// No description provided for @paymentNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No results'**
+  String get paymentNoResults;
+
+  /// No description provided for @paymentConfigure.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure'**
+  String get paymentConfigure;
+
+  /// No description provided for @paymentCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get paymentCancel;
+
+  /// No description provided for @paymentSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get paymentSave;
+
+  /// No description provided for @paymentFillFields.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill the fields below, then Save.'**
+  String get paymentFillFields;
+
+  /// No description provided for @paymentSavedKeepHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved (leave empty to keep)'**
+  String get paymentSavedKeepHint;
+
+  /// No description provided for @paymentRequiredLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'• required'**
+  String get paymentRequiredLabel;
+
+  /// No description provided for @paymentIncomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Incomplete'**
+  String get paymentIncomplete;
+
+  /// No description provided for @adminPaymentConfigTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment Methods'**
+  String get adminPaymentConfigTitle;
+
+  /// No description provided for @checkoutConfirmDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm checkout'**
+  String get checkoutConfirmDialogTitle;
+
+  /// Warning shown before placing order: cart will be cleared after checkout.
+  ///
+  /// In en, this message translates to:
+  /// **'{itemCount, plural, =0{After checkout, your cart will become empty.} =1{After checkout, your cart will become empty (1 item).} other{After checkout, your cart will become empty ({itemCount} items).}} Do you want to continue?'**
+  String checkoutConfirmCartCleared(int itemCount);
+
+  /// No description provided for @commonYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get commonYes;
+
+  /// No description provided for @commonNo.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get commonNo;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

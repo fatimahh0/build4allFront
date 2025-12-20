@@ -88,6 +88,20 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
     );
   }
 
+  // ✅ helper: find Lebanon from API list
+  CountryModel? _findLebanon(List<CountryModel> countries) {
+    // Prefer ISO2 "LB", fallback by name match
+    return countries
+            .where((c) => (c.iso2Code).toUpperCase() == 'LB')
+            .firstOrNull ??
+        countries
+            .where((c) => c.name.toLowerCase().trim() == 'lebanon')
+            .firstOrNull ??
+        countries
+            .where((c) => c.name.toLowerCase().contains('lebanon'))
+            .firstOrNull;
+  }
+
   Future<void> _bootstrapCatalog({
     int? initialCountryId,
     int? initialRegionId,
@@ -112,6 +126,7 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
       CountryModel? initCountry;
       RegionModel? initRegion;
 
+      // 1) try saved IDs
       if (initialCountryId != null) {
         initCountry = countries
             .where((c) => c.id == initialCountryId)
@@ -124,6 +139,16 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
         initCountry = countries
             .where((c) => c.id == initRegion!.countryId)
             .firstOrNull;
+      }
+
+      // ✅ 2) default to Lebanon if still null
+      initCountry ??= _findLebanon(countries);
+
+      // ✅ 3) if region doesn't match selected country, reset it
+      if (initRegion != null && initCountry != null) {
+        if (initRegion.countryId != initCountry.id) {
+          initRegion = null;
+        }
       }
 
       setState(() {
@@ -296,6 +321,13 @@ class _SearchablePicker<T> extends StatelessWidget {
               final picked = await showModalBottomSheet<T>(
                 context: context,
                 isScrollControlled: true,
+                useSafeArea: true,
+                backgroundColor: Theme.of(context).colorScheme.surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(tokens.card.radius),
+                  ),
+                ),
                 builder: (_) => _PickerSheet<T>(
                   items: items,
                   label: label,
@@ -388,58 +420,87 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
     final spacing = tokens.spacing;
     final text = tokens.typography;
 
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.only(
-          left: spacing.lg,
-          right: spacing.lg,
-          top: spacing.lg,
-          bottom: MediaQuery.of(context).viewInsets.bottom + spacing.lg,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              widget.title,
-              style: text.titleMedium.copyWith(color: c.label),
-            ),
-            SizedBox(height: spacing.md),
+    final h = MediaQuery.of(context).size.height;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
-            AppSearchField(
-              hintText: l10n.searchLabel,
-              controller: _searchCtrl,
-            ),
-
-            SizedBox(height: spacing.md),
-
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 420),
-              child: _filtered.isEmpty
-                  ? Padding(
-                      padding: EdgeInsets.all(spacing.lg),
-                      child: Text(
-                        l10n.noResultsLabel,
-                        style: text.bodyMedium.copyWith(color: c.muted),
+    // ✅ KEY FIX: give the sheet a real height + Expanded list
+    // No fixed "420" anymore => no overflow when keyboard opens.
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: SizedBox(
+        height: h * 0.78,
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: spacing.lg,
+            right: spacing.lg,
+            top: spacing.lg,
+            bottom: spacing.lg,
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      style: text.titleMedium.copyWith(
+                        color: c.label,
+                        fontWeight: FontWeight.w800,
                       ),
-                    )
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: _filtered.length,
-                      separatorBuilder: (_, __) =>
-                          Divider(color: c.border.withOpacity(0.15)),
-                      itemBuilder: (_, i) {
-                        final item = _filtered[i];
-                        return ListTile(
-                          title: Text(
-                            widget.label(item),
-                            style: text.bodyMedium,
-                          ),
-                          onTap: () => Navigator.pop(context, item),
-                        );
-                      },
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-            ),
-          ],
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: spacing.md),
+
+              AppSearchField(
+                hintText: l10n.searchLabel,
+                controller: _searchCtrl,
+              ),
+
+              SizedBox(height: spacing.md),
+
+              Expanded(
+                child: _filtered.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(spacing.lg),
+                          child: Text(
+                            l10n.noResultsLabel,
+                            style: text.bodyMedium.copyWith(color: c.muted),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      )
+                    : ListView.separated(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        itemCount: _filtered.length,
+                        separatorBuilder: (_, __) =>
+                            Divider(color: c.border.withOpacity(0.15)),
+                        itemBuilder: (_, i) {
+                          final item = _filtered[i];
+                          return ListTile(
+                            title: Text(
+                              widget.label(item),
+                              style: text.bodyMedium,
+                            ),
+                            onTap: () => Navigator.pop(context, item),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );
