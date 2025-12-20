@@ -1,4 +1,3 @@
-// lib/common/widgets/ItemCard.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -21,6 +20,9 @@ class ItemCard extends StatelessWidget {
   final String? ctaLabel;
   final VoidCallback? onCtaPressed;
 
+  // ✅ NEW: allow product images to be "contain"
+  final BoxFit imageFit;
+
   const ItemCard({
     super.key,
     required this.title,
@@ -34,6 +36,7 @@ class ItemCard extends StatelessWidget {
     this.onTap,
     this.ctaLabel,
     this.onCtaPressed,
+    this.imageFit = BoxFit.cover,
   });
 
   @override
@@ -57,34 +60,38 @@ class ItemCard extends StatelessWidget {
     Widget card = LayoutBuilder(
       builder: (context, constraints) {
         final maxW = constraints.maxWidth;
+
         final boundedH =
             constraints.hasBoundedHeight && constraints.maxHeight.isFinite;
         final maxH = boundedH ? constraints.maxHeight : 0.0;
 
-        final bool compact = (maxW <= 230) || (boundedH && maxH <= 320);
-        final bool veryCompact = (maxW <= 210) || (boundedH && maxH <= 290);
+        final bool compact = (maxW <= 230) || (boundedH && maxH <= 300);
+        final bool veryCompact = (maxW <= 210) || (boundedH && maxH <= 270);
 
         final int subtitleLines = veryCompact ? 1 : (compact ? 1 : 2);
 
-        // ✅ Instead of hiding info, we shrink image + tighten paddings
-        final double minImgH = veryCompact ? 74.0 : (compact ? 86.0 : 105.0);
-        final double imgH = boundedH
-            ? (maxH * (veryCompact ? 0.32 : (compact ? 0.37 : 0.44))).clamp(
-                minImgH,
-                cardTokens.imageHeight.toDouble(),
-              )
+        final double minImgH = veryCompact ? 86.0 : (compact ? 98.0 : 120.0);
+
+        final double targetImgH = boundedH
+            ? maxH * (veryCompact ? 0.44 : (compact ? 0.48 : 0.52))
             : cardTokens.imageHeight.toDouble();
 
-        final double contentPad = (veryCompact
-            ? cardTokens.padding * 0.70
-            : (compact ? cardTokens.padding * 0.78 : cardTokens.padding));
+        final double maxImgH = boundedH ? maxH * 0.58 : double.infinity;
 
-        final double ctaH = veryCompact ? 34 : (compact ? 36 : 38);
+        final double imgH = boundedH
+            ? targetImgH.clamp(minImgH, maxImgH)
+            : cardTokens.imageHeight.toDouble();
+
+        final double contentPad = veryCompact
+            ? cardTokens.padding * 0.72
+            : (compact ? cardTokens.padding * 0.82 : cardTokens.padding);
+
+        final double ctaH = veryCompact ? 34 : (compact ? 36 : 40);
 
         final double gapXS = veryCompact ? (spacing.xs * 0.6) : spacing.xs;
         final double gapSM = veryCompact
-            ? (spacing.sm * 0.6)
-            : (compact ? (spacing.sm * 0.8) : spacing.sm);
+            ? (spacing.sm * 0.65)
+            : (compact ? (spacing.sm * 0.85) : spacing.sm);
 
         return Material(
           color: Colors.transparent,
@@ -124,20 +131,23 @@ class ItemCard extends StatelessWidget {
                         children: [
                           if (resolvedImageUrl != null &&
                               resolvedImageUrl!.isNotEmpty)
-                            Image.network(
-                              resolvedImageUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) {
-                                return Container(
-                                  color: c.surface,
-                                  alignment: Alignment.center,
-                                  child: Icon(
-                                    Icons.broken_image_outlined,
-                                    color: c.error,
-                                    size: 30,
-                                  ),
-                                );
-                              },
+                            Container(
+                              color: c.surface,
+                              child: Image.network(
+                                resolvedImageUrl!,
+                                fit: imageFit, // ✅ key
+                                errorBuilder: (_, __, ___) {
+                                  return Container(
+                                    color: c.surface,
+                                    alignment: Alignment.center,
+                                    child: Icon(
+                                      Icons.broken_image_outlined,
+                                      color: c.error,
+                                      size: 30,
+                                    ),
+                                  );
+                                },
+                              ),
                             )
                           else
                             Container(

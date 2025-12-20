@@ -367,13 +367,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
     return result;
   }
-void _openDetails(BuildContext context, int itemId) {
-  Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (_) => ItemDetailsPage(itemId: itemId),
-    ),
-  );
-  
+
+  void _openDetails(BuildContext context, int itemId) {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => ItemDetailsPage(itemId: itemId)));
   }
 
   String _ctaLabelFor(BuildContext context, ItemSummary item) {
@@ -685,9 +683,13 @@ class _ExploreItemsGrid extends StatelessWidget {
           itemBuilder: (context, index) {
             final item = items[index];
             final pricing = pricingFor(item);
+            final fit = item.kind == ItemKind.product
+                ? BoxFit.contain
+                : BoxFit.cover;
 
             return ItemCard(
-              width: double.infinity, // ✅ important for grid
+              width: double.infinity,
+              imageFit: BoxFit.cover,
               title: item.title,
               subtitle: subtitleFor(item),
               imageUrl: item.imageUrl,
