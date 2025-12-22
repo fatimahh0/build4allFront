@@ -1,5 +1,9 @@
 // lib/app/app.dart
 
+import 'package:build4front/features/admin/orders_admin/data/repository/admin_orders_repository_impl.dart';
+import 'package:build4front/features/admin/orders_admin/data/services/admin_orders_api_service.dart';
+import 'package:build4front/features/admin/orders_admin/domain/repositories/admin_orders_repository.dart';
+import 'package:build4front/features/auth/data/services/admin_token_store.dart';
 import 'package:build4front/features/notifications/data/repositories/notifications_repository_impl.dart';
 import 'package:build4front/features/notifications/data/services/notifications_api_service.dart';
 import 'package:build4front/features/notifications/domain/repositories/notifications_repository.dart';
@@ -118,6 +122,14 @@ class Build4AllFrontApp extends StatelessWidget {
     final notificationsApi = NotificationsApiService();
     final notificationsRepo = NotificationsRepositoryImpl(notificationsApi);
 
+// ---------- ADMIN ORDERS LAYER ----------
+    final adminTokenStore = AdminTokenStore();
+
+    final adminOrdersApi = AdminOrdersApiService(
+      getToken: () => adminTokenStore.getToken(),
+    );
+
+    final adminOrdersRepo = AdminOrdersRepositoryImpl(api: adminOrdersApi);
 
 
     return MultiRepositoryProvider(
@@ -161,6 +173,9 @@ class Build4AllFrontApp extends StatelessWidget {
         RepositoryProvider<NotificationsRepository>.value(
           value: notificationsRepo,
         ),
+RepositoryProvider<AdminTokenStore>.value(value: adminTokenStore),
+        RepositoryProvider<AdminOrdersApiService>.value(value: adminOrdersApi),
+        RepositoryProvider<AdminOrdersRepository>.value(value: adminOrdersRepo),
 
 
       ],

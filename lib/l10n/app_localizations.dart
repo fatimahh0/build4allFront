@@ -3540,6 +3540,288 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No'**
   String get commonNo;
+
+  /// No description provided for @adminOrdersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Orders'**
+  String get adminOrdersTitle;
+
+  /// No description provided for @adminDashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Dashboard'**
+  String get adminDashboard;
+
+  /// No description provided for @adminAllTime.
+  ///
+  /// In en, this message translates to:
+  /// **'All time'**
+  String get adminAllTime;
+
+  /// No description provided for @adminLast7Days.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 7 days'**
+  String get adminLast7Days;
+
+  /// No description provided for @adminLast30Days.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 30 days'**
+  String get adminLast30Days;
+
+  /// No description provided for @adminClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get adminClear;
+
+  /// No description provided for @adminKpiOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'Orders'**
+  String get adminKpiOrders;
+
+  /// No description provided for @adminKpiGrossSales.
+  ///
+  /// In en, this message translates to:
+  /// **'Gross Sales'**
+  String get adminKpiGrossSales;
+
+  /// No description provided for @adminKpiPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid'**
+  String get adminKpiPaid;
+
+  /// No description provided for @adminKpiOutstanding.
+  ///
+  /// In en, this message translates to:
+  /// **'Outstanding'**
+  String get adminKpiOutstanding;
+
+  /// No description provided for @adminKpiAvgOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Avg Order'**
+  String get adminKpiAvgOrder;
+
+  /// No description provided for @adminFullyPaidPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'Fully paid: {percent}%'**
+  String adminFullyPaidPercent(Object percent);
+
+  /// No description provided for @adminPaidRevenueLast7Days.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid revenue (last 7 days)'**
+  String get adminPaidRevenueLast7Days;
+
+  /// No description provided for @adminNoOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'No orders'**
+  String get adminNoOrders;
+
+  /// No description provided for @adminNoOrdersHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Try changing the status filter, date range, or pull to refresh.'**
+  String get adminNoOrdersHint;
+
+  /// No description provided for @adminFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get adminFilterAll;
+
+  /// No description provided for @adminOrderDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Order #{id}'**
+  String adminOrderDetailsTitle(Object id);
+
+  /// No description provided for @adminOrderFailedToLoad.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load order.'**
+  String get adminOrderFailedToLoad;
+
+  /// No description provided for @adminPaymentSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment Summary'**
+  String get adminPaymentSummary;
+
+  /// No description provided for @adminOrderInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Order Info'**
+  String get adminOrderInfo;
+
+  /// No description provided for @adminStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get adminStatus;
+
+  /// No description provided for @adminOrderTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Order Total'**
+  String get adminOrderTotal;
+
+  /// No description provided for @adminPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid'**
+  String get adminPaid;
+
+  /// No description provided for @adminRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining'**
+  String get adminRemaining;
+
+  /// No description provided for @adminPaymentMethod.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment Method'**
+  String get adminPaymentMethod;
+
+  /// No description provided for @adminCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get adminCurrency;
+
+  /// No description provided for @adminShippingCity.
+  ///
+  /// In en, this message translates to:
+  /// **'Shipping City'**
+  String get adminShippingCity;
+
+  /// No description provided for @adminShippingMethod.
+  ///
+  /// In en, this message translates to:
+  /// **'Shipping Method'**
+  String get adminShippingMethod;
+
+  /// No description provided for @adminCoupon.
+  ///
+  /// In en, this message translates to:
+  /// **'Coupon'**
+  String get adminCoupon;
+
+  /// No description provided for @adminItemsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Items ({count})'**
+  String adminItemsCount(Object count);
+
+  /// No description provided for @adminCustomer.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer'**
+  String get adminCustomer;
+
+  /// No description provided for @adminQtyPriceLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Qty: {qty}  •  Price: {price}'**
+  String adminQtyPriceLine(Object qty, Object price);
+
+  /// No description provided for @adminOrderCardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Order #{id}'**
+  String adminOrderCardTitle(Object id);
+
+  /// No description provided for @adminItemsShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} items'**
+  String adminItemsShort(Object count);
+
+  /// No description provided for @adminPaidShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid: {amount}'**
+  String adminPaidShort(Object amount);
+
+  /// No description provided for @adminRemainingShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining: {amount}'**
+  String adminRemainingShort(Object amount);
+
+  /// No description provided for @adminFullyPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Fully paid'**
+  String get adminFullyPaid;
+
+  /// No description provided for @adminOrderStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get adminOrderStatusPending;
+
+  /// No description provided for @adminOrderStatusCancelRequested.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel requested'**
+  String get adminOrderStatusCancelRequested;
+
+  /// No description provided for @adminOrderStatusCanceled.
+  ///
+  /// In en, this message translates to:
+  /// **'Canceled'**
+  String get adminOrderStatusCanceled;
+
+  /// No description provided for @adminOrderStatusRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected'**
+  String get adminOrderStatusRejected;
+
+  /// No description provided for @adminOrderStatusRefunded.
+  ///
+  /// In en, this message translates to:
+  /// **'Refunded'**
+  String get adminOrderStatusRefunded;
+
+  /// No description provided for @adminOrderStatusCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get adminOrderStatusCompleted;
+
+  /// No description provided for @adminMarkCashPaidBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to mark this order as paid in cash?'**
+  String get adminMarkCashPaidBody;
+
+  /// No description provided for @adminMarkCashPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as paid in cash'**
+  String get adminMarkCashPaid;
+
+  /// No description provided for @adminMarkCashPaidTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark order as paid'**
+  String get adminMarkCashPaidTitle;
+
+  /// No description provided for @adminMarkCashPaidButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as paid'**
+  String get adminMarkCashPaidButton;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

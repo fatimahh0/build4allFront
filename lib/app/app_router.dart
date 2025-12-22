@@ -1,5 +1,6 @@
 // lib/app/app_router.dart
 
+import 'package:build4front/features/auth/data/services/admin_token_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -17,6 +18,9 @@ import 'package:build4front/features/admin/product/presentation/widgets/admin_ga
 import 'package:build4front/features/admin/dashboard/screen/admin_dashboard_screen.dart';
 import 'package:build4front/features/admin/product/presentation/screens/admin_products_list_screen.dart';
 
+// ✅ Orders Admin Feature
+import 'package:build4front/features/admin/orders_admin/orders_admin_feature.dart';
+
 // Checkout
 import 'package:build4front/features/checkout/presentation/screens/checkout_screen.dart';
 import 'package:build4front/features/checkout/presentation/bloc/checkout_bloc.dart';
@@ -28,7 +32,7 @@ import 'package:build4front/features/checkout/domain/usecases/get_shipping_quote
 import 'package:build4front/features/checkout/domain/usecases/preview_tax.dart';
 import 'package:build4front/features/checkout/domain/usecases/place_order.dart';
 
-// Orders
+// Orders (USER)
 import 'package:build4front/features/orders/orders_feature.dart';
 
 // ✅ Notifications (USER)
@@ -43,7 +47,6 @@ import 'package:build4front/features/notifications/domain/usecases/mark_notifica
 import 'package:build4front/features/notifications/domain/usecases/delete_notification.dart';
 
 class AppRouter {
-  // ✅ IMPORTANT: start from AuthGate so tokens can auto-route
   static const String initialRoute = '/';
 
   static const String startup = '/';
@@ -52,13 +55,13 @@ class AppRouter {
 
   static const String admin = '/admin';
   static const String adminProducts = '/admin/products';
+  static const String adminOrders = '/admin/orders';
 
   static const String explore = '/explore';
   static const String checkout = '/checkout';
 
   static const String myOrders = '/my-orders';
 
-  // ✅ NEW
   static const String notifications = '/notifications';
 
   static Route<dynamic> onGenerateRoute(
@@ -106,6 +109,7 @@ class AppRouter {
           );
         }
 
+      // ✅ Admin Dashboard
       case admin:
         return MaterialPageRoute(
           builder: (_) =>
@@ -113,9 +117,11 @@ class AppRouter {
           settings: settings,
         );
 
+      // ✅ Admin Products
       case adminProducts:
         {
           final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+
           return MaterialPageRoute(
             builder: (_) => AdminGate(
               builder: (_) => AdminProductsListScreen(ownerProjectId: ownerId),
@@ -124,12 +130,27 @@ class AppRouter {
           );
         }
 
+      // ✅ OWNER Orders Admin (NO SUPER ADMIN in your app)
+      case adminOrders:
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => AdminGate(
+            builder: (ctx) {
+              final store = ctx.read<AdminTokenStore>();
+
+              return OrdersAdminFeature(getToken: () => store.getToken());
+            },
+          ),
+        );
+
+      // ✅ USER Orders
       case myOrders:
         return MaterialPageRoute(
           settings: settings,
           builder: (_) => OrdersFeature(appConfig: appConfig),
         );
 
+      // ✅ Checkout
       case checkout:
         {
           final args = settings.arguments as Map<String, dynamic>?;
@@ -145,7 +166,6 @@ class AppRouter {
           return MaterialPageRoute(
             settings: settings,
             builder: (context) {
-              // ✅ use the repo from MultiRepositoryProvider (DON’T create new one here)
               final repo = context.read<CheckoutRepository>();
 
               return BlocProvider(
@@ -167,7 +187,7 @@ class AppRouter {
           );
         }
 
-      // ✅ NEW: Notifications screen (USER)
+      // ✅ Notifications
       case notifications:
         return MaterialPageRoute(
           settings: settings,
@@ -187,7 +207,6 @@ class AppRouter {
         );
 
       default:
-        // if route unknown → go login
         return MaterialPageRoute(
           builder: (_) => UserLoginScreen(appConfig: appConfig),
           settings: settings,

@@ -7,12 +7,12 @@ class OrdersApiService {
   final AuthTokenStore tokenStore;
 
   OrdersApiService({Dio? dio, required this.tokenStore})
-    : _dio = dio ?? g.dio(); 
+    : _dio = dio ?? g.dio();
+
   Future<List<dynamic>> getMyOrdersRaw() async {
     final token = await tokenStore.getToken();
 
     if (token == null || token.trim().isEmpty) {
-      // no token -> act like not logged in
       throw DioException(
         requestOptions: RequestOptions(path: '/api/orders/myorders'),
         response: Response(
@@ -32,7 +32,22 @@ class OrdersApiService {
     );
 
     final data = res.data;
+
+    // ✅ current backend: returns List مباشرة
     if (data is List) return data;
+
+    // ✅ future-proof: sometimes backend wraps: { "orders": [ ... ] }
+    if (data is Map) {
+      final orders = data['orders'];
+      if (orders is List) return orders;
+
+      // fallback: { "data": { "orders": [...] } }
+      final inner = data['data'];
+      if (inner is Map && inner['orders'] is List) {
+        return inner['orders'] as List;
+      }
+    }
+
     return const [];
   }
 }

@@ -123,7 +123,8 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     final cfg = pm.configMap;
     if (cfg == null) return null;
 
-    final raw = cfg['stripeAccountId'] ??
+    final raw =
+        cfg['stripeAccountId'] ??
         cfg['stripe_account_id'] ??
         cfg['accountId'] ??
         cfg['connectedAccountId'] ??
@@ -183,7 +184,10 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
   // Events
   // ---------------------------------------------------------------------------
 
-  Future<void> _onStarted(CheckoutStarted e, Emitter<CheckoutState> emit) async {
+  Future<void> _onStarted(
+    CheckoutStarted e,
+    Emitter<CheckoutState> emit,
+  ) async {
     emit(
       state.copyWith(
         loading: true,
@@ -202,8 +206,8 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
       final prevIndex = state.selectedPaymentIndex;
       final nextIndex =
           (prevIndex != null && prevIndex >= 0 && prevIndex < pms.length)
-              ? prevIndex
-              : null;
+          ? prevIndex
+          : null;
 
       emit(
         state.copyWith(
@@ -217,7 +221,10 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
 
       // Load shipping/tax if cart is not empty
       if (!cart.isEmpty) {
-        await _loadQuotesAndTax(cart, preferMethodId: state.selectedShippingMethodId);
+        await _loadQuotesAndTax(
+          cart,
+          preferMethodId: state.selectedShippingMethodId,
+        );
       }
     } catch (err) {
       emit(state.copyWith(loading: false, error: err.toString()));
@@ -234,7 +241,10 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     if (cart == null || cart.isEmpty) return;
 
     try {
-      await _loadQuotesAndTax(cart, preferMethodId: state.selectedShippingMethodId);
+      await _loadQuotesAndTax(
+        cart,
+        preferMethodId: state.selectedShippingMethodId,
+      );
     } catch (err) {
       emit(state.copyWith(error: err.toString()));
     }
@@ -244,7 +254,9 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     CheckoutShippingSelected e,
     Emitter<CheckoutState> emit,
   ) async {
-    emit(state.copyWith(selectedShippingMethodId: e.methodId, clearError: true));
+    emit(
+      state.copyWith(selectedShippingMethodId: e.methodId, clearError: true),
+    );
 
     final cart = state.cart;
     if (cart == null || cart.isEmpty) return;
@@ -260,16 +272,25 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     emit(state.copyWith(coupon: e.coupon, clearError: true));
   }
 
-  void _onPaymentSelected(CheckoutPaymentSelected e, Emitter<CheckoutState> emit) {
+  void _onPaymentSelected(
+    CheckoutPaymentSelected e,
+    Emitter<CheckoutState> emit,
+  ) {
     emit(state.copyWith(selectedPaymentIndex: e.index, clearError: true));
   }
 
-  Future<void> _onRefresh(CheckoutRefreshRequested e, Emitter<CheckoutState> emit) async {
+  Future<void> _onRefresh(
+    CheckoutRefreshRequested e,
+    Emitter<CheckoutState> emit,
+  ) async {
     final cart = state.cart;
     if (cart == null || cart.isEmpty) return;
 
     try {
-      await _loadQuotesAndTax(cart, preferMethodId: state.selectedShippingMethodId);
+      await _loadQuotesAndTax(
+        cart,
+        preferMethodId: state.selectedShippingMethodId,
+      );
     } catch (err) {
       emit(state.copyWith(error: err.toString()));
     }
@@ -320,10 +341,9 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
       emit(state.copyWith(error: 'Enter city'));
       return;
     }
-    if ((addr.postalCode ?? '').trim().isEmpty) {
-      emit(state.copyWith(error: 'Enter postal code'));
-      return;
-    }
+
+    //  postalCode OPTIONAL: do not block checkout if empty
+    // backend will receive null from the form when empty
 
     // Shipping method validation
     final quote = state.selectedQuote;
@@ -351,8 +371,9 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
       final lines = _linesFromCart(cart);
 
       // Stripe Connect destination account (acct_...) if configured in PaymentMethod.configMap
-      final destinationAccountId =
-          (pmCode == 'STRIPE') ? _stripeAccountIdFromPaymentMethod(selectedPm) : null;
+      final destinationAccountId = (pmCode == 'STRIPE')
+          ? _stripeAccountIdFromPaymentMethod(selectedPm)
+          : null;
 
       // 1) Call backend checkout ONCE:
       //    - creates Order + OrderItems
@@ -382,8 +403,10 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
 
       // 2) Choose provider:
       // Backend uses paymentProviderCode. If missing, fallback to selected pmCode.
-      final provider =
-          (summary.paymentProviderCode ?? pmCode).toString().trim().toUpperCase();
+      final provider = (summary.paymentProviderCode ?? pmCode)
+          .toString()
+          .trim()
+          .toUpperCase();
 
       if (provider == 'STRIPE') {
         // ✅ Stripe requires both clientSecret + publishableKey
@@ -394,7 +417,9 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
           throw Exception('Checkout did not return Stripe clientSecret');
         }
         if (publishableKey.isEmpty) {
-          throw Exception('Checkout did not return Stripe publishableKey (pk_...)');
+          throw Exception(
+            'Checkout did not return Stripe publishableKey (pk_...)',
+          );
         }
 
         try {

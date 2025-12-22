@@ -1781,4 +1781,161 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get commonNo => 'No';
+
+  @override
+  String get adminOrdersTitle => 'Orders';
+
+  @override
+  String get adminDashboard => 'Dashboard';
+
+  @override
+  String get adminAllTime => 'All time';
+
+  @override
+  String get adminLast7Days => 'Last 7 days';
+
+  @override
+  String get adminLast30Days => 'Last 30 days';
+
+  @override
+  String get adminClear => 'Clear';
+
+  @override
+  String get adminKpiOrders => 'Orders';
+
+  @override
+  String get adminKpiGrossSales => 'Gross Sales';
+
+  @override
+  String get adminKpiPaid => 'Paid';
+
+  @override
+  String get adminKpiOutstanding => 'Outstanding';
+
+  @override
+  String get adminKpiAvgOrder => 'Avg Order';
+
+  @override
+  String adminFullyPaidPercent(Object percent) {
+    return 'Fully paid: $percent%';
+  }
+
+  @override
+  String get adminPaidRevenueLast7Days => 'Paid revenue (last 7 days)';
+
+  @override
+  String get adminNoOrders => 'No orders';
+
+  @override
+  String get adminNoOrdersHint => 'Try changing the status filter, date range, or pull to refresh.';
+
+  @override
+  String get adminFilterAll => 'All';
+
+  @override
+  String adminOrderDetailsTitle(Object id) {
+    return 'Order #$id';
+  }
+
+  @override
+  String get adminOrderFailedToLoad => 'Failed to load order.';
+
+  @override
+  String get adminPaymentSummary => 'Payment Summary';
+
+  @override
+  String get adminOrderInfo => 'Order Info';
+
+  @override
+  String get adminStatus => 'Status';
+
+  @override
+  String get adminOrderTotal => 'Order Total';
+
+  @override
+  String get adminPaid => 'Paid';
+
+  @override
+  String get adminRemaining => 'Remaining';
+
+  @override
+  String get adminPaymentMethod => 'Payment Method';
+
+  @override
+  String get adminCurrency => 'Currency';
+
+  @override
+  String get adminShippingCity => 'Shipping City';
+
+  @override
+  String get adminShippingMethod => 'Shipping Method';
+
+  @override
+  String get adminCoupon => 'Coupon';
+
+  @override
+  String adminItemsCount(Object count) {
+    return 'Items ($count)';
+  }
+
+  @override
+  String get adminCustomer => 'Customer';
+
+  @override
+  String adminQtyPriceLine(Object qty, Object price) {
+    return 'Qty: $qty  •  Price: $price';
+  }
+
+  @override
+  String adminOrderCardTitle(Object id) {
+    return 'Order #$id';
+  }
+
+  @override
+  String adminItemsShort(Object count) {
+    return '$count items';
+  }
+
+  @override
+  String adminPaidShort(Object amount) {
+    return 'Paid: $amount';
+  }
+
+  @override
+  String adminRemainingShort(Object amount) {
+    return 'Remaining: $amount';
+  }
+
+  @override
+  String get adminFullyPaid => 'Fully paid';
+
+  @override
+  String get adminOrderStatusPending => 'Pending';
+
+  @override
+  String get adminOrderStatusCancelRequested => 'Cancel requested';
+
+  @override
+  String get adminOrderStatusCanceled => 'Canceled';
+
+  @override
+  String get adminOrderStatusRejected => 'Rejected';
+
+  @override
+  String get adminOrderStatusRefunded => 'Refunded';
+
+  @override
+  String get adminOrderStatusCompleted => 'Completed';
+
+  @override
+  String get adminMarkCashPaidBody => 'Are you sure you want to mark this order as paid in cash?';
+
+  @override
+  String get adminMarkCashPaid => 'Mark as paid in cash';
+
+  @override
+  String get adminMarkCashPaidTitle => 'Mark order as paid';
+
+  @override
+  String get adminMarkCashPaidButton => 'Mark as paid';
 }

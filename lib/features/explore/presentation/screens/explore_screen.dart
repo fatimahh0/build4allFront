@@ -1,3 +1,6 @@
+// lib/features/explore/presentation/screens/explore_screen.dart
+// (Adjust the path/name to match your project. This is the FULL FILE.)
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -16,6 +19,9 @@ import 'package:build4front/features/home/presentation/bloc/home_event.dart';
 import 'package:build4front/features/items/domain/entities/item_summary.dart';
 import 'package:build4front/common/widgets/app_search_field.dart';
 import 'package:build4front/common/widgets/ItemCard.dart';
+
+// ✅ currency formatter (dynamic currency, not hardcoded $)
+import 'package:build4front/features/catalog/cubit/money.dart';
 
 // 🔥 Auth + Cart + Toast
 import 'package:build4front/features/auth/presentation/login/bloc/auth_bloc.dart';
@@ -128,9 +134,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
             // clamp page
             final safePage = _page.clamp(1, totalPages);
-            if (safePage != _page) {
-              // avoid setState loop: just use safePage locally
-            }
 
             final start = (safePage - 1) * _itemsPerPage;
             final end = math.min(start + _itemsPerPage, totalItems);
@@ -462,29 +465,30 @@ class _ExploreScreenState extends State<ExploreScreen> {
         : item.price;
   }
 
-  _PricingView _pricingFor(ItemSummary item) {
+  // ✅ NOW uses money(context, amount) so currency is dynamic (not "$")
+  _PricingView _pricingFor(BuildContext context, ItemSummary item) {
     final saleActive = item.onSale && _isSaleActiveNow(item);
     final current = _currentPrice(item);
 
     final currentLabel = current != null
-        ? '${current.toStringAsFixed(2)} \$'
+        ? money(context, current.toDouble())
         : null;
 
     String? oldLabel;
-    if (saleActive &&
-        item.price != null &&
-        current != null &&
-        item.price! > current) {
-      oldLabel = '${item.price!.toStringAsFixed(2)} \$';
+    if (saleActive && item.price != null && current != null) {
+      final base = item.price!.toDouble();
+      final cur = current.toDouble();
+      if (base > cur) oldLabel = money(context, base);
     }
 
     String? tagLabel;
-    if (saleActive &&
-        item.price != null &&
-        current != null &&
-        item.price! > 0) {
-      final percent = ((1 - (current / item.price!)) * 100).round();
-      tagLabel = percent > 0 ? '-$percent%' : 'SALE';
+    if (saleActive && item.price != null && current != null) {
+      final base = item.price!.toDouble();
+      final cur = current.toDouble();
+      if (base > 0) {
+        final percent = ((1 - (cur / base)) * 100).round();
+        tagLabel = percent > 0 ? '-$percent%' : 'SALE';
+      }
     }
 
     return _PricingView(
@@ -639,7 +643,9 @@ class _SortDropdown extends StatelessWidget {
 class _ExploreItemsGrid extends StatelessWidget {
   final List<ItemSummary> items;
 
-  final _PricingView Function(ItemSummary) pricingFor;
+  // ✅ needs BuildContext so we can format currency dynamically
+  final _PricingView Function(BuildContext, ItemSummary) pricingFor;
+
   final String? Function(ItemSummary) subtitleFor;
   final String? Function(ItemSummary) metaFor;
 
@@ -682,24 +688,35 @@ class _ExploreItemsGrid extends StatelessWidget {
           itemCount: items.length,
           itemBuilder: (context, index) {
             final item = items[index];
-            final pricing = pricingFor(item);
-            final fit = item.kind == ItemKind.product
-                ? BoxFit.contain
-                : BoxFit.cover;
 
-            return ItemCard(
-              width: double.infinity,
-              imageFit: BoxFit.cover,
-              title: item.title,
-              subtitle: subtitleFor(item),
-              imageUrl: item.imageUrl,
-              badgeLabel: pricing.currentLabel,
-              oldPriceLabel: pricing.oldLabel,
-              tagLabel: pricing.tagLabel,
-              metaLabel: metaFor(item),
-              ctaLabel: ctaLabelFor(context, item),
-              onTap: () => onTapItem(item.id),
-              onCtaPressed: () => onCtaPressed(item),
+            // ✅ IMPORTANT FIX:
+            // money() uses context.select internally, and GridView/SliverGrid
+            // itemBuilder context is not allowed for select.
+            // So we create a fresh non-sliver context using Builder.
+            return Builder(
+              builder: (ctx) {
+                final pricing = pricingFor(ctx, item);
+
+                // ✅ contain for products, cover for activities
+                final fit = item.kind == ItemKind.product
+                    ? BoxFit.contain
+                    : BoxFit.cover;
+
+                return ItemCard(
+                  width: double.infinity,
+                  imageFit: fit,
+                  title: item.title,
+                  subtitle: subtitleFor(item),
+                  imageUrl: item.imageUrl,
+                  badgeLabel: pricing.currentLabel,
+                  oldPriceLabel: pricing.oldLabel,
+                  tagLabel: pricing.tagLabel,
+                  metaLabel: metaFor(item),
+                  ctaLabel: ctaLabelFor(ctx, item),
+                  onTap: () => onTapItem(item.id),
+                  onCtaPressed: () => onCtaPressed(item),
+                );
+              },
             );
           },
         );
@@ -729,7 +746,6 @@ class _PaginationBar extends StatelessWidget {
       if (totalPages <= 5) {
         return List.generate(totalPages, (i) => i + 1);
       }
-      // window: 1 ... (current-1, current, current+1) ... last
       final set = <int>{
         1,
         totalPages,

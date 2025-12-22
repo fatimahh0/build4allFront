@@ -796,11 +796,112 @@
     "placeholders": {
       "itemCount": { "type": "int" }
     }
-  }
+  },
+  
+  "adminOrdersTitle": "Orders",
+  "adminDashboard": "Dashboard",
+  "adminAllTime": "All time",
+  "adminLast7Days": "Last 7 days",
+  "adminLast30Days": "Last 30 days",
+  "adminClear": "Clear",
+
+  "adminKpiOrders": "Orders",
+  "adminKpiGrossSales": "Gross Sales",
+  "adminKpiPaid": "Paid",
+  "adminKpiOutstanding": "Outstanding",
+  "adminKpiAvgOrder": "Avg Order",
+
+  "adminFullyPaidPercent": "Fully paid: {percent}%",
+  "@adminFullyPaidPercent": {
+    "placeholders": {
+      "percent": {}
+    }
+  },
+
+  "adminPaidRevenueLast7Days": "Paid revenue (last 7 days)",
+
+  "adminNoOrders": "No orders",
+  "adminNoOrdersHint": "Try changing the status filter, date range, or pull to refresh.",
+
+  "adminFilterAll": "All",
+
+  "adminOrderDetailsTitle": "Order #{id}",
+  "@adminOrderDetailsTitle": {
+    "placeholders": {
+      "id": {}
+    }
+  },
+
+  "adminOrderFailedToLoad": "Failed to load order.",
+
+  "adminPaymentSummary": "Payment Summary",
+  "adminOrderInfo": "Order Info",
+  "adminStatus": "Status",
+  "adminOrderTotal": "Order Total",
+  "adminPaid": "Paid",
+  "adminRemaining": "Remaining",
+  "adminPaymentMethod": "Payment Method",
+  "adminCurrency": "Currency",
+  "adminShippingCity": "Shipping City",
+  "adminShippingMethod": "Shipping Method",
+  "adminCoupon": "Coupon",
+
+  "adminItemsCount": "Items ({count})",
+  "@adminItemsCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+
+  "adminCustomer": "Customer",
+
+  "adminQtyPriceLine": "Qty: {qty}  •  Price: {price}",
+  "@adminQtyPriceLine": {
+    "placeholders": {
+      "qty": {},
+      "price": {}
+    }
+  },
+
+  "adminOrderCardTitle": "Order #{id}",
+  "@adminOrderCardTitle": {
+    "placeholders": {
+      "id": {}
+    }
+  },
+
+  "adminItemsShort": "{count} items",
+  "@adminItemsShort": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+
+  "adminPaidShort": "Paid: {amount}",
+  "@adminPaidShort": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
+
+  "adminRemainingShort": "Remaining: {amount}",
+  "@adminRemainingShort": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
+
+  "adminFullyPaid": "Fully paid",
+
+  "adminOrderStatusPending": "Pending",
+  "adminOrderStatusCancelRequested": "Cancel requested",
+  "adminOrderStatusCanceled": "Canceled",
+  "adminOrderStatusRejected": "Rejected",
+  "adminOrderStatusRefunded": "Refunded",
+  "adminOrderStatusCompleted": "Completed",
+  "adminMarkCashPaidBody": "Are you sure you want to mark this order as paid in cash?",
+  "adminMarkCashPaid": "Mark as paid in cash",
+  "adminMarkCashPaidTitle": "Mark order as paid",
+  "adminMarkCashPaidButton": "Mark as paid"
+  
 }
-
-
-
-
-
-

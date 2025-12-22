@@ -34,6 +34,9 @@ import 'package:build4front/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:build4front/features/cart/presentation/bloc/cart_event.dart';
 import 'package:build4front/common/widgets/app_toast.dart';
 
+// ✅ dynamic currency formatter (this is the one that uses context.select internally)
+import 'package:build4front/features/catalog/cubit/money.dart';
+
 class HomeScreen extends StatefulWidget {
   final AppConfig appConfig;
   final List<HomeSectionConfig> sections;
@@ -330,7 +333,7 @@ class _HomeScreenState extends State<HomeScreen>
             storageId: section.id,
             layout: isArrivals
                 ? _HomePagerLayout.grid3x2
-                : _HomePagerLayout.rowPages2, // ✅ same card size everywhere
+                : _HomePagerLayout.rowPages2,
             title: sectionTitle,
             icon: icon,
             trailingText: trailing.text,
@@ -341,10 +344,13 @@ class _HomeScreenState extends State<HomeScreen>
               ).pushNamed('/explore', arguments: {'sectionId': section.id});
             },
             items: itemsForSection,
-            pricingFor: (item) => _pricingFor(context, item),
+
+            // ✅ IMPORTANT: do NOT close over sliver context anymore
+            pricingFor: _pricingFor,
             subtitleFor: _subtitleFor,
-            metaFor: (item) => _metaLabelFor(context, item),
-            ctaLabelFor: (item) => _ctaLabelFor(context, item),
+            metaFor: _metaLabelFor,
+            ctaLabelFor: _ctaLabelFor,
+
             onTapItem: (id) => _openDetails(context, id),
             onCtaPressed: (item) => _handleCtaPressed(context, item),
           ),
@@ -525,30 +531,31 @@ class _HomeScreenState extends State<HomeScreen>
         : item.price;
   }
 
+  // ✅ dynamic currency using money(context, ...)
   _PricingView _pricingFor(BuildContext context, ItemSummary item) {
     final l10n = AppLocalizations.of(context)!;
     final saleActive = item.onSale && _isSaleActiveNow(item);
     final current = _currentPrice(item);
 
     final currentLabel = current != null
-        ? '${current.toStringAsFixed(2)} \$'
+        ? money(context, current.toDouble())
         : null;
 
     String? oldLabel;
-    if (saleActive &&
-        item.price != null &&
-        current != null &&
-        item.price! > current) {
-      oldLabel = '${item.price!.toStringAsFixed(2)} \$';
+    if (saleActive && item.price != null && current != null) {
+      final base = item.price!.toDouble();
+      final cur = current.toDouble();
+      if (base > cur) oldLabel = money(context, base);
     }
 
     String? tagLabel;
-    if (saleActive &&
-        item.price != null &&
-        current != null &&
-        item.price! > 0) {
-      final percent = ((1 - (current / item.price!)) * 100).round();
-      tagLabel = percent > 0 ? '-$percent%' : l10n.home_sale_tag;
+    if (saleActive && item.price != null && current != null) {
+      final base = item.price!.toDouble();
+      final cur = current.toDouble();
+      if (base > 0) {
+        final percent = ((1 - (cur / base)) * 100).round();
+        tagLabel = percent > 0 ? '-$percent%' : l10n.home_sale_tag;
+      }
     }
 
     return _PricingView(
@@ -600,10 +607,11 @@ class _HomeItemsPagerSection extends StatefulWidget {
 
   final List<ItemSummary> items;
 
-  final _PricingView Function(ItemSummary) pricingFor;
+  // ✅ FIX: give these a BuildContext so we can call them from a safe Builder context
+  final _PricingView Function(BuildContext, ItemSummary) pricingFor;
   final String? Function(ItemSummary) subtitleFor;
-  final String? Function(ItemSummary) metaFor;
-  final String Function(ItemSummary) ctaLabelFor;
+  final String? Function(BuildContext, ItemSummary) metaFor;
+  final String Function(BuildContext, ItemSummary) ctaLabelFor;
 
   final void Function(int itemId) onTapItem;
   final void Function(ItemSummary item) onCtaPressed;
@@ -718,13 +726,12 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
       children: [
         header,
         SizedBox(height: spacing.xs),
-
         LayoutBuilder(
           builder: (context, constraints) {
             final w = constraints.maxWidth;
             final aspect = _aspect(w);
 
-            final cols = widget.layout == _HomePagerLayout.grid3x2 ? 2 : 2;
+            final cols = 2;
             final rows = widget.layout == _HomePagerLayout.grid3x2 ? 3 : 1;
             final perPage = rows * cols;
 
@@ -746,26 +753,31 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
                 ? (rows * cardH) + ((rows - 1) * spacing.md)
                 : cardH;
 
-            Widget buildCard(ItemSummary item) {
-              final pricing = widget.pricingFor(item);
+            Widget card(ItemSummary item) {
+              // ✅ critical fix: create a safe context (NOT the sliver itemBuilder context)
+              return Builder(
+                builder: (ctx) {
+                  final pricing = widget.pricingFor(ctx, item);
+                  final fit = item.kind == ItemKind.product
+                      ? BoxFit.contain
+                      : BoxFit.cover;
 
-            final fit = BoxFit.cover; 
-
-             return ItemCard(
-                width: double.infinity,
-                imageFit: fit,
-                title: item.title,
-                subtitle: widget.subtitleFor(item),
-                imageUrl: item.imageUrl,
-                badgeLabel: pricing.currentLabel,
-                oldPriceLabel: pricing.oldLabel,
-                tagLabel: pricing.tagLabel,
-                metaLabel: widget.metaFor(item),
-                ctaLabel: widget.ctaLabelFor(item),
-                onTap: () => widget.onTapItem(item.id),
-                onCtaPressed: () => widget.onCtaPressed(item),
+                  return ItemCard(
+                    width: double.infinity,
+                    imageFit: fit,
+                    title: item.title,
+                    subtitle: widget.subtitleFor(item),
+                    imageUrl: item.imageUrl,
+                    badgeLabel: pricing.currentLabel,
+                    oldPriceLabel: pricing.oldLabel,
+                    tagLabel: pricing.tagLabel,
+                    metaLabel: widget.metaFor(ctx, item),
+                    ctaLabel: widget.ctaLabelFor(ctx, item),
+                    onTap: () => widget.onTapItem(item.id),
+                    onCtaPressed: () => widget.onCtaPressed(item),
+                  );
+                },
               );
-
             }
 
             return Column(
@@ -786,18 +798,16 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
                           ? <ItemSummary>[]
                           : items.sublist(start, end);
 
-                      // ✅ one item: same size + centered
                       if (pageItems.length == 1) {
                         return Center(
                           child: SizedBox(
                             width: cardW,
                             height: cardH,
-                            child: buildCard(pageItems.first),
+                            child: card(pageItems.first),
                           ),
                         );
                       }
 
-                      // ✅ New Arrivals: 3x2 grid page
                       if (widget.layout == _HomePagerLayout.grid3x2) {
                         return GridView.builder(
                           physics: const NeverScrollableScrollPhysics(),
@@ -813,23 +823,19 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
                           itemBuilder: (context, i) {
                             return SizedBox(
                               width: cardW,
-                              child: buildCard(pageItems[i]),
+                              child: card(pageItems[i]),
                             );
                           },
                         );
                       }
 
-                      // ✅ other sections: 1 row (2 cards) centered
                       return Align(
                         alignment: Alignment.center,
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             for (int i = 0; i < pageItems.length; i++) ...[
-                              SizedBox(
-                                width: cardW,
-                                child: buildCard(pageItems[i]),
-                              ),
+                              SizedBox(width: cardW, child: card(pageItems[i])),
                               if (i != pageItems.length - 1)
                                 SizedBox(width: spacing.md),
                             ],
@@ -839,9 +845,7 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
                     },
                   ),
                 ),
-
                 SizedBox(height: spacing.sm),
-
                 if (totalPages > 1)
                   _ProPagerBar(
                     currentPage0: safePage,
@@ -918,9 +922,7 @@ class _ProPagerBar extends StatelessWidget {
           icon: const Icon(Icons.chevron_left_rounded),
         ),
         SizedBox(width: spacing.xs),
-
         ..._dotsWithEllipsis(dots, dot, spacing.xs),
-
         SizedBox(width: spacing.sm),
         Text(
           label,
@@ -929,7 +931,6 @@ class _ProPagerBar extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-
         SizedBox(width: spacing.xs),
         IconButton(
           tooltip: 'Next',

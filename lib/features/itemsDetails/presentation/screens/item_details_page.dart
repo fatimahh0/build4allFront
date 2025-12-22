@@ -15,11 +15,12 @@ import 'package:build4front/features/cart/presentation/bloc/cart_event.dart';
 import 'package:build4front/features/auth/presentation/login/bloc/auth_bloc.dart';
 import 'package:build4front/common/widgets/app_toast.dart';
 
+// ✅ dynamic currency formatter
+import 'package:build4front/features/catalog/cubit/money.dart';
+
 class ItemDetailsPage extends StatelessWidget {
   final int itemId;
   const ItemDetailsPage({super.key, required this.itemId});
-
-  String _money(num v) => v.toDouble().toStringAsFixed(2);
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +42,6 @@ class ItemDetailsPage extends StatelessWidget {
             ..add(ItemDetailsStarted(itemId, token: token)),
       child: BlocBuilder<ItemDetailsBloc, ItemDetailsState>(
         builder: (context, state) {
-          // ✅ FIX: handle "details == null" safely (no more state.details!)
           if (state.isLoading && state.details == null) {
             return const Scaffold(
               body: Center(child: CircularProgressIndicator()),
@@ -61,7 +61,6 @@ class ItemDetailsPage extends StatelessWidget {
             );
           }
 
-          // ✅ EXTRA SAFE: if it’s neither loading nor error but still null → show loader
           final d = state.details;
           if (d == null) {
             return const Scaffold(
@@ -142,7 +141,7 @@ class ItemDetailsPage extends StatelessWidget {
                   children: [
                     if (curPrice != null)
                       Text(
-                        '${_money(curPrice)} \$',
+                        money(context, curPrice.toDouble()),
                         style: t.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
@@ -150,7 +149,7 @@ class ItemDetailsPage extends StatelessWidget {
                     if (oldPrice != null) ...[
                       SizedBox(width: spacing.sm),
                       Text(
-                        '${_money(oldPrice)} \$',
+                        money(context, oldPrice.toDouble()),
                         style: t.bodyMedium?.copyWith(
                           decoration: TextDecoration.lineThrough,
                           color: c.onSurface.withOpacity(0.6),
@@ -187,7 +186,7 @@ class ItemDetailsPage extends StatelessWidget {
 
                 // DESCRIPTION
                 Text(
-                  'Description', // (use l10n key if you already have it)
+                  'Description',
                   style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 SizedBox(height: spacing.xs),
@@ -217,7 +216,7 @@ class ItemDetailsPage extends StatelessWidget {
 
                 // ATTRIBUTES
                 Text(
-                  'Attributes', // (use l10n key if you already have it)
+                  'Attributes',
                   style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 SizedBox(height: spacing.sm),

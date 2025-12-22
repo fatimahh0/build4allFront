@@ -1,6 +1,10 @@
 // lib/features/admin/product/presentation/screens/admin_dashboard_screen.dart
 
 import 'package:build4front/features/admin/home_banner/presentation/screens/admin_home_banners_screen.dart';
+import 'package:build4front/features/admin/orders_admin/data/repository/admin_orders_repository_impl.dart';
+import 'package:build4front/features/admin/orders_admin/data/services/admin_orders_api_service.dart';
+import 'package:build4front/features/admin/orders_admin/domain/repositories/admin_orders_repository.dart';
+import 'package:build4front/features/admin/orders_admin/orders_admin_feature.dart';
 import 'package:build4front/features/admin/payment_config/presentation/screens/owner_payment_config_screen.dart';
 import 'package:build4front/features/admin/shipping/prensentation/screens/admin_shipping_methods_screen.dart';
 import 'package:build4front/features/admin/tax/presentation/screens/admin_tax_rules_screen.dart';
@@ -225,8 +229,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       ),
                     );
 
+                    
+
                   },
                 ),
+
+                // ✅ ORDERS TILE (OWNER / SUPER_ADMIN)
+            _AdminTile(
+                  icon: Icons.receipt_long_outlined,
+                  title: 'Orders',
+                  colors: colors,
+                  card: card,
+                  onTap: () {
+                    Navigator.of(context).pushNamed('/admin/orders');
+                  },
+                ),
+
+
+
               ],
             ),
           ],
