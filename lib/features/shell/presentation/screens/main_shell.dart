@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 
+import 'package:build4front/core/l10n/locale_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -315,7 +316,7 @@ class _ProfileTabShell extends StatelessWidget {
     return UserProfileScreen(
       token: token,
       userId: userId,
-      onChangeLocale: (_) {},
+      onChangeLocale: (loc) => context.read<LocaleCubit>().setLocale(loc),
       onLogout: () => _handleLogout(context),
     );
   }

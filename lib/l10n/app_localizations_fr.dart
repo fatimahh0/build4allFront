@@ -9,13 +9,13 @@ class AppLocalizationsFr extends AppLocalizations {
   AppLocalizationsFr([String locale = 'fr']) : super(locale);
 
   @override
-  String get appTitle => 'Application';
+  String get appTitle => 'App';
 
   @override
   String get loginTitle => 'Connexion';
 
   @override
-  String get loginSubtitle => 'Ravi de vous revoir ! Connectez-vous pour continuer.';
+  String get loginSubtitle => 'Bon retour ! Connectez-vous pour continuer.';
 
   @override
   String get emailLabel => 'E-mail';
@@ -42,13 +42,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get passwordTooShort => 'Le mot de passe doit contenir au moins 6 caractères.';
 
   @override
-  String get authErrorGeneric => 'Une erreur s\'est produite. Veuillez réessayer.';
+  String get authErrorGeneric => 'Une erreur est survenue. Veuillez réessayer.';
 
   @override
-  String get noAccountText => 'Vous n\'avez pas de compte ?';
+  String get noAccountText => 'Vous n’avez pas de compte ?';
 
   @override
-  String get signUpText => 'S\'inscrire';
+  String get signUpText => 'S’inscrire';
 
   @override
   String get loginWithEmail => 'E-mail';
@@ -63,7 +63,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get forgotPassword => 'Mot de passe oublié ?';
 
   @override
-  String get registerTitle => 'Créer un compte';
+  String get registerTitle => 'Créer votre compte';
 
   @override
   String get registerSubtitle => 'Choisissez comment vous souhaitez vous inscrire.';
@@ -72,10 +72,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get registerStep1Of3 => 'Étape 1 sur 3';
 
   @override
-  String get registerWithEmail => 'S\'inscrire avec un e-mail';
+  String get registerWithEmail => 'S’inscrire avec un e-mail';
 
   @override
-  String get registerWithPhone => 'S\'inscrire avec un téléphone';
+  String get registerWithPhone => 'S’inscrire avec un téléphone';
 
   @override
   String get registerContinueButton => 'Continuer';
@@ -90,7 +90,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get alreadyHaveAccountText => 'Vous avez déjà un compte ?';
 
   @override
-  String get verifyCodeTitle => 'Entrez le code de vérification';
+  String get verifyCodeTitle => 'Saisir le code de vérification';
 
   @override
   String get verifyCodeSubtitleEmail => 'Nous avons envoyé un code à votre e-mail.';
@@ -111,25 +111,25 @@ class AppLocalizationsFr extends AppLocalizations {
   String get completeProfileTitle => 'Compléter votre profil';
 
   @override
-  String get completeProfileSubtitle => 'Choisissez un pseudo et votre vrai nom.';
+  String get completeProfileSubtitle => 'Choisissez un nom d’utilisateur et vos informations réelles.';
 
   @override
-  String get usernameLabel => 'Nom d\'utilisateur';
+  String get usernameLabel => 'Nom d’utilisateur';
 
   @override
   String get firstNameLabel => 'Prénom';
 
   @override
-  String get lastNameLabel => 'Nom de famille';
+  String get lastNameLabel => 'Nom';
 
   @override
-  String get usernameTooShort => 'Le nom d\'utilisateur doit contenir au moins 3 caractères.';
+  String get usernameTooShort => 'Le nom d’utilisateur doit contenir au moins 3 caractères.';
 
   @override
   String get publicProfileLabel => 'Profil public';
 
   @override
-  String get publicProfileDescription => 'Si activé, votre profil et vos activités peuvent être trouvés par les autres utilisateurs.';
+  String get publicProfileDescription => 'Si activé, votre profil et vos activités pourront être trouvés par d’autres utilisateurs.';
 
   @override
   String get saveProfileButton => 'Enregistrer le profil';
@@ -138,40 +138,40 @@ class AppLocalizationsFr extends AppLocalizations {
   String get profileCompletedSuccessMessage => 'Profil complété avec succès. Vous pouvez maintenant vous connecter.';
 
   @override
-  String get profileCompletedErrorMessage => 'Échec de la complétion du profil. Veuillez réessayer.';
+  String get profileCompletedErrorMessage => 'Échec de la finalisation du profil. Veuillez réessayer.';
 
   @override
   String get featureComingSoon => 'Cette fonctionnalité arrive bientôt.';
 
   @override
-  String get changePhotoHint => 'Appuyez pour ajouter une photo de profil';
+  String get changePhotoHint => 'Touchez pour ajouter une photo de profil';
 
   @override
   String get previousStepButton => 'Étape précédente';
 
   @override
-  String get completeProfileNamesTitle => 'Complétez votre profil - Noms';
+  String get completeProfileNamesTitle => 'Compléter votre profil - Noms';
 
   @override
-  String get completeProfileNamesSubtitle => 'Veuillez fournir votre prénom et votre nom de famille.';
+  String get completeProfileNamesSubtitle => 'Veuillez saisir votre prénom et votre nom.';
 
   @override
-  String get firstNameHint => ' Entrez votre prénom';
+  String get firstNameHint => 'Saisissez votre prénom';
 
   @override
-  String get lastNameHint => ' Entrez votre nom de famille';
+  String get lastNameHint => 'Saisissez votre nom';
 
   @override
   String get continueButton => 'Continuer';
 
   @override
-  String get completeProfileUsernameTitle => 'Complétez votre profil - Nom d\'utilisateur';
+  String get completeProfileUsernameTitle => 'Compléter votre profil - Nom d’utilisateur';
 
   @override
-  String get completeProfileUsernameSubtitle => 'Choisissez un nom d\'utilisateur unique pour votre compte.';
+  String get completeProfileUsernameSubtitle => 'Choisissez un nom d’utilisateur unique pour votre compte.';
 
   @override
-  String get completeProfilePhotoTitle => 'Complétez votre profil - Photo';
+  String get completeProfilePhotoTitle => 'Compléter votre profil - Photo';
 
   @override
   String get completeProfilePhotoSubtitle => 'Ajoutez une photo de profil pour personnaliser votre compte.';
@@ -183,34 +183,34 @@ class AppLocalizationsFr extends AppLocalizations {
   String get home_welcome => 'Bienvenue 👋';
 
   @override
-  String get home_search_hint => 'Rechercher des produits, des marques...';
+  String get home_search_hint => 'Rechercher des produits, marques...';
 
   @override
   String get home_banner_title => 'Offres spéciales';
 
   @override
-  String get home_banner_subtitle => 'Économisez jusqu’à 50 % sur une sélection d’articles.';
+  String get home_banner_subtitle => 'Économisez jusqu’à 50% sur une sélection d’articles.';
 
   @override
-  String get home_banner_button => 'Commencer les achats';
+  String get home_banner_button => 'Commencer mes achats';
 
   @override
   String get home_items_default_title => 'Articles';
 
   @override
-  String get home_recommended_title => 'Recommandé pour vous';
+  String get home_recommended_title => 'Recommandés pour vous';
 
   @override
   String get home_popular_title => 'Populaire en ce moment';
 
   @override
-  String get home_bookings_title => 'Prochaines réservations';
+  String get home_bookings_title => 'Réservations à venir';
 
   @override
   String get home_reviews_title => 'Derniers avis';
 
   @override
-  String get home_flash_sale_title => 'Ventes flash';
+  String get home_flash_sale_title => 'Vente flash';
 
   @override
   String get home_new_arrivals_title => 'Nouveautés';
@@ -219,16 +219,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get home_best_sellers_title => 'Meilleures ventes';
 
   @override
-  String get home_top_rated_title => 'Mieux notés';
+  String get home_top_rated_title => 'Les mieux notés';
 
   @override
-  String get home_why_shop_title => 'Pourquoi acheter chez nous ?';
+  String get home_why_shop_title => 'Pourquoi acheter chez nous';
 
   @override
   String get home_why_shop_free_shipping_title => 'Livraison gratuite';
 
   @override
-  String get home_why_shop_free_shipping_subtitle => 'Sur toutes les commandes de plus de 50\$';
+  String get home_why_shop_free_shipping_subtitle => 'Pour toute commande supérieure à 50\$';
 
   @override
   String get home_why_shop_easy_returns_title => 'Retours faciles';
@@ -240,22 +240,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String get home_why_shop_secure_payment_title => 'Paiement sécurisé';
 
   @override
-  String get home_why_shop_secure_payment_subtitle => 'Transactions protégées à 100 %';
+  String get home_why_shop_secure_payment_subtitle => 'Transactions 100% protégées';
 
   @override
-  String get home_why_shop_support_title => 'Support 24h/24 et 7j/7';
+  String get home_why_shop_support_title => 'Support 24/7';
 
   @override
   String get home_why_shop_support_subtitle => 'Toujours là pour vous aider';
 
   @override
-  String get connection_offline => 'Pas de connexion Internet';
+  String get connection_offline => 'Aucune connexion Internet';
 
   @override
   String get connection_server_down => 'Le serveur ne répond pas';
 
   @override
-  String get profile_login_required => 'Please log in to view your profile.';
+  String get profile_login_required => 'Veuillez vous connecter pour voir votre profil.';
 
   @override
   String get connection_issue => 'Problème de connexion';
@@ -264,16 +264,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get explore_title => 'Explorer';
 
   @override
-  String get explore_search_hint => 'Rechercher  des articles...';
+  String get explore_search_hint => 'Rechercher des lieux...';
 
   @override
-  String get explore_items_title => 'Articles';
+  String get explore_items_title => 'Toutes les activités';
 
   @override
-  String get explore_empty_message => 'Aucun résultat. Essayez de modifier vos filtres.';
+  String get explore_empty_message => 'Aucun résultat. Essayez un autre mot-clé.';
 
   @override
-  String get explore_category_all => 'Tout';
+  String get explore_category_all => 'Tous';
 
   @override
   String explore_results_label(int count) {
@@ -291,76 +291,76 @@ class AppLocalizationsFr extends AppLocalizations {
   String get explore_sort_relevance => 'Pertinence';
 
   @override
-  String get explore_sort_price_low_high => 'Prix : du plus bas au plus élevé';
+  String get explore_sort_price_low_high => 'Prix : du moins cher au plus cher';
 
   @override
-  String get explore_sort_price_high_low => 'Prix : du plus élevé au plus bas';
+  String get explore_sort_price_high_low => 'Prix : du plus cher au moins cher';
 
   @override
-  String get explore_sort_date_soonest => 'Date : le plus proche';
+  String get explore_sort_date_soonest => 'Date la plus proche';
 
   @override
-  String get profileMotto => 'Live your hobby!';
+  String get profileMotto => 'Vis ta passion !';
 
   @override
-  String get profile_load_error => 'Couldn\'t load your profile. Please try again.';
+  String get profile_load_error => 'Impossible de charger votre profil. Veuillez réessayer.';
 
   @override
   String get retry => 'Réessayer';
 
   @override
-  String get manageAccount => 'Manage account';
+  String get manageAccount => 'Gérer le compte';
 
   @override
-  String get profileMakePrivate => 'Make profile private';
+  String get profileMakePrivate => 'Rendre le profil privé';
 
   @override
-  String get profileMakePublic => 'Make profile public';
+  String get profileMakePublic => 'Rendre le profil public';
 
   @override
-  String get setInactive => 'Set account inactive';
+  String get setInactive => 'Mettre le compte en inactif';
 
   @override
-  String get profileLogoutConfirm => 'Are you sure you want to log out?';
+  String get profileLogoutConfirm => 'Voulez-vous vraiment vous déconnecter ?';
 
   @override
-  String get deactivate_title => 'Deactivate account';
+  String get deactivate_title => 'Désactiver le compte';
 
   @override
-  String get deactivate_warning => 'Enter your password to confirm deactivation.';
+  String get deactivate_warning => 'Saisissez votre mot de passe pour confirmer la désactivation.';
 
   @override
-  String get current_password_label => 'Current password';
+  String get current_password_label => 'Mot de passe actuel';
 
   @override
-  String get language_note => 'Changing language will restart some screens.';
+  String get language_note => 'Changer de langue redémarrera certains écrans.';
 
   @override
-  String get cancel => 'Cancel';
+  String get cancel => 'Annuler';
 
   @override
-  String get confirm => 'Confirm';
+  String get confirm => 'Confirmer';
 
   @override
-  String get language => 'Language';
+  String get language => 'Langue';
 
   @override
-  String get english => 'English';
+  String get english => 'Anglais';
 
   @override
-  String get logout => 'Log out';
+  String get logout => 'Se déconnecter';
 
   @override
   String get adminDashboardTitle => 'Tableau de bord admin';
 
   @override
-  String get adminDashboardSubtitle => 'Gérez le contenu et les paramètres de votre application.';
+  String get adminDashboardSubtitle => 'Gérez le contenu et les paramètres de votre app.';
 
   @override
   String get adminProductsTitle => 'Produits';
 
   @override
-  String get adminProductsEmpty => 'Aucun produit pour le moment. Appuyez sur + pour ajouter votre premier produit.';
+  String get adminProductsEmpty => 'Aucun produit pour l’instant. Appuyez sur + pour ajouter votre premier produit.';
 
   @override
   String get adminProductsNewArrivals => 'Nouveautés';
@@ -372,7 +372,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get adminProductsDiscounted => 'Produits en promotion';
 
   @override
-  String get adminProductsSearchPlaceholder => 'Rechercher un produit...';
+  String get adminProductsSearchPlaceholder => 'Rechercher des produits...';
 
   @override
   String get accountInactiveTitle => 'Votre compte est inactif';
@@ -384,16 +384,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get reactivateButton => 'Réactiver';
 
   @override
-  String get accountReactivated => 'Votre compte a été réactivé avec succès.';
+  String get accountReactivated => 'Votre compte a été réactivé avec succès';
 
   @override
-  String get chooseSignInRole => 'Choisissez votre mode de connexion';
+  String get chooseSignInRole => 'Choisissez comment vous connecter';
 
   @override
-  String get enterAsOwner => 'Se connecter en tant que propriétaire (admin)';
+  String get enterAsOwner => 'Entrer en tant que Propriétaire (Admin)';
 
   @override
-  String get enterAsUser => 'Se connecter en tant qu\'utilisateur';
+  String get enterAsUser => 'Entrer en tant qu’Utilisateur';
 
   @override
   String get roleLabel => 'Rôle';
@@ -402,42 +402,42 @@ class AppLocalizationsFr extends AppLocalizations {
   String get userLabel => 'Utilisateur';
 
   @override
-  String get loginInactiveTitle => 'Réactiver le compte ?';
+  String get loginInactiveTitle => 'Réactiver votre compte ?';
 
   @override
   String loginInactiveMessage(Object name) {
-    return 'Votre compte est actuellement inactif. Voulez-vous le réactiver maintenant et continuer ?';
+    return 'Votre compte \"$name\" est actuellement inactif. Voulez-vous le réactiver et continuer ?';
   }
 
   @override
-  String get loginInactiveReactivate => 'Reactivate';
+  String get loginInactiveReactivate => 'Réactiver';
 
   @override
-  String get loginInactiveCancel => 'Non, plus tard';
+  String get loginInactiveCancel => 'Pas maintenant';
 
   @override
-  String get loginInactiveRequired => 'You must reactivate your account to sign in as user.';
+  String get loginInactiveRequired => 'Vous devez réactiver votre compte pour vous connecter en tant qu’utilisateur.';
 
   @override
-  String get loginChooseRoleTitle => 'Choose how to sign in';
+  String get loginChooseRoleTitle => 'Choisissez comment vous connecter';
 
   @override
-  String get loginEnterAsOwner => 'Enter as Owner (Admin)';
+  String get loginEnterAsOwner => 'Entrer en tant que Propriétaire (Admin)';
 
   @override
-  String get loginEnterAsUser => 'Enter as User';
+  String get loginEnterAsUser => 'Entrer en tant qu’Utilisateur';
 
   @override
-  String get loginRoleLabel => 'Role:';
+  String get loginRoleLabel => 'Rôle :';
 
   @override
-  String get loginUserFallbackLabel => 'User';
+  String get loginUserFallbackLabel => 'Utilisateur';
 
   @override
-  String get loginInactiveSuccess => 'Votre compte a été réactivé avec succès. Bienvenue de nouveau !';
+  String get loginInactiveSuccess => 'Votre compte a été réactivé avec succès.';
 
   @override
-  String get productBadgeOnSale => 'En promo';
+  String get productBadgeOnSale => 'En promotion';
 
   @override
   String get productStatusDraft => 'Brouillon';
@@ -449,7 +449,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get productStatusArchived => 'Archivé';
 
   @override
-  String get errorNetworkNoInternet => 'Pas de connexion Internet ou serveur injoignable.';
+  String get errorNetworkNoInternet => 'Pas d’Internet ou serveur injoignable.';
 
   @override
   String get errorNetworkServerDown => 'Le serveur ne répond pas. Veuillez réessayer plus tard.';
@@ -464,7 +464,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get errorAuthUnauthorized => 'Votre session a expiré. Veuillez vous reconnecter.';
 
   @override
-  String get errorAuthForbidden => 'Vous n\'avez pas l\'autorisation pour cette action.';
+  String get errorAuthForbidden => 'Vous n’avez pas la permission d’effectuer cette action.';
 
   @override
   String get logoutLabel => 'Déconnexion';
@@ -473,13 +473,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get adminDashboardQuickActions => 'Actions rapides';
 
   @override
-  String get adminOverviewAnalytics => 'Vue d\'ensemble et analyses';
+  String get adminOverviewAnalytics => 'Vue d’ensemble & statistiques';
 
   @override
-  String get adminProjectsOwners => 'Projets et propriétaires';
+  String get adminProjectsOwners => 'Projets & propriétaires';
 
   @override
-  String get adminUsersManagers => 'Utilisateurs et gestionnaires';
+  String get adminUsersManagers => 'Utilisateurs & managers';
 
   @override
   String get adminSettings => 'Paramètres';
@@ -493,19 +493,19 @@ class AppLocalizationsFr extends AppLocalizations {
   String get adminProductCreateTitle => 'Créer un produit';
 
   @override
-  String get adminProductNameLabel => 'Nom du produit';
+  String get adminProductNameLabel => 'Nom';
 
   @override
-  String get adminProductNameHint => 'Ex : ordinateur portable Samsung';
+  String get adminProductNameHint => 'Ex : MacBook Pro';
 
   @override
-  String get adminProductNameRequired => 'Le nom du produit est obligatoire';
+  String get adminProductNameRequired => 'Le nom est obligatoire';
 
   @override
   String get adminProductDescriptionLabel => 'Description';
 
   @override
-  String get adminProductDescriptionHint => 'Courte description du produit';
+  String get adminProductDescriptionHint => 'Description courte...';
 
   @override
   String get adminProductPriceLabel => 'Prix';
@@ -514,19 +514,19 @@ class AppLocalizationsFr extends AppLocalizations {
   String get adminProductPriceRequired => 'Le prix est obligatoire';
 
   @override
-  String get adminProductPriceInvalid => 'Saisissez un prix valide supérieur à 0';
+  String get adminProductPriceInvalid => 'Le prix doit être supérieur à 0';
 
   @override
-  String get adminProductStockLabel => 'Quantité en stock';
+  String get adminProductStockLabel => 'Stock';
 
   @override
-  String get adminProductStatusLabel => 'Statut';
+  String get adminProductStatusLabel => 'Status';
 
   @override
-  String get adminProductImageUrlLabel => 'URL de l’image';
+  String get adminProductImageUrlLabel => 'Image URL';
 
   @override
-  String get adminProductSkuLabel => 'Code produit (SKU)';
+  String get adminProductSkuLabel => 'SKU';
 
   @override
   String get adminProductTypeLabel => 'Type de produit';
@@ -535,19 +535,19 @@ class AppLocalizationsFr extends AppLocalizations {
   String get adminProductTypeSimple => 'Simple';
 
   @override
-  String get adminProductTypeVariable => 'Variable (tailles / couleurs)';
+  String get adminProductTypeVariable => 'Variable';
 
   @override
-  String get adminProductTypeGrouped => 'Groupé (pack)';
+  String get adminProductTypeGrouped => 'Groupé';
 
   @override
-  String get adminProductTypeExternal => 'Externe / affilié';
+  String get adminProductTypeExternal => 'Externe';
 
   @override
-  String get adminProductVirtualLabel => 'Produit virtuel (sans livraison)';
+  String get adminProductVirtualLabel => 'Produit virtuel';
 
   @override
-  String get adminProductDownloadableLabel => 'Produit téléchargeable';
+  String get adminProductDownloadableLabel => 'Téléchargeable';
 
   @override
   String get adminProductDownloadUrlLabel => 'URL de téléchargement';
@@ -559,55 +559,55 @@ class AppLocalizationsFr extends AppLocalizations {
   String get adminProductButtonTextLabel => 'Texte du bouton';
 
   @override
-  String get adminProductButtonTextHint => 'Ex : Ajouter au panier, Acheter maintenant';
+  String get adminProductButtonTextHint => 'Acheter maintenant';
 
   @override
-  String get adminProductSaleSectionTitle => 'Promotion / remise';
+  String get adminProductSaleSectionTitle => 'Promotion';
 
   @override
-  String get adminProductSalePriceLabel => 'Prix remisé';
+  String get adminProductSalePriceLabel => 'Prix promo';
 
   @override
-  String get adminProductSaleStartLabel => 'Début de la promo (date ISO)';
+  String get adminProductSaleStartLabel => 'Date de début';
 
   @override
-  String get adminProductSaleEndLabel => 'Fin de la promo (date ISO)';
+  String get adminProductSaleEndLabel => 'Date de fin';
 
   @override
   String get adminProductAttributesTitle => 'Attributs';
 
   @override
-  String get adminProductAttributeCodeLabel => 'Code de l’attribut';
+  String get adminProductAttributeCodeLabel => 'Code attribut';
 
   @override
-  String get adminProductAttributeValueLabel => 'Valeur de l’attribut';
+  String get adminProductAttributeValueLabel => 'Valeur';
 
   @override
   String get adminProductAddAttribute => 'Ajouter un attribut';
 
   @override
-  String get adminProductEditTitle => 'Edit product';
+  String get adminProductEditTitle => 'Modifier le produit';
 
   @override
-  String get adminProductCategoryLabel => 'Category';
+  String get adminProductCategoryLabel => 'Catégorie';
 
   @override
-  String get adminProductItemTypeLabel => 'Item type';
+  String get adminProductItemTypeLabel => 'Type d’élément';
 
   @override
-  String get adminStockHint => 'Ex: 50';
+  String get adminStockHint => 'Ex : 50';
 
   @override
   String get adminProductImageLabel => 'Image';
 
   @override
-  String get adminProductPickImage => 'Pick image';
+  String get adminProductPickImage => 'Choisir une image';
 
   @override
-  String get adminRemove => 'Remove';
+  String get adminRemove => 'Supprimer';
 
   @override
-  String get adminProductSkuHint => 'Ex: SKU-123';
+  String get adminProductSkuHint => 'Ex : SKU-123';
 
   @override
   String get adminProductDownloadUrlHint => 'https://...';
@@ -619,723 +619,723 @@ class AppLocalizationsFr extends AppLocalizations {
   String get adminProductSaveButton => 'Enregistrer le produit';
 
   @override
-  String get adminNoCategories => 'No categories found';
+  String get adminNoCategories => 'Aucune catégorie trouvée';
 
   @override
-  String get adminCreateCategory => 'Create category';
+  String get adminCreateCategory => 'Créer une catégorie';
 
   @override
-  String get adminNoItemTypes => 'No item types found';
+  String get adminNoItemTypes => 'Aucun type d’élément trouvé';
 
   @override
-  String get adminCreateItemType => 'Create item type';
+  String get adminCreateItemType => 'Créer un type d’élément';
 
   @override
   String get adminTaxesTitle => 'Taxes';
 
   @override
-  String get adminTaxRulesTitle => 'Tax Rules';
+  String get adminTaxRulesTitle => 'Règles fiscales';
 
   @override
-  String get adminTaxAddRule => 'Add tax rule';
+  String get adminTaxAddRule => 'Ajouter une règle';
 
   @override
-  String get adminTaxNoRules => 'No tax rules found.';
+  String get adminTaxNoRules => 'Aucune règle fiscale trouvée.';
 
   @override
-  String get adminTaxCreateRuleTitle => 'Create Tax Rule';
+  String get adminTaxCreateRuleTitle => 'Créer une règle fiscale';
 
   @override
-  String get adminTaxEditRuleTitle => 'Edit Tax Rule';
+  String get adminTaxEditRuleTitle => 'Modifier la règle fiscale';
 
   @override
-  String get adminTaxRuleNameLabel => 'Rule name';
+  String get adminTaxRuleNameLabel => 'Nom de la règle';
 
   @override
-  String get adminTaxRuleNameHint => 'Ex: Standard VAT 11%';
+  String get adminTaxRuleNameHint => 'Ex : TVA standard 11%';
 
   @override
-  String get adminTaxRuleNameRequired => 'Tax rule name is required';
+  String get adminTaxRuleNameRequired => 'Le nom de la règle est obligatoire';
 
   @override
-  String get adminTaxRuleRateLabel => 'Rate (%)';
+  String get adminTaxRuleRateLabel => 'Taux (%)';
 
   @override
   String get adminTaxRuleRateHint => '11.00';
 
   @override
-  String get adminTaxRuleRateRequired => 'Rate is required';
+  String get adminTaxRuleRateRequired => 'Le taux est obligatoire';
 
   @override
-  String get adminTaxRuleRateInvalid => 'Rate must be a valid number > 0';
+  String get adminTaxRuleRateInvalid => 'Le taux doit être un nombre valide > 0';
 
   @override
-  String get adminTaxAppliesToShippingLabel => 'Applies to shipping';
+  String get adminTaxAppliesToShippingLabel => 'S’applique à la livraison';
 
   @override
-  String get adminTaxEnabledLabel => 'Enabled';
+  String get adminTaxEnabledLabel => 'Activé';
 
   @override
-  String get adminTaxCountryIdLabel => 'Country ID (optional)';
+  String get adminTaxCountryIdLabel => 'ID pays (optionnel)';
 
   @override
   String get adminTaxCountryIdHint => '1';
 
   @override
-  String get adminTaxRegionIdLabel => 'Region ID (optional)';
+  String get adminTaxRegionIdLabel => 'ID région (optionnel)';
 
   @override
   String get adminTaxRegionIdHint => '2';
 
   @override
-  String get adminTaxRateShort => 'Rate';
+  String get adminTaxRateShort => 'Taux';
 
   @override
-  String get adminTaxAppliesToShippingShort => 'Shipping tax';
+  String get adminTaxAppliesToShippingShort => 'Taxe livraison';
 
   @override
-  String get adminTaxEnabledShort => 'Enabled';
+  String get adminTaxEnabledShort => 'Activé';
 
   @override
-  String get adminCancel => 'Cancel';
+  String get adminCancel => 'Annuler';
 
   @override
-  String get adminCreate => 'Create';
+  String get adminCreate => 'Créer';
 
   @override
-  String get adminUpdate => 'Update';
+  String get adminUpdate => 'Mettre à jour';
 
   @override
-  String get adminEdit => 'Edit';
+  String get adminEdit => 'Modifier';
 
   @override
-  String get adminDelete => 'Delete';
+  String get adminDelete => 'Supprimer';
 
   @override
-  String get yes => 'Yes';
+  String get yes => 'Oui';
 
   @override
-  String get no => 'No';
+  String get no => 'Non';
 
   @override
-  String get adminSessionExpired => 'Your session has expired. Please log in again.';
+  String get adminSessionExpired => 'Votre session a expiré. Veuillez vous reconnecter.';
 
   @override
-  String get adminTaxCountryLabel => 'Country';
+  String get adminTaxCountryLabel => 'Pays';
 
   @override
-  String get adminTaxCountryHint => 'Select country';
+  String get adminTaxCountryHint => 'Sélectionner un pays';
 
   @override
-  String get adminTaxRegionLabel => 'Region';
+  String get adminTaxRegionLabel => 'Région';
 
   @override
-  String get adminTaxSelectCountryFirst => 'Select country first';
+  String get adminTaxSelectCountryFirst => 'Sélectionnez d’abord un pays';
 
   @override
-  String get adminTaxRegionHint => 'Select region';
+  String get adminTaxRegionHint => 'Sélectionner une région';
 
   @override
-  String get adminTaxRulesTitleShort => 'Tax Rules';
+  String get adminTaxRulesTitleShort => 'Règles fiscales';
 
   @override
-  String get adminTaxRulesSubtitle => 'Manage tax rules for your products.';
+  String get adminTaxRulesSubtitle => 'Gérez les règles fiscales de vos produits.';
 
   @override
-  String get taxPreviewLoading => 'Calculating tax preview...';
+  String get taxPreviewLoading => 'Calcul de l’aperçu des taxes...';
 
   @override
-  String get taxPreviewTitle => 'Tax Preview';
+  String get taxPreviewTitle => 'Aperçu des taxes';
 
   @override
-  String get itemsTaxLabel => 'Items Tax';
+  String get itemsTaxLabel => 'Taxe sur les articles';
 
   @override
-  String get shippingTaxLabel => 'Shipping Tax';
+  String get shippingTaxLabel => 'Taxe sur la livraison';
 
   @override
-  String get totalTaxLabel => 'Total Tax';
+  String get totalTaxLabel => 'Total des taxes';
 
   @override
-  String get taxClassNone => 'No Tax';
+  String get taxClassNone => 'Aucune taxe';
 
   @override
-  String get taxClassStandard => 'Standard Rate';
+  String get taxClassStandard => 'Taux standard';
 
   @override
-  String get taxClassReduced => 'Reduced Rate';
+  String get taxClassReduced => 'Taux réduit';
 
   @override
-  String get taxClassZero => 'Zero Rate';
+  String get taxClassZero => 'Taux zéro';
 
   @override
-  String get taxClassLabel => 'Tax Class';
+  String get taxClassLabel => 'Classe de taxe';
 
   @override
-  String get taxClassHint => 'Select tax class';
+  String get taxClassHint => 'Sélectionner une classe de taxe';
 
   @override
-  String get adminTaxCountryRequired => 'Country is required';
+  String get adminTaxCountryRequired => 'Le pays est obligatoire';
 
   @override
-  String get adminTaxRegionRequired => 'Region is required';
+  String get adminTaxRegionRequired => 'La région est obligatoire';
 
   @override
-  String get adminTaxRulePresetLabel => 'Rule Preset';
+  String get adminTaxRulePresetLabel => 'Préréglage';
 
   @override
-  String get adminTaxRulePresetHint => 'Select a preset to auto-fill fields';
+  String get adminTaxRulePresetHint => 'Sélectionnez un préréglage pour remplir automatiquement';
 
   @override
-  String get adminCustom => 'Custom';
+  String get adminCustom => 'Personnalisé';
 
   @override
-  String get adminTaxAutoNameLabel => 'Auto-generate name';
+  String get adminTaxAutoNameLabel => 'Générer automatiquement le nom';
 
   @override
-  String get adminShippingTitle => 'Shipping Methods';
+  String get adminShippingTitle => 'Modes de livraison';
 
   @override
-  String get adminShippingAdd => 'Add method';
+  String get adminShippingAdd => 'Ajouter un mode';
 
   @override
-  String get adminShippingNoMethods => 'No shipping methods yet';
+  String get adminShippingNoMethods => 'Aucun mode de livraison pour l’instant';
 
   @override
-  String get adminShippingCreateTitle => 'Create shipping method';
+  String get adminShippingCreateTitle => 'Créer un mode de livraison';
 
   @override
-  String get adminShippingEditTitle => 'Edit shipping method';
+  String get adminShippingEditTitle => 'Modifier le mode de livraison';
 
   @override
-  String get adminShippingNameLabel => 'Name';
+  String get adminShippingNameLabel => 'Nom';
 
   @override
-  String get adminShippingNameRequired => 'Name is required';
+  String get adminShippingNameRequired => 'Le nom est obligatoire';
 
   @override
   String get adminShippingDescLabel => 'Description';
 
   @override
-  String get adminShippingTypeLabel => 'Method type';
+  String get adminShippingTypeLabel => 'Type de mode';
 
   @override
-  String get adminShippingTypeHint => 'Select type';
+  String get adminShippingTypeHint => 'Sélectionner un type';
 
   @override
-  String get adminShippingFlatRateLabel => 'Flat rate';
+  String get adminShippingFlatRateLabel => 'Tarif fixe';
 
   @override
-  String get adminShippingPerKgLabel => 'Price per kg';
+  String get adminShippingPerKgLabel => 'Prix par kg';
 
   @override
-  String get adminShippingThresholdLabel => 'Free shipping threshold';
+  String get adminShippingThresholdLabel => 'Seuil de livraison gratuite';
 
   @override
-  String get adminShippingCountryLabel => 'Country';
+  String get adminShippingCountryLabel => 'Pays';
 
   @override
-  String get adminShippingCountryHint => 'Select country';
+  String get adminShippingCountryHint => 'Sélectionner un pays';
 
   @override
-  String get adminShippingCountryRequired => 'Country is required';
+  String get adminShippingCountryRequired => 'Le pays est obligatoire';
 
   @override
-  String get adminShippingRegionLabel => 'Region';
+  String get adminShippingRegionLabel => 'Région';
 
   @override
-  String get adminShippingRegionHint => 'Select region (optional)';
+  String get adminShippingRegionHint => 'Sélectionner une région (optionnel)';
 
   @override
-  String get adminShippingSelectCountryFirst => 'Select country first';
+  String get adminShippingSelectCountryFirst => 'Sélectionnez d’abord un pays';
 
   @override
-  String get adminShippingEnabledLabel => 'Enabled';
+  String get adminShippingEnabledLabel => 'Activé';
 
   @override
-  String get adminShippingEnabledShort => 'Enabled';
+  String get adminShippingEnabledShort => 'Activé';
 
   @override
   String get adminShippingTypeShort => 'Type';
 
   @override
-  String get shippingTypeFlatRate => 'Flat rate';
+  String get shippingTypeFlatRate => 'Tarif fixe';
 
   @override
-  String get shippingTypeFree => 'Free';
+  String get shippingTypeFree => 'Gratuit';
 
   @override
-  String get shippingTypeWeightBased => 'Weight based';
+  String get shippingTypeWeightBased => 'Basé sur le poids';
 
   @override
-  String get shippingTypePriceBased => 'Price based';
+  String get shippingTypePriceBased => 'Basé sur le prix';
 
   @override
-  String get shippingTypePricePerKg => 'Price per kg';
+  String get shippingTypePricePerKg => 'Prix par kg';
 
   @override
-  String get shippingTypeLocalPickup => 'Local pickup';
+  String get shippingTypeLocalPickup => 'Retrait sur place';
 
   @override
-  String get shippingTypeFreeOverThreshold => 'Free over threshold';
+  String get shippingTypeFreeOverThreshold => 'Gratuit au-dessus du seuil';
 
   @override
-  String get adminConfirmDelete => 'Are you sure you want to delete this item?';
+  String get adminConfirmDelete => 'Êtes-vous sûr de vouloir supprimer cet élément ?';
 
   @override
-  String get adminShippingCreateButton => 'Create method';
+  String get adminShippingCreateButton => 'Créer le mode';
 
   @override
-  String get adminDeleted => 'Deleted';
+  String get adminDeleted => 'Élément supprimé avec succès';
 
   @override
-  String get refreshLabel => 'Refresh';
+  String get refreshLabel => 'Actualiser';
 
   @override
-  String get adminEnabledOnly => 'Enabled only';
+  String get adminEnabledOnly => 'Activés seulement';
 
   @override
-  String get adminShowAll => 'Show all';
+  String get adminShowAll => 'Afficher tout';
 
   @override
-  String get adminDisabled => 'Disabled only';
+  String get adminDisabled => 'Désactivés seulement';
 
   @override
-  String get adminActive => 'Active only';
+  String get adminActive => 'Actifs seulement';
 
   @override
-  String get adminCreated => 'Created';
+  String get adminCreated => 'Créé avec succès';
 
   @override
-  String get adminUpdated => 'Updated';
+  String get adminUpdated => 'Mis à jour avec succès';
 
   @override
-  String get adminHomeBannersTitle => 'Home Banners';
+  String get adminHomeBannersTitle => 'Bannières d’accueil';
 
   @override
-  String get adminHomeBannerAdd => 'Add banner';
+  String get adminHomeBannerAdd => 'Ajouter une bannière';
 
   @override
-  String get adminHomeBannerNoBanners => 'No banners yet';
+  String get adminHomeBannerNoBanners => 'Aucune bannière pour l’instant';
 
   @override
-  String get adminHomeBannerCreateTitle => 'Create home banner';
+  String get adminHomeBannerCreateTitle => 'Créer une bannière d’accueil';
 
   @override
-  String get adminHomeBannerEditTitle => 'Edit home banner';
+  String get adminHomeBannerEditTitle => 'Modifier la bannière d’accueil';
 
   @override
-  String get adminHomeBannerTitleLabel => 'Title';
+  String get adminHomeBannerTitleLabel => 'Titre';
 
   @override
-  String get adminHomeBannerSubtitleLabel => 'Subtitle';
+  String get adminHomeBannerSubtitleLabel => 'Sous-titre';
 
   @override
-  String get adminHomeBannerTargetTypeLabel => 'Target type';
+  String get adminHomeBannerTargetTypeLabel => 'Type de cible';
 
   @override
-  String get adminHomeBannerTargetIdLabel => 'Target ID';
+  String get adminHomeBannerTargetIdLabel => 'ID cible';
 
   @override
-  String get adminHomeBannerTargetUrlLabel => 'Target URL';
+  String get adminHomeBannerTargetUrlLabel => 'URL cible';
 
   @override
-  String get adminHomeBannerSortOrderLabel => 'Sort order';
+  String get adminHomeBannerSortOrderLabel => 'Ordre de tri';
 
   @override
   String get adminHomeBannerActiveLabel => 'Active';
 
   @override
-  String get adminImageLabel => 'Banner image';
+  String get adminImageLabel => 'Image de la bannière';
 
   @override
-  String get adminChooseFromGallery => 'Choose from gallery';
+  String get adminChooseFromGallery => 'Choisir depuis la galerie';
 
   @override
-  String get adminTakePhoto => 'Take photo';
+  String get adminTakePhoto => 'Prendre une photo';
 
   @override
-  String get adminRemoveImage => 'Remove';
+  String get adminRemoveImage => 'Supprimer l’image';
 
   @override
-  String get adminImageRequired => 'Image is required';
+  String get adminImageRequired => 'L’image est obligatoire';
 
   @override
-  String get adminTargetShort => 'Target';
+  String get adminTargetShort => 'Cible';
 
   @override
-  String get adminSortShort => 'Sort';
+  String get adminSortShort => 'Tri';
 
   @override
-  String get adminUntitled => 'Untitled';
+  String get adminUntitled => 'Sans titre';
 
   @override
-  String get adminHomeBannerEdit => 'Edit banner';
+  String get adminHomeBannerEdit => 'Modifier la bannière';
 
   @override
-  String get adminHomeBannerCreate => 'Create banner';
+  String get adminHomeBannerCreate => 'Créer une bannière';
 
   @override
-  String get adminHomeBannerImageLabel => 'Banner image';
+  String get adminHomeBannerImageLabel => 'Image de la bannière';
 
   @override
-  String get adminHomeBannerImageRequired => 'Image is required';
+  String get adminHomeBannerImageRequired => 'L’image est obligatoire';
 
   @override
-  String get adminPickFromGallery => 'Gallery';
+  String get adminPickFromGallery => 'Galerie';
 
   @override
-  String get adminPickFromCamera => 'Camera';
+  String get adminPickFromCamera => 'Caméra';
 
   @override
-  String get adminHomeBannerSortLabel => 'Sort order';
+  String get adminHomeBannerSortLabel => 'Ordre de tri';
 
   @override
-  String get adminHomeBannerLoadingTargets => 'Loading targets...';
+  String get adminHomeBannerLoadingTargets => 'Chargement des cibles...';
 
   @override
-  String get adminHomeBannerTargetTypeHint => 'Select target type';
+  String get adminHomeBannerTargetTypeHint => 'Sélectionner le type de cible';
 
   @override
-  String get adminHomeBannerTargetNone => 'None';
+  String get adminHomeBannerTargetNone => 'Aucune';
 
   @override
-  String get adminHomeBannerTargetCategory => 'Category';
+  String get adminHomeBannerTargetCategory => 'Catégorie';
 
   @override
-  String get adminHomeBannerTargetProduct => 'Product';
+  String get adminHomeBannerTargetProduct => 'Produit';
 
   @override
-  String get adminHomeBannerTargetUrl => 'External URL';
+  String get adminHomeBannerTargetUrl => 'URL externe';
 
   @override
-  String get adminHomeBannerUrlRequired => 'URL is required';
+  String get adminHomeBannerUrlRequired => 'L’URL est obligatoire';
 
   @override
-  String get adminHomeBannerTargetCategoryLabel => 'Category';
+  String get adminHomeBannerTargetCategoryLabel => 'Catégorie';
 
   @override
-  String get adminHomeBannerTargetCategoryHint => 'Select category';
+  String get adminHomeBannerTargetCategoryHint => 'Sélectionner une catégorie';
 
   @override
-  String get adminHomeBannerCategoryRequired => 'Category is required';
+  String get adminHomeBannerCategoryRequired => 'La catégorie est obligatoire';
 
   @override
-  String get adminHomeBannerTargetProductLabel => 'Product';
+  String get adminHomeBannerTargetProductLabel => 'Produit';
 
   @override
-  String get adminHomeBannerTargetProductHint => 'Select product';
+  String get adminHomeBannerTargetProductHint => 'Sélectionner un produit';
 
   @override
-  String get adminHomeBannerProductRequired => 'Product is required';
+  String get adminHomeBannerProductRequired => 'Le produit est obligatoire';
 
   @override
   String get adminActiveLabel => 'Active';
 
   @override
-  String get adminNoOptions => 'No options';
+  String get adminNoOptions => 'Aucune option';
 
   @override
-  String get noResultsLabel => 'No results';
+  String get noResultsLabel => 'Aucun résultat';
 
   @override
-  String get searchLabel => 'Search...';
+  String get searchLabel => 'Rechercher...';
 
   @override
-  String get adminProductsSearchHint => 'Search products...';
+  String get adminProductsSearchHint => 'Rechercher des produits...';
 
   @override
-  String get adminProductsFilterAll => 'All products';
+  String get adminProductsFilterAll => 'Tous les produits';
 
   @override
-  String get adminProductEditSubtitle => 'Update product details';
+  String get adminProductEditSubtitle => 'Mettre à jour les détails du produit';
 
   @override
-  String get adminProductCreateSubtitle => 'Add a new product';
+  String get adminProductCreateSubtitle => 'Ajouter un nouveau produit';
 
   @override
-  String get adminProductSectionBasicInfoTitle => 'Basic info';
+  String get adminProductSectionBasicInfoTitle => 'Infos de base';
 
   @override
-  String get adminProductSectionPricingTitle => 'Pricing';
+  String get adminProductSectionPricingTitle => 'Tarification';
 
   @override
-  String get adminProductSectionBasicInfoSubtitle => 'Name, description, type, SKU';
+  String get adminProductSectionBasicInfoSubtitle => 'Nom, description, type, SKU';
 
   @override
-  String get adminProductSectionPricingSubtitle => 'Price, sale, stock';
+  String get adminProductSectionPricingSubtitle => 'Prix, promo, stock';
 
   @override
-  String get adminProductSectionMetaTitle => 'Product';
+  String get adminProductSectionMetaTitle => 'Produit';
 
   @override
-  String get adminProductSectionMetaSubtitle => 'SEO title & description';
+  String get adminProductSectionMetaSubtitle => 'Titre SEO & description';
 
   @override
-  String get adminSelectCategoryFirst => 'Select category first';
+  String get adminSelectCategoryFirst => 'Sélectionnez d’abord une catégorie';
 
   @override
-  String get adminProductImageSectionTitle => 'Product image';
+  String get adminProductImageSectionTitle => 'Image du produit';
 
   @override
-  String get adminProductImageSectionSubtitle => 'Upload product image';
+  String get adminProductImageSectionSubtitle => 'Téléverser l’image du produit';
 
   @override
-  String get adminProductSectionConfigTitle => 'Product configuration';
+  String get adminProductSectionConfigTitle => 'Configuration du produit';
 
   @override
-  String get adminProductSectionConfigSubtitle => 'Virtual, downloadable, external';
+  String get adminProductSectionConfigSubtitle => 'Virtuel, téléchargeable, externe';
 
   @override
-  String get adminProductSaleSectionSubtitle => 'Set sale price and duration';
+  String get adminProductSaleSectionSubtitle => 'Définir le prix promo et la durée';
 
   @override
-  String get adminProductAttributesSubtitle => 'Add custom attributes';
+  String get adminProductAttributesSubtitle => 'Ajouter des attributs personnalisés';
 
   @override
-  String get cart_title => 'Shopping Cart';
+  String get cart_title => 'Panier';
 
   @override
-  String get cart_empty_message => 'Your cart is empty. Start adding items!';
+  String get cart_empty_message => 'Votre panier est vide. Commencez à ajouter des articles !';
 
   @override
-  String get cart_total_label => 'Total:';
+  String get cart_total_label => 'Total :';
 
   @override
-  String get cart_checkout_button => 'Proceed to Checkout';
+  String get cart_checkout_button => 'Passer au paiement';
 
   @override
-  String get cart_item_added => 'Item added to cart';
+  String get cart_item_added => 'Article ajouté au panier';
 
   @override
-  String get cart_item_removed => 'Item removed from cart';
+  String get cart_item_removed => 'Article supprimé du panier';
 
   @override
-  String get cart_clear_confirmation => 'Are you sure you want to clear the cart?';
+  String get cart_clear_confirmation => 'Voulez-vous vraiment vider le panier ?';
 
   @override
-  String get cart_item_quantity_label => 'Quantity:';
+  String get cart_item_quantity_label => 'Quantité :';
 
   @override
-  String get cart_item_updated => 'Cart item updated';
+  String get cart_item_updated => 'Article du panier mis à jour';
 
   @override
-  String get cart_checkout => 'Checkout';
+  String get cart_checkout => 'Paiement';
 
   @override
-  String get cart_clear => 'Clear Cart';
+  String get cart_clear => 'Vider le panier';
 
   @override
-  String get cart_empty_cta => 'Browse Products';
+  String get cart_empty_cta => 'Parcourir les produits';
 
   @override
-  String get cart_cleared => 'Cart has been cleared';
+  String get cart_cleared => 'Le panier a été vidé';
 
   @override
-  String get adminProductNoAttributesHint => 'No attributes added yet.';
+  String get adminProductNoAttributesHint => 'Aucun attribut ajouté pour l’instant.';
 
   @override
-  String get cart_add_button => 'Add to Cart';
+  String get cart_add_button => 'Ajouter au panier';
 
   @override
-  String get home_book_now_button => 'Book Now';
+  String get home_book_now_button => 'Réserver';
 
   @override
-  String get home_view_details_button => 'View Details';
+  String get home_view_details_button => 'Voir les détails';
 
   @override
-  String get cart_login_required_title => 'Login Required';
+  String get cart_login_required_title => 'Connexion requise';
 
   @override
-  String get cart_login_required_message => 'Please log in to proceed to checkout.';
+  String get cart_login_required_message => 'Veuillez vous connecter pour continuer vers le paiement.';
 
   @override
-  String get cancel_button => 'Cancel';
+  String get cancel_button => 'Annuler';
 
   @override
-  String get login_button => 'Log In';
+  String get login_button => 'Se connecter';
 
   @override
-  String get cart_item_added_snackbar => 'Item added to cart';
+  String get cart_item_added_snackbar => 'Article ajouté au panier';
 
   @override
   String get coupons_title => 'Coupons';
 
   @override
-  String get coupons_saved => 'Coupon saved successfully';
+  String get coupons_saved => 'Coupon enregistré avec succès';
 
   @override
-  String get coupons_deleted => 'Coupon deleted successfully';
+  String get coupons_deleted => 'Coupon supprimé avec succès';
 
   @override
-  String get coupons_empty => 'No coupons yet. Create your first one!';
+  String get coupons_empty => 'Aucun coupon pour l’instant. Créez le premier !';
 
   @override
-  String get coupons_type_percent => 'Percentage';
+  String get coupons_type_percent => 'Remise en pourcentage';
 
   @override
-  String get coupons_type_fixed => 'Fixed amount';
+  String get coupons_type_fixed => 'Remise montant fixe';
 
   @override
-  String get coupons_type_free_shipping => 'Free shipping';
+  String get coupons_type_free_shipping => 'Livraison gratuite';
 
   @override
-  String get coupons_inactive_badge => 'Inactive';
+  String get coupons_inactive_badge => 'Inactif';
 
   @override
-  String get coupons_delete_title => 'Delete coupon';
+  String get coupons_delete_title => 'Supprimer le coupon';
 
   @override
   String coupons_delete_confirm(Object code) {
-    return 'Are you sure you want to delete coupon $code?';
+    return 'Êtes-vous sûr de vouloir supprimer le coupon $code ?';
   }
 
   @override
-  String get delete => 'Delete';
+  String get delete => 'Supprimer';
 
   @override
-  String get coupons_add => 'Add coupon';
+  String get coupons_add => 'Ajouter un coupon';
 
   @override
-  String get coupons_edit => 'Edit coupon';
+  String get coupons_edit => 'Modifier le coupon';
 
   @override
   String get coupons_code => 'Code';
 
   @override
-  String get coupons_code_required => 'Coupon code is required';
+  String get coupons_code_required => 'Le code du coupon est obligatoire';
 
   @override
   String get coupons_description => 'Description';
 
   @override
-  String get coupons_type => 'Discount type';
+  String get coupons_type => 'Type de réduction';
 
   @override
-  String get coupons_value_percent => 'Discount (%)';
+  String get coupons_value_percent => 'Remise (%)';
 
   @override
-  String get coupons_value_amount => 'Discount amount';
+  String get coupons_value_amount => 'Montant de la remise';
 
   @override
-  String get coupons_value_required => 'Discount value is required';
+  String get coupons_value_required => 'La valeur de la remise est obligatoire';
 
   @override
-  String get coupons_value_invalid => 'Enter a valid discount value';
+  String get coupons_value_invalid => 'Saisissez une valeur de remise valide';
 
   @override
-  String get coupons_max_uses => 'Max uses';
+  String get coupons_max_uses => 'Utilisations max';
 
   @override
-  String get coupons_min_order_amount => 'Min order amount';
+  String get coupons_min_order_amount => 'Montant min de commande';
 
   @override
-  String get coupons_max_discount_amount => 'Max discount amount';
+  String get coupons_max_discount_amount => 'Remise max';
 
   @override
-  String get coupons_active => 'Active';
+  String get coupons_active => 'Actif';
 
   @override
-  String get common_save => 'Save';
+  String get common_save => 'Enregistrer';
 
   @override
   String get adminCouponsTitle => 'Coupons';
 
   @override
-  String get checkoutTitle => 'Checkout';
+  String get checkoutTitle => 'Paiement';
 
   @override
-  String get checkoutLoading => 'Loading checkout…';
+  String get checkoutLoading => 'Chargement du paiement…';
 
   @override
-  String get checkoutEmptyCart => 'Your cart is empty.';
+  String get checkoutEmptyCart => 'Votre panier est vide.';
 
   @override
-  String get checkoutGoBack => 'Go back';
+  String get checkoutGoBack => 'Retour';
 
   @override
-  String get checkoutItemsTitle => 'Items';
+  String get checkoutItemsTitle => 'Articles';
 
   @override
-  String get checkoutAddressTitle => 'Shipping Address';
+  String get checkoutAddressTitle => 'Adresse de livraison';
 
   @override
-  String get checkoutCountryIdLabel => 'Country ID';
+  String get checkoutCountryIdLabel => 'ID pays';
 
   @override
-  String get checkoutCountryIdHint => 'Optional';
+  String get checkoutCountryIdHint => 'Optionnel';
 
   @override
-  String get checkoutRegionIdLabel => 'Region ID';
+  String get checkoutRegionIdLabel => 'ID région';
 
   @override
-  String get checkoutRegionIdHint => 'Optional';
+  String get checkoutRegionIdHint => 'Optionnel';
 
   @override
-  String get checkoutCityLabel => 'City';
+  String get checkoutCityLabel => 'Ville';
 
   @override
-  String get checkoutCityHint => 'Enter city';
+  String get checkoutCityHint => 'Saisissez la ville';
 
   @override
-  String get checkoutPostalCodeLabel => 'Postal Code';
+  String get checkoutPostalCodeLabel => 'Code postal';
 
   @override
-  String get checkoutPostalCodeHint => 'Optional';
+  String get checkoutPostalCodeHint => 'Optionnel';
 
   @override
-  String get checkoutApplyAddress => 'Update shipping';
+  String get checkoutApplyAddress => 'Mettre à jour la livraison';
 
   @override
   String get checkoutCouponTitle => 'Coupon';
 
   @override
-  String get checkoutCouponLabel => 'Coupon Code';
+  String get checkoutCouponLabel => 'Code coupon';
 
   @override
-  String get checkoutCouponHint => 'Enter coupon (optional)';
+  String get checkoutCouponHint => 'Saisissez un coupon (optionnel)';
 
   @override
-  String get checkoutShippingTitle => 'Shipping';
+  String get checkoutShippingTitle => 'Livraison';
 
   @override
-  String get checkoutNoShippingMethods => 'No shipping methods found. Update address then refresh.';
+  String get checkoutNoShippingMethods => 'Aucun mode de livraison trouvé. Mettez à jour l’adresse puis actualisez.';
 
   @override
-  String get checkoutRefreshShipping => 'Refresh shipping';
+  String get checkoutRefreshShipping => 'Actualiser la livraison';
 
   @override
-  String get checkoutSelectShipping => 'Please select a shipping method';
+  String get checkoutSelectShipping => 'Veuillez sélectionner un mode de livraison';
 
   @override
-  String get checkoutPaymentTitle => 'Payment';
+  String get checkoutPaymentTitle => 'Paiement';
 
   @override
-  String get checkoutPaymentCash => 'Cash on delivery';
+  String get checkoutPaymentCash => 'Paiement à la livraison';
 
   @override
-  String get checkoutStripeNote => 'Stripe requires payment confirmation (coming next).';
+  String get checkoutStripeNote => 'Stripe nécessite une confirmation de paiement (bientôt).';
 
   @override
-  String get checkoutSelectPayment => 'Please select a payment method';
+  String get checkoutSelectPayment => 'Veuillez sélectionner un moyen de paiement';
 
   @override
-  String get checkoutSummaryTitle => 'Order Summary';
+  String get checkoutSummaryTitle => 'Récapitulatif de commande';
 
   @override
-  String get checkoutSubtotal => 'Subtotal';
+  String get checkoutSubtotal => 'Sous-total';
 
   @override
-  String get checkoutShipping => 'Shipping';
+  String get checkoutShipping => 'Livraison';
 
   @override
-  String get checkoutTax => 'Tax';
+  String get checkoutTax => 'Taxe';
 
   @override
   String get checkoutTotal => 'Total';
 
   @override
-  String get checkoutPlaceOrder => 'Place Order';
+  String get checkoutPlaceOrder => 'Passer la commande';
 
   @override
   String get orderSummaryTitle => 'Récapitulatif';
@@ -1344,7 +1344,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get secureCheckout => 'Paiement sécurisé';
 
   @override
-  String get itemsSubtotalLabel => 'Sous-total articles';
+  String get itemsSubtotalLabel => 'Sous-total des articles';
 
   @override
   String get shippingLabel => 'Livraison';
@@ -1375,7 +1375,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String itemNumber(int id) {
-    return 'Article #$id';
+    return 'Article n°$id';
   }
 
   @override
@@ -1385,12 +1385,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String checkoutOrderPlacedToast(int orderId) {
-    return 'Commande passée ✅ (#$orderId)';
+    return 'Commande passée ✅ (n°$orderId)';
   }
 
   @override
   String orderTitle(int orderId) {
-    return 'Commande #$orderId';
+    return 'Commande n°$orderId';
   }
 
   @override
@@ -1416,63 +1416,63 @@ class AppLocalizationsFr extends AppLocalizations {
   String get checkoutErrorCartEmpty => 'Le panier est vide';
 
   @override
-  String get checkoutErrorSelectPayment => 'Choisissez un mode de paiement';
+  String get checkoutErrorSelectPayment => 'Sélectionnez un moyen de paiement';
 
   @override
-  String get checkoutErrorSelectCountry => 'Choisissez un pays';
+  String get checkoutErrorSelectCountry => 'Sélectionnez un pays';
 
   @override
-  String get checkoutErrorSelectRegion => 'Choisissez une région';
+  String get checkoutErrorSelectRegion => 'Sélectionnez une région';
 
   @override
-  String get checkoutErrorEnterCity => 'Entrez la ville';
+  String get checkoutErrorEnterCity => 'Saisissez la ville';
 
   @override
-  String get checkoutErrorEnterPostalCode => 'Entrez le code postal';
+  String get checkoutErrorEnterPostalCode => 'Saisissez le code postal';
 
   @override
-  String get checkoutErrorSelectShipping => 'Choisissez un mode de livraison';
+  String get checkoutErrorSelectShipping => 'Sélectionnez un mode de livraison';
 
   @override
-  String get checkoutErrorShippingMissing => 'Mode de livraison manquant';
+  String get checkoutErrorShippingMissing => 'Le mode de livraison est manquant';
 
   @override
-  String get checkoutErrorStripeNotReady => 'Stripe n\'est pas encore configuré';
+  String get checkoutErrorStripeNotReady => 'Stripe n’est pas encore branché';
 
   @override
   String get commonDash => '-';
 
   @override
   String orderDetailsTitle(Object orderId) {
-    return 'Order #$orderId';
+    return 'Commande n°$orderId';
   }
 
   @override
   String orderDetailsDateLine(Object date) {
-    return 'Date: $date';
+    return 'Date : $date';
   }
 
   @override
-  String get orderDetailsItemsTitle => 'Items';
+  String get orderDetailsItemsTitle => 'Articles';
 
   @override
   String orderDetailsItemFallback(Object itemId) {
-    return 'Item #$itemId';
+    return 'Article n°$itemId';
   }
 
   @override
   String orderDetailsQtyUnitLine(Object qty, Object unitPrice) {
-    return 'Qty: $qty  •  Unit: $unitPrice';
+    return 'Qté : $qty  •  Unité : $unitPrice';
   }
 
   @override
-  String get orderDetailsSubtotal => 'Subtotal';
+  String get orderDetailsSubtotal => 'Sous-total';
 
   @override
-  String get orderDetailsShipping => 'Shipping';
+  String get orderDetailsShipping => 'Livraison';
 
   @override
-  String get orderDetailsTax => 'Tax';
+  String get orderDetailsTax => 'Taxe';
 
   @override
   String orderDetailsCouponLine(Object code) {
@@ -1480,14 +1480,14 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get orderDetailsGrandTotal => 'Grand Total';
+  String get orderDetailsGrandTotal => 'Total général';
 
   @override
-  String get orderDetailsDownloadInvoice => 'Download Invoice PDF';
+  String get orderDetailsDownloadInvoice => 'Télécharger la facture PDF';
 
   @override
   String common_stock_label(Object stock) {
-    return 'Stock: $stock';
+    return 'Stock : $stock';
   }
 
   @override
@@ -1500,7 +1500,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get ordersEmptyTitle => 'Aucune commande';
 
   @override
-  String get ordersEmptyBody => 'Quand vous passez une commande, elle apparaîtra ici.';
+  String get ordersEmptyBody => 'Quand vous passerez une commande, elle apparaîtra ici.';
 
   @override
   String get ordersReload => 'Recharger';
@@ -1524,10 +1524,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get ordersQtyLabel => 'Qté';
 
   @override
-  String get ordersPaid => 'Payé';
+  String get ordersPaid => 'Payée';
 
   @override
-  String get ordersUnpaid => 'Non payé';
+  String get ordersUnpaid => 'Non payée';
 
   @override
   String get ordersStatusPending => 'En attente';
@@ -1539,7 +1539,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get ordersStatusCanceled => 'Annulée';
 
   @override
-  String get ordersStatusUnknown => 'Inconnu';
+  String get ordersStatusUnknown => 'Inconnue';
 
   @override
   String get ordersUnknownItem => 'Article';
@@ -1554,438 +1554,438 @@ class AppLocalizationsFr extends AppLocalizations {
   String get sessionExpired => 'Session expirée. Veuillez vous reconnecter.';
 
   @override
-  String get login => 'Connexion';
+  String get login => 'Se connecter';
 
   @override
-  String get editProfileTitle => 'Edit Profile';
+  String get editProfileTitle => 'Modifier le profil';
 
   @override
-  String get profileLoadFailed => 'Failed to load profile.';
+  String get profileLoadFailed => 'Échec du chargement du profil.';
 
   @override
-  String get username => 'Username';
+  String get username => 'Nom d’utilisateur';
 
   @override
-  String get firstName => 'First name';
+  String get firstName => 'Prénom';
 
   @override
-  String get lastName => 'Last name';
+  String get lastName => 'Nom';
 
   @override
-  String get publicProfile => 'Public profile';
+  String get publicProfile => 'Profil public';
 
   @override
-  String get save => 'Save';
+  String get save => 'Enregistrer';
 
   @override
-  String get dangerZone => 'Danger zone';
+  String get dangerZone => 'Zone de danger';
 
   @override
-  String get password => 'Password';
+  String get password => 'Mot de passe';
 
   @override
-  String get deleteAccount => 'Delete account';
+  String get deleteAccount => 'Supprimer le compte';
 
   @override
   String get notifications_title => 'Notifications';
 
   @override
-  String get notifications_empty_title => 'No notifications yet';
+  String get notifications_empty_title => 'Aucune notification';
 
   @override
-  String get notifications_empty_subtitle => 'When something happens, it’ll show up here. For now… peace and quiet 😌';
+  String get notifications_empty_subtitle => 'Quand quelque chose arrive, ça apparaîtra ici. Pour l’instant… calme total 😌';
 
   @override
-  String get notifications_retry => 'Retry';
+  String get notifications_retry => 'Réessayer';
 
   @override
-  String get privacy_policy_title => 'Privacy Policy';
+  String get privacy_policy_title => 'Politique de confidentialité';
 
   @override
-  String get privacy_policy_intro_title => 'Your privacy matters';
+  String get privacy_policy_intro_title => 'Votre confidentialité compte';
 
   @override
-  String get privacy_policy_intro_body => 'This policy explains what we collect, why we collect it, and how you control your data.';
+  String get privacy_policy_intro_body => 'Cette politique explique ce que nous collectons, pourquoi nous le collectons, et comment vous contrôlez vos données.';
 
   @override
-  String get privacy_policy_collect_title => 'What we collect';
+  String get privacy_policy_collect_title => 'Ce que nous collectons';
 
   @override
-  String get privacy_policy_collect_body => 'Basic profile info (name, email/phone), account settings, and app usage needed to provide the service.';
+  String get privacy_policy_collect_body => 'Infos de base (nom, e-mail/téléphone), paramètres de compte, et usage nécessaire pour fournir le service.';
 
   @override
-  String get privacy_policy_use_title => 'How we use your data';
+  String get privacy_policy_use_title => 'Comment nous utilisons vos données';
 
   @override
-  String get privacy_policy_use_body => 'To run the app, personalize your experience, improve features, and keep the platform secure.';
+  String get privacy_policy_use_body => 'Pour faire fonctionner l’app, personnaliser votre expérience, améliorer les fonctionnalités et sécuriser la plateforme.';
 
   @override
-  String get privacy_policy_share_title => 'Sharing';
+  String get privacy_policy_share_title => 'Partage';
 
   @override
-  String get privacy_policy_share_body => 'We don’t sell your data. We only share what’s needed with trusted services (like hosting) to operate the app.';
+  String get privacy_policy_share_body => 'Nous ne vendons pas vos données. Nous partageons seulement ce qui est nécessaire avec des services de confiance (hébergement, etc.).';
 
   @override
-  String get privacy_policy_security_title => 'Security';
+  String get privacy_policy_security_title => 'Sécurité';
 
   @override
-  String get privacy_policy_security_body => 'We use standard security practices, but no system is 100% perfect. Keep your password private.';
+  String get privacy_policy_security_body => 'Nous utilisons des pratiques standards, mais aucun système n’est parfait. Gardez votre mot de passe privé.';
 
   @override
-  String get privacy_policy_choices_title => 'Your choices';
+  String get privacy_policy_choices_title => 'Vos choix';
 
   @override
-  String get privacy_policy_choices_body => 'You can change visibility (public/private), update profile info, or request account actions based on the app features.';
+  String get privacy_policy_choices_body => 'Vous pouvez changer la visibilité (public/privé), mettre à jour le profil, ou demander des actions sur le compte selon les fonctionnalités.';
 
   @override
   String get privacy_policy_contact_title => 'Contact';
 
   @override
-  String get privacy_policy_contact_body => 'If you have questions about privacy, contact the app support team.';
+  String get privacy_policy_contact_body => 'Si vous avez des questions, contactez l’équipe support.';
 
   @override
-  String get privacy_policy_last_updated => 'Last updated: Dec 19, 2025';
+  String get privacy_policy_last_updated => 'Dernière mise à jour : 19 déc. 2025';
 
   @override
-  String get home_bottom_slide_thankyou_title => 'THANK YOU';
+  String get home_bottom_slide_thankyou_title => 'MERCI';
 
   @override
-  String get home_bottom_slide_thankyou_message => 'We appreciate your trust. Our team works daily to keep quality high and service fast.';
+  String get home_bottom_slide_thankyou_message => 'Merci pour votre confiance. Notre équipe travaille chaque jour pour garantir qualité et rapidité.';
 
   @override
-  String get home_bottom_slide_secure_title => 'SECURE & SAFE';
+  String get home_bottom_slide_secure_title => 'SÛR & SÉCURISÉ';
 
   @override
-  String get home_bottom_slide_secure_message => 'Secure payments, controlled products, and clean packaging — the basics done right.';
+  String get home_bottom_slide_secure_message => 'Paiements sécurisés, produits contrôlés, emballage propre — les bases, bien faites.';
 
   @override
-  String get home_bottom_slide_support_title => 'REAL SUPPORT';
+  String get home_bottom_slide_support_title => 'VRAI SUPPORT';
 
   @override
-  String get home_bottom_slide_support_message => 'Need help? We reply. No “seen” and disappear vibes 😅';
+  String get home_bottom_slide_support_message => 'Besoin d’aide ? On répond. Pas de mode “vu” puis disparition 😅';
 
   @override
-  String get home_bottom_benefit_contact => 'CONTACT AN\nACCREDITED EXPERT';
+  String get home_bottom_benefit_contact => 'CONTACTER UN\nEXPERT ACCRÉDITÉ';
 
   @override
-  String get home_bottom_benefit_secure_payments => 'SECURED\nPAYMENTS';
+  String get home_bottom_benefit_secure_payments => 'PAIEMENTS\nSÉCURISÉS';
 
   @override
-  String get home_bottom_benefit_authentic_products => 'AUTHENTIC &\nCONTROLLED PRODUCTS';
+  String get home_bottom_benefit_authentic_products => 'PRODUITS AUTHENTIQUES\n& CONTRÔLÉS';
 
   @override
   String home_bottom_benefit_free_delivery_above(String amount) {
-    return 'FREE DELIVERY\nABOVE $amount';
+    return 'LIVRAISON GRATUITE\nDÈS $amount';
   }
 
   @override
-  String get home_trailing_limited_time => 'Limited time';
+  String get home_trailing_limited_time => 'Temps limité';
 
   @override
-  String get home_trailing_see_all => 'See all';
+  String get home_trailing_see_all => 'Voir tout';
 
   @override
-  String get home_sale_tag => 'SALE';
+  String get home_sale_tag => 'PROMO';
 
   @override
   String home_stock_label(int count) {
-    return 'Stock: $count';
+    return 'Stock : $count';
   }
 
   @override
-  String get home_bookings_placeholder => 'Bookings feed not wired yet.';
+  String get home_bookings_placeholder => 'Le flux des réservations n’est pas encore branché.';
 
   @override
-  String get home_footer_contact_title => 'Contact us';
+  String get home_footer_contact_title => 'Nous contacter';
 
   @override
-  String get home_footer_contact_desc => 'Need help? We’re one message away.';
+  String get home_footer_contact_desc => 'Besoin d’aide ? On est à un message.';
 
   @override
-  String get home_footer_free_delivery_title => 'Free delivery';
+  String get home_footer_free_delivery_title => 'Livraison gratuite';
 
   @override
-  String get home_footer_free_delivery_desc => 'Available on selected orders and areas.';
+  String get home_footer_free_delivery_desc => 'Disponible sur certaines commandes et zones.';
 
   @override
-  String get home_footer_returns_title => 'Easy returns';
+  String get home_footer_returns_title => 'Retours faciles';
 
   @override
-  String get home_footer_returns_desc => 'Simple return policy on eligible items.';
+  String get home_footer_returns_desc => 'Politique de retour simple sur les articles éligibles.';
 
   @override
-  String get ownerPaymentSettingsTitle => 'Payment Methods';
+  String get ownerPaymentSettingsTitle => 'Moyens de paiement';
 
   @override
-  String get ownerPaymentSettingsDesc => 'Enable and configure gateways for this project';
+  String get ownerPaymentSettingsDesc => 'Activer et configurer les passerelles pour ce projet';
 
   @override
-  String get ownerPaymentConfigure => 'Configure';
+  String get ownerPaymentConfigure => 'Configurer';
 
   @override
-  String get ownerPaymentIncomplete => 'Incomplete';
+  String get ownerPaymentIncomplete => 'Incomplet';
 
   @override
-  String get ownerPaymentConfigHint => 'Configure fields below. Required fields must be filled.';
+  String get ownerPaymentConfigHint => 'Configurez les champs ci-dessous. Les champs obligatoires doivent être remplis.';
 
   @override
-  String get paymentMethodsTitle => 'Payment Methods';
+  String get paymentMethodsTitle => 'Moyens de paiement';
 
   @override
-  String get paymentSearchHint => 'Search…';
+  String get paymentSearchHint => 'Rechercher…';
 
   @override
-  String get paymentNoResults => 'No results';
+  String get paymentNoResults => 'Aucun résultat';
 
   @override
-  String get paymentConfigure => 'Configure';
+  String get paymentConfigure => 'Configurer';
 
   @override
-  String get paymentCancel => 'Cancel';
+  String get paymentCancel => 'Annuler';
 
   @override
-  String get paymentSave => 'Save';
+  String get paymentSave => 'Enregistrer';
 
   @override
-  String get paymentFillFields => 'Fill the fields below, then Save.';
+  String get paymentFillFields => 'Remplissez les champs ci-dessous, puis Enregistrer.';
 
   @override
-  String get paymentSavedKeepHint => 'Saved (leave empty to keep)';
+  String get paymentSavedKeepHint => 'Enregistré (laisser vide pour conserver)';
 
   @override
-  String get paymentRequiredLabel => '• required';
+  String get paymentRequiredLabel => '• obligatoire';
 
   @override
-  String get paymentIncomplete => 'Incomplete';
+  String get paymentIncomplete => 'Incomplet';
 
   @override
-  String get adminPaymentConfigTitle => 'Payment Methods';
+  String get adminPaymentConfigTitle => 'Moyens de paiement';
 
   @override
-  String get checkoutConfirmDialogTitle => 'Confirm checkout';
+  String get checkoutConfirmDialogTitle => 'Confirmer le paiement';
 
   @override
   String checkoutConfirmCartCleared(int itemCount) {
     String _temp0 = intl.Intl.pluralLogic(
       itemCount,
       locale: localeName,
-      other: 'After checkout, your cart will become empty ($itemCount items).',
-      one: 'After checkout, your cart will become empty (1 item).',
-      zero: 'After checkout, your cart will become empty.',
+      other: 'Après le paiement, votre panier sera vide ($itemCount articles).',
+      one: 'Après le paiement, votre panier sera vide (1 article).',
+      zero: 'Après le paiement, votre panier sera vide.',
     );
-    return '$_temp0 Do you want to continue?';
+    return '$_temp0 Voulez-vous continuer ?';
   }
 
   @override
-  String get commonYes => 'Yes';
+  String get commonYes => 'Oui';
 
   @override
-  String get commonNo => 'No';
+  String get commonNo => 'Non';
 
   @override
-  String get adminOrdersTitle => 'Orders';
+  String get adminOrdersTitle => 'Commandes';
 
   @override
   String get adminDashboard => 'Dashboard';
 
   @override
-  String get adminAllTime => 'All time';
+  String get adminAllTime => 'Tout';
 
   @override
-  String get adminLast7Days => 'Last 7 days';
+  String get adminLast7Days => '7 derniers jours';
 
   @override
-  String get adminLast30Days => 'Last 30 days';
+  String get adminLast30Days => '30 derniers jours';
 
   @override
-  String get adminClear => 'Clear';
+  String get adminClear => 'Effacer';
 
   @override
-  String get adminKpiOrders => 'Orders';
+  String get adminKpiOrders => 'Commandes';
 
   @override
-  String get adminKpiGrossSales => 'Gross Sales';
+  String get adminKpiGrossSales => 'Ventes brutes';
 
   @override
-  String get adminKpiPaid => 'Paid';
+  String get adminKpiPaid => 'Payé';
 
   @override
-  String get adminKpiOutstanding => 'Outstanding';
+  String get adminKpiOutstanding => 'Restant';
 
   @override
-  String get adminKpiAvgOrder => 'Avg Order';
+  String get adminKpiAvgOrder => 'Moy. commande';
 
   @override
   String adminFullyPaidPercent(Object percent) {
-    return 'Fully paid: $percent%';
+    return 'Entièrement payé : $percent%';
   }
 
   @override
-  String get adminPaidRevenueLast7Days => 'Paid revenue (last 7 days)';
+  String get adminPaidRevenueLast7Days => 'Revenu payé (7 derniers jours)';
 
   @override
-  String get adminNoOrders => 'No orders';
+  String get adminNoOrders => 'Aucune commande';
 
   @override
-  String get adminNoOrdersHint => 'Try changing the status filter, date range, or pull to refresh.';
+  String get adminNoOrdersHint => 'Essayez de changer le statut, la période, ou tirez pour actualiser.';
 
   @override
-  String get adminFilterAll => 'All';
+  String get adminFilterAll => 'Tout';
 
   @override
   String adminOrderDetailsTitle(Object id) {
-    return 'Order #$id';
+    return 'Commande n°$id';
   }
 
   @override
-  String get adminOrderFailedToLoad => 'Failed to load order.';
+  String get adminOrderFailedToLoad => 'Échec du chargement de la commande.';
 
   @override
-  String get adminPaymentSummary => 'Payment Summary';
+  String get adminPaymentSummary => 'Récapitulatif paiement';
 
   @override
-  String get adminOrderInfo => 'Order Info';
+  String get adminOrderInfo => 'Infos commande';
 
   @override
-  String get adminStatus => 'Status';
+  String get adminStatus => 'Statut';
 
   @override
-  String get adminOrderTotal => 'Order Total';
+  String get adminOrderTotal => 'Total commande';
 
   @override
-  String get adminPaid => 'Paid';
+  String get adminPaid => 'Payé';
 
   @override
-  String get adminRemaining => 'Remaining';
+  String get adminRemaining => 'Restant';
 
   @override
-  String get adminPaymentMethod => 'Payment Method';
+  String get adminPaymentMethod => 'Moyen de paiement';
 
   @override
-  String get adminCurrency => 'Currency';
+  String get adminCurrency => 'Devise';
 
   @override
-  String get adminShippingCity => 'Shipping City';
+  String get adminShippingCity => 'Ville de livraison';
 
   @override
-  String get adminShippingMethod => 'Shipping Method';
+  String get adminShippingMethod => 'Mode de livraison';
 
   @override
   String get adminCoupon => 'Coupon';
 
   @override
   String adminItemsCount(Object count) {
-    return 'Items ($count)';
+    return 'Articles ($count)';
   }
 
   @override
-  String get adminCustomer => 'Customer';
+  String get adminCustomer => 'Client';
 
   @override
   String adminQtyPriceLine(Object qty, Object price) {
-    return 'Qty: $qty  •  Price: $price';
+    return 'Qté : $qty  •  Prix : $price';
   }
 
   @override
   String adminOrderCardTitle(Object id) {
-    return 'Order #$id';
+    return 'Commande n°$id';
   }
 
   @override
   String adminItemsShort(Object count) {
-    return '$count items';
+    return '$count articles';
   }
 
   @override
   String adminPaidShort(Object amount) {
-    return 'Paid: $amount';
+    return 'Payé : $amount';
   }
 
   @override
   String adminRemainingShort(Object amount) {
-    return 'Remaining: $amount';
+    return 'Restant : $amount';
   }
 
   @override
-  String get adminFullyPaid => 'Fully paid';
+  String get adminFullyPaid => 'Entièrement payé';
 
   @override
-  String get adminOrderStatusPending => 'Pending';
+  String get adminOrderStatusPending => 'En attente';
 
   @override
-  String get adminOrderStatusCancelRequested => 'Cancel requested';
+  String get adminOrderStatusCancelRequested => 'Annulation demandée';
 
   @override
-  String get adminOrderStatusCanceled => 'Canceled';
+  String get adminOrderStatusCanceled => 'Annulée';
 
   @override
-  String get adminOrderStatusRejected => 'Rejected';
+  String get adminOrderStatusRejected => 'Rejetée';
 
   @override
-  String get adminOrderStatusRefunded => 'Refunded';
+  String get adminOrderStatusRefunded => 'Remboursée';
 
   @override
-  String get adminOrderStatusCompleted => 'Completed';
+  String get adminOrderStatusCompleted => 'Terminée';
 
   @override
-  String get adminMarkCashPaidBody => 'Are you sure you want to mark this order as paid in cash?';
+  String get adminMarkCashPaidBody => 'Voulez-vous vraiment marquer cette commande comme payée en espèces ?';
 
   @override
-  String get adminMarkCashPaid => 'Mark as paid in cash';
+  String get adminMarkCashPaid => 'Marquer payée en espèces';
 
   @override
-  String get adminMarkCashPaidTitle => 'Mark order as paid';
+  String get adminMarkCashPaidTitle => 'Marquer la commande comme payée';
 
   @override
-  String get adminMarkCashPaidButton => 'Mark as paid';
+  String get adminMarkCashPaidButton => 'Marquer comme payée';
 
   @override
-  String get forgotPasswordLink => 'Forgot password?';
+  String get forgotPasswordLink => 'Mot de passe oublié ?';
 
   @override
-  String get forgotTitle => 'Reset your password';
+  String get forgotTitle => 'Réinitialiser votre mot de passe';
 
   @override
-  String get forgotSubtitle => 'Enter your email and we’ll send you a code.';
+  String get forgotSubtitle => 'Saisissez votre e-mail et nous vous enverrons un code.';
 
   @override
-  String get forgotSendCode => 'Send code';
+  String get forgotSendCode => 'Envoyer le code';
 
   @override
-  String get forgotTip => 'Tip: check spam/junk folder too 👀';
+  String get forgotTip => 'Astuce : vérifiez aussi les spams/indésirables 👀';
 
   @override
-  String get forgotVerifyTitle => 'Enter verification code';
+  String get forgotVerifyTitle => 'Saisir le code de vérification';
 
   @override
   String forgotVerifySubtitle(Object email) {
-    return 'We sent a code to $email';
+    return 'Nous avons envoyé un code à $email';
   }
 
   @override
-  String get forgotNewPassTitle => 'Set a new password';
+  String get forgotNewPassTitle => 'Définir un nouveau mot de passe';
 
   @override
-  String get forgotNewPassSubtitle => 'Make it strong — future you will thank you.';
+  String get forgotNewPassSubtitle => 'Faites-le solide — votre futur vous dira merci.';
 
   @override
-  String get newPasswordLabel => 'New password';
+  String get newPasswordLabel => 'Nouveau mot de passe';
 
   @override
-  String get savePasswordButton => 'Save password';
+  String get savePasswordButton => 'Enregistrer le mot de passe';
 
   @override
   String get codeLabel => 'Code';
 
   @override
-  String get codeTooShort => 'Code is too short';
+  String get codeTooShort => 'Le code est trop court';
 
   @override
-  String get verifyButton => 'Verify';
+  String get verifyButton => 'Vérifier';
 
   @override
-  String get resendCode => 'Resend code';
+  String get resendCode => 'Renvoyer le code';
 
   @override
-  String get passwordsDontMatch => 'Passwords do not match';
+  String get passwordsDontMatch => 'Les mots de passe ne correspondent pas';
 }

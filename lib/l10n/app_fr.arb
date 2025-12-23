@@ -1,10 +1,10 @@
 {
   "@@locale": "fr",
 
-  "appTitle": "Application",
+  "appTitle": "App",
 
-  "loginTitle": "Bon retour",
-  "loginSubtitle": "Connectez-vous pour continuer",
+  "loginTitle": "Connexion",
+  "loginSubtitle": "Bon retour ! Connectez-vous pour continuer.",
 
   "emailLabel": "E-mail",
   "passwordLabel": "Mot de passe",
@@ -12,93 +12,34 @@
 
   "loginButton": "Se connecter",
 
-  "fieldRequired": "Ce champ est obligatoire",
-  "invalidEmail": "Veuillez entrer une adresse e-mail valide",
-  "invalidPhone": "Veuillez entrer un numéro de téléphone valide",
-  "passwordTooShort": "Le mot de passe doit contenir au moins 6 caractères",
-
-  "authErrorGeneric": "Une erreur s'est produite, veuillez réessayer.",
-
-  "noAccountText": "Vous n'avez pas de compte ?",
-  "signUpText": "Inscrivez-vous",
-
-  "loginWithEmail": "E-mail",
-  "loginWithPhone": "Téléphone",
-
-  "loginMissingIdentifier": "Veuillez entrer votre e-mail ou votre téléphone",
-
-  "forgotPassword": "Mot de passe oublié ?",
-   "loginTitle": "Connexion",
-  "loginSubtitle": "Ravi de vous revoir ! Connectez-vous pour continuer.",
-  "loginWithEmail": "E-mail",
-  "loginWithPhone": "Téléphone",
-  "loginButton": "Se connecter",
-  "loginMissingIdentifier": "Veuillez saisir votre e-mail ou votre numéro de téléphone.",
-  "home_welcome": "Bienvenue 👋",
-  "home_search_hint": "Rechercher des produits, des marques...",
-  "home_banner_title": "Offres spéciales",
-  "home_banner_subtitle": "Économisez jusqu’à 50 % sur une sélection d’articles.",
-  "home_banner_button": "Commencer les achats",
-
-  "home_items_default_title": "Articles",
-  "home_recommended_title": "Recommandé pour vous",
-  "home_popular_title": "Populaire en ce moment",
-  "home_bookings_title": "Prochaines réservations",
-  "home_reviews_title": "Derniers avis",
-
-  "home_flash_sale_title": "Ventes flash",
-  "home_new_arrivals_title": "Nouveautés",
-  "home_best_sellers_title": "Meilleures ventes",
-  "home_top_rated_title": "Mieux notés",
-   "accountInactiveTitle": "Votre compte est inactif",
-  "accountInactiveBody": "Votre compte est actuellement inactif. Voulez-vous le réactiver pour continuer ?",
-  "reactivateButton": "Réactiver",
-  "accountReactivated": "Votre compte a été réactivé avec succès.",
-  
-  "chooseSignInRole": "Choisissez votre mode de connexion",
-  "enterAsOwner": "Se connecter en tant que propriétaire (admin)",
-  "enterAsUser": "Se connecter en tant qu'utilisateur",
-  "roleLabel": "Rôle",
-  "userLabel": "Utilisateur",
-   "loginInactiveTitle": "Réactiver le compte ?",
-  "loginInactiveMessage": "Votre compte est actuellement inactif. Voulez-vous le réactiver maintenant et continuer ?",
-  "loginInactiveReactivateButton": "Oui, réactiver",
-  "loginInactiveCancel": "Non, plus tard",
-  "loginInactiveSuccess": "Votre compte a été réactivé avec succès. Bienvenue de nouveau !",
-  "loginInactiveError": "Impossible de réactiver votre compte. Veuillez réessayer.",
-
-  "home_why_shop_title": "Pourquoi acheter chez nous ?",
-  "home_why_shop_free_shipping_title": "Livraison gratuite",
-  "home_why_shop_free_shipping_subtitle": "Sur toutes les commandes de plus de 50$",
-  "home_why_shop_easy_returns_title": "Retours faciles",
-  "home_why_shop_easy_returns_subtitle": "Politique de retour sous 30 jours",
-  "home_why_shop_secure_payment_title": "Paiement sécurisé",
-  "home_why_shop_secure_payment_subtitle": "Transactions protégées à 100 %",
-  "home_why_shop_support_title": "Support 24h/24 et 7j/7",
-  "home_why_shop_support_subtitle": "Toujours là pour vous aider",
-  "authErrorGeneric": "Une erreur s'est produite. Veuillez réessayer.",
-  "noAccountText": "Vous n'avez pas de compte ?",
-  "signUpText": "S'inscrire",
-  "emailLabel": "E-mail",
-  "phoneLabel": "Numéro de téléphone",
-  "passwordLabel": "Mot de passe",
-  "forgotPassword": "Mot de passe oublié ?",
   "fieldRequired": "Ce champ est obligatoire.",
   "invalidEmail": "Veuillez saisir une adresse e-mail valide.",
   "invalidPhone": "Veuillez saisir un numéro de téléphone valide.",
   "passwordTooShort": "Le mot de passe doit contenir au moins 6 caractères.",
 
-  "registerTitle": "Créer un compte",
+  "authErrorGeneric": "Une erreur est survenue. Veuillez réessayer.",
+
+  "noAccountText": "Vous n’avez pas de compte ?",
+  "signUpText": "S’inscrire",
+
+  "loginWithEmail": "E-mail",
+  "loginWithPhone": "Téléphone",
+
+  "loginMissingIdentifier": "Veuillez saisir votre e-mail ou votre numéro de téléphone.",
+
+  "forgotPassword": "Mot de passe oublié ?",
+
+  "registerTitle": "Créer votre compte",
   "registerSubtitle": "Choisissez comment vous souhaitez vous inscrire.",
   "registerStep1Of3": "Étape 1 sur 3",
-  "registerWithEmail": "S'inscrire avec un e-mail",
-  "registerWithPhone": "S'inscrire avec un téléphone",
+  "registerWithEmail": "S’inscrire avec un e-mail",
+  "registerWithPhone": "S’inscrire avec un téléphone",
   "registerContinueButton": "Continuer",
   "confirmPasswordLabel": "Confirmer le mot de passe",
   "passwordsDoNotMatch": "Les mots de passe ne correspondent pas.",
   "alreadyHaveAccountText": "Vous avez déjà un compte ?",
 
-  "verifyCodeTitle": "Entrez le code de vérification",
+  "verifyCodeTitle": "Saisir le code de vérification",
   "verifyCodeSubtitleEmail": "Nous avons envoyé un code à votre e-mail.",
   "verifyCodeSubtitlePhone": "Nous avons envoyé un code à votre téléphone.",
   "verificationCodeLabel": "Code de vérification",
@@ -106,40 +47,70 @@
   "verifyButtonLabel": "Vérifier",
 
   "completeProfileTitle": "Compléter votre profil",
-  "completeProfileSubtitle": "Choisissez un pseudo et votre vrai nom.",
-  "usernameLabel": "Nom d'utilisateur",
+  "completeProfileSubtitle": "Choisissez un nom d’utilisateur et vos informations réelles.",
+  "usernameLabel": "Nom d’utilisateur",
   "firstNameLabel": "Prénom",
-  "lastNameLabel": "Nom de famille",
-  "usernameTooShort": "Le nom d'utilisateur doit contenir au moins 3 caractères.",
+  "lastNameLabel": "Nom",
+  "usernameTooShort": "Le nom d’utilisateur doit contenir au moins 3 caractères.",
   "publicProfileLabel": "Profil public",
-  "publicProfileDescription": "Si activé, votre profil et vos activités peuvent être trouvés par les autres utilisateurs.",
+  "publicProfileDescription": "Si activé, votre profil et vos activités pourront être trouvés par d’autres utilisateurs.",
   "saveProfileButton": "Enregistrer le profil",
   "profileCompletedSuccessMessage": "Profil complété avec succès. Vous pouvez maintenant vous connecter.",
-  "profileCompletedErrorMessage": "Échec de la complétion du profil. Veuillez réessayer.",
+  "profileCompletedErrorMessage": "Échec de la finalisation du profil. Veuillez réessayer.",
 
   "featureComingSoon": "Cette fonctionnalité arrive bientôt.",
-  "changePhotoHint": "Appuyez pour ajouter une photo de profil",
-  "previousStepButton": "Étape précédente",
+  "changePhotoHint": "Touchez pour ajouter une photo de profil",
 
-  "completeProfileNamesTitle": "Complétez votre profil - Noms",
-"completeProfileNamesSubtitle": "Veuillez fournir votre prénom et votre nom de famille.",
-"firstNameHint": " Entrez votre prénom",
-"lastNameHint": " Entrez votre nom de famille",
-"continueButton": "Continuer",
-"completeProfileUsernameTitle": "Complétez votre profil - Nom d'utilisateur",
-"completeProfileUsernameSubtitle": "Choisissez un nom d'utilisateur unique pour votre compte.",
-"completeProfilePhotoTitle": "Complétez votre profil - Photo",
-"completeProfilePhotoSubtitle": "Ajoutez une photo de profil pour personnaliser votre compte.",
-"nextStepButton": "Étape suivante",
- "connection_offline": "Pas de connexion Internet",
+  "previousStepButton": "Étape précédente",
+  "completeProfileNamesTitle": "Compléter votre profil - Noms",
+  "completeProfileNamesSubtitle": "Veuillez saisir votre prénom et votre nom.",
+  "firstNameHint": "Saisissez votre prénom",
+  "lastNameHint": "Saisissez votre nom",
+  "continueButton": "Continuer",
+  "completeProfileUsernameTitle": "Compléter votre profil - Nom d’utilisateur",
+  "completeProfileUsernameSubtitle": "Choisissez un nom d’utilisateur unique pour votre compte.",
+  "completeProfilePhotoTitle": "Compléter votre profil - Photo",
+  "completeProfilePhotoSubtitle": "Ajoutez une photo de profil pour personnaliser votre compte.",
+  "nextStepButton": "Étape suivante",
+
+  "home_welcome": "Bienvenue 👋",
+  "home_search_hint": "Rechercher des produits, marques...",
+  "home_banner_title": "Offres spéciales",
+  "home_banner_subtitle": "Économisez jusqu’à 50% sur une sélection d’articles.",
+  "home_banner_button": "Commencer mes achats",
+
+  "home_items_default_title": "Articles",
+  "home_recommended_title": "Recommandés pour vous",
+  "home_popular_title": "Populaire en ce moment",
+  "home_bookings_title": "Réservations à venir",
+  "home_reviews_title": "Derniers avis",
+
+  "home_flash_sale_title": "Vente flash",
+  "home_new_arrivals_title": "Nouveautés",
+  "home_best_sellers_title": "Meilleures ventes",
+  "home_top_rated_title": "Les mieux notés",
+
+  "home_why_shop_title": "Pourquoi acheter chez nous",
+  "home_why_shop_free_shipping_title": "Livraison gratuite",
+  "home_why_shop_free_shipping_subtitle": "Pour toute commande supérieure à 50$",
+  "home_why_shop_easy_returns_title": "Retours faciles",
+  "home_why_shop_easy_returns_subtitle": "Politique de retour sous 30 jours",
+  "home_why_shop_secure_payment_title": "Paiement sécurisé",
+  "home_why_shop_secure_payment_subtitle": "Transactions 100% protégées",
+  "home_why_shop_support_title": "Support 24/7",
+  "home_why_shop_support_subtitle": "Toujours là pour vous aider",
+
+  "connection_offline": "Aucune connexion Internet",
   "connection_server_down": "Le serveur ne répond pas",
+  "profile_login_required": "Veuillez vous connecter pour voir votre profil.",
   "connection_issue": "Problème de connexion",
-   "explore_title": "Explorer",
-  "explore_search_hint": "Rechercher  des articles...",
-  "explore_items_title": "Articles",
-  "explore_empty_message": "Aucun résultat. Essayez de modifier vos filtres.",
-  "explore_category_all": "Tout",
-    "explore_results_label": "{count, plural, =0{Aucun résultat} =1{1 résultat} other{{count} résultats}}",
+
+  "explore_title": "Explorer",
+  "explore_search_hint": "Rechercher des lieux...",
+  "explore_items_title": "Toutes les activités",
+  "explore_empty_message": "Aucun résultat. Essayez un autre mot-clé.",
+  "explore_category_all": "Tous",
+  "explore_results_label": "{count, plural, =0{Aucun résultat} =1{1 résultat} other{{count} résultats}}",
   "@explore_results_label": {
     "placeholders": {
       "count": {
@@ -149,87 +120,431 @@
   },
 
   "explore_sort_relevance": "Pertinence",
-  "explore_sort_price_low_high": "Prix : du plus bas au plus élevé",
-  "explore_sort_price_high_low": "Prix : du plus élevé au plus bas",
-  "explore_sort_date_soonest": "Date : le plus proche",
+  "explore_sort_price_low_high": "Prix : du moins cher au plus cher",
+  "explore_sort_price_high_low": "Prix : du plus cher au moins cher",
+  "explore_sort_date_soonest": "Date la plus proche",
+
+  "profileMotto": "Vis ta passion !",
+  "profile_load_error": "Impossible de charger votre profil. Veuillez réessayer.",
+  "retry": "Réessayer",
+  "manageAccount": "Gérer le compte",
+  "profileMakePrivate": "Rendre le profil privé",
+  "profileMakePublic": "Rendre le profil public",
+  "setInactive": "Mettre le compte en inactif",
+  "profileLogoutConfirm": "Voulez-vous vraiment vous déconnecter ?",
+  "deactivate_title": "Désactiver le compte",
+  "deactivate_warning": "Saisissez votre mot de passe pour confirmer la désactivation.",
+  "current_password_label": "Mot de passe actuel",
+  "language_note": "Changer de langue redémarrera certains écrans.",
+  "cancel": "Annuler",
+  "confirm": "Confirmer",
+  "language": "Langue",
+  "english": "Anglais",
+  "logout": "Se déconnecter",
+
   "adminDashboardTitle": "Tableau de bord admin",
-  "adminDashboardSubtitle": "Gérez le contenu et les paramètres de votre application.",
+  "adminDashboardSubtitle": "Gérez le contenu et les paramètres de votre app.",
   "adminProductsTitle": "Produits",
-  "adminProductsEmpty": "Aucun produit pour le moment. Appuyez sur + pour ajouter votre premier produit.",
+  "adminProductsEmpty": "Aucun produit pour l’instant. Appuyez sur + pour ajouter votre premier produit.",
   "adminProductsNewArrivals": "Nouveautés",
   "adminProductsBestSellers": "Meilleures ventes",
   "adminProductsDiscounted": "Produits en promotion",
-  "adminProductsSearchPlaceholder": "Rechercher un produit...",
+  "adminProductsSearchPlaceholder": "Rechercher des produits...",
 
-  "productBadgeOnSale": "En promo",
+  "accountInactiveTitle": "Votre compte est inactif",
+  "accountInactiveBody": "Votre compte est actuellement inactif. Voulez-vous le réactiver pour continuer ?",
+  "reactivateButton": "Réactiver",
+  "accountReactivated": "Votre compte a été réactivé avec succès",
+
+  "chooseSignInRole": "Choisissez comment vous connecter",
+  "enterAsOwner": "Entrer en tant que Propriétaire (Admin)",
+  "enterAsUser": "Entrer en tant qu’Utilisateur",
+  "roleLabel": "Rôle",
+  "userLabel": "Utilisateur",
+
+  "loginInactiveTitle": "Réactiver votre compte ?",
+  "loginInactiveMessage": "Votre compte \"{name}\" est actuellement inactif. Voulez-vous le réactiver et continuer ?",
+  "loginInactiveReactivate": "Réactiver",
+  "loginInactiveCancel": "Pas maintenant",
+  "loginInactiveRequired": "Vous devez réactiver votre compte pour vous connecter en tant qu’utilisateur.",
+  "loginChooseRoleTitle": "Choisissez comment vous connecter",
+  "loginEnterAsOwner": "Entrer en tant que Propriétaire (Admin)",
+  "loginEnterAsUser": "Entrer en tant qu’Utilisateur",
+  "loginRoleLabel": "Rôle :",
+  "loginUserFallbackLabel": "Utilisateur",
+  "loginInactiveSuccess": "Votre compte a été réactivé avec succès.",
+
+  "productBadgeOnSale": "En promotion",
   "productStatusDraft": "Brouillon",
   "productStatusActive": "Actif",
   "productStatusArchived": "Archivé",
 
-  "errorNetworkNoInternet": "Pas de connexion Internet ou serveur injoignable.",
+  "errorNetworkNoInternet": "Pas d’Internet ou serveur injoignable.",
   "errorNetworkServerDown": "Le serveur ne répond pas. Veuillez réessayer plus tard.",
   "errorServerUnexpected": "Erreur serveur inattendue. Veuillez réessayer.",
   "errorUnexpected": "Erreur inattendue. Veuillez réessayer.",
   "errorAuthUnauthorized": "Votre session a expiré. Veuillez vous reconnecter.",
-  "errorAuthForbidden": "Vous n\u0027avez pas l\u0027autorisation pour cette action.",
- 
-"logoutLabel": "Déconnexion",
-"adminDashboardQuickActions": "Actions rapides",
-"adminOverviewAnalytics": "Vue d'ensemble et analyses",
+  "errorAuthForbidden": "Vous n’avez pas la permission d’effectuer cette action.",
 
-"adminProjectsOwners": "Projets et propriétaires",
-"adminUsersManagers": "Utilisateurs et gestionnaires",
-"adminSettings": "Paramètres",
-"adminSignedInAs": "Connecté en tant que {role}",
-"adminProductCreateTitle": "Créer un produit",
-  "adminProductNameLabel": "Nom du produit",
-  "adminProductNameHint": "Ex : ordinateur portable Samsung",
-  "adminProductNameRequired": "Le nom du produit est obligatoire",
+  "logoutLabel": "Déconnexion",
+  "adminDashboardQuickActions": "Actions rapides",
+  "adminOverviewAnalytics": "Vue d’ensemble & statistiques",
+
+  "adminProjectsOwners": "Projets & propriétaires",
+  "adminUsersManagers": "Utilisateurs & managers",
+  "adminSettings": "Paramètres",
+  "adminSignedInAs": "Connecté en tant que {role}",
+
+  "adminProductCreateTitle": "Créer un produit",
+  "adminProductEditTitle": "Modifier le produit",
+
+  "adminProductNameLabel": "Nom",
+  "adminProductNameHint": "Ex : MacBook Pro",
+  "adminProductNameRequired": "Le nom est obligatoire",
 
   "adminProductDescriptionLabel": "Description",
-  "adminProductDescriptionHint": "Courte description du produit",
+  "adminProductDescriptionHint": "Description courte...",
+
+  "adminProductCategoryLabel": "Catégorie",
+  "adminProductItemTypeLabel": "Type d’élément",
 
   "adminProductPriceLabel": "Prix",
   "adminProductPriceRequired": "Le prix est obligatoire",
-  "adminProductPriceInvalid": "Saisissez un prix valide supérieur à 0",
+  "adminProductPriceInvalid": "Le prix doit être supérieur à 0",
 
-  "adminProductStockLabel": "Quantité en stock",
+  "adminProductStockLabel": "Stock",
+  "adminStockHint": "Ex : 50",
 
-  "adminProductStatusLabel": "Statut",
+  "adminProductImageLabel": "Image",
+  "adminProductPickImage": "Choisir une image",
+  "adminRemove": "Supprimer",
 
-  "adminProductImageUrlLabel": "URL de l’image",
-
-  "adminProductSkuLabel": "Code produit (SKU)",
+  "adminProductSkuLabel": "SKU",
+  "adminProductSkuHint": "Ex : SKU-123",
 
   "adminProductTypeLabel": "Type de produit",
   "adminProductTypeSimple": "Simple",
-  "adminProductTypeVariable": "Variable (tailles / couleurs)",
-  "adminProductTypeGrouped": "Groupé (pack)",
-  "adminProductTypeExternal": "Externe / affilié",
+  "adminProductTypeVariable": "Variable",
+  "adminProductTypeGrouped": "Groupé",
+  "adminProductTypeExternal": "Externe",
 
-  "adminProductVirtualLabel": "Produit virtuel (sans livraison)",
-  "adminProductDownloadableLabel": "Produit téléchargeable",
-
+  "adminProductVirtualLabel": "Produit virtuel",
+  "adminProductDownloadableLabel": "Téléchargeable",
   "adminProductDownloadUrlLabel": "URL de téléchargement",
+  "adminProductDownloadUrlHint": "https://...",
+
   "adminProductExternalUrlLabel": "URL externe",
-
+  "adminProductExternalUrlHint": "https://...",
   "adminProductButtonTextLabel": "Texte du bouton",
-  "adminProductButtonTextHint": "Ex : Ajouter au panier, Acheter maintenant",
+  "adminProductButtonTextHint": "Acheter maintenant",
 
-  "adminProductSaleSectionTitle": "Promotion / remise",
-  "adminProductSalePriceLabel": "Prix remisé",
-  "adminProductSaleStartLabel": "Début de la promo (date ISO)",
-  "adminProductSaleEndLabel": "Fin de la promo (date ISO)",
+  "adminProductSaleSectionTitle": "Promotion",
+  "adminProductSalePriceLabel": "Prix promo",
+  "adminProductSaleStartLabel": "Date de début",
+  "adminProductSaleEndLabel": "Date de fin",
 
   "adminProductAttributesTitle": "Attributs",
-  "adminProductAttributeCodeLabel": "Code de l’attribut",
-  "adminProductAttributeValueLabel": "Valeur de l’attribut",
+  "adminProductAttributeCodeLabel": "Code attribut",
+  "adminProductAttributeValueLabel": "Valeur",
   "adminProductAddAttribute": "Ajouter un attribut",
+  "adminProductNoAttributesHint": "Aucun attribut ajouté pour l’instant.",
 
   "adminProductSaveButton": "Enregistrer le produit",
-   "orderSummaryTitle": "Récapitulatif",
+
+  "adminNoCategories": "Aucune catégorie trouvée",
+  "adminCreateCategory": "Créer une catégorie",
+
+  "adminNoItemTypes": "Aucun type d’élément trouvé",
+  "adminCreateItemType": "Créer un type d’élément",
+
+  "adminTaxesTitle": "Taxes",
+  "adminTaxRulesTitle": "Règles fiscales",
+  "adminTaxAddRule": "Ajouter une règle",
+  "adminTaxNoRules": "Aucune règle fiscale trouvée.",
+  "adminTaxCreateRuleTitle": "Créer une règle fiscale",
+  "adminTaxEditRuleTitle": "Modifier la règle fiscale",
+
+  "adminTaxRuleNameLabel": "Nom de la règle",
+  "adminTaxRuleNameHint": "Ex : TVA standard 11%",
+  "adminTaxRuleNameRequired": "Le nom de la règle est obligatoire",
+
+  "adminTaxRuleRateLabel": "Taux (%)",
+  "adminTaxRuleRateHint": "11.00",
+  "adminTaxRuleRateRequired": "Le taux est obligatoire",
+  "adminTaxRuleRateInvalid": "Le taux doit être un nombre valide > 0",
+
+  "adminTaxAppliesToShippingLabel": "S’applique à la livraison",
+  "adminTaxEnabledLabel": "Activé",
+
+  "adminTaxCountryIdLabel": "ID pays (optionnel)",
+  "adminTaxCountryIdHint": "1",
+  "adminTaxRegionIdLabel": "ID région (optionnel)",
+  "adminTaxRegionIdHint": "2",
+
+  "adminTaxRateShort": "Taux",
+  "adminTaxAppliesToShippingShort": "Taxe livraison",
+  "adminTaxEnabledShort": "Activé",
+
+  "adminCancel": "Annuler",
+  "adminCreate": "Créer",
+  "adminUpdate": "Mettre à jour",
+  "adminEdit": "Modifier",
+  "adminDelete": "Supprimer",
+  "yes": "Oui",
+  "no": "Non",
+  "adminSessionExpired": "Votre session a expiré. Veuillez vous reconnecter.",
+
+  "adminTaxCountryLabel": "Pays",
+  "adminTaxCountryHint": "Sélectionner un pays",
+  "adminTaxRegionLabel": "Région",
+  "adminTaxSelectCountryFirst": "Sélectionnez d’abord un pays",
+  "adminTaxRegionHint": "Sélectionner une région",
+  "adminTaxRulesTitleShort": "Règles fiscales",
+  "adminTaxRulesSubtitle": "Gérez les règles fiscales de vos produits.",
+
+  "taxPreviewLoading": "Calcul de l’aperçu des taxes...",
+  "taxPreviewTitle": "Aperçu des taxes",
+  "itemsTaxLabel": "Taxe sur les articles",
+  "shippingTaxLabel": "Taxe sur la livraison",
+  "totalTaxLabel": "Total des taxes",
+
+  "taxClassNone": "Aucune taxe",
+  "taxClassStandard": "Taux standard",
+  "taxClassReduced": "Taux réduit",
+  "taxClassZero": "Taux zéro",
+  "taxClassLabel": "Classe de taxe",
+  "taxClassHint": "Sélectionner une classe de taxe",
+
+  "adminTaxCountryRequired": "Le pays est obligatoire",
+  "adminTaxRegionRequired": "La région est obligatoire",
+  "adminTaxRulePresetLabel": "Préréglage",
+  "adminTaxRulePresetHint": "Sélectionnez un préréglage pour remplir automatiquement",
+  "adminCustom": "Personnalisé",
+  "adminTaxAutoNameLabel": "Générer automatiquement le nom",
+
+  "adminShippingTitle": "Modes de livraison",
+  "adminShippingAdd": "Ajouter un mode",
+  "adminShippingNoMethods": "Aucun mode de livraison pour l’instant",
+  "adminShippingCreateTitle": "Créer un mode de livraison",
+  "adminShippingEditTitle": "Modifier le mode de livraison",
+
+  "adminShippingNameLabel": "Nom",
+  "adminShippingNameRequired": "Le nom est obligatoire",
+  "adminShippingDescLabel": "Description",
+
+  "adminShippingTypeLabel": "Type de mode",
+  "adminShippingTypeHint": "Sélectionner un type",
+
+  "adminShippingFlatRateLabel": "Tarif fixe",
+  "adminShippingPerKgLabel": "Prix par kg",
+  "adminShippingThresholdLabel": "Seuil de livraison gratuite",
+
+  "adminShippingCountryLabel": "Pays",
+  "adminShippingCountryHint": "Sélectionner un pays",
+  "adminShippingCountryRequired": "Le pays est obligatoire",
+
+  "adminShippingRegionLabel": "Région",
+  "adminShippingRegionHint": "Sélectionner une région (optionnel)",
+  "adminShippingSelectCountryFirst": "Sélectionnez d’abord un pays",
+
+  "adminShippingEnabledLabel": "Activé",
+  "adminShippingEnabledShort": "Activé",
+  "adminShippingTypeShort": "Type",
+
+  "shippingTypeFlatRate": "Tarif fixe",
+  "shippingTypeFree": "Gratuit",
+  "shippingTypeWeightBased": "Basé sur le poids",
+  "shippingTypePriceBased": "Basé sur le prix",
+  "shippingTypePricePerKg": "Prix par kg",
+  "shippingTypeLocalPickup": "Retrait sur place",
+  "shippingTypeFreeOverThreshold": "Gratuit au-dessus du seuil",
+
+  "adminConfirmDelete": "Êtes-vous sûr de vouloir supprimer cet élément ?",
+  "adminShippingCreateButton": "Créer le mode",
+  "adminDeleted": "Élément supprimé avec succès",
+  "refreshLabel": "Actualiser",
+  "adminEnabledOnly": "Activés seulement",
+  "adminShowAll": "Afficher tout",
+  "adminDisabled": "Désactivés seulement",
+  "adminActive": "Actifs seulement",
+  "adminCreated": "Créé avec succès",
+  "adminUpdated": "Mis à jour avec succès",
+
+  "adminHomeBannersTitle": "Bannières d’accueil",
+  "adminHomeBannerAdd": "Ajouter une bannière",
+  "adminHomeBannerNoBanners": "Aucune bannière pour l’instant",
+
+  "adminHomeBannerCreateTitle": "Créer une bannière d’accueil",
+  "adminHomeBannerEditTitle": "Modifier la bannière d’accueil",
+
+  "adminHomeBannerTitleLabel": "Titre",
+  "adminHomeBannerSubtitleLabel": "Sous-titre",
+
+  "adminHomeBannerTargetTypeLabel": "Type de cible",
+  "adminHomeBannerTargetIdLabel": "ID cible",
+  "adminHomeBannerTargetUrlLabel": "URL cible",
+
+  "adminHomeBannerSortOrderLabel": "Ordre de tri",
+  "adminHomeBannerActiveLabel": "Active",
+
+  "adminImageLabel": "Image de la bannière",
+  "adminChooseFromGallery": "Choisir depuis la galerie",
+  "adminTakePhoto": "Prendre une photo",
+  "adminRemoveImage": "Supprimer l’image",
+  "adminImageRequired": "L’image est obligatoire",
+
+  "adminTargetShort": "Cible",
+  "adminSortShort": "Tri",
+  "adminUntitled": "Sans titre",
+
+  "adminHomeBannerEdit": "Modifier la bannière",
+  "adminHomeBannerCreate": "Créer une bannière",
+
+  "adminHomeBannerImageLabel": "Image de la bannière",
+  "adminHomeBannerImageRequired": "L’image est obligatoire",
+  "adminPickFromGallery": "Galerie",
+  "adminPickFromCamera": "Caméra",
+
+  "adminHomeBannerSortLabel": "Ordre de tri",
+
+  "adminHomeBannerLoadingTargets": "Chargement des cibles...",
+
+  "adminHomeBannerTargetTypeHint": "Sélectionner le type de cible",
+
+  "adminHomeBannerTargetNone": "Aucune",
+  "adminHomeBannerTargetCategory": "Catégorie",
+  "adminHomeBannerTargetProduct": "Produit",
+  "adminHomeBannerTargetUrl": "URL externe",
+
+  "adminHomeBannerTargetUrlLabel": "URL cible",
+  "adminHomeBannerUrlRequired": "L’URL est obligatoire",
+
+  "adminHomeBannerTargetCategoryLabel": "Catégorie",
+  "adminHomeBannerTargetCategoryHint": "Sélectionner une catégorie",
+  "adminHomeBannerCategoryRequired": "La catégorie est obligatoire",
+
+  "adminHomeBannerTargetProductLabel": "Produit",
+  "adminHomeBannerTargetProductHint": "Sélectionner un produit",
+  "adminHomeBannerProductRequired": "Le produit est obligatoire",
+
+  "adminActiveLabel": "Active",
+  "adminNoOptions": "Aucune option",
+  "noResultsLabel": "Aucun résultat",
+  "searchLabel": "Rechercher...",
+  "adminProductsSearchHint": "Rechercher des produits...",
+  "adminProductsFilterAll": "Tous les produits",
+  "adminProductEditSubtitle": "Mettre à jour les détails du produit",
+  "adminProductCreateSubtitle": "Ajouter un nouveau produit",
+  "adminProductSectionBasicInfoTitle": "Infos de base",
+  "adminProductSectionPricingTitle": "Tarification",
+  "adminProductSectionBasicInfoSubtitle": "Nom, description, type, SKU",
+  "adminProductSectionPricingSubtitle": "Prix, promo, stock",
+  "adminProductSectionMetaTitle": "Produit",
+  "adminProductSectionMetaSubtitle": "Titre SEO & description",
+  "adminSelectCategoryFirst": "Sélectionnez d’abord une catégorie",
+  "adminProductImageSectionTitle": "Image du produit",
+  "adminProductImageSectionSubtitle": "Téléverser l’image du produit",
+  "adminProductSectionConfigTitle": "Configuration du produit",
+  "adminProductSectionConfigSubtitle": "Virtuel, téléchargeable, externe",
+  "adminProductSaleSectionSubtitle": "Définir le prix promo et la durée",
+  "adminProductAttributesSubtitle": "Ajouter des attributs personnalisés",
+
+  "cart_title": "Panier",
+  "cart_empty_message": "Votre panier est vide. Commencez à ajouter des articles !",
+  "cart_total_label": "Total :",
+  "cart_checkout_button": "Passer au paiement",
+  "cart_item_added": "Article ajouté au panier",
+  "cart_item_removed": "Article supprimé du panier",
+  "cart_clear_confirmation": "Voulez-vous vraiment vider le panier ?",
+  "cart_item_quantity_label": "Quantité :",
+  "cart_item_updated": "Article du panier mis à jour",
+  "cart_checkout": "Paiement",
+  "cart_clear": "Vider le panier",
+  "cart_empty_cta": "Parcourir les produits",
+  "cart_cleared": "Le panier a été vidé",
+  "cart_add_button": "Ajouter au panier",
+
+  "home_book_now_button": "Réserver",
+  "home_view_details_button": "Voir les détails",
+
+  "cart_login_required_title": "Connexion requise",
+  "cart_login_required_message": "Veuillez vous connecter pour continuer vers le paiement.",
+  "cancel_button": "Annuler",
+  "login_button": "Se connecter",
+  "cart_item_added_snackbar": "Article ajouté au panier",
+
+  "coupons_title": "Coupons",
+  "coupons_saved": "Coupon enregistré avec succès",
+  "coupons_deleted": "Coupon supprimé avec succès",
+  "coupons_empty": "Aucun coupon pour l’instant. Créez le premier !",
+
+  "coupons_type_percent": "Remise en pourcentage",
+  "coupons_type_fixed": "Remise montant fixe",
+  "coupons_type_free_shipping": "Livraison gratuite",
+
+  "coupons_inactive_badge": "Inactif",
+
+  "coupons_delete_title": "Supprimer le coupon",
+  "coupons_delete_confirm": "Êtes-vous sûr de vouloir supprimer le coupon {code} ?",
+  "delete": "Supprimer",
+  "coupons_add": "Ajouter un coupon",
+  "coupons_edit": "Modifier le coupon",
+  "coupons_code": "Code",
+  "coupons_code_required": "Le code du coupon est obligatoire",
+  "coupons_description": "Description",
+  "coupons_type": "Type de réduction",
+  "coupons_value_percent": "Remise (%)",
+  "coupons_value_amount": "Montant de la remise",
+  "coupons_value_required": "La valeur de la remise est obligatoire",
+  "coupons_value_invalid": "Saisissez une valeur de remise valide",
+  "coupons_max_uses": "Utilisations max",
+  "coupons_min_order_amount": "Montant min de commande",
+  "coupons_max_discount_amount": "Remise max",
+  "coupons_active": "Actif",
+  "common_save": "Enregistrer",
+  "adminCouponsTitle": "Coupons",
+
+  "checkoutTitle": "Paiement",
+  "checkoutLoading": "Chargement du paiement…",
+  "checkoutEmptyCart": "Votre panier est vide.",
+  "checkoutGoBack": "Retour",
+
+  "checkoutItemsTitle": "Articles",
+  "checkoutAddressTitle": "Adresse de livraison",
+  "checkoutCountryIdLabel": "ID pays",
+  "checkoutCountryIdHint": "Optionnel",
+  "checkoutRegionIdLabel": "ID région",
+  "checkoutRegionIdHint": "Optionnel",
+  "checkoutCityLabel": "Ville",
+  "checkoutCityHint": "Saisissez la ville",
+  "checkoutPostalCodeLabel": "Code postal",
+  "checkoutPostalCodeHint": "Optionnel",
+  "checkoutApplyAddress": "Mettre à jour la livraison",
+
+  "checkoutCouponTitle": "Coupon",
+  "checkoutCouponLabel": "Code coupon",
+  "checkoutCouponHint": "Saisissez un coupon (optionnel)",
+
+  "checkoutShippingTitle": "Livraison",
+  "checkoutNoShippingMethods": "Aucun mode de livraison trouvé. Mettez à jour l’adresse puis actualisez.",
+  "checkoutRefreshShipping": "Actualiser la livraison",
+  "checkoutSelectShipping": "Veuillez sélectionner un mode de livraison",
+
+  "checkoutPaymentTitle": "Paiement",
+  "checkoutPaymentCash": "Paiement à la livraison",
+  "checkoutStripeNote": "Stripe nécessite une confirmation de paiement (bientôt).",
+  "checkoutSelectPayment": "Veuillez sélectionner un moyen de paiement",
+
+  "checkoutSummaryTitle": "Récapitulatif de commande",
+  "checkoutSubtotal": "Sous-total",
+  "checkoutShipping": "Livraison",
+  "checkoutTax": "Taxe",
+  "checkoutTotal": "Total",
+  "checkoutPlaceOrder": "Passer la commande",
+
+  "orderSummaryTitle": "Récapitulatif",
   "secureCheckout": "Paiement sécurisé",
-  "itemsSubtotalLabel": "Sous-total articles",
+  "itemsSubtotalLabel": "Sous-total des articles",
   "shippingLabel": "Livraison",
   "taxLabel": "Taxe",
   "discountLabel": "Remise",
@@ -239,19 +554,18 @@
   "searchHint": "Rechercher...",
   "noOptions": "Aucune option",
   "noResults": "Aucun résultat",
-  "retry": "Réessayer",
   "missingUserToken": "Jeton utilisateur manquant",
 
-  "itemNumber": "Article #{id}",
+  "itemNumber": "Article n°{id}",
   "@itemNumber": { "placeholders": { "id": { "type": "int" } } },
 
   "qtyPriceLine": "x{qty} • {price}",
   "@qtyPriceLine": { "placeholders": { "qty": { "type": "int" }, "price": { "type": "String" } } },
 
-  "checkoutOrderPlacedToast": "Commande passée ✅ (#{orderId})",
+  "checkoutOrderPlacedToast": "Commande passée ✅ (n°{orderId})",
   "@checkoutOrderPlacedToast": { "placeholders": { "orderId": { "type": "int" } } },
 
-  "orderTitle": "Commande #{orderId}",
+  "orderTitle": "Commande n°{orderId}",
   "@orderTitle": { "placeholders": { "orderId": { "type": "int" } } },
 
   "orderDateLabel": "Date : {date}",
@@ -265,18 +579,35 @@
   "downloadInvoicePdf": "Télécharger la facture PDF",
 
   "checkoutErrorCartEmpty": "Le panier est vide",
-  "checkoutErrorSelectPayment": "Choisissez un mode de paiement",
-  "checkoutErrorSelectCountry": "Choisissez un pays",
-  "checkoutErrorSelectRegion": "Choisissez une région",
-  "checkoutErrorEnterCity": "Entrez la ville",
-  "checkoutErrorEnterPostalCode": "Entrez le code postal",
-  "checkoutErrorSelectShipping": "Choisissez un mode de livraison",
-  "checkoutErrorShippingMissing": "Mode de livraison manquant",
-  "checkoutErrorStripeNotReady": "Stripe n'est pas encore configuré",
-   "ordersTitle": "Mes commandes",
+  "checkoutErrorSelectPayment": "Sélectionnez un moyen de paiement",
+  "checkoutErrorSelectCountry": "Sélectionnez un pays",
+  "checkoutErrorSelectRegion": "Sélectionnez une région",
+  "checkoutErrorEnterCity": "Saisissez la ville",
+  "checkoutErrorEnterPostalCode": "Saisissez le code postal",
+  "checkoutErrorSelectShipping": "Sélectionnez un mode de livraison",
+  "checkoutErrorShippingMissing": "Le mode de livraison est manquant",
+  "checkoutErrorStripeNotReady": "Stripe n’est pas encore branché",
+  "commonDash": "-",
+
+  "orderDetailsTitle": "Commande n°{orderId}",
+  "orderDetailsDateLine": "Date : {date}",
+  "orderDetailsItemsTitle": "Articles",
+  "orderDetailsItemFallback": "Article n°{itemId}",
+  "orderDetailsQtyUnitLine": "Qté : {qty}  •  Unité : {unitPrice}",
+
+  "orderDetailsSubtotal": "Sous-total",
+  "orderDetailsShipping": "Livraison",
+  "orderDetailsTax": "Taxe",
+  "orderDetailsCouponLine": "Coupon ({code})",
+  "orderDetailsGrandTotal": "Total général",
+  "orderDetailsDownloadInvoice": "Télécharger la facture PDF",
+
+  "common_stock_label": "Stock : {stock}",
+
+  "ordersTitle": "Mes commandes",
   "ordersLoading": "Chargement des commandes…",
   "ordersEmptyTitle": "Aucune commande",
-  "ordersEmptyBody": "Quand vous passez une commande, elle apparaîtra ici.",
+  "ordersEmptyBody": "Quand vous passerez une commande, elle apparaîtra ici.",
   "ordersReload": "Recharger",
   "ordersFilterAll": "Tout",
   "ordersFilterPending": "En attente",
@@ -284,15 +615,249 @@
   "ordersFilterCanceled": "Annulée",
   "ordersNoResultsForFilter": "Aucune commande ne correspond à ce filtre.",
   "ordersQtyLabel": "Qté",
-  "ordersPaid": "Payé",
-  "ordersUnpaid": "Non payé",
+  "ordersPaid": "Payée",
+  "ordersUnpaid": "Non payée",
   "ordersStatusPending": "En attente",
   "ordersStatusCompleted": "Terminée",
   "ordersStatusCanceled": "Annulée",
-  "ordersStatusUnknown": "Inconnu",
+  "ordersStatusUnknown": "Inconnue",
   "ordersUnknownItem": "Article",
-   "ordersQty": "Qté",
-   "profileLoginRequired": "Veuillez vous connecter pour voir votre profil.",
+  "ordersQty": "Qté",
+
+  "profileLoginRequired": "Veuillez vous connecter pour voir votre profil.",
   "sessionExpired": "Session expirée. Veuillez vous reconnecter.",
-  "login": "Connexion"
+  "login": "Se connecter",
+  "editProfileTitle": "Modifier le profil",
+  "profileLoadFailed": "Échec du chargement du profil.",
+  "username": "Nom d’utilisateur",
+  "firstName": "Prénom",
+  "lastName": "Nom",
+  "publicProfile": "Profil public",
+  "save": "Enregistrer",
+  "dangerZone": "Zone de danger",
+  "password": "Mot de passe",
+  "deleteAccount": "Supprimer le compte",
+
+  "notifications_title": "Notifications",
+  "notifications_empty_title": "Aucune notification",
+  "notifications_empty_subtitle": "Quand quelque chose arrive, ça apparaîtra ici. Pour l’instant… calme total 😌",
+  "notifications_retry": "Réessayer",
+
+  "privacy_policy_title": "Politique de confidentialité",
+  "privacy_policy_intro_title": "Votre confidentialité compte",
+  "privacy_policy_intro_body": "Cette politique explique ce que nous collectons, pourquoi nous le collectons, et comment vous contrôlez vos données.",
+
+  "privacy_policy_collect_title": "Ce que nous collectons",
+  "privacy_policy_collect_body": "Infos de base (nom, e-mail/téléphone), paramètres de compte, et usage nécessaire pour fournir le service.",
+
+  "privacy_policy_use_title": "Comment nous utilisons vos données",
+  "privacy_policy_use_body": "Pour faire fonctionner l’app, personnaliser votre expérience, améliorer les fonctionnalités et sécuriser la plateforme.",
+
+  "privacy_policy_share_title": "Partage",
+  "privacy_policy_share_body": "Nous ne vendons pas vos données. Nous partageons seulement ce qui est nécessaire avec des services de confiance (hébergement, etc.).",
+
+  "privacy_policy_security_title": "Sécurité",
+  "privacy_policy_security_body": "Nous utilisons des pratiques standards, mais aucun système n’est parfait. Gardez votre mot de passe privé.",
+
+  "privacy_policy_choices_title": "Vos choix",
+  "privacy_policy_choices_body": "Vous pouvez changer la visibilité (public/privé), mettre à jour le profil, ou demander des actions sur le compte selon les fonctionnalités.",
+
+  "privacy_policy_contact_title": "Contact",
+  "privacy_policy_contact_body": "Si vous avez des questions, contactez l’équipe support.",
+
+  "privacy_policy_last_updated": "Dernière mise à jour : 19 déc. 2025",
+
+  "home_bottom_slide_thankyou_title": "MERCI",
+  "home_bottom_slide_thankyou_message": "Merci pour votre confiance. Notre équipe travaille chaque jour pour garantir qualité et rapidité.",
+  "home_bottom_slide_secure_title": "SÛR & SÉCURISÉ",
+  "home_bottom_slide_secure_message": "Paiements sécurisés, produits contrôlés, emballage propre — les bases, bien faites.",
+  "home_bottom_slide_support_title": "VRAI SUPPORT",
+  "home_bottom_slide_support_message": "Besoin d’aide ? On répond. Pas de mode “vu” puis disparition 😅",
+
+  "home_bottom_benefit_contact": "CONTACTER UN\nEXPERT ACCRÉDITÉ",
+  "home_bottom_benefit_secure_payments": "PAIEMENTS\nSÉCURISÉS",
+  "home_bottom_benefit_authentic_products": "PRODUITS AUTHENTIQUES\n& CONTRÔLÉS",
+  "home_bottom_benefit_free_delivery_above": "LIVRAISON GRATUITE\nDÈS {amount}",
+  "@home_bottom_benefit_free_delivery_above": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+
+  "home_trailing_limited_time": "Temps limité",
+  "home_trailing_see_all": "Voir tout",
+  "home_sale_tag": "PROMO",
+  "home_stock_label": "Stock : {count}",
+  "@home_stock_label": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+
+  "home_bookings_placeholder": "Le flux des réservations n’est pas encore branché.",
+
+  "home_footer_contact_title": "Nous contacter",
+  "home_footer_contact_desc": "Besoin d’aide ? On est à un message.",
+  "home_footer_free_delivery_title": "Livraison gratuite",
+  "home_footer_free_delivery_desc": "Disponible sur certaines commandes et zones.",
+  "home_footer_returns_title": "Retours faciles",
+  "home_footer_returns_desc": "Politique de retour simple sur les articles éligibles.",
+
+  "ownerPaymentSettingsTitle": "Moyens de paiement",
+  "ownerPaymentSettingsDesc": "Activer et configurer les passerelles pour ce projet",
+  "ownerPaymentConfigure": "Configurer",
+  "ownerPaymentIncomplete": "Incomplet",
+  "ownerPaymentConfigHint": "Configurez les champs ci-dessous. Les champs obligatoires doivent être remplis.",
+
+  "paymentMethodsTitle": "Moyens de paiement",
+  "paymentSearchHint": "Rechercher…",
+  "paymentNoResults": "Aucun résultat",
+  "paymentConfigure": "Configurer",
+  "paymentCancel": "Annuler",
+  "paymentSave": "Enregistrer",
+  "paymentFillFields": "Remplissez les champs ci-dessous, puis Enregistrer.",
+  "paymentSavedKeepHint": "Enregistré (laisser vide pour conserver)",
+  "paymentRequiredLabel": "• obligatoire",
+  "paymentIncomplete": "Incomplet",
+
+  "adminPaymentConfigTitle": "Moyens de paiement",
+
+  "checkoutConfirmDialogTitle": "Confirmer le paiement",
+  "checkoutConfirmCartCleared": "{itemCount, plural, =0{Après le paiement, votre panier sera vide.} =1{Après le paiement, votre panier sera vide (1 article).} other{Après le paiement, votre panier sera vide ({itemCount} articles).}} Voulez-vous continuer ?",
+  "commonYes": "Oui",
+  "commonNo": "Non",
+  "@checkoutConfirmCartCleared": {
+    "description": "Avertissement avant de passer la commande : le panier sera vidé après le paiement.",
+    "placeholders": {
+      "itemCount": { "type": "int" }
+    }
+  },
+
+  "adminOrdersTitle": "Commandes",
+  "adminDashboard": "Dashboard",
+  "adminAllTime": "Tout",
+  "adminLast7Days": "7 derniers jours",
+  "adminLast30Days": "30 derniers jours",
+  "adminClear": "Effacer",
+
+  "adminKpiOrders": "Commandes",
+  "adminKpiGrossSales": "Ventes brutes",
+  "adminKpiPaid": "Payé",
+  "adminKpiOutstanding": "Restant",
+  "adminKpiAvgOrder": "Moy. commande",
+
+  "adminFullyPaidPercent": "Entièrement payé : {percent}%",
+  "@adminFullyPaidPercent": {
+    "placeholders": {
+      "percent": {}
+    }
+  },
+
+  "adminPaidRevenueLast7Days": "Revenu payé (7 derniers jours)",
+
+  "adminNoOrders": "Aucune commande",
+  "adminNoOrdersHint": "Essayez de changer le statut, la période, ou tirez pour actualiser.",
+
+  "adminFilterAll": "Tout",
+
+  "adminOrderDetailsTitle": "Commande n°{id}",
+  "@adminOrderDetailsTitle": {
+    "placeholders": {
+      "id": {}
+    }
+  },
+
+  "adminOrderFailedToLoad": "Échec du chargement de la commande.",
+
+  "adminPaymentSummary": "Récapitulatif paiement",
+  "adminOrderInfo": "Infos commande",
+  "adminStatus": "Statut",
+  "adminOrderTotal": "Total commande",
+  "adminPaid": "Payé",
+  "adminRemaining": "Restant",
+  "adminPaymentMethod": "Moyen de paiement",
+  "adminCurrency": "Devise",
+  "adminShippingCity": "Ville de livraison",
+  "adminShippingMethod": "Mode de livraison",
+  "adminCoupon": "Coupon",
+
+  "adminItemsCount": "Articles ({count})",
+  "@adminItemsCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+
+  "adminCustomer": "Client",
+
+  "adminQtyPriceLine": "Qté : {qty}  •  Prix : {price}",
+  "@adminQtyPriceLine": {
+    "placeholders": {
+      "qty": {},
+      "price": {}
+    }
+  },
+
+  "adminOrderCardTitle": "Commande n°{id}",
+  "@adminOrderCardTitle": {
+    "placeholders": {
+      "id": {}
+    }
+  },
+
+  "adminItemsShort": "{count} articles",
+  "@adminItemsShort": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+
+  "adminPaidShort": "Payé : {amount}",
+  "@adminPaidShort": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
+
+  "adminRemainingShort": "Restant : {amount}",
+  "@adminRemainingShort": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
+
+  "adminFullyPaid": "Entièrement payé",
+
+  "adminOrderStatusPending": "En attente",
+  "adminOrderStatusCancelRequested": "Annulation demandée",
+  "adminOrderStatusCanceled": "Annulée",
+  "adminOrderStatusRejected": "Rejetée",
+  "adminOrderStatusRefunded": "Remboursée",
+  "adminOrderStatusCompleted": "Terminée",
+
+  "adminMarkCashPaidBody": "Voulez-vous vraiment marquer cette commande comme payée en espèces ?",
+  "adminMarkCashPaid": "Marquer payée en espèces",
+  "adminMarkCashPaidTitle": "Marquer la commande comme payée",
+  "adminMarkCashPaidButton": "Marquer comme payée",
+
+  "forgotPasswordLink": "Mot de passe oublié ?",
+  "forgotTitle": "Réinitialiser votre mot de passe",
+  "forgotSubtitle": "Saisissez votre e-mail et nous vous enverrons un code.",
+  "forgotSendCode": "Envoyer le code",
+  "forgotTip": "Astuce : vérifiez aussi les spams/indésirables 👀",
+
+  "forgotVerifyTitle": "Saisir le code de vérification",
+  "forgotVerifySubtitle": "Nous avons envoyé un code à {email}",
+  "@forgotVerifySubtitle": { "placeholders": { "email": {} } },
+
+  "forgotNewPassTitle": "Définir un nouveau mot de passe",
+  "forgotNewPassSubtitle": "Faites-le solide — votre futur vous dira merci.",
+  "newPasswordLabel": "Nouveau mot de passe",
+  "savePasswordButton": "Enregistrer le mot de passe",
+
+  "codeLabel": "Code",
+  "codeTooShort": "Le code est trop court",
+  "verifyButton": "Vérifier",
+  "resendCode": "Renvoyer le code",
+  "passwordsDontMatch": "Les mots de passe ne correspondent pas"
 }

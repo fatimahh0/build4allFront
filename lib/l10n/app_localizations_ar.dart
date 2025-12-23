@@ -15,7 +15,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get loginTitle => 'تسجيل الدخول';
 
   @override
-  String get loginSubtitle => 'مرحباً بعودتك! قم بتسجيل الدخول للمتابعة.';
+  String get loginSubtitle => 'مرحبًا بعودتك! سجّل دخولك للمتابعة.';
 
   @override
   String get emailLabel => 'البريد الإلكتروني';
@@ -33,16 +33,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get fieldRequired => 'هذا الحقل مطلوب.';
 
   @override
-  String get invalidEmail => 'يرجى إدخال بريد إلكتروني صالح.';
+  String get invalidEmail => 'يرجى إدخال بريد إلكتروني صحيح.';
 
   @override
-  String get invalidPhone => 'يرجى إدخال رقم هاتف صالح.';
+  String get invalidPhone => 'يرجى إدخال رقم هاتف صحيح.';
 
   @override
   String get passwordTooShort => 'يجب أن تكون كلمة المرور 6 أحرف على الأقل.';
 
   @override
-  String get authErrorGeneric => 'حدث خطأ، يرجى المحاولة مرة أخرى.';
+  String get authErrorGeneric => 'حدث خطأ ما. يرجى المحاولة مرة أخرى.';
 
   @override
   String get noAccountText => 'ليس لديك حساب؟';
@@ -54,28 +54,28 @@ class AppLocalizationsAr extends AppLocalizations {
   String get loginWithEmail => 'البريد الإلكتروني';
 
   @override
-  String get loginWithPhone => 'رقم الهاتف';
+  String get loginWithPhone => 'الهاتف';
 
   @override
-  String get loginMissingIdentifier => 'يرجى إدخال البريد الإلكتروني أو رقم الهاتف.';
+  String get loginMissingIdentifier => 'يرجى إدخال بريدك الإلكتروني أو رقم هاتفك.';
 
   @override
-  String get forgotPassword => 'نسيت كلمة المرور؟';
+  String get forgotPassword => 'هل نسيت كلمة المرور؟';
 
   @override
-  String get registerTitle => 'إنشاء حساب جديد';
+  String get registerTitle => 'إنشاء حسابك';
 
   @override
-  String get registerSubtitle => 'اختر طريقة التسجيل المناسبة لك.';
+  String get registerSubtitle => 'اختر طريقة التسجيل التي تفضلها.';
 
   @override
   String get registerStep1Of3 => 'الخطوة 1 من 3';
 
   @override
-  String get registerWithEmail => 'التسجيل عبر البريد الإلكتروني';
+  String get registerWithEmail => 'التسجيل بالبريد الإلكتروني';
 
   @override
-  String get registerWithPhone => 'التسجيل عبر رقم الهاتف';
+  String get registerWithPhone => 'التسجيل برقم الهاتف';
 
   @override
   String get registerContinueButton => 'متابعة';
@@ -87,31 +87,31 @@ class AppLocalizationsAr extends AppLocalizations {
   String get passwordsDoNotMatch => 'كلمتا المرور غير متطابقتين.';
 
   @override
-  String get alreadyHaveAccountText => 'لديك حساب مسبقاً؟';
+  String get alreadyHaveAccountText => 'لديك حساب بالفعل؟';
 
   @override
-  String get verifyCodeTitle => 'أدخل رمز التحقق';
+  String get verifyCodeTitle => 'إدخال رمز التحقق';
 
   @override
-  String get verifyCodeSubtitleEmail => 'قمنا بإرسال رمز إلى بريدك الإلكتروني.';
+  String get verifyCodeSubtitleEmail => 'أرسلنا رمزًا إلى بريدك الإلكتروني.';
 
   @override
-  String get verifyCodeSubtitlePhone => 'قمنا بإرسال رمز إلى رقم هاتفك.';
+  String get verifyCodeSubtitlePhone => 'أرسلنا رمزًا إلى هاتفك.';
 
   @override
   String get verificationCodeLabel => 'رمز التحقق';
 
   @override
-  String get invalidVerificationCode => 'يرجى إدخال رمز تحقق صالح.';
+  String get invalidVerificationCode => 'يرجى إدخال رمز تحقق صحيح.';
 
   @override
-  String get verifyButtonLabel => 'تأكيد';
+  String get verifyButtonLabel => 'تحقق';
 
   @override
-  String get completeProfileTitle => 'إكمال الملف الشخصي';
+  String get completeProfileTitle => 'إكمال ملفك الشخصي';
 
   @override
-  String get completeProfileSubtitle => 'اختر اسم مستخدم واسمك الحقيقي.';
+  String get completeProfileSubtitle => 'اختر اسم مستخدم وأدخل اسمك الحقيقي.';
 
   @override
   String get usernameLabel => 'اسم المستخدم';
@@ -126,10 +126,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get usernameTooShort => 'يجب أن يكون اسم المستخدم 3 أحرف على الأقل.';
 
   @override
-  String get publicProfileLabel => 'حساب عام';
+  String get publicProfileLabel => 'ملف شخصي عام';
 
   @override
-  String get publicProfileDescription => 'في حال التفعيل، يمكن للمستخدمين الآخرين العثور على حسابك ونشاطاتك.';
+  String get publicProfileDescription => 'عند تفعيله، يمكن للآخرين العثور على ملفك ونشاطاتك.';
 
   @override
   String get saveProfileButton => 'حفظ الملف الشخصي';
@@ -138,25 +138,25 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileCompletedSuccessMessage => 'تم إكمال الملف الشخصي بنجاح. يمكنك الآن تسجيل الدخول.';
 
   @override
-  String get profileCompletedErrorMessage => 'فشل في إكمال الملف الشخصي، يرجى المحاولة مرة أخرى.';
+  String get profileCompletedErrorMessage => 'فشل إكمال الملف الشخصي. يرجى المحاولة مرة أخرى.';
 
   @override
-  String get featureComingSoon => 'هذه الميزة ستكون متاحة قريباً.';
+  String get featureComingSoon => 'هذه الميزة قادمة قريبًا.';
 
   @override
-  String get changePhotoHint => 'انقر لإضافة صورة للملف الشخصي';
+  String get changePhotoHint => 'اضغط لإضافة صورة للملف الشخصي';
 
   @override
   String get previousStepButton => 'الخطوة السابقة';
 
   @override
-  String get completeProfileNamesTitle => '  إكمال الملف الشخصي - الأسماء';
+  String get completeProfileNamesTitle => 'إكمال الملف الشخصي - الأسماء';
 
   @override
-  String get completeProfileNamesSubtitle => 'يرجى تقديم اسمك الأول واسم العائلة.';
+  String get completeProfileNamesSubtitle => 'يرجى إدخال الاسم الأول واسم العائلة.';
 
   @override
-  String get firstNameHint => 'أدخل اسمك الأول';
+  String get firstNameHint => 'أدخل الاسم الأول';
 
   @override
   String get lastNameHint => 'أدخل اسم العائلة';
@@ -168,7 +168,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get completeProfileUsernameTitle => 'إكمال الملف الشخصي - اسم المستخدم';
 
   @override
-  String get completeProfileUsernameSubtitle => 'اختر اسم مستخدم فريد لحسابك.';
+  String get completeProfileUsernameSubtitle => 'اختر اسم مستخدم فريدًا لحسابك.';
 
   @override
   String get completeProfilePhotoTitle => 'إكمال الملف الشخصي - الصورة';
@@ -183,13 +183,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get home_welcome => 'أهلًا 👋';
 
   @override
-  String get home_search_hint => 'ابحث عن المنتجات، الماركات...';
+  String get home_search_hint => 'ابحث عن المنتجات، العلامات التجارية...';
 
   @override
   String get home_banner_title => 'عروض خاصة';
 
   @override
-  String get home_banner_subtitle => 'وفّر حتى 50٪ على منتجات مختارة.';
+  String get home_banner_subtitle => 'وفر حتى 50% على منتجات مختارة.';
 
   @override
   String get home_banner_button => 'ابدأ التسوق';
@@ -198,19 +198,19 @@ class AppLocalizationsAr extends AppLocalizations {
   String get home_items_default_title => 'المنتجات';
 
   @override
-  String get home_recommended_title => 'مقترحة لك';
+  String get home_recommended_title => 'موصى به لك';
 
   @override
-  String get home_popular_title => 'الأكثر رواجًا';
+  String get home_popular_title => 'الأكثر شيوعًا الآن';
 
   @override
   String get home_bookings_title => 'الحجوزات القادمة';
 
   @override
-  String get home_reviews_title => 'آخر التقييمات';
+  String get home_reviews_title => 'أحدث المراجعات';
 
   @override
-  String get home_flash_sale_title => 'عروض فلاش';
+  String get home_flash_sale_title => 'تخفيضات خاطفة';
 
   @override
   String get home_new_arrivals_title => 'وصل حديثًا';
@@ -219,34 +219,34 @@ class AppLocalizationsAr extends AppLocalizations {
   String get home_best_sellers_title => 'الأكثر مبيعًا';
 
   @override
-  String get home_top_rated_title => 'أعلى تقييمًا';
+  String get home_top_rated_title => 'الأعلى تقييمًا';
 
   @override
-  String get home_why_shop_title => 'لماذا تتسوّق معنا؟';
+  String get home_why_shop_title => 'لماذا تتسوق معنا';
 
   @override
   String get home_why_shop_free_shipping_title => 'شحن مجاني';
 
   @override
-  String get home_why_shop_free_shipping_subtitle => 'على جميع الطلبات فوق 50\$';
+  String get home_why_shop_free_shipping_subtitle => 'على الطلبات فوق 50\$';
 
   @override
   String get home_why_shop_easy_returns_title => 'إرجاع سهل';
 
   @override
-  String get home_why_shop_easy_returns_subtitle => 'سياسة إرجاع خلال 30 يومًا';
+  String get home_why_shop_easy_returns_subtitle => 'سياسة إرجاع لمدة 30 يومًا';
 
   @override
   String get home_why_shop_secure_payment_title => 'دفع آمن';
 
   @override
-  String get home_why_shop_secure_payment_subtitle => 'معاملات محمية 100٪';
+  String get home_why_shop_secure_payment_subtitle => 'معاملات محمية 100%';
 
   @override
   String get home_why_shop_support_title => 'دعم 24/7';
 
   @override
-  String get home_why_shop_support_subtitle => 'دائمًا هنا لمساعدتك';
+  String get home_why_shop_support_subtitle => 'نحن هنا دائمًا لمساعدتك';
 
   @override
   String get connection_offline => 'لا يوجد اتصال بالإنترنت';
@@ -255,7 +255,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get connection_server_down => 'الخادم لا يستجيب';
 
   @override
-  String get profile_login_required => 'Please log in to view your profile.';
+  String get profile_login_required => 'يرجى تسجيل الدخول لعرض ملفك الشخصي.';
 
   @override
   String get connection_issue => 'مشكلة في الاتصال';
@@ -264,13 +264,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get explore_title => 'استكشاف';
 
   @override
-  String get explore_search_hint => 'ابحث عن عناصر...';
+  String get explore_search_hint => 'ابحث عن أماكن...';
 
   @override
-  String get explore_items_title => 'عناصر';
+  String get explore_items_title => 'كل الأنشطة';
 
   @override
-  String get explore_empty_message => 'لا توجد عناصر للعرض.';
+  String get explore_empty_message => 'لا توجد نتائج. جرّب كلمة أخرى.';
 
   @override
   String get explore_category_all => 'الكل';
@@ -297,61 +297,61 @@ class AppLocalizationsAr extends AppLocalizations {
   String get explore_sort_price_high_low => 'السعر: من الأعلى إلى الأقل';
 
   @override
-  String get explore_sort_date_soonest => 'التاريخ: الأقرب أولاً';
+  String get explore_sort_date_soonest => 'الأقرب موعدًا';
 
   @override
-  String get profileMotto => 'Live your hobby!';
+  String get profileMotto => 'عِش هوايتك!';
 
   @override
-  String get profile_load_error => 'Couldn\'t load your profile. Please try again.';
+  String get profile_load_error => 'تعذر تحميل ملفك الشخصي. يرجى المحاولة مرة أخرى.';
 
   @override
   String get retry => 'إعادة المحاولة';
 
   @override
-  String get manageAccount => 'Manage account';
+  String get manageAccount => 'إدارة الحساب';
 
   @override
-  String get profileMakePrivate => 'Make profile private';
+  String get profileMakePrivate => 'جعل الملف الشخصي خاصًا';
 
   @override
-  String get profileMakePublic => 'Make profile public';
+  String get profileMakePublic => 'جعل الملف الشخصي عامًا';
 
   @override
-  String get setInactive => 'Set account inactive';
+  String get setInactive => 'تعطيل الحساب';
 
   @override
-  String get profileLogoutConfirm => 'Are you sure you want to log out?';
+  String get profileLogoutConfirm => 'هل أنت متأكد أنك تريد تسجيل الخروج؟';
 
   @override
-  String get deactivate_title => 'Deactivate account';
+  String get deactivate_title => 'تعطيل الحساب';
 
   @override
-  String get deactivate_warning => 'Enter your password to confirm deactivation.';
+  String get deactivate_warning => 'أدخل كلمة المرور لتأكيد التعطيل.';
 
   @override
-  String get current_password_label => 'Current password';
+  String get current_password_label => 'كلمة المرور الحالية';
 
   @override
-  String get language_note => 'Changing language will restart some screens.';
+  String get language_note => 'تغيير اللغة قد يعيد تشغيل بعض الشاشات.';
 
   @override
-  String get cancel => 'Cancel';
+  String get cancel => 'إلغاء';
 
   @override
-  String get confirm => 'Confirm';
+  String get confirm => 'تأكيد';
 
   @override
-  String get language => 'Language';
+  String get language => 'اللغة';
 
   @override
-  String get english => 'English';
+  String get english => 'الإنجليزية';
 
   @override
-  String get logout => 'Log out';
+  String get logout => 'تسجيل الخروج';
 
   @override
-  String get adminDashboardTitle => 'لوحة التحكم';
+  String get adminDashboardTitle => 'لوحة تحكم المدير';
 
   @override
   String get adminDashboardSubtitle => 'إدارة محتوى التطبيق والإعدادات.';
@@ -363,37 +363,37 @@ class AppLocalizationsAr extends AppLocalizations {
   String get adminProductsEmpty => 'لا توجد منتجات بعد. اضغط + لإضافة أول منتج.';
 
   @override
-  String get adminProductsNewArrivals => 'المنتجات الجديدة';
+  String get adminProductsNewArrivals => 'وصل حديثًا';
 
   @override
   String get adminProductsBestSellers => 'الأكثر مبيعًا';
 
   @override
-  String get adminProductsDiscounted => 'المنتجات المخفّضة';
+  String get adminProductsDiscounted => 'منتجات مخفضة';
 
   @override
-  String get adminProductsSearchPlaceholder => 'ابحث عن منتج...';
+  String get adminProductsSearchPlaceholder => 'ابحث عن منتجات...';
 
   @override
   String get accountInactiveTitle => 'حسابك غير نشط';
 
   @override
-  String get accountInactiveBody => 'حسابك حالياً غير نشط. هل تريد إعادة تفعيله للمتابعة؟';
+  String get accountInactiveBody => 'حسابك غير نشط حاليًا. هل تريد إعادة تفعيله للمتابعة؟';
 
   @override
   String get reactivateButton => 'إعادة التفعيل';
 
   @override
-  String get accountReactivated => 'تم تفعيل حسابك بنجاح.';
+  String get accountReactivated => 'تمت إعادة تفعيل حسابك بنجاح';
 
   @override
   String get chooseSignInRole => 'اختر طريقة تسجيل الدخول';
 
   @override
-  String get enterAsOwner => 'تسجيل الدخول كمالك (مسؤول)';
+  String get enterAsOwner => 'الدخول كمالك (مدير)';
 
   @override
-  String get enterAsUser => 'تسجيل الدخول كمستخدم';
+  String get enterAsUser => 'الدخول كمستخدم';
 
   @override
   String get roleLabel => 'الدور';
@@ -402,69 +402,69 @@ class AppLocalizationsAr extends AppLocalizations {
   String get userLabel => 'مستخدم';
 
   @override
-  String get loginInactiveTitle => 'هل تريد تفعيل الحساب؟';
+  String get loginInactiveTitle => 'إعادة تفعيل حسابك؟';
 
   @override
   String loginInactiveMessage(Object name) {
-    return 'حسابك حالياً غير مُفعَّل. هل تريد تفعيله الآن والمتابعة؟';
+    return 'حسابك \"$name\" غير نشط حاليًا. هل تريد إعادة تفعيله والمتابعة؟';
   }
 
   @override
-  String get loginInactiveReactivate => 'Reactivate';
+  String get loginInactiveReactivate => 'إعادة التفعيل';
 
   @override
-  String get loginInactiveCancel => 'لا، لاحقاً';
+  String get loginInactiveCancel => 'ليس الآن';
 
   @override
-  String get loginInactiveRequired => 'You must reactivate your account to sign in as user.';
+  String get loginInactiveRequired => 'يجب إعادة تفعيل حسابك لتسجيل الدخول كمستخدم.';
 
   @override
-  String get loginChooseRoleTitle => 'Choose how to sign in';
+  String get loginChooseRoleTitle => 'اختر طريقة تسجيل الدخول';
 
   @override
-  String get loginEnterAsOwner => 'Enter as Owner (Admin)';
+  String get loginEnterAsOwner => 'الدخول كمالك (مدير)';
 
   @override
-  String get loginEnterAsUser => 'Enter as User';
+  String get loginEnterAsUser => 'الدخول كمستخدم';
 
   @override
-  String get loginRoleLabel => 'Role:';
+  String get loginRoleLabel => 'الدور:';
 
   @override
-  String get loginUserFallbackLabel => 'User';
+  String get loginUserFallbackLabel => 'مستخدم';
 
   @override
-  String get loginInactiveSuccess => 'تم تفعيل حسابك بنجاح. أهلاً بعودتك!';
+  String get loginInactiveSuccess => 'تمت إعادة تفعيل حسابك بنجاح.';
 
   @override
-  String get productBadgeOnSale => 'عرض خاص';
+  String get productBadgeOnSale => 'تخفيض';
 
   @override
   String get productStatusDraft => 'مسودة';
 
   @override
-  String get productStatusActive => 'مفعل';
+  String get productStatusActive => 'نشط';
 
   @override
   String get productStatusArchived => 'مؤرشف';
 
   @override
-  String get errorNetworkNoInternet => 'لا يوجد إنترنت أو الخادم غير متصل.';
+  String get errorNetworkNoInternet => 'لا يوجد إنترنت أو الخادم غير متاح.';
 
   @override
-  String get errorNetworkServerDown => 'الخادم لا يستجيب، حاول مرة أخرى لاحقًا.';
+  String get errorNetworkServerDown => 'الخادم لا يستجيب. حاول لاحقًا.';
 
   @override
-  String get errorServerUnexpected => 'خطأ غير متوقّع في الخادم، حاول مرة أخرى.';
+  String get errorServerUnexpected => 'خطأ غير متوقع في الخادم. حاول مرة أخرى.';
 
   @override
-  String get errorUnexpected => 'حدث خطأ غير متوقّع، حاول مرة أخرى.';
+  String get errorUnexpected => 'حدث خطأ غير متوقع. حاول مرة أخرى.';
 
   @override
-  String get errorAuthUnauthorized => 'انتهت صلاحية الجلسة، يرجى تسجيل الدخول مجددًا.';
+  String get errorAuthUnauthorized => 'انتهت جلستك. يرجى تسجيل الدخول مجددًا.';
 
   @override
-  String get errorAuthForbidden => 'ليست لديك صلاحية لتنفيذ هذه العملية.';
+  String get errorAuthForbidden => 'ليس لديك صلاحية لتنفيذ هذا الإجراء.';
 
   @override
   String get logoutLabel => 'تسجيل الخروج';
@@ -479,33 +479,33 @@ class AppLocalizationsAr extends AppLocalizations {
   String get adminProjectsOwners => 'المشاريع والمالكون';
 
   @override
-  String get adminUsersManagers => 'المستخدمون والمديرون';
+  String get adminUsersManagers => 'المستخدمون والمدراء';
 
   @override
   String get adminSettings => 'الإعدادات';
 
   @override
   String adminSignedInAs(Object role) {
-    return 'تسجيل الدخول كـ $role';
+    return 'مسجل الدخول كـ $role';
   }
 
   @override
   String get adminProductCreateTitle => 'إنشاء منتج';
 
   @override
-  String get adminProductNameLabel => 'اسم المنتج';
+  String get adminProductNameLabel => 'الاسم';
 
   @override
-  String get adminProductNameHint => 'مثال: لابتوب سامسونغ';
+  String get adminProductNameHint => 'مثال: MacBook Pro';
 
   @override
-  String get adminProductNameRequired => 'اسم المنتج مطلوب';
+  String get adminProductNameRequired => 'الاسم مطلوب';
 
   @override
   String get adminProductDescriptionLabel => 'الوصف';
 
   @override
-  String get adminProductDescriptionHint => 'وصف قصير عن المنتج';
+  String get adminProductDescriptionHint => 'وصف قصير...';
 
   @override
   String get adminProductPriceLabel => 'السعر';
@@ -514,19 +514,19 @@ class AppLocalizationsAr extends AppLocalizations {
   String get adminProductPriceRequired => 'السعر مطلوب';
 
   @override
-  String get adminProductPriceInvalid => 'أدخِل سعرًا صالحًا أكبر من 0';
+  String get adminProductPriceInvalid => 'يجب أن يكون السعر أكبر من 0';
 
   @override
-  String get adminProductStockLabel => 'الكمية في المخزون';
+  String get adminProductStockLabel => 'المخزون';
 
   @override
-  String get adminProductStatusLabel => 'الحالة';
+  String get adminProductStatusLabel => 'Status';
 
   @override
-  String get adminProductImageUrlLabel => 'رابط الصورة';
+  String get adminProductImageUrlLabel => 'Image URL';
 
   @override
-  String get adminProductSkuLabel => 'رمز المنتج (SKU)';
+  String get adminProductSkuLabel => 'SKU';
 
   @override
   String get adminProductTypeLabel => 'نوع المنتج';
@@ -535,19 +535,19 @@ class AppLocalizationsAr extends AppLocalizations {
   String get adminProductTypeSimple => 'بسيط';
 
   @override
-  String get adminProductTypeVariable => 'متغيّر (مقاسات / ألوان)';
+  String get adminProductTypeVariable => 'متغير';
 
   @override
-  String get adminProductTypeGrouped => 'مجموعة (باقة منتجات)';
+  String get adminProductTypeGrouped => 'مجمع';
 
   @override
-  String get adminProductTypeExternal => 'خارجي / أفلييت';
+  String get adminProductTypeExternal => 'خارجي';
 
   @override
-  String get adminProductVirtualLabel => 'منتج افتراضي (بدون شحن)';
+  String get adminProductVirtualLabel => 'منتج افتراضي';
 
   @override
-  String get adminProductDownloadableLabel => 'منتج قابل للتحميل';
+  String get adminProductDownloadableLabel => 'قابل للتحميل';
 
   @override
   String get adminProductDownloadUrlLabel => 'رابط التحميل';
@@ -559,55 +559,55 @@ class AppLocalizationsAr extends AppLocalizations {
   String get adminProductButtonTextLabel => 'نص الزر';
 
   @override
-  String get adminProductButtonTextHint => 'مثال: أضِف إلى السلة، اشترِ الآن';
+  String get adminProductButtonTextHint => 'اشترِ الآن';
 
   @override
-  String get adminProductSaleSectionTitle => 'تخفيض / عرض';
+  String get adminProductSaleSectionTitle => 'تخفيض';
 
   @override
   String get adminProductSalePriceLabel => 'سعر التخفيض';
 
   @override
-  String get adminProductSaleStartLabel => 'بداية التخفيض (تاريخ ISO)';
+  String get adminProductSaleStartLabel => 'تاريخ بداية التخفيض';
 
   @override
-  String get adminProductSaleEndLabel => 'نهاية التخفيض (تاريخ ISO)';
+  String get adminProductSaleEndLabel => 'تاريخ نهاية التخفيض';
 
   @override
-  String get adminProductAttributesTitle => 'الخصائص';
+  String get adminProductAttributesTitle => 'السمات';
 
   @override
-  String get adminProductAttributeCodeLabel => 'رمز الخاصية';
+  String get adminProductAttributeCodeLabel => 'كود السمة';
 
   @override
-  String get adminProductAttributeValueLabel => 'قيمة الخاصية';
+  String get adminProductAttributeValueLabel => 'القيمة';
 
   @override
-  String get adminProductAddAttribute => 'إضافة خاصية';
+  String get adminProductAddAttribute => 'إضافة سمة';
 
   @override
-  String get adminProductEditTitle => 'Edit product';
+  String get adminProductEditTitle => 'تعديل المنتج';
 
   @override
-  String get adminProductCategoryLabel => 'Category';
+  String get adminProductCategoryLabel => 'الفئة';
 
   @override
-  String get adminProductItemTypeLabel => 'Item type';
+  String get adminProductItemTypeLabel => 'نوع العنصر';
 
   @override
-  String get adminStockHint => 'Ex: 50';
+  String get adminStockHint => 'مثال: 50';
 
   @override
-  String get adminProductImageLabel => 'Image';
+  String get adminProductImageLabel => 'الصورة';
 
   @override
-  String get adminProductPickImage => 'Pick image';
+  String get adminProductPickImage => 'اختيار صورة';
 
   @override
-  String get adminRemove => 'Remove';
+  String get adminRemove => 'إزالة';
 
   @override
-  String get adminProductSkuHint => 'Ex: SKU-123';
+  String get adminProductSkuHint => 'مثال: SKU-123';
 
   @override
   String get adminProductDownloadUrlHint => 'https://...';
@@ -619,295 +619,295 @@ class AppLocalizationsAr extends AppLocalizations {
   String get adminProductSaveButton => 'حفظ المنتج';
 
   @override
-  String get adminNoCategories => 'No categories found';
+  String get adminNoCategories => 'لا توجد فئات';
 
   @override
-  String get adminCreateCategory => 'Create category';
+  String get adminCreateCategory => 'إنشاء فئة';
 
   @override
-  String get adminNoItemTypes => 'No item types found';
+  String get adminNoItemTypes => 'لا توجد أنواع عناصر';
 
   @override
-  String get adminCreateItemType => 'Create item type';
+  String get adminCreateItemType => 'إنشاء نوع عنصر';
 
   @override
-  String get adminTaxesTitle => 'Taxes';
+  String get adminTaxesTitle => 'الضرائب';
 
   @override
-  String get adminTaxRulesTitle => 'Tax Rules';
+  String get adminTaxRulesTitle => 'قواعد الضرائب';
 
   @override
-  String get adminTaxAddRule => 'Add tax rule';
+  String get adminTaxAddRule => 'إضافة قاعدة ضريبية';
 
   @override
-  String get adminTaxNoRules => 'No tax rules found.';
+  String get adminTaxNoRules => 'لا توجد قواعد ضريبية.';
 
   @override
-  String get adminTaxCreateRuleTitle => 'Create Tax Rule';
+  String get adminTaxCreateRuleTitle => 'إنشاء قاعدة ضريبية';
 
   @override
-  String get adminTaxEditRuleTitle => 'Edit Tax Rule';
+  String get adminTaxEditRuleTitle => 'تعديل قاعدة ضريبية';
 
   @override
-  String get adminTaxRuleNameLabel => 'Rule name';
+  String get adminTaxRuleNameLabel => 'اسم القاعدة';
 
   @override
-  String get adminTaxRuleNameHint => 'Ex: Standard VAT 11%';
+  String get adminTaxRuleNameHint => 'مثال: ضريبة القيمة المضافة 11%';
 
   @override
-  String get adminTaxRuleNameRequired => 'Tax rule name is required';
+  String get adminTaxRuleNameRequired => 'اسم القاعدة مطلوب';
 
   @override
-  String get adminTaxRuleRateLabel => 'Rate (%)';
+  String get adminTaxRuleRateLabel => 'النسبة (%)';
 
   @override
   String get adminTaxRuleRateHint => '11.00';
 
   @override
-  String get adminTaxRuleRateRequired => 'Rate is required';
+  String get adminTaxRuleRateRequired => 'النسبة مطلوبة';
 
   @override
-  String get adminTaxRuleRateInvalid => 'Rate must be a valid number > 0';
+  String get adminTaxRuleRateInvalid => 'يجب أن تكون النسبة رقمًا صحيحًا > 0';
 
   @override
-  String get adminTaxAppliesToShippingLabel => 'Applies to shipping';
+  String get adminTaxAppliesToShippingLabel => 'تُطبق على الشحن';
 
   @override
-  String get adminTaxEnabledLabel => 'Enabled';
+  String get adminTaxEnabledLabel => 'مفعّل';
 
   @override
-  String get adminTaxCountryIdLabel => 'Country ID (optional)';
+  String get adminTaxCountryIdLabel => 'معرّف الدولة (اختياري)';
 
   @override
   String get adminTaxCountryIdHint => '1';
 
   @override
-  String get adminTaxRegionIdLabel => 'Region ID (optional)';
+  String get adminTaxRegionIdLabel => 'معرّف المنطقة (اختياري)';
 
   @override
   String get adminTaxRegionIdHint => '2';
 
   @override
-  String get adminTaxRateShort => 'Rate';
+  String get adminTaxRateShort => 'النسبة';
 
   @override
-  String get adminTaxAppliesToShippingShort => 'Shipping tax';
+  String get adminTaxAppliesToShippingShort => 'ضريبة الشحن';
 
   @override
-  String get adminTaxEnabledShort => 'Enabled';
+  String get adminTaxEnabledShort => 'مفعّل';
 
   @override
-  String get adminCancel => 'Cancel';
+  String get adminCancel => 'إلغاء';
 
   @override
-  String get adminCreate => 'Create';
+  String get adminCreate => 'إنشاء';
 
   @override
-  String get adminUpdate => 'Update';
+  String get adminUpdate => 'تحديث';
 
   @override
-  String get adminEdit => 'Edit';
+  String get adminEdit => 'تعديل';
 
   @override
-  String get adminDelete => 'Delete';
+  String get adminDelete => 'حذف';
 
   @override
-  String get yes => 'Yes';
+  String get yes => 'نعم';
 
   @override
-  String get no => 'No';
+  String get no => 'لا';
 
   @override
-  String get adminSessionExpired => 'Your session has expired. Please log in again.';
+  String get adminSessionExpired => 'انتهت جلستك. يرجى تسجيل الدخول مجددًا.';
 
   @override
-  String get adminTaxCountryLabel => 'Country';
+  String get adminTaxCountryLabel => 'الدولة';
 
   @override
-  String get adminTaxCountryHint => 'Select country';
+  String get adminTaxCountryHint => 'اختر الدولة';
 
   @override
-  String get adminTaxRegionLabel => 'Region';
+  String get adminTaxRegionLabel => 'المنطقة';
 
   @override
-  String get adminTaxSelectCountryFirst => 'Select country first';
+  String get adminTaxSelectCountryFirst => 'اختر الدولة أولًا';
 
   @override
-  String get adminTaxRegionHint => 'Select region';
+  String get adminTaxRegionHint => 'اختر المنطقة';
 
   @override
-  String get adminTaxRulesTitleShort => 'Tax Rules';
+  String get adminTaxRulesTitleShort => 'قواعد الضرائب';
 
   @override
-  String get adminTaxRulesSubtitle => 'Manage tax rules for your products.';
+  String get adminTaxRulesSubtitle => 'إدارة قواعد الضرائب لمنتجاتك.';
 
   @override
-  String get taxPreviewLoading => 'Calculating tax preview...';
+  String get taxPreviewLoading => 'جارٍ حساب معاينة الضريبة...';
 
   @override
-  String get taxPreviewTitle => 'Tax Preview';
+  String get taxPreviewTitle => 'معاينة الضريبة';
 
   @override
-  String get itemsTaxLabel => 'Items Tax';
+  String get itemsTaxLabel => 'ضريبة المنتجات';
 
   @override
-  String get shippingTaxLabel => 'Shipping Tax';
+  String get shippingTaxLabel => 'ضريبة الشحن';
 
   @override
-  String get totalTaxLabel => 'Total Tax';
+  String get totalTaxLabel => 'إجمالي الضريبة';
 
   @override
-  String get taxClassNone => 'No Tax';
+  String get taxClassNone => 'بدون ضريبة';
 
   @override
-  String get taxClassStandard => 'Standard Rate';
+  String get taxClassStandard => 'نسبة قياسية';
 
   @override
-  String get taxClassReduced => 'Reduced Rate';
+  String get taxClassReduced => 'نسبة مخفضة';
 
   @override
-  String get taxClassZero => 'Zero Rate';
+  String get taxClassZero => 'نسبة صفر';
 
   @override
-  String get taxClassLabel => 'Tax Class';
+  String get taxClassLabel => 'فئة الضريبة';
 
   @override
-  String get taxClassHint => 'Select tax class';
+  String get taxClassHint => 'اختر فئة الضريبة';
 
   @override
-  String get adminTaxCountryRequired => 'Country is required';
+  String get adminTaxCountryRequired => 'الدولة مطلوبة';
 
   @override
-  String get adminTaxRegionRequired => 'Region is required';
+  String get adminTaxRegionRequired => 'المنطقة مطلوبة';
 
   @override
-  String get adminTaxRulePresetLabel => 'Rule Preset';
+  String get adminTaxRulePresetLabel => 'إعداد مسبق';
 
   @override
-  String get adminTaxRulePresetHint => 'Select a preset to auto-fill fields';
+  String get adminTaxRulePresetHint => 'اختر إعدادًا مسبقًا لملء الحقول تلقائيًا';
 
   @override
-  String get adminCustom => 'Custom';
+  String get adminCustom => 'مخصص';
 
   @override
-  String get adminTaxAutoNameLabel => 'Auto-generate name';
+  String get adminTaxAutoNameLabel => 'إنشاء اسم تلقائيًا';
 
   @override
-  String get adminShippingTitle => 'Shipping Methods';
+  String get adminShippingTitle => 'طرق الشحن';
 
   @override
-  String get adminShippingAdd => 'Add method';
+  String get adminShippingAdd => 'إضافة طريقة';
 
   @override
-  String get adminShippingNoMethods => 'No shipping methods yet';
+  String get adminShippingNoMethods => 'لا توجد طرق شحن بعد';
 
   @override
-  String get adminShippingCreateTitle => 'Create shipping method';
+  String get adminShippingCreateTitle => 'إنشاء طريقة شحن';
 
   @override
-  String get adminShippingEditTitle => 'Edit shipping method';
+  String get adminShippingEditTitle => 'تعديل طريقة شحن';
 
   @override
-  String get adminShippingNameLabel => 'Name';
+  String get adminShippingNameLabel => 'الاسم';
 
   @override
-  String get adminShippingNameRequired => 'Name is required';
+  String get adminShippingNameRequired => 'الاسم مطلوب';
 
   @override
-  String get adminShippingDescLabel => 'Description';
+  String get adminShippingDescLabel => 'الوصف';
 
   @override
-  String get adminShippingTypeLabel => 'Method type';
+  String get adminShippingTypeLabel => 'نوع الطريقة';
 
   @override
-  String get adminShippingTypeHint => 'Select type';
+  String get adminShippingTypeHint => 'اختر النوع';
 
   @override
-  String get adminShippingFlatRateLabel => 'Flat rate';
+  String get adminShippingFlatRateLabel => 'سعر ثابت';
 
   @override
-  String get adminShippingPerKgLabel => 'Price per kg';
+  String get adminShippingPerKgLabel => 'السعر لكل كغ';
 
   @override
-  String get adminShippingThresholdLabel => 'Free shipping threshold';
+  String get adminShippingThresholdLabel => 'حد الشحن المجاني';
 
   @override
-  String get adminShippingCountryLabel => 'Country';
+  String get adminShippingCountryLabel => 'الدولة';
 
   @override
-  String get adminShippingCountryHint => 'Select country';
+  String get adminShippingCountryHint => 'اختر الدولة';
 
   @override
-  String get adminShippingCountryRequired => 'Country is required';
+  String get adminShippingCountryRequired => 'الدولة مطلوبة';
 
   @override
-  String get adminShippingRegionLabel => 'Region';
+  String get adminShippingRegionLabel => 'المنطقة';
 
   @override
-  String get adminShippingRegionHint => 'Select region (optional)';
+  String get adminShippingRegionHint => 'اختر المنطقة (اختياري)';
 
   @override
-  String get adminShippingSelectCountryFirst => 'Select country first';
+  String get adminShippingSelectCountryFirst => 'اختر الدولة أولًا';
 
   @override
-  String get adminShippingEnabledLabel => 'Enabled';
+  String get adminShippingEnabledLabel => 'مفعّل';
 
   @override
-  String get adminShippingEnabledShort => 'Enabled';
+  String get adminShippingEnabledShort => 'مفعّل';
 
   @override
-  String get adminShippingTypeShort => 'Type';
+  String get adminShippingTypeShort => 'النوع';
 
   @override
-  String get shippingTypeFlatRate => 'Flat rate';
+  String get shippingTypeFlatRate => 'سعر ثابت';
 
   @override
-  String get shippingTypeFree => 'Free';
+  String get shippingTypeFree => 'مجاني';
 
   @override
-  String get shippingTypeWeightBased => 'Weight based';
+  String get shippingTypeWeightBased => 'حسب الوزن';
 
   @override
-  String get shippingTypePriceBased => 'Price based';
+  String get shippingTypePriceBased => 'حسب السعر';
 
   @override
-  String get shippingTypePricePerKg => 'Price per kg';
+  String get shippingTypePricePerKg => 'السعر لكل كغ';
 
   @override
-  String get shippingTypeLocalPickup => 'Local pickup';
+  String get shippingTypeLocalPickup => 'استلام محلي';
 
   @override
-  String get shippingTypeFreeOverThreshold => 'Free over threshold';
+  String get shippingTypeFreeOverThreshold => 'مجاني فوق الحد';
 
   @override
-  String get adminConfirmDelete => 'Are you sure you want to delete this item?';
+  String get adminConfirmDelete => 'هل أنت متأكد أنك تريد حذف هذا العنصر؟';
 
   @override
-  String get adminShippingCreateButton => 'Create method';
+  String get adminShippingCreateButton => 'إنشاء الطريقة';
 
   @override
-  String get adminDeleted => 'Deleted';
+  String get adminDeleted => 'تم حذف العنصر بنجاح';
 
   @override
-  String get refreshLabel => 'Refresh';
+  String get refreshLabel => 'تحديث';
 
   @override
-  String get adminEnabledOnly => 'Enabled only';
+  String get adminEnabledOnly => 'المفعّلة فقط';
 
   @override
-  String get adminShowAll => 'Show all';
+  String get adminShowAll => 'عرض الكل';
 
   @override
-  String get adminDisabled => 'Disabled only';
+  String get adminDisabled => 'المعطّلة فقط';
 
   @override
-  String get adminActive => 'Active only';
+  String get adminActive => 'النشطة فقط';
 
   @override
-  String get adminCreated => 'Created';
+  String get adminCreated => 'تم الإنشاء بنجاح';
 
   @override
-  String get adminUpdated => 'Updated';
+  String get adminUpdated => 'تم التحديث بنجاح';
 
   @override
   String get adminHomeBannersTitle => 'Home Banners';
@@ -1093,249 +1093,249 @@ class AppLocalizationsAr extends AppLocalizations {
   String get adminProductAttributesSubtitle => 'Add custom attributes';
 
   @override
-  String get cart_title => 'Shopping Cart';
+  String get cart_title => 'سلة التسوق';
 
   @override
-  String get cart_empty_message => 'Your cart is empty. Start adding items!';
+  String get cart_empty_message => 'سلتك فارغة. ابدأ بإضافة المنتجات!';
 
   @override
-  String get cart_total_label => 'Total:';
+  String get cart_total_label => 'الإجمالي:';
 
   @override
-  String get cart_checkout_button => 'Proceed to Checkout';
+  String get cart_checkout_button => 'متابعة للدفع';
 
   @override
-  String get cart_item_added => 'Item added to cart';
+  String get cart_item_added => 'تمت إضافة المنتج إلى السلة';
 
   @override
-  String get cart_item_removed => 'Item removed from cart';
+  String get cart_item_removed => 'تمت إزالة المنتج من السلة';
 
   @override
-  String get cart_clear_confirmation => 'Are you sure you want to clear the cart?';
+  String get cart_clear_confirmation => 'هل أنت متأكد أنك تريد تفريغ السلة؟';
 
   @override
-  String get cart_item_quantity_label => 'Quantity:';
+  String get cart_item_quantity_label => 'الكمية:';
 
   @override
-  String get cart_item_updated => 'Cart item updated';
+  String get cart_item_updated => 'تم تحديث عنصر السلة';
 
   @override
-  String get cart_checkout => 'Checkout';
+  String get cart_checkout => 'الدفع';
 
   @override
-  String get cart_clear => 'Clear Cart';
+  String get cart_clear => 'تفريغ السلة';
 
   @override
-  String get cart_empty_cta => 'Browse Products';
+  String get cart_empty_cta => 'تصفح المنتجات';
 
   @override
-  String get cart_cleared => 'Cart has been cleared';
+  String get cart_cleared => 'تم تفريغ السلة';
 
   @override
-  String get adminProductNoAttributesHint => 'No attributes added yet.';
+  String get adminProductNoAttributesHint => 'لا توجد سمات مضافة بعد.';
 
   @override
-  String get cart_add_button => 'Add to Cart';
+  String get cart_add_button => 'أضف إلى السلة';
 
   @override
-  String get home_book_now_button => 'Book Now';
+  String get home_book_now_button => 'احجز الآن';
 
   @override
-  String get home_view_details_button => 'View Details';
+  String get home_view_details_button => 'عرض التفاصيل';
 
   @override
-  String get cart_login_required_title => 'Login Required';
+  String get cart_login_required_title => 'تسجيل الدخول مطلوب';
 
   @override
-  String get cart_login_required_message => 'Please log in to proceed to checkout.';
+  String get cart_login_required_message => 'يرجى تسجيل الدخول لإكمال الدفع.';
 
   @override
-  String get cancel_button => 'Cancel';
+  String get cancel_button => 'إلغاء';
 
   @override
-  String get login_button => 'Log In';
+  String get login_button => 'تسجيل الدخول';
 
   @override
-  String get cart_item_added_snackbar => 'Item added to cart';
+  String get cart_item_added_snackbar => 'تمت إضافة المنتج إلى السلة';
 
   @override
-  String get coupons_title => 'Coupons';
+  String get coupons_title => 'القسائم';
 
   @override
-  String get coupons_saved => 'Coupon saved successfully';
+  String get coupons_saved => 'تم حفظ القسيمة بنجاح';
 
   @override
-  String get coupons_deleted => 'Coupon deleted successfully';
+  String get coupons_deleted => 'تم حذف القسيمة بنجاح';
 
   @override
-  String get coupons_empty => 'No coupons yet. Create your first one!';
+  String get coupons_empty => 'لا توجد قسائم بعد. أنشئ أول واحدة!';
 
   @override
-  String get coupons_type_percent => 'Percentage';
+  String get coupons_type_percent => 'خصم بالنسبة المئوية';
 
   @override
-  String get coupons_type_fixed => 'Fixed amount';
+  String get coupons_type_fixed => 'خصم بمبلغ ثابت';
 
   @override
-  String get coupons_type_free_shipping => 'Free shipping';
+  String get coupons_type_free_shipping => 'شحن مجاني';
 
   @override
-  String get coupons_inactive_badge => 'Inactive';
+  String get coupons_inactive_badge => 'غير نشطة';
 
   @override
-  String get coupons_delete_title => 'Delete coupon';
+  String get coupons_delete_title => 'حذف القسيمة';
 
   @override
   String coupons_delete_confirm(Object code) {
-    return 'Are you sure you want to delete coupon $code?';
+    return 'هل أنت متأكد أنك تريد حذف القسيمة $code؟';
   }
 
   @override
-  String get delete => 'Delete';
+  String get delete => 'حذف';
 
   @override
-  String get coupons_add => 'Add coupon';
+  String get coupons_add => 'إضافة قسيمة';
 
   @override
-  String get coupons_edit => 'Edit coupon';
+  String get coupons_edit => 'تعديل القسيمة';
 
   @override
-  String get coupons_code => 'Code';
+  String get coupons_code => 'الكود';
 
   @override
-  String get coupons_code_required => 'Coupon code is required';
+  String get coupons_code_required => 'كود القسيمة مطلوب';
 
   @override
-  String get coupons_description => 'Description';
+  String get coupons_description => 'الوصف';
 
   @override
-  String get coupons_type => 'Discount type';
+  String get coupons_type => 'نوع الخصم';
 
   @override
-  String get coupons_value_percent => 'Discount (%)';
+  String get coupons_value_percent => 'الخصم (%)';
 
   @override
-  String get coupons_value_amount => 'Discount amount';
+  String get coupons_value_amount => 'قيمة الخصم';
 
   @override
-  String get coupons_value_required => 'Discount value is required';
+  String get coupons_value_required => 'قيمة الخصم مطلوبة';
 
   @override
-  String get coupons_value_invalid => 'Enter a valid discount value';
+  String get coupons_value_invalid => 'أدخل قيمة خصم صحيحة';
 
   @override
-  String get coupons_max_uses => 'Max uses';
+  String get coupons_max_uses => 'الحد الأقصى للاستخدام';
 
   @override
-  String get coupons_min_order_amount => 'Min order amount';
+  String get coupons_min_order_amount => 'أقل مبلغ للطلب';
 
   @override
-  String get coupons_max_discount_amount => 'Max discount amount';
+  String get coupons_max_discount_amount => 'أقصى خصم';
 
   @override
-  String get coupons_active => 'Active';
+  String get coupons_active => 'نشطة';
 
   @override
-  String get common_save => 'Save';
+  String get common_save => 'حفظ';
 
   @override
-  String get adminCouponsTitle => 'Coupons';
+  String get adminCouponsTitle => 'القسائم';
 
   @override
-  String get checkoutTitle => 'Checkout';
+  String get checkoutTitle => 'الدفع';
 
   @override
-  String get checkoutLoading => 'Loading checkout…';
+  String get checkoutLoading => 'جارٍ تحميل الدفع…';
 
   @override
-  String get checkoutEmptyCart => 'Your cart is empty.';
+  String get checkoutEmptyCart => 'سلتك فارغة.';
 
   @override
-  String get checkoutGoBack => 'Go back';
+  String get checkoutGoBack => 'رجوع';
 
   @override
-  String get checkoutItemsTitle => 'Items';
+  String get checkoutItemsTitle => 'المنتجات';
 
   @override
-  String get checkoutAddressTitle => 'Shipping Address';
+  String get checkoutAddressTitle => 'عنوان الشحن';
 
   @override
-  String get checkoutCountryIdLabel => 'Country ID';
+  String get checkoutCountryIdLabel => 'معرّف الدولة';
 
   @override
-  String get checkoutCountryIdHint => 'Optional';
+  String get checkoutCountryIdHint => 'اختياري';
 
   @override
-  String get checkoutRegionIdLabel => 'Region ID';
+  String get checkoutRegionIdLabel => 'معرّف المنطقة';
 
   @override
-  String get checkoutRegionIdHint => 'Optional';
+  String get checkoutRegionIdHint => 'اختياري';
 
   @override
-  String get checkoutCityLabel => 'City';
+  String get checkoutCityLabel => 'المدينة';
 
   @override
-  String get checkoutCityHint => 'Enter city';
+  String get checkoutCityHint => 'أدخل المدينة';
 
   @override
-  String get checkoutPostalCodeLabel => 'Postal Code';
+  String get checkoutPostalCodeLabel => 'الرمز البريدي';
 
   @override
-  String get checkoutPostalCodeHint => 'Optional';
+  String get checkoutPostalCodeHint => 'اختياري';
 
   @override
-  String get checkoutApplyAddress => 'Update shipping';
+  String get checkoutApplyAddress => 'تحديث الشحن';
 
   @override
-  String get checkoutCouponTitle => 'Coupon';
+  String get checkoutCouponTitle => 'قسيمة';
 
   @override
-  String get checkoutCouponLabel => 'Coupon Code';
+  String get checkoutCouponLabel => 'كود القسيمة';
 
   @override
-  String get checkoutCouponHint => 'Enter coupon (optional)';
+  String get checkoutCouponHint => 'أدخل القسيمة (اختياري)';
 
   @override
-  String get checkoutShippingTitle => 'Shipping';
+  String get checkoutShippingTitle => 'الشحن';
 
   @override
-  String get checkoutNoShippingMethods => 'No shipping methods found. Update address then refresh.';
+  String get checkoutNoShippingMethods => 'لم يتم العثور على طرق شحن. حدّث العنوان ثم قم بالتحديث.';
 
   @override
-  String get checkoutRefreshShipping => 'Refresh shipping';
+  String get checkoutRefreshShipping => 'تحديث الشحن';
 
   @override
-  String get checkoutSelectShipping => 'Please select a shipping method';
+  String get checkoutSelectShipping => 'يرجى اختيار طريقة الشحن';
 
   @override
-  String get checkoutPaymentTitle => 'Payment';
+  String get checkoutPaymentTitle => 'الدفع';
 
   @override
-  String get checkoutPaymentCash => 'Cash on delivery';
+  String get checkoutPaymentCash => 'الدفع عند الاستلام';
 
   @override
-  String get checkoutStripeNote => 'Stripe requires payment confirmation (coming next).';
+  String get checkoutStripeNote => 'Stripe يتطلب تأكيد الدفع (قريبًا).';
 
   @override
-  String get checkoutSelectPayment => 'Please select a payment method';
+  String get checkoutSelectPayment => 'يرجى اختيار طريقة الدفع';
 
   @override
-  String get checkoutSummaryTitle => 'Order Summary';
+  String get checkoutSummaryTitle => 'ملخص الطلب';
 
   @override
-  String get checkoutSubtotal => 'Subtotal';
+  String get checkoutSubtotal => 'المجموع الفرعي';
 
   @override
-  String get checkoutShipping => 'Shipping';
+  String get checkoutShipping => 'الشحن';
 
   @override
-  String get checkoutTax => 'Tax';
+  String get checkoutTax => 'الضريبة';
 
   @override
-  String get checkoutTotal => 'Total';
+  String get checkoutTotal => 'الإجمالي';
 
   @override
-  String get checkoutPlaceOrder => 'Place Order';
+  String get checkoutPlaceOrder => 'إتمام الطلب';
 
   @override
   String get orderSummaryTitle => 'ملخص الطلب';
@@ -1359,7 +1359,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get totalLabel => 'الإجمالي';
 
   @override
-  String get taxesShippingNote => 'يتم احتساب الضرائب والشحن حسب عنوانك.';
+  String get taxesShippingNote => 'يتم احتساب الضرائب والشحن حسب العنوان.';
 
   @override
   String get searchHint => 'بحث...';
@@ -1375,12 +1375,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String itemNumber(int id) {
-    return 'عنصر رقم #$id';
+    return 'العنصر رقم $id';
   }
 
   @override
   String qtyPriceLine(int qty, String price) {
-    return '×$qty • $price';
+    return 'x$qty • $price';
   }
 
   @override
@@ -1390,7 +1390,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String orderTitle(int orderId) {
-    return 'طلب رقم #$orderId';
+    return 'طلب رقم $orderId';
   }
 
   @override
@@ -1403,7 +1403,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String orderQtyUnitLine(int qty, String unit) {
-    return 'الكمية: $qty • السعر للوحدة: $unit';
+    return 'الكمية: $qty • سعر الوحدة: $unit';
   }
 
   @override
@@ -1416,7 +1416,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get checkoutErrorCartEmpty => 'السلة فارغة';
 
   @override
-  String get checkoutErrorSelectPayment => 'اختر طريقة دفع';
+  String get checkoutErrorSelectPayment => 'اختر طريقة الدفع';
 
   @override
   String get checkoutErrorSelectCountry => 'اختر الدولة';
@@ -1434,60 +1434,60 @@ class AppLocalizationsAr extends AppLocalizations {
   String get checkoutErrorSelectShipping => 'اختر طريقة الشحن';
 
   @override
-  String get checkoutErrorShippingMissing => 'طريقة الشحن غير موجودة';
+  String get checkoutErrorShippingMissing => 'طريقة الشحن مفقودة';
 
   @override
-  String get checkoutErrorStripeNotReady => 'Stripe غير مُجهّز بعد';
+  String get checkoutErrorStripeNotReady => 'Stripe غير جاهز بعد';
 
   @override
   String get commonDash => '-';
 
   @override
   String orderDetailsTitle(Object orderId) {
-    return 'Order #$orderId';
+    return 'تفاصيل الطلب رقم $orderId';
   }
 
   @override
   String orderDetailsDateLine(Object date) {
-    return 'Date: $date';
+    return 'التاريخ: $date';
   }
 
   @override
-  String get orderDetailsItemsTitle => 'Items';
+  String get orderDetailsItemsTitle => 'المنتجات';
 
   @override
   String orderDetailsItemFallback(Object itemId) {
-    return 'Item #$itemId';
+    return 'عنصر #$itemId';
   }
 
   @override
   String orderDetailsQtyUnitLine(Object qty, Object unitPrice) {
-    return 'Qty: $qty  •  Unit: $unitPrice';
+    return 'الكمية: $qty  •  سعر الوحدة: $unitPrice';
   }
 
   @override
-  String get orderDetailsSubtotal => 'Subtotal';
+  String get orderDetailsSubtotal => 'المجموع الفرعي';
 
   @override
-  String get orderDetailsShipping => 'Shipping';
+  String get orderDetailsShipping => 'الشحن';
 
   @override
-  String get orderDetailsTax => 'Tax';
+  String get orderDetailsTax => 'الضريبة';
 
   @override
   String orderDetailsCouponLine(Object code) {
-    return 'Coupon ($code)';
+    return 'قسيمة ($code)';
   }
 
   @override
-  String get orderDetailsGrandTotal => 'Grand Total';
+  String get orderDetailsGrandTotal => 'الإجمالي النهائي';
 
   @override
-  String get orderDetailsDownloadInvoice => 'Download Invoice PDF';
+  String get orderDetailsDownloadInvoice => 'تحميل فاتورة PDF';
 
   @override
   String common_stock_label(Object stock) {
-    return 'Stock: $stock';
+    return 'المخزون: $stock';
   }
 
   @override
@@ -1500,10 +1500,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get ordersEmptyTitle => 'لا توجد طلبات بعد';
 
   @override
-  String get ordersEmptyBody => 'عند إنشاء طلب جديد، سيظهر هنا.';
+  String get ordersEmptyBody => 'عندما تقوم بإنشاء طلب، سيظهر هنا.';
 
   @override
-  String get ordersReload => 'إعادة تحميل';
+  String get ordersReload => 'إعادة التحميل';
 
   @override
   String get ordersFilterAll => 'الكل';
@@ -1515,10 +1515,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get ordersFilterCompleted => 'مكتمل';
 
   @override
-  String get ordersFilterCanceled => 'ملغى';
+  String get ordersFilterCanceled => 'ملغي';
 
   @override
-  String get ordersNoResultsForFilter => 'لا توجد طلبات تطابق هذا الفلتر.';
+  String get ordersNoResultsForFilter => 'لا توجد طلبات مطابقة لهذا الفلتر.';
 
   @override
   String get ordersQtyLabel => 'الكمية';
@@ -1536,456 +1536,456 @@ class AppLocalizationsAr extends AppLocalizations {
   String get ordersStatusCompleted => 'مكتمل';
 
   @override
-  String get ordersStatusCanceled => 'ملغى';
+  String get ordersStatusCanceled => 'ملغي';
 
   @override
   String get ordersStatusUnknown => 'غير معروف';
 
   @override
-  String get ordersUnknownItem => 'منتج';
+  String get ordersUnknownItem => 'عنصر';
 
   @override
   String get ordersQty => 'الكمية';
 
   @override
-  String get profileLoginRequired => 'الرجاء تسجيل الدخول لعرض ملفك الشخصي.';
+  String get profileLoginRequired => 'يرجى تسجيل الدخول لعرض ملفك الشخصي.';
 
   @override
-  String get sessionExpired => 'انتهت الجلسة. الرجاء تسجيل الدخول من جديد.';
+  String get sessionExpired => 'انتهت الجلسة. يرجى تسجيل الدخول مجددًا.';
 
   @override
   String get login => 'تسجيل الدخول';
 
   @override
-  String get editProfileTitle => 'Edit Profile';
+  String get editProfileTitle => 'تعديل الملف الشخصي';
 
   @override
-  String get profileLoadFailed => 'Failed to load profile.';
+  String get profileLoadFailed => 'فشل تحميل الملف الشخصي.';
 
   @override
-  String get username => 'Username';
+  String get username => 'اسم المستخدم';
 
   @override
-  String get firstName => 'First name';
+  String get firstName => 'الاسم الأول';
 
   @override
-  String get lastName => 'Last name';
+  String get lastName => 'اسم العائلة';
 
   @override
-  String get publicProfile => 'Public profile';
+  String get publicProfile => 'ملف شخصي عام';
 
   @override
-  String get save => 'Save';
+  String get save => 'حفظ';
 
   @override
-  String get dangerZone => 'Danger zone';
+  String get dangerZone => 'منطقة الخطر';
 
   @override
-  String get password => 'Password';
+  String get password => 'كلمة المرور';
 
   @override
-  String get deleteAccount => 'Delete account';
+  String get deleteAccount => 'حذف الحساب';
 
   @override
-  String get notifications_title => 'Notifications';
+  String get notifications_title => 'الإشعارات';
 
   @override
-  String get notifications_empty_title => 'No notifications yet';
+  String get notifications_empty_title => 'لا توجد إشعارات بعد';
 
   @override
-  String get notifications_empty_subtitle => 'When something happens, it’ll show up here. For now… peace and quiet 😌';
+  String get notifications_empty_subtitle => 'عندما يحدث شيء، سيظهر هنا. حاليًا… هدوء تام 😌';
 
   @override
-  String get notifications_retry => 'Retry';
+  String get notifications_retry => 'إعادة المحاولة';
 
   @override
-  String get privacy_policy_title => 'Privacy Policy';
+  String get privacy_policy_title => 'سياسة الخصوصية';
 
   @override
-  String get privacy_policy_intro_title => 'Your privacy matters';
+  String get privacy_policy_intro_title => 'خصوصيتك تهمّنا';
 
   @override
-  String get privacy_policy_intro_body => 'This policy explains what we collect, why we collect it, and how you control your data.';
+  String get privacy_policy_intro_body => 'تشرح هذه السياسة ما نجمعه ولماذا وكيف يمكنك التحكم ببياناتك.';
 
   @override
-  String get privacy_policy_collect_title => 'What we collect';
+  String get privacy_policy_collect_title => 'ما الذي نجمعه';
 
   @override
-  String get privacy_policy_collect_body => 'Basic profile info (name, email/phone), account settings, and app usage needed to provide the service.';
+  String get privacy_policy_collect_body => 'معلومات أساسية (الاسم، البريد/الهاتف)، إعدادات الحساب، واستخدام التطبيق الضروري لتقديم الخدمة.';
 
   @override
-  String get privacy_policy_use_title => 'How we use your data';
+  String get privacy_policy_use_title => 'كيف نستخدم بياناتك';
 
   @override
-  String get privacy_policy_use_body => 'To run the app, personalize your experience, improve features, and keep the platform secure.';
+  String get privacy_policy_use_body => 'لتشغيل التطبيق، تخصيص تجربتك، تحسين الميزات، وحماية المنصة.';
 
   @override
-  String get privacy_policy_share_title => 'Sharing';
+  String get privacy_policy_share_title => 'المشاركة';
 
   @override
-  String get privacy_policy_share_body => 'We don’t sell your data. We only share what’s needed with trusted services (like hosting) to operate the app.';
+  String get privacy_policy_share_body => 'لا نبيع بياناتك. نشارك فقط ما يلزم مع خدمات موثوقة (مثل الاستضافة) لتشغيل التطبيق.';
 
   @override
-  String get privacy_policy_security_title => 'Security';
+  String get privacy_policy_security_title => 'الأمان';
 
   @override
-  String get privacy_policy_security_body => 'We use standard security practices, but no system is 100% perfect. Keep your password private.';
+  String get privacy_policy_security_body => 'نستخدم ممارسات أمان قياسية، لكن لا يوجد نظام مثالي 100%. حافظ على كلمة المرور.';
 
   @override
-  String get privacy_policy_choices_title => 'Your choices';
+  String get privacy_policy_choices_title => 'خياراتك';
 
   @override
-  String get privacy_policy_choices_body => 'You can change visibility (public/private), update profile info, or request account actions based on the app features.';
+  String get privacy_policy_choices_body => 'يمكنك تغيير الخصوصية (عام/خاص)، تحديث الملف الشخصي، أو طلب إجراءات على الحساب حسب ميزات التطبيق.';
 
   @override
-  String get privacy_policy_contact_title => 'Contact';
+  String get privacy_policy_contact_title => 'التواصل';
 
   @override
-  String get privacy_policy_contact_body => 'If you have questions about privacy, contact the app support team.';
+  String get privacy_policy_contact_body => 'إذا كان لديك أسئلة حول الخصوصية، تواصل مع فريق الدعم.';
 
   @override
-  String get privacy_policy_last_updated => 'Last updated: Dec 19, 2025';
+  String get privacy_policy_last_updated => 'آخر تحديث: 19 ديسمبر 2025';
 
   @override
-  String get home_bottom_slide_thankyou_title => 'THANK YOU';
+  String get home_bottom_slide_thankyou_title => 'شكرًا لك';
 
   @override
-  String get home_bottom_slide_thankyou_message => 'We appreciate your trust. Our team works daily to keep quality high and service fast.';
+  String get home_bottom_slide_thankyou_message => 'نقدّر ثقتك. فريقنا يعمل يوميًا للحفاظ على الجودة وسرعة الخدمة.';
 
   @override
-  String get home_bottom_slide_secure_title => 'SECURE & SAFE';
+  String get home_bottom_slide_secure_title => 'آمن ومحمي';
 
   @override
-  String get home_bottom_slide_secure_message => 'Secure payments, controlled products, and clean packaging — the basics done right.';
+  String get home_bottom_slide_secure_message => 'مدفوعات آمنة، منتجات مضبوطة، وتغليف نظيف — الأساسيات بشكل صحيح.';
 
   @override
-  String get home_bottom_slide_support_title => 'REAL SUPPORT';
+  String get home_bottom_slide_support_title => 'دعم حقيقي';
 
   @override
-  String get home_bottom_slide_support_message => 'Need help? We reply. No “seen” and disappear vibes 😅';
+  String get home_bottom_slide_support_message => 'تحتاج مساعدة؟ نحن نرد. مش جو “Seen” وبس 😅';
 
   @override
-  String get home_bottom_benefit_contact => 'CONTACT AN\nACCREDITED EXPERT';
+  String get home_bottom_benefit_contact => 'تواصل مع\nخبير معتمد';
 
   @override
-  String get home_bottom_benefit_secure_payments => 'SECURED\nPAYMENTS';
+  String get home_bottom_benefit_secure_payments => 'مدفوعات\nآمنة';
 
   @override
-  String get home_bottom_benefit_authentic_products => 'AUTHENTIC &\nCONTROLLED PRODUCTS';
+  String get home_bottom_benefit_authentic_products => 'منتجات أصلية\nومراقبة';
 
   @override
   String home_bottom_benefit_free_delivery_above(String amount) {
-    return 'FREE DELIVERY\nABOVE $amount';
+    return 'توصيل مجاني\nفوق $amount';
   }
 
   @override
-  String get home_trailing_limited_time => 'Limited time';
+  String get home_trailing_limited_time => 'لفترة محدودة';
 
   @override
-  String get home_trailing_see_all => 'See all';
+  String get home_trailing_see_all => 'عرض الكل';
 
   @override
-  String get home_sale_tag => 'SALE';
+  String get home_sale_tag => 'تخفيض';
 
   @override
   String home_stock_label(int count) {
-    return 'Stock: $count';
+    return 'المخزون: $count';
   }
 
   @override
-  String get home_bookings_placeholder => 'Bookings feed not wired yet.';
+  String get home_bookings_placeholder => 'قسم الحجوزات غير جاهز بعد.';
 
   @override
-  String get home_footer_contact_title => 'Contact us';
+  String get home_footer_contact_title => 'تواصل معنا';
 
   @override
-  String get home_footer_contact_desc => 'Need help? We’re one message away.';
+  String get home_footer_contact_desc => 'تحتاج مساعدة؟ نحن على بعد رسالة.';
 
   @override
-  String get home_footer_free_delivery_title => 'Free delivery';
+  String get home_footer_free_delivery_title => 'توصيل مجاني';
 
   @override
-  String get home_footer_free_delivery_desc => 'Available on selected orders and areas.';
+  String get home_footer_free_delivery_desc => 'متاح على طلبات ومناطق محددة.';
 
   @override
-  String get home_footer_returns_title => 'Easy returns';
+  String get home_footer_returns_title => 'إرجاع سهل';
 
   @override
-  String get home_footer_returns_desc => 'Simple return policy on eligible items.';
+  String get home_footer_returns_desc => 'سياسة إرجاع بسيطة للعناصر المؤهلة.';
 
   @override
-  String get ownerPaymentSettingsTitle => 'Payment Methods';
+  String get ownerPaymentSettingsTitle => 'طرق الدفع';
 
   @override
-  String get ownerPaymentSettingsDesc => 'Enable and configure gateways for this project';
+  String get ownerPaymentSettingsDesc => 'فعّل وادخل إعدادات بوابات الدفع لهذا المشروع';
 
   @override
-  String get ownerPaymentConfigure => 'Configure';
+  String get ownerPaymentConfigure => 'إعداد';
 
   @override
-  String get ownerPaymentIncomplete => 'Incomplete';
+  String get ownerPaymentIncomplete => 'غير مكتمل';
 
   @override
-  String get ownerPaymentConfigHint => 'Configure fields below. Required fields must be filled.';
+  String get ownerPaymentConfigHint => 'قم بإعداد الحقول أدناه. الحقول المطلوبة يجب تعبئتها.';
 
   @override
-  String get paymentMethodsTitle => 'Payment Methods';
+  String get paymentMethodsTitle => 'طرق الدفع';
 
   @override
-  String get paymentSearchHint => 'Search…';
+  String get paymentSearchHint => 'بحث…';
 
   @override
-  String get paymentNoResults => 'No results';
+  String get paymentNoResults => 'لا توجد نتائج';
 
   @override
-  String get paymentConfigure => 'Configure';
+  String get paymentConfigure => 'إعداد';
 
   @override
-  String get paymentCancel => 'Cancel';
+  String get paymentCancel => 'إلغاء';
 
   @override
-  String get paymentSave => 'Save';
+  String get paymentSave => 'حفظ';
 
   @override
-  String get paymentFillFields => 'Fill the fields below, then Save.';
+  String get paymentFillFields => 'املأ الحقول أدناه ثم اضغط حفظ.';
 
   @override
-  String get paymentSavedKeepHint => 'Saved (leave empty to keep)';
+  String get paymentSavedKeepHint => 'محفوظ (اتركه فارغًا للاحتفاظ)';
 
   @override
-  String get paymentRequiredLabel => '• required';
+  String get paymentRequiredLabel => '• مطلوب';
 
   @override
-  String get paymentIncomplete => 'Incomplete';
+  String get paymentIncomplete => 'غير مكتمل';
 
   @override
-  String get adminPaymentConfigTitle => 'Payment Methods';
+  String get adminPaymentConfigTitle => 'طرق الدفع';
 
   @override
-  String get checkoutConfirmDialogTitle => 'Confirm checkout';
+  String get checkoutConfirmDialogTitle => 'تأكيد الدفع';
 
   @override
   String checkoutConfirmCartCleared(int itemCount) {
     String _temp0 = intl.Intl.pluralLogic(
       itemCount,
       locale: localeName,
-      other: 'After checkout, your cart will become empty ($itemCount items).',
-      one: 'After checkout, your cart will become empty (1 item).',
-      zero: 'After checkout, your cart will become empty.',
+      other: 'بعد الدفع ستصبح سلتك فارغة ($itemCount عناصر).',
+      one: 'بعد الدفع ستصبح سلتك فارغة (عنصر واحد).',
+      zero: 'بعد الدفع ستصبح سلتك فارغة.',
     );
-    return '$_temp0 Do you want to continue?';
+    return '$_temp0 هل تريد المتابعة؟';
   }
 
   @override
-  String get commonYes => 'Yes';
+  String get commonYes => 'نعم';
 
   @override
-  String get commonNo => 'No';
+  String get commonNo => 'لا';
 
   @override
-  String get adminOrdersTitle => 'Orders';
+  String get adminOrdersTitle => 'الطلبات';
 
   @override
-  String get adminDashboard => 'Dashboard';
+  String get adminDashboard => 'لوحة التحكم';
 
   @override
-  String get adminAllTime => 'All time';
+  String get adminAllTime => 'كل الوقت';
 
   @override
-  String get adminLast7Days => 'Last 7 days';
+  String get adminLast7Days => 'آخر 7 أيام';
 
   @override
-  String get adminLast30Days => 'Last 30 days';
+  String get adminLast30Days => 'آخر 30 يومًا';
 
   @override
-  String get adminClear => 'Clear';
+  String get adminClear => 'مسح';
 
   @override
-  String get adminKpiOrders => 'Orders';
+  String get adminKpiOrders => 'الطلبات';
 
   @override
-  String get adminKpiGrossSales => 'Gross Sales';
+  String get adminKpiGrossSales => 'إجمالي المبيعات';
 
   @override
-  String get adminKpiPaid => 'Paid';
+  String get adminKpiPaid => 'مدفوع';
 
   @override
-  String get adminKpiOutstanding => 'Outstanding';
+  String get adminKpiOutstanding => 'متبقي';
 
   @override
-  String get adminKpiAvgOrder => 'Avg Order';
+  String get adminKpiAvgOrder => 'متوسط الطلب';
 
   @override
   String adminFullyPaidPercent(Object percent) {
-    return 'Fully paid: $percent%';
+    return 'مدفوع بالكامل: $percent%';
   }
 
   @override
-  String get adminPaidRevenueLast7Days => 'Paid revenue (last 7 days)';
+  String get adminPaidRevenueLast7Days => 'الإيراد المدفوع (آخر 7 أيام)';
 
   @override
-  String get adminNoOrders => 'No orders';
+  String get adminNoOrders => 'لا توجد طلبات';
 
   @override
-  String get adminNoOrdersHint => 'Try changing the status filter, date range, or pull to refresh.';
+  String get adminNoOrdersHint => 'جرّب تغيير الحالة أو الفترة أو اسحب للتحديث.';
 
   @override
-  String get adminFilterAll => 'All';
+  String get adminFilterAll => 'الكل';
 
   @override
   String adminOrderDetailsTitle(Object id) {
-    return 'Order #$id';
+    return 'طلب رقم $id';
   }
 
   @override
-  String get adminOrderFailedToLoad => 'Failed to load order.';
+  String get adminOrderFailedToLoad => 'فشل تحميل الطلب.';
 
   @override
-  String get adminPaymentSummary => 'Payment Summary';
+  String get adminPaymentSummary => 'ملخص الدفع';
 
   @override
-  String get adminOrderInfo => 'Order Info';
+  String get adminOrderInfo => 'معلومات الطلب';
 
   @override
-  String get adminStatus => 'Status';
+  String get adminStatus => 'الحالة';
 
   @override
-  String get adminOrderTotal => 'Order Total';
+  String get adminOrderTotal => 'إجمالي الطلب';
 
   @override
-  String get adminPaid => 'Paid';
+  String get adminPaid => 'مدفوع';
 
   @override
-  String get adminRemaining => 'Remaining';
+  String get adminRemaining => 'متبقي';
 
   @override
-  String get adminPaymentMethod => 'Payment Method';
+  String get adminPaymentMethod => 'طريقة الدفع';
 
   @override
-  String get adminCurrency => 'Currency';
+  String get adminCurrency => 'العملة';
 
   @override
-  String get adminShippingCity => 'Shipping City';
+  String get adminShippingCity => 'مدينة الشحن';
 
   @override
-  String get adminShippingMethod => 'Shipping Method';
+  String get adminShippingMethod => 'طريقة الشحن';
 
   @override
-  String get adminCoupon => 'Coupon';
+  String get adminCoupon => 'قسيمة';
 
   @override
   String adminItemsCount(Object count) {
-    return 'Items ($count)';
+    return 'العناصر ($count)';
   }
 
   @override
-  String get adminCustomer => 'Customer';
+  String get adminCustomer => 'العميل';
 
   @override
   String adminQtyPriceLine(Object qty, Object price) {
-    return 'Qty: $qty  •  Price: $price';
+    return 'الكمية: $qty  •  السعر: $price';
   }
 
   @override
   String adminOrderCardTitle(Object id) {
-    return 'Order #$id';
+    return 'طلب رقم $id';
   }
 
   @override
   String adminItemsShort(Object count) {
-    return '$count items';
+    return '$count عناصر';
   }
 
   @override
   String adminPaidShort(Object amount) {
-    return 'Paid: $amount';
+    return 'مدفوع: $amount';
   }
 
   @override
   String adminRemainingShort(Object amount) {
-    return 'Remaining: $amount';
+    return 'متبقي: $amount';
   }
 
   @override
-  String get adminFullyPaid => 'Fully paid';
+  String get adminFullyPaid => 'مدفوع بالكامل';
 
   @override
-  String get adminOrderStatusPending => 'Pending';
+  String get adminOrderStatusPending => 'قيد الانتظار';
 
   @override
-  String get adminOrderStatusCancelRequested => 'Cancel requested';
+  String get adminOrderStatusCancelRequested => 'طلب إلغاء';
 
   @override
-  String get adminOrderStatusCanceled => 'Canceled';
+  String get adminOrderStatusCanceled => 'ملغي';
 
   @override
-  String get adminOrderStatusRejected => 'Rejected';
+  String get adminOrderStatusRejected => 'مرفوض';
 
   @override
-  String get adminOrderStatusRefunded => 'Refunded';
+  String get adminOrderStatusRefunded => 'مسترجع';
 
   @override
-  String get adminOrderStatusCompleted => 'Completed';
+  String get adminOrderStatusCompleted => 'مكتمل';
 
   @override
-  String get adminMarkCashPaidBody => 'Are you sure you want to mark this order as paid in cash?';
+  String get adminMarkCashPaidBody => 'هل أنت متأكد أنك تريد وضع الطلب كمدفوع نقدًا؟';
 
   @override
-  String get adminMarkCashPaid => 'Mark as paid in cash';
+  String get adminMarkCashPaid => 'اعتباره مدفوع نقدًا';
 
   @override
-  String get adminMarkCashPaidTitle => 'Mark order as paid';
+  String get adminMarkCashPaidTitle => 'وضع الطلب كمدفوع';
 
   @override
-  String get adminMarkCashPaidButton => 'Mark as paid';
+  String get adminMarkCashPaidButton => 'وضع كمدفوع';
 
   @override
-  String get forgotPasswordLink => 'Forgot password?';
+  String get forgotPasswordLink => 'هل نسيت كلمة المرور؟';
 
   @override
-  String get forgotTitle => 'Reset your password';
+  String get forgotTitle => 'إعادة تعيين كلمة المرور';
 
   @override
-  String get forgotSubtitle => 'Enter your email and we’ll send you a code.';
+  String get forgotSubtitle => 'أدخل بريدك الإلكتروني وسنرسل لك رمزًا.';
 
   @override
-  String get forgotSendCode => 'Send code';
+  String get forgotSendCode => 'إرسال الرمز';
 
   @override
-  String get forgotTip => 'Tip: check spam/junk folder too 👀';
+  String get forgotTip => 'ملاحظة: تحقق من الرسائل غير المرغوب فيها أيضًا 👀';
 
   @override
-  String get forgotVerifyTitle => 'Enter verification code';
+  String get forgotVerifyTitle => 'إدخال رمز التحقق';
 
   @override
   String forgotVerifySubtitle(Object email) {
-    return 'We sent a code to $email';
+    return 'أرسلنا رمزًا إلى $email';
   }
 
   @override
-  String get forgotNewPassTitle => 'Set a new password';
+  String get forgotNewPassTitle => 'تعيين كلمة مرور جديدة';
 
   @override
-  String get forgotNewPassSubtitle => 'Make it strong — future you will thank you.';
+  String get forgotNewPassSubtitle => 'اجعلها قوية — نفسك المستقبلية ستشكرك.';
 
   @override
-  String get newPasswordLabel => 'New password';
+  String get newPasswordLabel => 'كلمة المرور الجديدة';
 
   @override
-  String get savePasswordButton => 'Save password';
+  String get savePasswordButton => 'حفظ كلمة المرور';
 
   @override
-  String get codeLabel => 'Code';
+  String get codeLabel => 'الرمز';
 
   @override
-  String get codeTooShort => 'Code is too short';
+  String get codeTooShort => 'الرمز قصير جدًا';
 
   @override
-  String get verifyButton => 'Verify';
+  String get verifyButton => 'تحقق';
 
   @override
-  String get resendCode => 'Resend code';
+  String get resendCode => 'إعادة إرسال الرمز';
 
   @override
-  String get passwordsDontMatch => 'Passwords do not match';
+  String get passwordsDontMatch => 'كلمتا المرور غير متطابقتين';
 }
