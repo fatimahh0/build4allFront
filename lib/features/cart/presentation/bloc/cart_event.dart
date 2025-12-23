@@ -12,6 +12,11 @@ class CartStarted extends CartEvent {
   const CartStarted();
 }
 
+class CartReset extends CartEvent {
+  const CartReset();
+}
+
+
 class CartRefreshed extends CartEvent {
   const CartRefreshed();
 }

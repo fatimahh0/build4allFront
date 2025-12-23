@@ -764,7 +764,7 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
 
                   return ItemCard(
                     width: double.infinity,
-                    imageFit: fit,
+                    imageFit: BoxFit.cover,
                     title: item.title,
                     subtitle: widget.subtitleFor(item),
                     imageUrl: item.imageUrl,

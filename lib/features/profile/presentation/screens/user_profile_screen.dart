@@ -1,4 +1,6 @@
 import 'package:build4front/app/app_router.dart';
+import 'package:build4front/features/cart/presentation/bloc/cart_bloc.dart';
+import 'package:build4front/features/cart/presentation/bloc/cart_event.dart';
 import 'package:build4front/features/profile/presentation/screens/privacy_policy_screen.dart';
 import 'package:build4front/features/profile_edit/presentation/screens/edit_profile_screen.dart';
 import 'package:flutter/material.dart';
@@ -61,6 +63,14 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  void _resetSessionUi() {
+    // ✅ wipe cart UI state (does NOT delete server cart)
+    context.read<CartBloc>().add(const CartReset());
+
+    // optional: reset other blocs if you have them (orders, favorites, etc.)
+    // context.read<OrdersBloc>().add(const OrdersReset());
   }
 
   @override
@@ -141,6 +151,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   }
 
   void _goToLogin(BuildContext context) {
+    _resetSessionUi();
     widget.onLogout();
     Navigator.pushNamedAndRemoveUntil(context, AppRouter.startup, (_) => false);
   }
@@ -402,7 +413,10 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                               userId: _effectiveUserId,
                             ),
                           );
-                          if (ok == true) widget.onLogout();
+                          if (ok == true) {
+                            _resetSessionUi();
+                            widget.onLogout();
+                          }
                         },
                       ),
                     ],
@@ -511,6 +525,9 @@ class _UserProfileScreenState extends State<UserProfileScreen>
       ),
     );
 
-    if (confirmed == true) widget.onLogout();
+    if (confirmed == true) {
+      _resetSessionUi();
+      widget.onLogout();
+    }
   }
 }

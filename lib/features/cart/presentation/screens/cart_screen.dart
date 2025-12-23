@@ -35,6 +35,17 @@ class _CartScreenState extends State<CartScreen> {
     });
   }
 
+  void _goHome() {
+    // ✅ Force MainShell to open Home tab
+    // IMPORTANT: Make sure "/" is your MainShell route.
+    // If your MainShell route is "/shell" (for example), change it here too.
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      '/',
+      (route) => false,
+      arguments: const {'goHome': true},
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -59,11 +70,13 @@ class _CartScreenState extends State<CartScreen> {
           }
 
           final cart = state.cart;
+
+          // ✅ Empty cart -> Browse must go HOME (not pop)
           if (cart == null || cart.items.isEmpty) {
             return _EmptyCartView(
               message: l10n.cart_empty_message,
               cta: l10n.cart_empty_cta,
-              onGoShopping: () => Navigator.of(context).pop(),
+              onGoShopping: _goHome,
             );
           }
 

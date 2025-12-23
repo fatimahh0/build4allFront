@@ -69,13 +69,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       appBar: AppBar(
         backgroundColor: colors.surface,
         elevation: 0,
-        title: Text(
-          l10n.adminDashboardTitle,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: colors.label,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+
         actions: [
           IconButton(
             onPressed: _logout,
@@ -103,13 +97,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               spacing: 12,
               runSpacing: 12,
               children: [
-                _AdminTile(
-                  icon: Icons.analytics_outlined,
-                  title: l10n.adminOverviewAnalytics,
-                  colors: colors,
-                  card: card,
-                  onTap: () {},
-                ),
                 _AdminTile(
                   icon: Icons.shopping_bag_outlined,
                   title: l10n.adminProductsTitle,
@@ -143,14 +130,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   },
                 ),
 
-              // PAYMENT CONFIG TILE
+                // PAYMENT CONFIG TILE
                 _AdminTile(
                   icon: Icons.credit_card_outlined,
                   title: l10n.adminPaymentConfigTitle,
                   colors: colors,
                   card: card,
                   onTap: () {
-                   final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+                    final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
 
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -163,7 +150,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     );
                   },
                 ),
-
 
                 // TAXES TILE
                 _AdminTile(
@@ -206,7 +192,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   colors: colors,
                   card: card,
                   onTap: () {
-                 final api = CouponApiService();
+                    final api = CouponApiService();
                     final repo = CouponRepositoryImpl(
                       api: api,
                       getToken: () =>
@@ -228,14 +214,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                       ),
                     );
-
-                    
-
                   },
                 ),
 
                 // ✅ ORDERS TILE (OWNER / SUPER_ADMIN)
-            _AdminTile(
+                _AdminTile(
                   icon: Icons.receipt_long_outlined,
                   title: 'Orders',
                   colors: colors,
@@ -244,9 +227,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     Navigator.of(context).pushNamed('/admin/orders');
                   },
                 ),
-
-
-
               ],
             ),
           ],

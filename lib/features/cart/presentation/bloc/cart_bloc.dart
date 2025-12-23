@@ -30,6 +30,8 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     on<CartItemQuantityChanged>(_onChangeQty);
     on<CartItemRemoved>(_onRemoveItem);
     on<CartCleared>(_onClear);
+    on<CartReset>(_onReset);
+
   }
 
   Future<void> _safeLoad(
@@ -52,6 +54,11 @@ class CartBloc extends Bloc<CartEvent, CartState> {
       emit(state.copyWith(isLoading: false, errorMessage: e.toString()));
     }
   }
+
+  Future<void> _onReset(CartReset event, Emitter<CartState> emit) async {
+    emit(CartState.initial());
+  }
+
 
   Future<void> _onStarted(CartStarted event, Emitter<CartState> emit) async {
     await _safeLoad(emit);

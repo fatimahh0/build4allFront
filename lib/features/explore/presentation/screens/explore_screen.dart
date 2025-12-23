@@ -704,7 +704,7 @@ class _ExploreItemsGrid extends StatelessWidget {
 
                 return ItemCard(
                   width: double.infinity,
-                  imageFit: fit,
+                  imageFit: BoxFit.cover,
                   title: item.title,
                   subtitle: subtitleFor(item),
                   imageUrl: item.imageUrl,
