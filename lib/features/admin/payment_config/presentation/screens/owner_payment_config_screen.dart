@@ -6,6 +6,7 @@ import 'package:build4front/core/config/env.dart';
 import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/l10n/app_localizations.dart';
 import 'package:build4front/common/widgets/app_toast.dart';
+import 'package:build4front/common/widgets/app_search_field.dart';
 
 import '../../data/repositories/owner_payment_config_repository_impl.dart';
 import '../../data/services/owner_payment_config_api_service.dart';
@@ -62,6 +63,15 @@ class _OwnerPaymentConfigView extends StatefulWidget {
 class _OwnerPaymentConfigViewState extends State<_OwnerPaymentConfigView> {
   String _q = '';
 
+  // ✅ optional, but nice: keeps field value stable if widget rebuilds
+  final TextEditingController _searchCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.watch<ThemeCubit>().state.tokens;
@@ -92,6 +102,7 @@ class _OwnerPaymentConfigViewState extends State<_OwnerPaymentConfigView> {
         builder: (context, state) {
           final items = state.items.where((it) {
             if (!it.platformEnabled) return false;
+
             final q = _q.trim().toLowerCase();
             if (q.isEmpty) return true;
 
@@ -100,6 +111,7 @@ class _OwnerPaymentConfigViewState extends State<_OwnerPaymentConfigView> {
                 .toString()
                 .toLowerCase()
                 .contains(q);
+
             return nameMatch || titleMatch;
           }).toList();
 
@@ -107,32 +119,14 @@ class _OwnerPaymentConfigViewState extends State<_OwnerPaymentConfigView> {
             padding: EdgeInsets.all(s.lg),
             child: Column(
               children: [
-                // Search
-                Container(
-                  decoration: BoxDecoration(
-                    color: c.surface,
-                    borderRadius: BorderRadius.circular(tokens.card.radius),
-                    border: Border.all(
-                      color: c.border.withOpacity(0.25),
-                      width: 1,
-                    ),
-                  ),
-                  padding: EdgeInsets.symmetric(horizontal: s.md),
-                  child: TextField(
-                    onChanged: (v) => setState(() => _q = v),
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(color: c.label),
-                    decoration: InputDecoration(
-                      hintText: l10n.paymentSearchHint,
-                      hintStyle: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: c.muted),
-                      border: InputBorder.none,
-                      icon: Icon(Icons.search, color: c.muted),
-                    ),
-                  ),
+                // ✅ Common Search Widget
+                AppSearchField(
+                  controller: _searchCtrl,
+                  hintText: l10n.paymentSearchHint,
+                  onChanged: (v) => setState(() => _q = v),
+                  textInputAction: TextInputAction.search,
                 ),
+
                 SizedBox(height: s.lg),
 
                 if (state.loading)
@@ -179,8 +173,7 @@ class _OwnerPaymentConfigViewState extends State<_OwnerPaymentConfigView> {
                             if (val == false) {
                               context.read<OwnerPaymentConfigBloc>().add(
                                 OwnerPaymentConfigSave(
-                                  ownerProjectId:
-                                      widget.ownerProjectId, // ✅ FIX
+                                  ownerProjectId: widget.ownerProjectId,
                                   methodName: it.name,
                                   enabled: false,
                                   configValues: Map<String, Object?>.from(
@@ -215,7 +208,7 @@ class _OwnerPaymentConfigViewState extends State<_OwnerPaymentConfigView> {
 
                             context.read<OwnerPaymentConfigBloc>().add(
                               OwnerPaymentConfigSave(
-                                ownerProjectId: widget.ownerProjectId, // ✅ FIX
+                                ownerProjectId: widget.ownerProjectId,
                                 methodName: it.name,
                                 enabled: true,
                                 configValues: result,
@@ -250,7 +243,7 @@ class _OwnerPaymentConfigViewState extends State<_OwnerPaymentConfigView> {
 
                             context.read<OwnerPaymentConfigBloc>().add(
                               OwnerPaymentConfigSave(
-                                ownerProjectId: widget.ownerProjectId, // ✅ FIX
+                                ownerProjectId: widget.ownerProjectId,
                                 methodName: it.name,
                                 enabled: true,
                                 configValues: result,

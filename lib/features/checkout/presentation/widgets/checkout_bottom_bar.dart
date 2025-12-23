@@ -6,6 +6,8 @@ import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/l10n/app_localizations.dart';
 import 'package:build4front/common/widgets/primary_button.dart';
 
+// ✅ same currency as Explore (no hardcoded $, no symbolFromApi)
+import 'package:build4front/features/catalog/cubit/money.dart';
 
 class CheckoutBottomBar extends StatelessWidget {
   final CheckoutCart cart;
@@ -59,8 +61,10 @@ class CheckoutBottomBar extends StatelessWidget {
                   ).textTheme.titleMedium?.copyWith(color: colors.label),
                 ),
                 const Spacer(),
+
+                // ✅ Explore-style currency formatting
                 Text(
-                  '${cart.currencySymbol ?? ''}${total.toStringAsFixed(2)}',
+                  money(context, total),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: colors.label,
                     fontWeight: FontWeight.w800,

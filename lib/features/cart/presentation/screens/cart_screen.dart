@@ -83,7 +83,7 @@ class _CartScreenState extends State<CartScreen> {
                         final item = cart.items[index];
                         return CartItemTile(
                           item: item,
-                          currencySymbol: cart.currencySymbol,
+                          currencySymbol: cart.currencySymbol, // kept, unused
                           onRemove: () {
                             context.read<CartBloc>().add(
                               CartItemRemoved(cartItemId: item.cartItemId),
@@ -108,7 +108,7 @@ class _CartScreenState extends State<CartScreen> {
                     taxTotal: cart.taxTotal,
                     discountTotal: cart.discountTotal,
                     grandTotal: cart.grandTotal,
-                    currencySymbol: cart.currencySymbol,
+                    currencySymbol: cart.currencySymbol, // kept, unused
                     isUpdating: state.isUpdating,
                     checkoutLabel: l10n.cart_checkout,
                     onCheckout: () {

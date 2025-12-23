@@ -4,6 +4,12 @@ import 'package:build4front/features/auth/data/services/session_role_store.dart'
 import 'package:build4front/features/auth/domain/usecases/send_verification_code.dart';
 import 'package:build4front/features/auth/presentation/register/bloc/register_bloc.dart';
 import 'package:build4front/features/auth/presentation/register/screens/user_register_screen.dart';
+import 'package:build4front/features/forgotpassword/domain/repositories/forgot_password_repository.dart';
+import 'package:build4front/features/forgotpassword/domain/usecases/send_reset_code.dart';
+import 'package:build4front/features/forgotpassword/domain/usecases/update_password.dart';
+import 'package:build4front/features/forgotpassword/domain/usecases/verify_reset_code.dart';
+import 'package:build4front/features/forgotpassword/presentation/bloc/forgot_password_bloc.dart';
+import 'package:build4front/features/forgotpassword/presentation/screens/forgot_password_email_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
@@ -499,6 +505,45 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                               isLoading: state.isLoading,
                               onPressed: () => _onLoginPressed(context),
                             ),
+
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (ctx) {
+                                        final repo = ctx
+                                            .read<ForgotPasswordRepository>();
+
+                                        return BlocProvider(
+                                          create: (_) => ForgotPasswordBloc(
+                                            sendResetCode: SendResetCode(repo),
+                                            verifyResetCode: VerifyResetCode(
+                                              repo,
+                                            ),
+                                            updatePassword: UpdatePassword(
+                                              repo,
+                                            ),
+                                          ),
+                                          child:
+                                              const ForgotPasswordEmailScreen(),
+                                        );
+                                      },
+                                    ),
+                                  );
+                                },
+                                child: Text(
+                                  l10n.forgotPasswordLink,
+                                  style: t.bodyMedium?.copyWith(
+                                    color: colors.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+
                           ],
                         ),
                       ),
@@ -538,6 +583,7 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                               color: colors.primary,
                               fontWeight: FontWeight.w600,
                             ),
+                            
                           ),
                         ),
                       ],

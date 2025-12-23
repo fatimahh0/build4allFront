@@ -4,10 +4,17 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 class InvoicePdf {
-  static Future<Uint8List> build(CheckoutSummaryModel s) async {
+  static Future<Uint8List> build(
+    CheckoutSummaryModel s, {
+    // ✅ optional fallback (if currencySymbol is empty/null)
+    String? fallbackSymbol,
+  }) async {
     final doc = pw.Document();
 
-    String money(double v) => "${s.currencySymbol}${v.toStringAsFixed(2)}";
+    final sym = _pickSymbol(s.currencySymbol, fallbackSymbol);
+
+    String money(num v) => _formatMoney(v, sym);
+
     final totalTax = s.itemTaxTotal + s.shippingTaxTotal;
 
     final couponCode = (s.couponCode ?? '').trim();
@@ -45,7 +52,9 @@ class InvoicePdf {
               ),
               pw.SizedBox(height: 6),
               pw.Text("Order: #${s.orderId}"),
-              pw.Text("Date: ${s.orderDate ?? '-'}"),
+              pw.Text(
+                "Date: ${((s.orderDate ?? '').trim().isEmpty) ? '-' : s.orderDate}",
+              ),
               pw.SizedBox(height: 18),
 
               pw.Text(
@@ -64,11 +73,18 @@ class InvoicePdf {
                 data: s.lines.map((l) {
                   final name = ((l.itemName ?? '').trim().isEmpty)
                       ? 'Item #${l.itemId}'
-                      : l.itemName!;
+                      : l.itemName!.trim();
+
+                  // ✅ if your API unitPrice is original price but lineSubtotal is sale,
+                  // you can compute effective unit like the UI:
+                  final effectiveUnit = (l.quantity <= 0)
+                      ? l.unitPrice
+                      : (l.lineSubtotal / l.quantity);
+
                   return [
                     name,
                     l.quantity.toString(),
-                    money(l.unitPrice),
+                    money(effectiveUnit),
                     money(l.lineSubtotal),
                   ];
                 }).toList(),
@@ -91,5 +107,22 @@ class InvoicePdf {
     );
 
     return doc.save();
+  }
+
+  static String _pickSymbol(String? fromOrder, String? fallback) {
+    final a = (fromOrder ?? '').trim();
+    if (a.isNotEmpty) return a;
+
+    final b = (fallback ?? '').trim();
+    if (b.isNotEmpty) return b;
+
+    return '\$';
+  }
+
+  static String _formatMoney(num v, String symbol) {
+    // Keep it simple and consistent: "LBP 12,000.00" style not needed unless you want separators.
+    // If you want thousands separators later, we can add intl formatting.
+    final value = v.toDouble().toStringAsFixed(2);
+    return '$symbol$value';
   }
 }

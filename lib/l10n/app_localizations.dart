@@ -2188,7 +2188,7 @@ abstract class AppLocalizations {
   /// No description provided for @adminProductSectionMetaTitle.
   ///
   /// In en, this message translates to:
-  /// **'Meta'**
+  /// **'Product'**
   String get adminProductSectionMetaTitle;
 
   /// No description provided for @adminProductSectionMetaSubtitle.
@@ -3822,6 +3822,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Mark as paid'**
   String get adminMarkCashPaidButton;
+
+  /// No description provided for @forgotPasswordLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password?'**
+  String get forgotPasswordLink;
+
+  /// No description provided for @forgotTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset your password'**
+  String get forgotTitle;
+
+  /// No description provided for @forgotSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email and we’ll send you a code.'**
+  String get forgotSubtitle;
+
+  /// No description provided for @forgotSendCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Send code'**
+  String get forgotSendCode;
+
+  /// No description provided for @forgotTip.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip: check spam/junk folder too 👀'**
+  String get forgotTip;
+
+  /// No description provided for @forgotVerifyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter verification code'**
+  String get forgotVerifyTitle;
+
+  /// No description provided for @forgotVerifySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'We sent a code to {email}'**
+  String forgotVerifySubtitle(Object email);
+
+  /// No description provided for @forgotNewPassTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a new password'**
+  String get forgotNewPassTitle;
+
+  /// No description provided for @forgotNewPassSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Make it strong — future you will thank you.'**
+  String get forgotNewPassSubtitle;
+
+  /// No description provided for @newPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'New password'**
+  String get newPasswordLabel;
+
+  /// No description provided for @savePasswordButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Save password'**
+  String get savePasswordButton;
+
+  /// No description provided for @codeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Code'**
+  String get codeLabel;
+
+  /// No description provided for @codeTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Code is too short'**
+  String get codeTooShort;
+
+  /// No description provided for @verifyButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get verifyButton;
+
+  /// No description provided for @resendCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend code'**
+  String get resendCode;
+
+  /// No description provided for @passwordsDontMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords do not match'**
+  String get passwordsDontMatch;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

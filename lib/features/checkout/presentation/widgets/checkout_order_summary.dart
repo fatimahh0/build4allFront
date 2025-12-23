@@ -1,12 +1,10 @@
 import 'package:build4front/features/catalog/cubit/money.dart';
+import 'package:build4front/features/checkout/domain/entities/checkout_entities.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/l10n/app_localizations.dart';
-
-
-import 'package:build4front/features/checkout/domain/entities/checkout_entities.dart';
 
 class CheckoutOrderSummary extends StatelessWidget {
   final CheckoutCart cart;
@@ -32,37 +30,21 @@ class CheckoutOrderSummary extends StatelessWidget {
     final colors = tokens.colors;
     final t = Theme.of(context).textTheme;
 
-    final sym = (selectedShipping?.currencySymbol ?? cart.currencySymbol ?? '')
-        .toString()
-        .trim();
-
     final itemsSubtotal = _itemsSubtotal();
-    final shipping = selectedShipping?.price ?? 0.0; // ✅ 0.00 shows
+    final shipping = selectedShipping?.price ?? 0.0;
     final taxTotal =
         (tax?.itemsTaxTotal ?? 0.0) + (tax?.shippingTaxTotal ?? 0.0);
     final total = itemsSubtotal + shipping + taxTotal;
 
     return Column(
       children: [
-        _row(
-          context,
-          l10n.itemsSubtotalLabel,
-          money(context, itemsSubtotal, symbolFromApi: sym),
-        ),
+        _row(context, l10n.itemsSubtotalLabel, money(context, itemsSubtotal)),
         SizedBox(height: spacing.sm),
 
-        _row(
-          context,
-          l10n.shippingLabel,
-          money(context, shipping, symbolFromApi: sym),
-        ),
+        _row(context, l10n.shippingLabel, money(context, shipping)),
         SizedBox(height: spacing.sm),
 
-        _row(
-          context,
-          l10n.taxClassLabel,
-          money(context, taxTotal, symbolFromApi: sym),
-        ),
+        _row(context, l10n.taxClassLabel, money(context, taxTotal)),
 
         SizedBox(height: spacing.md),
         Divider(color: colors.border.withOpacity(0.2)),
@@ -80,7 +62,7 @@ class CheckoutOrderSummary extends StatelessWidget {
               ),
             ),
             Text(
-              money(context, total, symbolFromApi: sym),
+              money(context, total),
               style: t.titleMedium?.copyWith(
                 fontWeight: FontWeight.w900,
                 color: colors.label,

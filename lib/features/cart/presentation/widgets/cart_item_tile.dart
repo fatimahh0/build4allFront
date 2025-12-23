@@ -1,15 +1,17 @@
-// lib/features/cart/presentation/widgets/cart_item_tile.dart
 import 'package:build4front/core/network/globals.dart' as net;
 import 'package:build4front/features/cart/domain/entities/cart_item.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:build4front/core/theme/theme_cubit.dart';
-
+import 'package:build4front/features/catalog/cubit/money.dart';
 
 class CartItemTile extends StatelessWidget {
   final CartItem item;
+
+  // keep it to avoid breaking calls, but we won't use it (Explore-style currency)
   final String? currencySymbol;
+
   final VoidCallback onRemove;
   final ValueChanged<int> onQuantityChanged;
 
@@ -28,8 +30,8 @@ class CartItemTile extends StatelessWidget {
     final c = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
 
-    final resolvedImage = item.imageUrl != null && item.imageUrl!.isNotEmpty
-        ? net.resolveUrl(item.imageUrl!)
+    final resolvedImage = (item.imageUrl ?? '').trim().isNotEmpty
+        ? net.resolveUrl(item.imageUrl!.trim())
         : null;
 
     return Container(
@@ -50,7 +52,17 @@ class CartItemTile extends StatelessWidget {
               width: 72,
               height: 72,
               child: resolvedImage != null
-                  ? Image.network(resolvedImage, fit: BoxFit.cover)
+                  ? Image.network(
+                      resolvedImage,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: c.surfaceVariant,
+                        child: Icon(
+                          Icons.broken_image_outlined,
+                          color: c.onSurface.withOpacity(0.4),
+                        ),
+                      ),
+                    )
                   : Container(
                       color: c.surfaceVariant,
                       child: Icon(
@@ -62,28 +74,32 @@ class CartItemTile extends StatelessWidget {
           ),
           SizedBox(width: spacing.md),
 
-          // Text + quantity
+          // Text + prices
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.itemName,
+                  (item.itemName).trim(),
                   style: t.titleMedium?.copyWith(fontWeight: FontWeight.w600),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 SizedBox(height: spacing.xs),
+
+                // ✅ Explore-style currency (NO "$", NO symbolFromApi)
                 Text(
-                  _formatPrice(item.unitPrice, currencySymbol),
+                  money(context, item.unitPrice),
                   style: t.bodyMedium?.copyWith(
                     color: c.primary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 SizedBox(height: spacing.xs),
+
+                // ✅ line total
                 Text(
-                  _formatLineTotal(item.lineTotal, currencySymbol),
+                  money(context, item.lineTotal),
                   style: t.bodySmall?.copyWith(
                     color: c.onSurface.withOpacity(0.7),
                   ),
@@ -112,16 +128,6 @@ class CartItemTile extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String _formatPrice(double price, String? symbol) {
-    final currency = symbol ?? '\$';
-    return '$currency ${price.toStringAsFixed(2)}';
-  }
-
-  String _formatLineTotal(double total, String? symbol) {
-    final currency = symbol ?? '\$';
-    return '$currency ${total.toStringAsFixed(2)} total';
   }
 }
 

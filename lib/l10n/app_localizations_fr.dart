@@ -1066,7 +1066,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get adminProductSectionPricingSubtitle => 'Price, sale, stock';
 
   @override
-  String get adminProductSectionMetaTitle => 'Meta';
+  String get adminProductSectionMetaTitle => 'Product';
 
   @override
   String get adminProductSectionMetaSubtitle => 'SEO title & description';
@@ -1938,4 +1938,54 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get adminMarkCashPaidButton => 'Mark as paid';
+
+  @override
+  String get forgotPasswordLink => 'Forgot password?';
+
+  @override
+  String get forgotTitle => 'Reset your password';
+
+  @override
+  String get forgotSubtitle => 'Enter your email and we’ll send you a code.';
+
+  @override
+  String get forgotSendCode => 'Send code';
+
+  @override
+  String get forgotTip => 'Tip: check spam/junk folder too 👀';
+
+  @override
+  String get forgotVerifyTitle => 'Enter verification code';
+
+  @override
+  String forgotVerifySubtitle(Object email) {
+    return 'We sent a code to $email';
+  }
+
+  @override
+  String get forgotNewPassTitle => 'Set a new password';
+
+  @override
+  String get forgotNewPassSubtitle => 'Make it strong — future you will thank you.';
+
+  @override
+  String get newPasswordLabel => 'New password';
+
+  @override
+  String get savePasswordButton => 'Save password';
+
+  @override
+  String get codeLabel => 'Code';
+
+  @override
+  String get codeTooShort => 'Code is too short';
+
+  @override
+  String get verifyButton => 'Verify';
+
+  @override
+  String get resendCode => 'Resend code';
+
+  @override
+  String get passwordsDontMatch => 'Passwords do not match';
 }

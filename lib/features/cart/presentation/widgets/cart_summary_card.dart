@@ -12,7 +12,9 @@ class CartSummaryCard extends StatelessWidget {
   final double? discountTotal;
   final double grandTotal;
 
+  // keep it to avoid breaking calls, but we won't use it (Explore-style currency)
   final String? currencySymbol;
+
   final bool isUpdating;
   final String checkoutLabel;
   final VoidCallback onCheckout;
@@ -99,32 +101,24 @@ class CartSummaryCard extends StatelessWidget {
 
           _SummaryRow(
             label: l10n.itemsSubtotalLabel,
-            value: money(context, itemsTotal, symbolFromApi: currencySymbol),
+            value: money(context, itemsTotal),
           ),
           SizedBox(height: spacing.xs),
 
           _SummaryRow(
             label: l10n.shippingLabel,
-            value: money(
-              context,
-              shippingTotal,
-              symbolFromApi: currencySymbol,
-            ), // ✅ 0.00 not Free
+            value: money(context, shippingTotal),
           ),
           SizedBox(height: spacing.xs),
 
-          _SummaryRow(
-            label: l10n.taxLabel,
-            value: money(context, taxTotal, symbolFromApi: currencySymbol),
-          ),
+          _SummaryRow(label: l10n.taxLabel, value: money(context, taxTotal)),
 
           if (hasDiscount) ...[
             SizedBox(height: spacing.xs),
             _SummaryRow(
               label: l10n.discountLabel,
-              value:
-                  '- ${money(context, discountTotal ?? 0, symbolFromApi: currencySymbol)}',
-              valueColor: Colors.green.shade700,
+              value: '- ${money(context, discountTotal ?? 0)}',
+              valueColor: c.tertiary,
             ),
           ],
 
@@ -143,7 +137,7 @@ class CartSummaryCard extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                money(context, grandTotal, symbolFromApi: currencySymbol),
+                money(context, grandTotal),
                 style: t.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: c.primary,

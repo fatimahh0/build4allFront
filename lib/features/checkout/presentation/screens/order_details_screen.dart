@@ -6,11 +6,12 @@ import 'package:build4front/l10n/app_localizations.dart';
 import 'package:build4front/features/checkout/data/models/checkout_summary_model.dart';
 import '../utils/invoice_pdf.dart';
 
+// ✅ currency formatter (like Explore)
+import 'package:build4front/features/catalog/cubit/money.dart';
+
 class OrderDetailsScreen extends StatelessWidget {
   final CheckoutSummaryModel summary;
   const OrderDetailsScreen({super.key, required this.summary});
-
-  String _money(double v) => "${summary.currencySymbol}${v.toStringAsFixed(2)}";
 
   double _effectiveUnit(CheckoutLineSummaryModel l) {
     if (l.quantity <= 0) return l.unitPrice;
@@ -73,14 +74,16 @@ class OrderDetailsScreen extends StatelessWidget {
                         Text(
                           l10n.orderDetailsQtyUnitLine(
                             l.quantity,
-                            _money(unit),
+                            // ✅ Explore-style currency
+                            money(context, unit),
                           ),
                         ),
                       ],
                     ),
                   ),
                   Text(
-                    _money(l.lineSubtotal),
+                    // ✅ Explore-style currency
+                    money(context, l.lineSubtotal),
                     style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                 ],
@@ -93,27 +96,27 @@ class OrderDetailsScreen extends StatelessWidget {
           _row(
             context,
             l10n.orderDetailsSubtotal,
-            _money(summary.itemsSubtotal),
+            money(context, summary.itemsSubtotal),
           ),
           _row(
             context,
             l10n.orderDetailsShipping,
-            _money(summary.shippingTotal),
+            money(context, summary.shippingTotal),
           ),
-          _row(context, l10n.orderDetailsTax, _money(totalTax)),
+          _row(context, l10n.orderDetailsTax, money(context, totalTax)),
 
           if (showCoupon)
             _row(
               context,
               l10n.orderDetailsCouponLine(couponCode),
-              "-${_money(discount)}",
+              "-${money(context, discount)}",
             ),
 
           const SizedBox(height: 6),
           _row(
             context,
             l10n.orderDetailsGrandTotal,
-            _money(summary.grandTotal),
+            money(context, summary.grandTotal),
             bold: true,
           ),
 

@@ -4,6 +4,9 @@ import 'package:build4front/features/admin/orders_admin/data/repository/admin_or
 import 'package:build4front/features/admin/orders_admin/data/services/admin_orders_api_service.dart';
 import 'package:build4front/features/admin/orders_admin/domain/repositories/admin_orders_repository.dart';
 import 'package:build4front/features/auth/data/services/admin_token_store.dart';
+import 'package:build4front/features/forgotpassword/data/repositories/forgot_password_repository_impl.dart';
+import 'package:build4front/features/forgotpassword/data/services/forgot_password_api_service.dart';
+import 'package:build4front/features/forgotpassword/domain/repositories/forgot_password_repository.dart';
 import 'package:build4front/features/notifications/data/repositories/notifications_repository_impl.dart';
 import 'package:build4front/features/notifications/data/services/notifications_api_service.dart';
 import 'package:build4front/features/notifications/domain/repositories/notifications_repository.dart';
@@ -125,6 +128,11 @@ class Build4AllFrontApp extends StatelessWidget {
 // ---------- ADMIN ORDERS LAYER ----------
     final adminTokenStore = AdminTokenStore();
 
+    // ---------- FORGOT PASSWORD LAYER ----------
+    final forgotApi = ForgotPasswordApiService();
+    final forgotRepo = ForgotPasswordRepositoryImpl(api: forgotApi);
+
+
     final adminOrdersApi = AdminOrdersApiService(
       getToken: () => adminTokenStore.getToken(),
     );
@@ -177,6 +185,10 @@ RepositoryProvider<AdminTokenStore>.value(value: adminTokenStore),
         RepositoryProvider<AdminOrdersApiService>.value(value: adminOrdersApi),
         RepositoryProvider<AdminOrdersRepository>.value(value: adminOrdersRepo),
 
+
+// Forgot password
+        RepositoryProvider<ForgotPasswordApiService>.value(value: forgotApi),
+        RepositoryProvider<ForgotPasswordRepository>.value(value: forgotRepo),
 
       ],
       child: MultiBlocProvider(

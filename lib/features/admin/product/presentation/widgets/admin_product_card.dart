@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:build4front/core/config/env.dart';
 import 'package:build4front/core/theme/theme_cubit.dart';
+import 'package:build4front/features/catalog/cubit/money.dart';
 import '../../domain/entities/product.dart';
 
 class AdminProductCard extends StatelessWidget {
@@ -146,6 +147,7 @@ class AdminProductCard extends StatelessWidget {
                           ),
                         ),
                       if (showDiscountBadge) SizedBox(height: spacing.xs),
+
                       Text(
                         product.name,
                         maxLines: 2,
@@ -155,21 +157,23 @@ class AdminProductCard extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+
                       const Spacer(),
+
+                      // ✅ Currency like Explore (no manual toStringAsFixed)
                       Row(
                         children: [
                           Text(
-                            product.effectivePrice.toStringAsFixed(2),
+                            money(context, product.effectivePrice),
                             style: text.bodyMedium.copyWith(
                               color: colors.primary,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          if (product.onSale && product.salePrice != null)
-                            SizedBox(width: spacing.xs),
-                          if (product.onSale && product.salePrice != null)
+                          if (product.onSale) SizedBox(width: spacing.xs),
+                          if (product.onSale)
                             Text(
-                              product.price.toStringAsFixed(2),
+                              money(context, product.price),
                               style: text.bodySmall.copyWith(
                                 color: colors.muted,
                                 decoration: TextDecoration.lineThrough,
@@ -177,6 +181,7 @@ class AdminProductCard extends StatelessWidget {
                             ),
                         ],
                       ),
+
                       SizedBox(height: spacing.xs),
                       Text(
                         product.status,

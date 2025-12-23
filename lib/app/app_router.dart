@@ -1,6 +1,15 @@
 // lib/app/app_router.dart
 
 import 'package:build4front/features/auth/data/services/admin_token_store.dart';
+import 'package:build4front/features/forgotpassword/data/repositories/forgot_password_repository_impl.dart';
+import 'package:build4front/features/forgotpassword/data/services/forgot_password_api_service.dart';
+import 'package:build4front/features/forgotpassword/domain/repositories/forgot_password_repository.dart';
+import 'package:build4front/features/forgotpassword/domain/usecases/send_reset_code.dart';
+import 'package:build4front/features/forgotpassword/domain/usecases/update_password.dart';
+import 'package:build4front/features/forgotpassword/domain/usecases/verify_reset_code.dart';
+import 'package:build4front/features/forgotpassword/presentation/bloc/forgot_password_bloc.dart';
+import 'package:build4front/features/forgotpassword/presentation/screens/forgot_password_email_screen.dart';
+import 'package:build4front/features/forgotpassword/presentation/screens/forgot_password_verify_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -63,6 +72,11 @@ class AppRouter {
   static const String myOrders = '/my-orders';
 
   static const String notifications = '/notifications';
+static const forgotEmail = '/forgot/email';
+  static const forgotVerify = '/forgot/verify';
+  static const forgotUpdate = '/forgot/update';
+
+
 
   static Route<dynamic> onGenerateRoute(
     RouteSettings settings,
@@ -80,6 +94,26 @@ class AppRouter {
         return MaterialPageRoute(
           builder: (_) => UserLoginScreen(appConfig: appConfig),
           settings: settings,
+        );
+
+case forgotEmail:
+        return MaterialPageRoute(
+          builder: (ctx) => _forgotFeature(
+            context: ctx,
+            child: const ForgotPasswordEmailScreen(),
+          ),
+        );
+
+      case forgotVerify:
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(
+          builder: (ctx) => BlocProvider.value(
+            value: ctx.read<ForgotPasswordBloc>(),
+            child: ForgotPasswordVerifyScreen(
+              email: args['email'],
+             
+            ),
+          ),
         );
 
       case main:
@@ -214,3 +248,16 @@ class AppRouter {
     }
   }
 }
+Widget _forgotFeature({required BuildContext context, required Widget child}) {
+  final repo = context.read<ForgotPasswordRepository>();
+
+  return BlocProvider(
+    create: (_) => ForgotPasswordBloc(
+      sendResetCode: SendResetCode(repo),
+      verifyResetCode: VerifyResetCode(repo),
+      updatePassword: UpdatePassword(repo),
+    ),
+    child: child,
+  );
+}
+

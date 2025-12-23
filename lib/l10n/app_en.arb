@@ -503,7 +503,7 @@
   "adminProductSectionPricingTitle": "Pricing",
   "adminProductSectionBasicInfoSubtitle": "Name, description, type, SKU",
   "adminProductSectionPricingSubtitle": "Price, sale, stock",
-  "adminProductSectionMetaTitle": "Meta",
+  "adminProductSectionMetaTitle": "Product",
   "adminProductSectionMetaSubtitle": "SEO title & description",
   "adminSelectCategoryFirst": "Select category first",
   "adminProductImageSectionTitle": "Product image",
@@ -902,6 +902,27 @@
   "adminMarkCashPaidBody": "Are you sure you want to mark this order as paid in cash?",
   "adminMarkCashPaid": "Mark as paid in cash",
   "adminMarkCashPaidTitle": "Mark order as paid",
-  "adminMarkCashPaidButton": "Mark as paid"
+  "adminMarkCashPaidButton": "Mark as paid",
+   "forgotPasswordLink": "Forgot password?",
+  "forgotTitle": "Reset your password",
+  "forgotSubtitle": "Enter your email and we’ll send you a code.",
+  "forgotSendCode": "Send code",
+  "forgotTip": "Tip: check spam/junk folder too 👀",
+
+  "forgotVerifyTitle": "Enter verification code",
+  "forgotVerifySubtitle": "We sent a code to {email}",
+  "@forgotVerifySubtitle": { "placeholders": { "email": {} } },
+
+  "forgotNewPassTitle": "Set a new password",
+  "forgotNewPassSubtitle": "Make it strong — future you will thank you.",
+  "newPasswordLabel": "New password",
+  "confirmPasswordLabel": "Confirm password",
+  "savePasswordButton": "Save password",
+
+  "codeLabel": "Code",
+  "codeTooShort": "Code is too short",
+  "verifyButton": "Verify",
+  "resendCode": "Resend code",
+  "passwordsDontMatch": "Passwords do not match"
   
 }
