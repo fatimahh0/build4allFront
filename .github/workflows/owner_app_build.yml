@@ -1,0 +1,209 @@
+name: Owner App Build (APK + AAB)
+
+on:
+  repository_dispatch:
+    types: [owner_app_build]
+
+permissions:
+  contents: write
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    env:
+      # backend callback token (matches Spring ci.callbackToken)
+      CI_CALLBACK_TOKEN: ${{ secrets.CI_CALLBACK_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java (for Android)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.0"   # عدّلي حسب مشروعك
+          cache: true
+
+      - name: Show payload
+        run: |
+          echo '${{ toJson(github.event.client_payload) }}'
+
+      - name: Build env json from payload
+        run: |
+          mkdir -p lib/env
+          python3 - <<'PY'
+          import json, os, base64
+
+          p = json.loads(r'''${{ toJson(github.event.client_payload) }}''')
+
+          runtime = p.get("RUNTIME", {}) or {}
+          api_base = runtime.get("API_BASE_URL", "")
+          ws_path = runtime.get("WS_PATH", "/api/ws")
+          owner_attach_mode = runtime.get("OWNER_ATTACH_MODE", "header")
+          app_role = runtime.get("APP_ROLE", "both")
+
+          # payload fields
+          owner_id = str(p.get("OWNER_ID",""))
+          project_id = str(p.get("PROJECT_ID",""))
+          link_id = str(p.get("OWNER_PROJECT_LINK_ID",""))
+          app_name = p.get("APP_NAME","My App")
+          slug = p.get("SLUG","app")
+          currency_id = str(p.get("CURRENCY_ID","") or "")
+
+          theme_json = p.get("APP_THEME_JSON","{}")
+
+          # if your Flutter expects B64 for theme/nav/home/features:
+          theme_b64 = base64.b64encode(theme_json.encode("utf-8")).decode("utf-8")
+
+          # minimal env JSON (add NAV/HOME/FEATURES if you generate them)
+          env = {
+            "API_BASE_URL": api_base,
+            "APP_NAME": app_name,
+            "APP_TYPE": p.get("APP_TYPE","ECOMMERCE"),
+            "OWNER_PROJECT_LINK_ID": link_id,
+            "PROJECT_ID": project_id,
+            "CURRENCY_ID": currency_id if currency_id else None,
+            "THEME_JSON_B64": theme_b64,
+            "BRANDING": {
+              "logoUrl": p.get("APP_LOGO_URL",""),
+              "splashColor": "#FFFFFF"
+            },
+            "RUNTIME": {
+              "WS_PATH": ws_path,
+              "OWNER_ATTACH_MODE": owner_attach_mode,
+              "APP_ROLE": app_role
+            }
+          }
+
+          # remove nulls
+          env = {k:v for k,v in env.items() if v is not None}
+
+          out = "lib/env/ci_env.json"
+          with open(out,"w",encoding="utf-8") as f:
+            json.dump(env,f,ensure_ascii=False,indent=2)
+
+          print("Wrote", out)
+          PY
+
+      - name: Apply branding (CI)
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request, pathlib, re, base64
+
+          cfg = json.load(open("lib/env/ci_env.json","r",encoding="utf-8"))
+          app_name = cfg["APP_NAME"]
+          base_url = cfg["API_BASE_URL"].rstrip("/")
+          branding = cfg.get("BRANDING", {})
+          logo_url = branding.get("logoUrl","")
+          splash_color = branding.get("splashColor","#FFFFFF")
+
+          # folders
+          pathlib.Path("assets/branding").mkdir(parents=True, exist_ok=True)
+
+          # download logo if exists
+          if logo_url:
+            print("Downloading logo:", logo_url)
+            urllib.request.urlretrieve(logo_url, "assets/branding/logo.png")
+            # reuse for launcher + splash if your packages read these paths
+            import shutil
+            shutil.copyfile("assets/branding/logo.png", "assets/branding/launcher.png")
+            shutil.copyfile("assets/branding/logo.png", "assets/branding/splash.png")
+          else:
+            print("No logoUrl provided, skipping logo download")
+
+          # set Android app name
+          strings_path = pathlib.Path("android/app/src/main/res/values/strings.xml")
+          strings_path.parent.mkdir(parents=True, exist_ok=True)
+          if not strings_path.exists():
+            strings_path.write_text(f'<resources>\n  <string name="app_name">{app_name}</string>\n</resources>\n', encoding="utf-8")
+          else:
+            s = strings_path.read_text(encoding="utf-8")
+            if 'name="app_name"' in s:
+              s = re.sub(r'(<string name="app_name">).*?(</string>)', r'\1'+app_name+r'\2', s, flags=re.S)
+            else:
+              s = s.replace("</resources>", f'  <string name="app_name">{app_name}</string>\n</resources>')
+            strings_path.write_text(s, encoding="utf-8")
+
+          # run flutter pub get + icons/splash if you use those packages
+          PY
+
+          flutter pub get
+          flutter pub run flutter_launcher_icons
+          flutter pub run flutter_native_splash:create
+
+      - name: Build APK
+        run: |
+          flutter build apk --release \
+            --dart-define-from-file=lib/env/ci_env.json
+
+      - name: Build AAB
+        run: |
+          flutter build appbundle --release \
+            --dart-define-from-file=lib/env/ci_env.json
+
+      - name: Prepare output paths
+        id: out
+        run: |
+          echo "APK=build/app/outputs/flutter-apk/app-release.apk" >> $GITHUB_OUTPUT
+          echo "AAB=build/app/outputs/bundle/release/app-release.aab" >> $GITHUB_OUTPUT
+
+      - name: Upload artifacts to Actions
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build-${{ github.event.client_payload.SLUG }}
+          path: |
+            ${{ steps.out.outputs.APK }}
+            ${{ steps.out.outputs.AAB }}
+
+      # Optional: publish to releases (gives you stable downloadable urls)
+      - name: Create GitHub Release (optional)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.event.client_payload.OWNER_PROJECT_LINK_ID }}-${{ github.run_number }}
+          name: Build ${{ github.event.client_payload.SLUG }}
+          files: |
+            ${{ steps.out.outputs.APK }}
+            ${{ steps.out.outputs.AAB }}
+
+      - name: Callback backend with APK/AAB urls
+        run: |
+          # release download URLs format:
+          # https://github.com/<owner>/<repo>/releases/download/<tag>/<file>
+          TAG="build-${{ github.event.client_payload.OWNER_PROJECT_LINK_ID }}-${{ github.run_number }}"
+          OWNER="${{ github.repository_owner }}"
+          REPO="${{ github.event.repository.name }}"
+          APK_NAME="app-release.apk"
+          AAB_NAME="app-release.aab"
+
+          APK_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/${APK_NAME}"
+          AAB_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/${AAB_NAME}"
+
+          CALLBACK_BASE="${{ github.event.client_payload.CALLBACK_BASE || '' }}"
+          if [ -z "$CALLBACK_BASE" ]; then
+            # fallback: your server base if you want hardcode
+            CALLBACK_BASE="http://3.96.140.126:8080/api/ci"
+          fi
+
+          LINK_ID="${{ github.event.client_payload.OWNER_PROJECT_LINK_ID }}"
+
+          echo "APK_URL=$APK_URL"
+          echo "AAB_URL=$AAB_URL"
+          echo "CALLBACK_BASE=$CALLBACK_BASE"
+          echo "LINK_ID=$LINK_ID"
+
+          curl -X PUT "${CALLBACK_BASE}/owner-project-links/${LINK_ID}/apk-url" \
+            -H "Content-Type: application/json" \
+            -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
+            -d "{\"apkUrl\":\"${APK_URL}\"}"
+
+          curl -X PUT "${CALLBACK_BASE}/owner-project-links/${LINK_ID}/aab-url" \
+            -H "Content-Type: application/json" \
+            -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
+            -d "{\"aabUrl\":\"${AAB_URL}\"}"
