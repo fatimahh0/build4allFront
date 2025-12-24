@@ -51,11 +51,18 @@ class ItemDetailsModel {
   factory ItemDetailsModel.fromJson(Map<String, dynamic> j) {
     DateTime? _dt(dynamic v) => v == null ? null : DateTime.tryParse('$v');
 
-    num? _num(dynamic v) {
+    
+num? _num(dynamic v) {
       if (v == null) return null;
       if (v is num) return v;
-      return num.tryParse('$v');
+
+      final s = '$v'.trim();
+      final i = int.tryParse(s);
+      if (i != null) return i;
+
+      return double.tryParse(s);
     }
+
 
     bool _bool(dynamic v) {
       if (v == null) return false;

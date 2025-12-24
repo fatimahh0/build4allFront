@@ -45,7 +45,12 @@ class ItemSummaryModel {
     num? _num(dynamic v) {
       if (v == null) return null;
       if (v is num) return v;
-      return num.tryParse('$v');
+
+      final s = '$v'.trim();
+      final i = int.tryParse(s);
+      if (i != null) return i;
+
+      return double.tryParse(s);
     }
 
     int? _intOrNull(dynamic v) {
