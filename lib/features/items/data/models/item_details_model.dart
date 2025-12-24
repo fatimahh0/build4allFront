@@ -51,16 +51,21 @@ class ItemDetailsModel {
   factory ItemDetailsModel.fromJson(Map<String, dynamic> j) {
     DateTime? _dt(dynamic v) => v == null ? null : DateTime.tryParse('$v');
 
-    
-num? _num(dynamic v) {
+
+num? _parseNum(dynamic v) {
       if (v == null) return null;
       if (v is num) return v;
 
       final s = '$v'.trim();
+      if (s.isEmpty) return null;
+
       final i = int.tryParse(s);
       if (i != null) return i;
 
-      return double.tryParse(s);
+      final d = double.tryParse(s);
+      if (d != null) return d;
+
+      return double.tryParse(s.replaceAll(',', '.'));
     }
 
 
@@ -91,20 +96,20 @@ num? _num(dynamic v) {
       name: (j['name'] ?? j['itemName'] ?? '').toString(),
       description: j['description']?.toString(),
       imageUrl: j['imageUrl']?.toString(),
-      price: _num(j['price']),
-      salePrice: _num(j['salePrice']),
+      price: _parseNum(j['price']),
+      salePrice: _parseNum(j['salePrice']),
       saleStart: _dt(j['saleStart']),
       saleEnd: _dt(j['saleEnd']),
-      effectivePrice: _num(j['effectivePrice']),
+      effectivePrice: _parseNum(j['effectivePrice']),
       onSale: _bool(j['onSale']),
       stock: _int(j['stock']),
       sku: j['sku']?.toString(),
       taxable: _bool(j['taxable']),
       taxClass: j['taxClass']?.toString(),
-      weightKg: _num(j['weightKg']),
-      widthCm: _num(j['widthCm']),
-      heightCm: _num(j['heightCm']),
-      lengthCm: _num(j['lengthCm']),
+      weightKg: _parseNum(j['weightKg']),
+      widthCm: _parseNum(j['widthCm']),
+      heightCm: _parseNum(j['heightCm']),
+      lengthCm: _parseNum(j['lengthCm']),
       attributes: attrs,
     );
   }

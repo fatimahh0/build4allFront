@@ -42,15 +42,20 @@ class ItemSummaryModel {
   factory ItemSummaryModel.fromJson(Map<String, dynamic> j) {
     DateTime? _dt(dynamic v) => v == null ? null : DateTime.tryParse('$v');
 
-    num? _num(dynamic v) {
+    num? _parseNum(dynamic v) {
       if (v == null) return null;
       if (v is num) return v;
 
       final s = '$v'.trim();
+      if (s.isEmpty) return null;
+
       final i = int.tryParse(s);
       if (i != null) return i;
 
-      return double.tryParse(s);
+      final d = double.tryParse(s);
+      if (d != null) return d;
+
+      return double.tryParse(s.replaceAll(',', '.'));
     }
 
     int? _intOrNull(dynamic v) {
@@ -73,11 +78,11 @@ class ItemSummaryModel {
       imageUrl: j['imageUrl']?.toString(),
       location: j['location']?.toString(),
       start: _dt(j['startDatetime']),
-      price: _num(j['price']),
-      salePrice: _num(j['salePrice']),
+      price: _parseNum(j['price']),
+      salePrice: _parseNum(j['salePrice']),
       saleStart: _dt(j['saleStart']),
       saleEnd: _dt(j['saleEnd']),
-      effectivePrice: _num(j['effectivePrice']),
+      effectivePrice: _parseNum(j['effectivePrice']),
       onSale: _bool(j['onSale']),
       stock: _intOrNull(j['stock']),
       sku: j['sku']?.toString(),
