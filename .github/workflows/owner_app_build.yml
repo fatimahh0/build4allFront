@@ -24,9 +24,11 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Setup Flutter (stable)
+      # ✅ FIX 1: Pin an actual Flutter version (no more "Unable to determine")
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: "3.32.0"
           channel: stable
           cache: true
 
@@ -39,33 +41,40 @@ jobs:
         run: |
           echo '${{ toJson(github.event.client_payload) }}'
 
-      # ✅ NDK FIX (bulletproof)
+      # ✅ FIX 2: NDK 27 required by plugins
       - name: Force Android NDK 27 everywhere
         run: |
-          echo "---- Listing gradle files ----"
-          ls -la android/app || true
-          echo "---- Searching for ndkVersion ----"
+          set -e
+          echo "---- Searching ndkVersion ----"
           grep -R "ndkVersion" -n android/app || true
 
           if [ -f "android/app/build.gradle.kts" ]; then
             FILE="android/app/build.gradle.kts"
             echo "Patching $FILE"
-            if grep -q "ndkVersion" "$FILE"; then
-              sed -i 's/ndkVersion = ".*"/ndkVersion = "27.0.12077973"/' "$FILE"
+
+            if grep -q 'ndkVersion' "$FILE"; then
+              # replace any existing ndkVersion assignment
+              sed -i 's/ndkVersion *= *.*/ndkVersion = "27.0.12077973"/' "$FILE"
             else
+              # inject under android { ... }
               perl -0777 -i -pe 's/android\s*\{\s*/android {\n    ndkVersion = "27.0.12077973"\n/s' "$FILE"
             fi
+
+            echo "---- Result ----"
             grep -n "ndkVersion" "$FILE" || true
           fi
 
           if [ -f "android/app/build.gradle" ]; then
             FILE="android/app/build.gradle"
             echo "Patching $FILE"
-            if grep -q "ndkVersion" "$FILE"; then
+
+            if grep -q 'ndkVersion' "$FILE"; then
               sed -i 's/ndkVersion .*/ndkVersion "27.0.12077973"/' "$FILE"
             else
               perl -0777 -i -pe 's/android\s*\{\s*/android {\n    ndkVersion "27.0.12077973"\n/s' "$FILE"
             fi
+
+            echo "---- Result ----"
             grep -n "ndkVersion" "$FILE" || true
           fi
 
@@ -74,6 +83,7 @@ jobs:
           mkdir -p lib/env
           python3 - <<'PY'
           import json, base64
+
           p = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
 
           runtime = p.get("RUNTIME") or {}
@@ -82,11 +92,9 @@ jobs:
           owner_attach_mode = runtime.get("OWNER_ATTACH_MODE") or "header"
           app_role = runtime.get("APP_ROLE") or "both"
 
-          owner_id = str(p.get("OWNER_ID") or "")
-          project_id = str(p.get("PROJECT_ID") or "")
           link_id = str(p.get("OWNER_PROJECT_LINK_ID") or "")
+          project_id = str(p.get("PROJECT_ID") or "")
 
-          # your payload uses APP object
           app = p.get("APP") or {}
           app_name = app.get("APP_NAME") or "My App"
           slug = app.get("SLUG") or "app"
@@ -130,13 +138,19 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+      # ✅ FIX 3: Branding + strings.xml rewritten cleanly (no trailing garbage)
       - name: Apply branding (CI)
         run: |
           python3 - <<'PY'
-          import json, urllib.request, pathlib, re, shutil
+          import json, urllib.request, pathlib, shutil
+          from xml.sax.saxutils import escape
 
           cfg = json.load(open("lib/env/ci_env.json","r",encoding="utf-8"))
-          app_name = cfg.get("APP_NAME","My App")
+          app_name_raw = cfg.get("APP_NAME","My App")
+
+          # escape XML special chars ( &, <, >, ", ' )
+          app_name = escape(app_name_raw)
+
           branding = cfg.get("BRANDING", {})
           logo_url = branding.get("logoUrl","")
 
@@ -150,14 +164,14 @@ jobs:
           else:
             print("No logoUrl provided, skipping logo download")
 
-          # create/update strings.xml
           strings_path = pathlib.Path("android/app/src/main/res/values/strings.xml")
           strings_path.parent.mkdir(parents=True, exist_ok=True)
 
-          s = f'<resources>\\n  <string name="app_name">{app_name}</string>\\n</resources>\\n'
-          strings_path.write_text(s, encoding="utf-8")
+          # write exact valid XML (no BOM, no junk)
+          content = f'<?xml version="1.0" encoding="utf-8"?>\n<resources>\n  <string name="app_name">{app_name}</string>\n</resources>\n'
+          strings_path.write_text(content, encoding="utf-8")
 
-          print("Branding applied. app_name =", app_name)
+          print("Branding applied. app_name =", app_name_raw)
           print("---- strings.xml ----")
           print(strings_path.read_text(encoding="utf-8"))
           PY
@@ -165,20 +179,16 @@ jobs:
           flutter pub run flutter_launcher_icons
           flutter pub run flutter_native_splash:create
 
-      # ✅ app_name MUST exist before build (hard verify)
       - name: Verify Android resources (app_name must exist)
         run: |
-          echo "---- AndroidManifest label line ----"
-          grep -n "android:label" -n android/app/src/main/AndroidManifest.xml || true
+          echo "---- AndroidManifest label ----"
+          grep -n "android:label" android/app/src/main/AndroidManifest.xml || true
 
-          echo "---- strings.xml paths ----"
-          find android/app/src/main/res -maxdepth 3 -type f -name "strings.xml" -print || true
-
-          echo "---- strings.xml content ----"
+          echo "---- strings.xml ----"
           cat android/app/src/main/res/values/strings.xml
 
-          echo "---- Check resource name exists ----"
-          grep -R "name=\"app_name\"" -n android/app/src/main/res/values/strings.xml
+          echo "---- Verify app_name exists ----"
+          grep -n 'name="app_name"' android/app/src/main/res/values/strings.xml
 
       - name: Build APK
         run: flutter build apk --release --dart-define-from-file=lib/env/ci_env.json
