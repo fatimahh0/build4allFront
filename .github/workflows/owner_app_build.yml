@@ -18,18 +18,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Java (for Android)
+      - name: Setup Java (Android)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      # ✅ Use a newer Flutter that includes Dart 3.9+
-      - name: Setup Flutter
+      - name: Setup Flutter (stable)
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.32.0"
-          channel: "stable"
+          channel: stable
           cache: true
 
       - name: Show Flutter/Dart versions
@@ -37,12 +35,41 @@ jobs:
           flutter --version
           dart --version
 
-
       - name: Show payload (debug)
         run: |
           echo '${{ toJson(github.event.client_payload) }}'
 
-      - name: Build env json from payload (ci_env.json)
+      # ✅ NDK FIX (bulletproof)
+      - name: Force Android NDK 27 everywhere
+        run: |
+          echo "---- Listing gradle files ----"
+          ls -la android/app || true
+          echo "---- Searching for ndkVersion ----"
+          grep -R "ndkVersion" -n android/app || true
+
+          if [ -f "android/app/build.gradle.kts" ]; then
+            FILE="android/app/build.gradle.kts"
+            echo "Patching $FILE"
+            if grep -q "ndkVersion" "$FILE"; then
+              sed -i 's/ndkVersion = ".*"/ndkVersion = "27.0.12077973"/' "$FILE"
+            else
+              perl -0777 -i -pe 's/android\s*\{\s*/android {\n    ndkVersion = "27.0.12077973"\n/s' "$FILE"
+            fi
+            grep -n "ndkVersion" "$FILE" || true
+          fi
+
+          if [ -f "android/app/build.gradle" ]; then
+            FILE="android/app/build.gradle"
+            echo "Patching $FILE"
+            if grep -q "ndkVersion" "$FILE"; then
+              sed -i 's/ndkVersion .*/ndkVersion "27.0.12077973"/' "$FILE"
+            else
+              perl -0777 -i -pe 's/android\s*\{\s*/android {\n    ndkVersion "27.0.12077973"\n/s' "$FILE"
+            fi
+            grep -n "ndkVersion" "$FILE" || true
+          fi
+
+      - name: Build env json from payload (lib/env/ci_env.json)
         run: |
           mkdir -p lib/env
           python3 - <<'PY'
@@ -59,6 +86,7 @@ jobs:
           project_id = str(p.get("PROJECT_ID") or "")
           link_id = str(p.get("OWNER_PROJECT_LINK_ID") or "")
 
+          # your payload uses APP object
           app = p.get("APP") or {}
           app_name = app.get("APP_NAME") or "My App"
           slug = app.get("SLUG") or "app"
@@ -89,12 +117,18 @@ jobs:
           }
 
           env = {k:v for k,v in env.items() if v is not None}
+
           out = "lib/env/ci_env.json"
           with open(out, "w", encoding="utf-8") as f:
             json.dump(env, f, ensure_ascii=False, indent=2)
 
           print("Wrote", out)
+          print("APP_NAME =", env.get("APP_NAME"))
+          print("CURRENCY_ID =", env.get("CURRENCY_ID"))
           PY
+
+      - name: Flutter pub get
+        run: flutter pub get
 
       - name: Apply branding (CI)
         run: |
@@ -116,84 +150,38 @@ jobs:
           else:
             print("No logoUrl provided, skipping logo download")
 
+          # create/update strings.xml
           strings_path = pathlib.Path("android/app/src/main/res/values/strings.xml")
           strings_path.parent.mkdir(parents=True, exist_ok=True)
 
-          if not strings_path.exists():
-            strings_path.write_text(
-              f'<resources>\n  <string name="app_name">{app_name}</string>\n</resources>\n',
-              encoding="utf-8"
-            )
-          else:
-            s = strings_path.read_text(encoding="utf-8")
-            if 'name="app_name"' in s:
-              s = re.sub(r'(<string name="app_name">).*?(</string>)', r'\\1'+app_name+r'\\2', s, flags=re.S)
-            else:
-              s = s.replace("</resources>", f'  <string name="app_name">{app_name}</string>\n</resources>')
-            strings_path.write_text(s, encoding="utf-8")
+          s = f'<resources>\\n  <string name="app_name">{app_name}</string>\\n</resources>\\n'
+          strings_path.write_text(s, encoding="utf-8")
 
           print("Branding applied. app_name =", app_name)
+          print("---- strings.xml ----")
+          print(strings_path.read_text(encoding="utf-8"))
           PY
 
-          flutter pub get
           flutter pub run flutter_launcher_icons
           flutter pub run flutter_native_splash:create
 
-      - name: Build APK
+      # ✅ app_name MUST exist before build (hard verify)
+      - name: Verify Android resources (app_name must exist)
         run: |
-          flutter build apk --release --dart-define-from-file=lib/env/ci_env.json
+          echo "---- AndroidManifest label line ----"
+          grep -n "android:label" -n android/app/src/main/AndroidManifest.xml || true
+
+          echo "---- strings.xml paths ----"
+          find android/app/src/main/res -maxdepth 3 -type f -name "strings.xml" -print || true
+
+          echo "---- strings.xml content ----"
+          cat android/app/src/main/res/values/strings.xml
+
+          echo "---- Check resource name exists ----"
+          grep -R "name=\"app_name\"" -n android/app/src/main/res/values/strings.xml
+
+      - name: Build APK
+        run: flutter build apk --release --dart-define-from-file=lib/env/ci_env.json
 
       - name: Build AAB
-        run: |
-          flutter build appbundle --release --dart-define-from-file=lib/env/ci_env.json
-
-      - name: Prepare output paths
-        id: out
-        run: |
-          echo "APK=build/app/outputs/flutter-apk/app-release.apk" >> $GITHUB_OUTPUT
-          echo "AAB=build/app/outputs/bundle/release/app-release.aab" >> $GITHUB_OUTPUT
-
-      - name: Upload artifacts to Actions
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-build-${{ github.event.client_payload.APP.SLUG }}
-          path: |
-            ${{ steps.out.outputs.APK }}
-            ${{ steps.out.outputs.AAB }}
-
-      - name: Create GitHub Release (optional)
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: build-${{ github.event.client_payload.OWNER_PROJECT_LINK_ID }}-${{ github.run_number }}
-          name: Build ${{ github.event.client_payload.APP.SLUG }}
-          files: |
-            ${{ steps.out.outputs.APK }}
-            ${{ steps.out.outputs.AAB }}
-
-      - name: Callback backend with APK/AAB urls
-        run: |
-          TAG="build-${{ github.event.client_payload.OWNER_PROJECT_LINK_ID }}-${{ github.run_number }}"
-          OWNER="${{ github.repository_owner }}"
-          REPO="${{ github.event.repository.name }}"
-          APK_NAME="app-release.apk"
-          AAB_NAME="app-release.aab"
-
-          APK_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/${APK_NAME}"
-          AAB_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/${AAB_NAME}"
-
-          CALLBACK_BASE="${{ github.event.client_payload.CALLBACK_BASE }}"
-          if [ -z "$CALLBACK_BASE" ]; then
-            CALLBACK_BASE="http://3.96.140.126:8080/api/ci"
-          fi
-
-          LINK_ID="${{ github.event.client_payload.OWNER_PROJECT_LINK_ID }}"
-
-          curl -X PUT "${CALLBACK_BASE}/owner-project-links/${LINK_ID}/apk-url" \
-            -H "Content-Type: application/json" \
-            -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
-            -d "{\"apkUrl\":\"${APK_URL}\"}"
-
-          curl -X PUT "${CALLBACK_BASE}/owner-project-links/${LINK_ID}/aab-url" \
-            -H "Content-Type: application/json" \
-            -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
-            -d "{\"aabUrl\":\"${AAB_URL}\"}"
+        run: flutter build appbundle --release --dart-define-from-file=lib/env/ci_env.json
