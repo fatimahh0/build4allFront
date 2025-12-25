@@ -193,5 +193,33 @@ jobs:
       - name: Build APK
         run: flutter build apk --release --dart-define-from-file=lib/env/ci_env.json
 
+      - name: Disable R8 minify for release (CI fix)
+        run: |
+          set -e
+          FILE="android/app/build.gradle.kts"
+
+          if [ -f "$FILE" ]; then
+            echo "Patching $FILE to disable R8"
+            # If already present, replace values
+            if grep -q "isMinifyEnabled" "$FILE"; then
+              sed -i 's/isMinifyEnabled *= *.*/isMinifyEnabled = false/' "$FILE"
+            else
+              perl -0777 -i -pe 's/release\s*\{\s*/release {\n            isMinifyEnabled = false\n            isShrinkResources = false\n/s' "$FILE"
+            fi
+
+            if grep -q "isShrinkResources" "$FILE"; then
+              sed -i 's/isShrinkResources *= *.*/isShrinkResources = false/' "$FILE"
+            else
+              perl -0777 -i -pe 's/release\s*\{\s*/release {\n            isShrinkResources = false\n/s' "$FILE"
+            fi
+
+            echo "---- Confirm release config ----"
+            grep -n "isMinifyEnabled\|isShrinkResources" "$FILE" || true
+          else
+            echo "android/app/build.gradle.kts not found!"
+            exit 1
+          fi
+        
+
       - name: Build AAB
         run: flutter build appbundle --release --dart-define-from-file=lib/env/ci_env.json
