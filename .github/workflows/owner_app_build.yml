@@ -24,7 +24,7 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      # ✅ FIX 1: Pin an actual Flutter version (no more "Unable to determine")
+      # ✅ FIX 1: Pin Flutter version
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -53,10 +53,8 @@ jobs:
             echo "Patching $FILE"
 
             if grep -q 'ndkVersion' "$FILE"; then
-              # replace any existing ndkVersion assignment
               sed -i 's/ndkVersion *= *.*/ndkVersion = "27.0.12077973"/' "$FILE"
             else
-              # inject under android { ... }
               perl -0777 -i -pe 's/android\s*\{\s*/android {\n    ndkVersion = "27.0.12077973"\n/s' "$FILE"
             fi
 
@@ -138,7 +136,7 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      # ✅ FIX 3: Branding + strings.xml rewritten cleanly (no trailing garbage)
+      # ✅ FIX 3: Branding + strings.xml rewritten cleanly
       - name: Apply branding (CI)
         run: |
           python3 - <<'PY'
@@ -147,8 +145,6 @@ jobs:
 
           cfg = json.load(open("lib/env/ci_env.json","r",encoding="utf-8"))
           app_name_raw = cfg.get("APP_NAME","My App")
-
-          # escape XML special chars ( &, <, >, ", ' )
           app_name = escape(app_name_raw)
 
           branding = cfg.get("BRANDING", {})
@@ -167,8 +163,12 @@ jobs:
           strings_path = pathlib.Path("android/app/src/main/res/values/strings.xml")
           strings_path.parent.mkdir(parents=True, exist_ok=True)
 
-          # write exact valid XML (no BOM, no junk)
-          content = f'<?xml version="1.0" encoding="utf-8"?>\n<resources>\n  <string name="app_name">{app_name}</string>\n</resources>\n'
+          content = (
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            '<resources>\n'
+            f'  <string name="app_name">{app_name}</string>\n'
+            '</resources>\n'
+          )
           strings_path.write_text(content, encoding="utf-8")
 
           print("Branding applied. app_name =", app_name_raw)
@@ -190,7 +190,7 @@ jobs:
           echo "---- Verify app_name exists ----"
           grep -n 'name="app_name"' android/app/src/main/res/values/strings.xml
 
-     
+      # ✅ FIX 4: Disable R8 minify for release
       - name: Disable R8 minify for release (CI fix)
         run: |
           set -e
@@ -198,7 +198,7 @@ jobs:
 
           if [ -f "$FILE" ]; then
             echo "Patching $FILE to disable R8"
-            # If already present, replace values
+
             if grep -q "isMinifyEnabled" "$FILE"; then
               sed -i 's/isMinifyEnabled *= *.*/isMinifyEnabled = false/' "$FILE"
             else
@@ -207,8 +207,6 @@ jobs:
 
             if grep -q "isShrinkResources" "$FILE"; then
               sed -i 's/isShrinkResources *= *.*/isShrinkResources = false/' "$FILE"
-            else
-              perl -0777 -i -pe 's/release\s*\{\s*/release {\n            isShrinkResources = false\n/s' "$FILE"
             fi
 
             echo "---- Confirm release config ----"
@@ -217,10 +215,84 @@ jobs:
             echo "android/app/build.gradle.kts not found!"
             exit 1
           fi
-          
+
       - name: Build APK
         run: flutter build apk --release --dart-define-from-file=lib/env/ci_env.json
-    
 
       - name: Build AAB
         run: flutter build appbundle --release --dart-define-from-file=lib/env/ci_env.json
+
+      # ✅ Output paths
+      - name: Prepare output paths
+        id: out
+        run: |
+          echo "APK=build/app/outputs/flutter-apk/app-release.apk" >> $GITHUB_OUTPUT
+          echo "AAB=build/app/outputs/bundle/release/app-release.aab" >> $GITHUB_OUTPUT
+
+      # ✅ Keep artifacts inside Actions too (optional)
+      - name: Upload artifacts to Actions
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build-${{ github.event.client_payload.APP.SLUG || github.event.client_payload.SLUG }}
+          path: |
+            ${{ steps.out.outputs.APK }}
+            ${{ steps.out.outputs.AAB }}
+
+      # ✅ Create Release + upload APK/AAB (this makes public URLs that work)
+      - name: Create Release + upload APK/AAB
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+
+          LINK_ID="${{ github.event.client_payload.OWNER_PROJECT_LINK_ID }}"
+          RUN="${{ github.run_number }}"
+          TAG="build-${LINK_ID}-${RUN}"
+
+          echo "TAG=$TAG"
+
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" \
+              --title "Build ${TAG}" \
+              --notes "CI build for ownerProjectLinkId=${LINK_ID}"
+
+          gh release upload "$TAG" \
+            "${{ steps.out.outputs.APK }}#app-release.apk" \
+            "${{ steps.out.outputs.AAB }}#app-release.aab" \
+            --clobber
+
+          echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
+
+      # ✅ Callback backend to save URLs into DB
+      - name: Callback backend with APK/AAB urls
+        run: |
+          set -e
+
+          TAG="${RELEASE_TAG}"
+          OWNER="${{ github.repository_owner }}"
+          REPO="${{ github.event.repository.name }}"
+
+          APK_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/app-release.apk"
+          AAB_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/app-release.aab"
+
+          CALLBACK_BASE="${{ github.event.client_payload.CALLBACK_BASE || '' }}"
+          if [ -z "$CALLBACK_BASE" ]; then
+            CALLBACK_BASE="http://3.96.140.126:8080/api/ci"
+          fi
+
+          LINK_ID="${{ github.event.client_payload.OWNER_PROJECT_LINK_ID }}"
+
+          echo "APK_URL=$APK_URL"
+          echo "AAB_URL=$AAB_URL"
+          echo "CALLBACK_BASE=$CALLBACK_BASE"
+          echo "LINK_ID=$LINK_ID"
+
+          curl -f -X PUT "${CALLBACK_BASE}/owner-project-links/${LINK_ID}/apk-url" \
+            -H "Content-Type: application/json" \
+            -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
+            -d "{\"apkUrl\":\"${APK_URL}\"}"
+
+          curl -f -X PUT "${CALLBACK_BASE}/owner-project-links/${LINK_ID}/aab-url" \
+            -H "Content-Type: application/json" \
+            -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
+            -d "{\"aabUrl\":\"${AAB_URL}\"}"
