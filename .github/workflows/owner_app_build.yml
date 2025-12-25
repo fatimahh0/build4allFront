@@ -190,9 +190,7 @@ jobs:
           echo "---- Verify app_name exists ----"
           grep -n 'name="app_name"' android/app/src/main/res/values/strings.xml
 
-      - name: Build APK
-        run: flutter build apk --release --dart-define-from-file=lib/env/ci_env.json
-
+     
       - name: Disable R8 minify for release (CI fix)
         run: |
           set -e
@@ -219,7 +217,10 @@ jobs:
             echo "android/app/build.gradle.kts not found!"
             exit 1
           fi
-        
+          
+      - name: Build APK
+        run: flutter build apk --release --dart-define-from-file=lib/env/ci_env.json
+    
 
       - name: Build AAB
         run: flutter build appbundle --release --dart-define-from-file=lib/env/ci_env.json
