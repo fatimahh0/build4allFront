@@ -24,11 +24,17 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # ✅ Use a newer Flutter that includes Dart 3.9+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.24.0"
+          flutter-version: "stable"
           cache: true
+
+      - name: Show Flutter/Dart versions
+        run: |
+          flutter --version
+          dart --version
 
       - name: Show payload (debug)
         run: |
@@ -39,7 +45,6 @@ jobs:
           mkdir -p lib/env
           python3 - <<'PY'
           import json, base64
-
           p = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
 
           runtime = p.get("RUNTIME") or {}
@@ -56,11 +61,9 @@ jobs:
           app_name = app.get("APP_NAME") or "My App"
           slug = app.get("SLUG") or "app"
 
-          # ✅ currency (safe string for dart-define)
           currency_id = app.get("CURRENCY_ID")
           currency_id_str = str(currency_id) if currency_id is not None and str(currency_id).strip() != "" else None
 
-          # ✅ theme json -> b64
           theme_json = app.get("APP_THEME_JSON") or "{}"
           theme_b64 = base64.b64encode(theme_json.encode("utf-8")).decode("utf-8")
 
@@ -83,16 +86,12 @@ jobs:
             }
           }
 
-          # ✅ remove nulls only (keep empty strings)
           env = {k:v for k,v in env.items() if v is not None}
-
           out = "lib/env/ci_env.json"
           with open(out, "w", encoding="utf-8") as f:
             json.dump(env, f, ensure_ascii=False, indent=2)
 
           print("Wrote", out)
-          print("slug =", slug)
-          print("CURRENCY_ID =", env.get("CURRENCY_ID"))
           PY
 
       - name: Apply branding (CI)
@@ -180,18 +179,12 @@ jobs:
           APK_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/${APK_NAME}"
           AAB_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/${AAB_NAME}"
 
-          # ✅ If you ever add CALLBACK_BASE in payload later, this will use it. Otherwise fallback.
           CALLBACK_BASE="${{ github.event.client_payload.CALLBACK_BASE }}"
           if [ -z "$CALLBACK_BASE" ]; then
             CALLBACK_BASE="http://3.96.140.126:8080/api/ci"
           fi
 
           LINK_ID="${{ github.event.client_payload.OWNER_PROJECT_LINK_ID }}"
-
-          echo "APK_URL=$APK_URL"
-          echo "AAB_URL=$AAB_URL"
-          echo "CALLBACK_BASE=$CALLBACK_BASE"
-          echo "LINK_ID=$LINK_ID"
 
           curl -X PUT "${CALLBACK_BASE}/owner-project-links/${LINK_ID}/apk-url" \
             -H "Content-Type: application/json" \
