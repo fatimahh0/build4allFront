@@ -41,18 +41,21 @@ jobs:
         run: |
           echo '${{ toJson(github.event.client_payload) }}'
 
-      # ✅ Force NDK 27
+      # ✅ Force Android NDK 27 (safe replace)
       - name: Force Android NDK 27
         run: |
           set -e
           FILE="android/app/build.gradle.kts"
 
           if [ -f "$FILE" ]; then
+            # If ndkVersion already exists, replace the whole line
             if grep -q "ndkVersion" "$FILE"; then
-              sed -i 's/ndkVersion = *./ndkVersion = "27.0.12077973"/' "$FILE"
+              sed -i 's/^[[:space:]]*ndkVersion *=.*/    ndkVersion = "27.0.12077973"/' "$FILE"
             else
+              # Inject ndkVersion inside android { } if missing
               perl -0777 -i -pe 's/android\s*\{\s*/android {\n    ndkVersion = "27.0.12077973"\n/s' "$FILE"
             fi
+
             echo "---- ndkVersion ----"
             grep -n "ndkVersion" "$FILE" || true
           else
@@ -170,20 +173,20 @@ jobs:
           flutter pub run flutter_launcher_icons
           flutter pub run flutter_native_splash:create
 
-      # ✅ Disable R8 (Stripe fix) safely (no duplicate release block)
+      # ✅ Disable R8 (no more falsealse)
       - name: Disable R8
         run: |
           set -e
           FILE="android/app/build.gradle.kts"
 
-          # If isMinifyEnabled exists, set to false
+          # If isMinifyEnabled exists, replace whole line
           if grep -q "isMinifyEnabled" "$FILE"; then
-            sed -i 's/isMinifyEnabled = *./isMinifyEnabled = false/' "$FILE"
+            sed -i 's/^[[:space:]]*isMinifyEnabled *=.*/            isMinifyEnabled = false/' "$FILE"
           fi
 
-          # If isShrinkResources exists, set to false
+          # If isShrinkResources exists, replace whole line
           if grep -q "isShrinkResources" "$FILE"; then
-            sed -i 's/isShrinkResources = *./isShrinkResources = false/' "$FILE"
+            sed -i 's/^[[:space:]]*isShrinkResources *=.*/            isShrinkResources = false/' "$FILE"
           fi
 
           # If neither exists, inject inside release { }
