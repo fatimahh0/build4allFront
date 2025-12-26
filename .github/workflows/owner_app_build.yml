@@ -72,36 +72,61 @@ jobs:
           python3 - <<'PY'
           import json
 
-          # client_payload IS the env json (same as your ecommerce_dev.json)
-          cfg = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
+          # client_payload from repository_dispatch
+          p = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
 
-          if not cfg:
-              raise SystemExit("github.event.client_payload is empty – expected env JSON")
-
-          # 1) write as-is into ci_env.json (Flutter will read this)
-          with open("lib/env/ci_env.json","w",encoding="utf-8") as f:
-              json.dump(cfg,f,ensure_ascii=False,indent=2)
-
-          # 2) extract API_BASE_URL + OWNER_PROJECT_LINK_ID for callback
-          api_base = (cfg.get("API_BASE_URL") or "").rstrip("/")
-          link_id = str(cfg.get("OWNER_PROJECT_LINK_ID") or "").strip()
-
+          api_base = (p.get("API_BASE_URL") or "").rstrip("/")
           if not api_base:
-              raise SystemExit("API_BASE_URL missing in payload")
-          if not link_id:
-              raise SystemExit("OWNER_PROJECT_LINK_ID missing in payload")
+              raise SystemExit("Missing API_BASE_URL in payload")
 
-          open("ci_api_base.txt","w",encoding="utf-8").write(api_base)
-          open("ci_link_id.txt","w",encoding="utf-8").write(link_id)
+          app_name = p.get("APP_NAME") or "My App"
+          app_type = p.get("APP_TYPE") or "ECOMMERCE"
+
+          link_id = str(p.get("OWNER_PROJECT_LINK_ID") or "").strip()
+          if not link_id:
+              raise SystemExit("Missing OWNER_PROJECT_LINK_ID in payload")
+
+          project_id = str(p.get("PROJECT_ID") or "").strip()
+
+          env = {
+              "API_BASE_URL": api_base,
+              "APP_NAME": app_name,
+              "APP_TYPE": app_type,
+              "OWNER_PROJECT_LINK_ID": link_id,
+              "PROJECT_ID": project_id,
+          }
+
+          # optional currency
+          currency_id = p.get("CURRENCY_ID")
+          if currency_id not in (None, "", 0):
+              env["CURRENCY_ID"] = str(currency_id)
+
+          # B64 JSONs
+          for key in ["THEME_JSON_B64", "NAV_JSON_B64", "HOME_JSON_B64", "ENABLED_FEATURES_JSON_B64", "BRANDING_JSON_B64"]:
+              v = p.get(key)
+              if v:
+                  env[key] = v
+
+          # BRANDING.logoPath -> LOGO_URL
+          branding = p.get("BRANDING") or {}
+          logo_path = (branding.get("logoPath") or "").strip()
+          if logo_path:
+              if not logo_path.startswith("/"):
+                  logo_path = "/" + logo_path
+              env["LOGO_URL"] = api_base + logo_path
+
+          # write helper files for callback step
+          open("ci_api_base.txt", "w", encoding="utf-8").write(api_base)
+          open("ci_link_id.txt", "w", encoding="utf-8").write(link_id)
+
+          with open("lib/env/ci_env.json", "w", encoding="utf-8") as f:
+              json.dump(env, f, ensure_ascii=False, indent=2)
 
           print("ci_env.json written")
           print("API_BASE_URL =", api_base)
-          print("LINK_ID =", link_id)
-          print("APP_NAME =", cfg.get("APP_NAME"))
+          print("OWNER_PROJECT_LINK_ID =", link_id)
           PY
 
-      - name: Flutter pub get
-        run: flutter pub get
 
       # Branding + strings.xml using BRANDING.logoPath + API_BASE_URL
       - name: Apply branding
