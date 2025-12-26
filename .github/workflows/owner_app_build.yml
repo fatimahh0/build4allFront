@@ -24,7 +24,7 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      # ✅ Flutter pinned
+      # Flutter pinned
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -41,7 +41,7 @@ jobs:
         run: |
           echo '${{ toJson(github.event.client_payload) }}'
 
-      # ✅ Force Android NDK 27 (safe replace)
+      # Force Android NDK 27 (safe replace)
       - name: Force Android NDK 27
         run: |
           set -e
@@ -63,7 +63,7 @@ jobs:
             exit 1
           fi
 
-      # ✅ Build ci_env.json based on CONFIG + extract API_BASE + LINK_ID
+      # Build ci_env.json from client_payload + extract API_BASE + LINK_ID
       - name: Build ci_env.json + extract CI vars
         run: |
           set -e
@@ -72,69 +72,42 @@ jobs:
           python3 - <<'PY'
           import json
 
-          # كامل الـ payload
-          p = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
+          # client_payload IS the env json (same as your ecommerce_dev.json)
+          cfg = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
 
-          # 👇 كل شي صار جوّا CONFIG
-          cfg = p.get("CONFIG") or {}
+          if not cfg:
+              raise SystemExit("github.event.client_payload is empty – expected env JSON")
 
+          # 1) write as-is into ci_env.json (Flutter will read this)
+          with open("lib/env/ci_env.json","w",encoding="utf-8") as f:
+              json.dump(cfg,f,ensure_ascii=False,indent=2)
+
+          # 2) extract API_BASE_URL + OWNER_PROJECT_LINK_ID for callback
           api_base = (cfg.get("API_BASE_URL") or "").rstrip("/")
           link_id = str(cfg.get("OWNER_PROJECT_LINK_ID") or "").strip()
 
           if not api_base:
-            raise SystemExit("Missing CONFIG.API_BASE_URL in payload")
+              raise SystemExit("API_BASE_URL missing in payload")
           if not link_id:
-            raise SystemExit("Missing CONFIG.OWNER_PROJECT_LINK_ID in payload")
+              raise SystemExit("OWNER_PROJECT_LINK_ID missing in payload")
 
-          # نكتب هالملفات للـ callback step
           open("ci_api_base.txt","w",encoding="utf-8").write(api_base)
           open("ci_link_id.txt","w",encoding="utf-8").write(link_id)
-
-          env = {
-            "API_BASE_URL": api_base,
-            "APP_NAME": cfg.get("APP_NAME") or "My App",
-            "APP_TYPE": cfg.get("APP_TYPE") or "ECOMMERCE",
-            "OWNER_PROJECT_LINK_ID": link_id,
-            "PROJECT_ID": str(cfg.get("PROJECT_ID") or ""),
-          }
-
-          # optional IDs
-          currency_id = cfg.get("CURRENCY_ID")
-          if currency_id is not None:
-            env["CURRENCY_ID"] = str(currency_id)
-
-          # theme/runtime JSONs already base64 from backend
-          if cfg.get("THEME_JSON_B64"):
-            env["THEME_JSON_B64"] = cfg["THEME_JSON_B64"]
-          if cfg.get("NAV_JSON_B64"):
-            env["NAV_JSON_B64"] = cfg["NAV_JSON_B64"]
-          if cfg.get("HOME_JSON_B64"):
-            env["HOME_JSON_B64"] = cfg["HOME_JSON_B64"]
-          if cfg.get("ENABLED_FEATURES_JSON_B64"):
-            env["ENABLED_FEATURES_JSON_B64"] = cfg["ENABLED_FEATURES_JSON_B64"]
-          if cfg.get("BRANDING_JSON_B64"):
-            env["BRANDING_JSON_B64"] = cfg["BRANDING_JSON_B64"]
-
-          # logo URL direct من CONFIG
-          if cfg.get("LOGO_URL"):
-            env["LOGO_URL"] = cfg["LOGO_URL"]
-
-          with open("lib/env/ci_env.json","w",encoding="utf-8") as f:
-            json.dump(env,f,ensure_ascii=False,indent=2)
 
           print("ci_env.json written")
           print("API_BASE_URL =", api_base)
           print("LINK_ID =", link_id)
-          print("APP_NAME =", env.get("APP_NAME"))
+          print("APP_NAME =", cfg.get("APP_NAME"))
           PY
 
       - name: Flutter pub get
         run: flutter pub get
 
-      # ✅ Branding + strings.xml using LOGO_URL from ci_env.json
+      # Branding + strings.xml using BRANDING.logoPath + API_BASE_URL
       - name: Apply branding
         run: |
           set -e
+
           python3 - <<'PY'
           import json, urllib.request, pathlib, shutil
           from xml.sax.saxutils import escape
@@ -144,18 +117,33 @@ jobs:
           app_name_raw = cfg.get("APP_NAME","My App")
           app_name = escape(app_name_raw)
 
-          # logoUrl now flat from env file
-          logo = cfg.get("LOGO_URL","")
+          base_url = (cfg.get("API_BASE_URL") or "").rstrip("/")
+
+          branding = cfg.get("BRANDING") or {}
+          logo_path = (branding.get("logoPath") or "").strip()
+          splash_color = (branding.get("splashColor") or "#FFFFFF").strip() or "#FFFFFF"
+
+          logo_url = ""
+          if base_url and logo_path:
+            if not logo_path.startswith("/"):
+              logo_path = "/" + logo_path
+            logo_url = base_url + logo_path
+
+          print("APP_NAME:", app_name_raw)
+          print("API_BASE_URL:", base_url)
+          print("logoPath:", logo_path)
+          print("logoUrl:", logo_url)
+          print("splashColor:", splash_color)
 
           pathlib.Path("assets/branding").mkdir(parents=True, exist_ok=True)
 
-          if logo:
-            print("Downloading logo:", logo)
-            urllib.request.urlretrieve(logo, "assets/branding/logo.png")
+          if logo_url:
+            print("Downloading logo:", logo_url)
+            urllib.request.urlretrieve(logo_url, "assets/branding/logo.png")
             shutil.copyfile("assets/branding/logo.png","assets/branding/launcher.png")
             shutil.copyfile("assets/branding/logo.png","assets/branding/splash.png")
           else:
-            print("No logo url")
+            print("No logo URL – skipping logo download")
 
           values_dir = pathlib.Path("android/app/src/main/res/values")
           values_dir.mkdir(parents=True, exist_ok=True)
@@ -173,7 +161,7 @@ jobs:
           flutter pub run flutter_launcher_icons
           flutter pub run flutter_native_splash:create
 
-      # ✅ Disable R8 (no more falsealse)
+      # Disable R8
       - name: Disable R8
         run: |
           set -e
@@ -197,14 +185,14 @@ jobs:
           echo "---- R8 flags ----"
           grep -n "isMinifyEnabled\|isShrinkResources" "$FILE" || true
 
-      # ✅ Build
+      # Build
       - name: Build APK
         run: flutter build apk --release --dart-define-from-file=lib/env/ci_env.json
 
       - name: Build AAB
         run: flutter build appbundle --release --dart-define-from-file=lib/env/ci_env.json
 
-      # ✅ Release + Upload
+      # Release + Upload
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -224,7 +212,7 @@ jobs:
           echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
           echo "LINK_ID=$LINK_ID" >> $GITHUB_ENV
 
-      # ✅ CALLBACK (uses API_BASE_URL from CONFIG + X-Auth-Token)
+      # CALLBACK (uses API_BASE_URL from env + X-Auth-Token)
       - name: Callback backend (SAVE URLs)
         run: |
           set -e
