@@ -63,7 +63,7 @@ jobs:
             exit 1
           fi
 
-      # Build ci_env.json from client_payload + extract API_BASE + LINK_ID
+      # Build ci_env.json from client_payload.CONFIG + extract API_BASE + LINK_ID
       - name: Build ci_env.json + extract CI vars
         run: |
           set -e
@@ -72,21 +72,24 @@ jobs:
           python3 - <<'PY'
           import json
 
-          # client_payload from repository_dispatch
-          p = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
+          # Full client_payload from repository_dispatch
+          payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
 
-          api_base = (p.get("API_BASE_URL") or "").rstrip("/")
+          # Our real config is under CONFIG (from CiBuildService)
+          cfg = payload.get("CONFIG") or {}
+
+          api_base = (cfg.get("API_BASE_URL") or "").rstrip("/")
           if not api_base:
-              raise SystemExit("Missing API_BASE_URL in payload")
+              raise SystemExit("Missing CONFIG.API_BASE_URL in payload")
 
-          app_name = p.get("APP_NAME") or "My App"
-          app_type = p.get("APP_TYPE") or "ECOMMERCE"
+          app_name = cfg.get("APP_NAME") or "My App"
+          app_type = cfg.get("APP_TYPE") or "ECOMMERCE"
 
-          link_id = str(p.get("OWNER_PROJECT_LINK_ID") or "").strip()
+          link_id = str(cfg.get("OWNER_PROJECT_LINK_ID") or "").strip()
           if not link_id:
-              raise SystemExit("Missing OWNER_PROJECT_LINK_ID in payload")
+              raise SystemExit("Missing CONFIG.OWNER_PROJECT_LINK_ID in payload")
 
-          project_id = str(p.get("PROJECT_ID") or "").strip()
+          project_id = str(cfg.get("PROJECT_ID") or "").strip()
 
           env = {
               "API_BASE_URL": api_base,
@@ -97,23 +100,26 @@ jobs:
           }
 
           # optional currency
-          currency_id = p.get("CURRENCY_ID")
+          currency_id = cfg.get("CURRENCY_ID")
           if currency_id not in (None, "", 0):
               env["CURRENCY_ID"] = str(currency_id)
 
-          # B64 JSONs
-          for key in ["THEME_JSON_B64", "NAV_JSON_B64", "HOME_JSON_B64", "ENABLED_FEATURES_JSON_B64", "BRANDING_JSON_B64"]:
-              v = p.get(key)
+          # Base64 JSONs (already encoded by backend)
+          for key in [
+              "THEME_JSON_B64",
+              "NAV_JSON_B64",
+              "HOME_JSON_B64",
+              "ENABLED_FEATURES_JSON_B64",
+              "BRANDING_JSON_B64",
+          ]:
+              v = cfg.get(key)
               if v:
                   env[key] = v
 
-          # BRANDING.logoPath -> LOGO_URL
-          branding = p.get("BRANDING") or {}
-          logo_path = (branding.get("logoPath") or "").strip()
-          if logo_path:
-              if not logo_path.startswith("/"):
-                  logo_path = "/" + logo_path
-              env["LOGO_URL"] = api_base + logo_path
+          # LOGO_URL (raw GitHub URL from CiBuildService.ensureLogoRawUrl)
+          logo_url = (cfg.get("LOGO_URL") or "").strip()
+          if logo_url:
+              env["LOGO_URL"] = logo_url
 
           # write helper files for callback step
           open("ci_api_base.txt", "w", encoding="utf-8").write(api_base)
@@ -127,8 +133,7 @@ jobs:
           print("OWNER_PROJECT_LINK_ID =", link_id)
           PY
 
-
-      # Branding + strings.xml using BRANDING.logoPath + API_BASE_URL
+      # Branding + strings.xml using LOGO_URL from ci_env.json
       - name: Apply branding
         run: |
           set -e
@@ -142,33 +147,20 @@ jobs:
           app_name_raw = cfg.get("APP_NAME","My App")
           app_name = escape(app_name_raw)
 
-          base_url = (cfg.get("API_BASE_URL") or "").rstrip("/")
-
-          branding = cfg.get("BRANDING") or {}
-          logo_path = (branding.get("logoPath") or "").strip()
-          splash_color = (branding.get("splashColor") or "#FFFFFF").strip() or "#FFFFFF"
-
-          logo_url = ""
-          if base_url and logo_path:
-            if not logo_path.startswith("/"):
-              logo_path = "/" + logo_path
-            logo_url = base_url + logo_path
+          logo_url = (cfg.get("LOGO_URL") or "").strip()
 
           print("APP_NAME:", app_name_raw)
-          print("API_BASE_URL:", base_url)
-          print("logoPath:", logo_path)
-          print("logoUrl:", logo_url)
-          print("splashColor:", splash_color)
+          print("LOGO_URL:", logo_url)
 
           pathlib.Path("assets/branding").mkdir(parents=True, exist_ok=True)
 
           if logo_url:
-            print("Downloading logo:", logo_url)
-            urllib.request.urlretrieve(logo_url, "assets/branding/logo.png")
-            shutil.copyfile("assets/branding/logo.png","assets/branding/launcher.png")
-            shutil.copyfile("assets/branding/logo.png","assets/branding/splash.png")
+              print("Downloading logo:", logo_url)
+              urllib.request.urlretrieve(logo_url, "assets/branding/logo.png")
+              shutil.copyfile("assets/branding/logo.png","assets/branding/launcher.png")
+              shutil.copyfile("assets/branding/logo.png","assets/branding/splash.png")
           else:
-            print("No logo URL – skipping logo download")
+              print("No LOGO_URL – skipping logo download")
 
           values_dir = pathlib.Path("android/app/src/main/res/values")
           values_dir.mkdir(parents=True, exist_ok=True)
