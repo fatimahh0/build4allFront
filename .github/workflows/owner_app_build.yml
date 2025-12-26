@@ -38,41 +38,61 @@ jobs:
           dart --version
 
       - name: Show payload (debug)
-        run: echo '${{ toJson(github.event.client_payload) }}'
+        run: |
+          echo '${{ toJson(github.event.client_payload) }}'
 
       # ✅ Force NDK 27
       - name: Force Android NDK 27
         run: |
           set -e
           FILE="android/app/build.gradle.kts"
+
           if [ -f "$FILE" ]; then
             if grep -q "ndkVersion" "$FILE"; then
               sed -i 's/ndkVersion *= *.*/ndkVersion = "27.0.12077973"/' "$FILE"
             else
               perl -0777 -i -pe 's/android\s*\{\s*/android {\n    ndkVersion = "27.0.12077973"\n/s' "$FILE"
             fi
+            echo "---- ndkVersion ----"
+            grep -n "ndkVersion" "$FILE" || true
+          else
+            echo "android/app/build.gradle.kts not found"
+            exit 1
           fi
-          grep -n "ndkVersion" "$FILE" || true
 
-      # ✅ Build env
-      - name: Build ci_env.json
+      # ✅ Build env + extract callback base + linkId early
+      - name: Build ci_env.json + extract CI vars
         run: |
+          set -e
           mkdir -p lib/env
+
           python3 - <<'PY'
           import json, base64
-          p = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
 
+          p = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
           runtime = p.get("RUNTIME") or {}
           app = p.get("APP") or {}
 
+          api_base = (runtime.get("API_BASE_URL") or "").rstrip("/")
+          link_id = str(p.get("OWNER_PROJECT_LINK_ID") or "").strip()
+
+          if not api_base:
+            raise SystemExit("Missing RUNTIME.API_BASE_URL in payload")
+          if not link_id:
+            raise SystemExit("Missing OWNER_PROJECT_LINK_ID in payload")
+
+          # write helper files for later steps
+          open("ci_api_base.txt","w",encoding="utf-8").write(api_base)
+          open("ci_link_id.txt","w",encoding="utf-8").write(link_id)
+
           env = {
-            "API_BASE_URL": (runtime.get("API_BASE_URL") or "").rstrip("/"),
+            "API_BASE_URL": api_base,
             "APP_NAME": app.get("APP_NAME") or "My App",
             "APP_TYPE": p.get("APP_TYPE") or "ECOMMERCE",
-            "OWNER_PROJECT_LINK_ID": str(p.get("OWNER_PROJECT_LINK_ID") or ""),
+            "OWNER_PROJECT_LINK_ID": link_id,
             "PROJECT_ID": str(p.get("PROJECT_ID") or ""),
             "CURRENCY_ID": str(app.get("CURRENCY_ID")) if app.get("CURRENCY_ID") is not None else None,
-            "THEME_JSON_B64": base64.b64encode((app.get("APP_THEME_JSON") or "{}").encode()).decode(),
+            "THEME_JSON_B64": base64.b64encode((app.get("APP_THEME_JSON") or "{}").encode("utf-8")).decode("utf-8"),
             "BRANDING": {
               "logoUrl": app.get("APP_LOGO_URL") or "",
               "splashColor": "#FFFFFF"
@@ -87,9 +107,11 @@ jobs:
           env = {k:v for k,v in env.items() if v is not None}
 
           with open("lib/env/ci_env.json","w",encoding="utf-8") as f:
-            json.dump(env,f,indent=2)
+            json.dump(env,f,ensure_ascii=False,indent=2)
 
           print("ci_env.json written")
+          print("API_BASE_URL =", api_base)
+          print("LINK_ID =", link_id)
           PY
 
       - name: Flutter pub get
@@ -98,41 +120,65 @@ jobs:
       # ✅ Branding + strings.xml clean
       - name: Apply branding
         run: |
+          set -e
           python3 - <<'PY'
           import json, urllib.request, pathlib, shutil
           from xml.sax.saxutils import escape
 
-          cfg = json.load(open("lib/env/ci_env.json"))
-          app_name = escape(cfg.get("APP_NAME","My App"))
+          cfg = json.load(open("lib/env/ci_env.json","r",encoding="utf-8"))
+          app_name_raw = cfg.get("APP_NAME","My App")
+          app_name = escape(app_name_raw)
           logo = cfg.get("BRANDING",{}).get("logoUrl","")
 
           pathlib.Path("assets/branding").mkdir(parents=True, exist_ok=True)
 
           if logo:
+            print("Downloading logo:", logo)
             urllib.request.urlretrieve(logo, "assets/branding/logo.png")
-            shutil.copy("assets/branding/logo.png","assets/branding/launcher.png")
-            shutil.copy("assets/branding/logo.png","assets/branding/splash.png")
+            shutil.copyfile("assets/branding/logo.png","assets/branding/launcher.png")
+            shutil.copyfile("assets/branding/logo.png","assets/branding/splash.png")
+          else:
+            print("No logo url")
 
-          p = pathlib.Path("android/app/src/main/res/values")
-          p.mkdir(parents=True, exist_ok=True)
-          (p/"strings.xml").write_text(
+          values_dir = pathlib.Path("android/app/src/main/res/values")
+          values_dir.mkdir(parents=True, exist_ok=True)
+
+          strings_xml = (
             '<?xml version="1.0" encoding="utf-8"?>\n'
             '<resources>\n'
             f'  <string name="app_name">{app_name}</string>\n'
-            '</resources>\n',
-            encoding="utf-8"
+            '</resources>\n'
           )
+          (values_dir/"strings.xml").write_text(strings_xml, encoding="utf-8")
+          print("strings.xml written for:", app_name_raw)
           PY
 
           flutter pub run flutter_launcher_icons
           flutter pub run flutter_native_splash:create
 
-      # ✅ Disable R8 (Stripe fix)
+      # ✅ Disable R8 (Stripe fix) safely (no duplicate release block)
       - name: Disable R8
         run: |
+          set -e
           FILE="android/app/build.gradle.kts"
-          perl -0777 -i -pe 's/release\s*\{\s*/release {\n            isMinifyEnabled = false\n            isShrinkResources = false\n/s' "$FILE"
-          grep -n "isMinifyEnabled" "$FILE"
+
+          # If isMinifyEnabled exists, set to false
+          if grep -q "isMinifyEnabled" "$FILE"; then
+            sed -i 's/isMinifyEnabled *= *.*/isMinifyEnabled = false/' "$FILE"
+          fi
+
+          # If isShrinkResources exists, set to false
+          if grep -q "isShrinkResources" "$FILE"; then
+            sed -i 's/isShrinkResources *= *.*/isShrinkResources = false/' "$FILE"
+          fi
+
+          # If neither exists, inject inside release { }
+          if ! grep -q "isMinifyEnabled" "$FILE"; then
+            perl -0777 -i -pe 's/release\s*\{\s*/release {\n            isMinifyEnabled = false\n            isShrinkResources = false\n/s' "$FILE"
+          fi
+
+          echo "---- R8 flags ----"
+          grep -n "isMinifyEnabled\|isShrinkResources" "$FILE" || true
 
       # ✅ Build
       - name: Build APK
@@ -147,7 +193,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
-          LINK_ID="${{ github.event.client_payload.OWNER_PROJECT_LINK_ID }}"
+          LINK_ID=$(cat ci_link_id.txt)
           TAG="build-${LINK_ID}-${{ github.run_number }}"
 
           gh release view "$TAG" >/dev/null 2>&1 || \
@@ -159,28 +205,38 @@ jobs:
             --clobber
 
           echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
+          echo "LINK_ID=$LINK_ID" >> $GITHUB_ENV
 
-      # ✅ CALLBACK (FIXED AUTH)
+      # ✅ CALLBACK (Fixed 401): use API_BASE_URL from payload + X-Auth-Token
       - name: Callback backend (SAVE URLs)
         run: |
           set -e
+
+          API_BASE=$(cat ci_api_base.txt)
+          LINK_ID=$(cat ci_link_id.txt)
+          TAG="${RELEASE_TAG}"
+
           OWNER="${{ github.repository_owner }}"
           REPO="${{ github.event.repository.name }}"
-          TAG="${RELEASE_TAG}"
-          LINK_ID="${{ github.event.client_payload.OWNER_PROJECT_LINK_ID }}"
 
           APK_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/app-release.apk"
           AAB_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/app-release.aab"
 
+          echo "API_BASE=$API_BASE"
+          echo "LINK_ID=$LINK_ID"
           echo "APK_URL=$APK_URL"
           echo "AAB_URL=$AAB_URL"
 
-          curl -f -X PUT "http://3.96.140.126:8080/api/ci/owner-project-links/${LINK_ID}/apk-url" \
+          # Preferred auth header for your backend:
+          curl -sS -f -X PUT "${API_BASE}/api/ci/owner-project-links/${LINK_ID}/apk-url" \
             -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${CI_CALLBACK_TOKEN}" \
+            -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
             -d "{\"apkUrl\":\"${APK_URL}\"}"
 
-          curl -f -X PUT "http://3.96.140.126:8080/api/ci/owner-project-links/${LINK_ID}/aab-url" \
+          curl -sS -f -X PUT "${API_BASE}/api/ci/owner-project-links/${LINK_ID}/aab-url" \
             -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${CI_CALLBACK_TOKEN}" \
+            -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
             -d "{\"aabUrl\":\"${AAB_URL}\"}"
+
+          # Optional fallback (keep if you want):
+          # -H "Authorization: Bearer ${CI_CALLBACK_TOKEN}"
