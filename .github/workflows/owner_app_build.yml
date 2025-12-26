@@ -41,101 +41,87 @@ jobs:
         run: |
           echo '${{ toJson(github.event.client_payload) }}'
 
-      # ✅ Force NDK 27
+      # ✅ Force NDK 27 (SAFE)
       - name: Force Android NDK 27
         run: |
           set -e
           FILE="android/app/build.gradle.kts"
 
-          if [ -f "$FILE" ]; then
-            if grep -q "ndkVersion" "$FILE"; then
-              sed -i 's/ndkVersion *= *.*/ndkVersion = "27.0.12077973"/' "$FILE"
-            else
-              perl -0777 -i -pe 's/android\s*\{\s*/android {\n    ndkVersion = "27.0.12077973"\n/s' "$FILE"
-            fi
-            echo "---- ndkVersion ----"
-            grep -n "ndkVersion" "$FILE" || true
-          else
+          if [ ! -f "$FILE" ]; then
             echo "android/app/build.gradle.kts not found"
             exit 1
           fi
 
-      # ✅ Build ci_env.json with EXACT flutter --dart-define keys
-      - name: Build ci_env.json + extract CI vars (MATCH flutter keys)
+          if grep -q 'ndkVersion\s*=' "$FILE"; then
+            sed -i -E 's/ndkVersion\s*=\s*".*"/ndkVersion = "27.0.12077973"/' "$FILE"
+          else
+            perl -0777 -i -pe 's/android\s*\{\s*/android {\n    ndkVersion = "27.0.12077973"\n/s' "$FILE"
+          fi
+
+          echo "---- ndkVersion ----"
+          grep -n "ndkVersion" "$FILE" || true
+
+      # ✅ Fetch build-config from backend (KEYS STAY EXACT) + normalize API_BASE
+      - name: Fetch build-config + write ci_env.json
+        env:
+          CI_CALLBACK_TOKEN: ${{ secrets.CI_CALLBACK_TOKEN }}
         run: |
           set -e
           mkdir -p lib/env
 
           python3 - <<'PY'
-          import json, base64, sys
+          import json, urllib.request, os
 
           p = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
           runtime = p.get("RUNTIME") or {}
-          app = p.get("APP") or {}
 
-          # pick value from: top-level -> APP -> RUNTIME
-          def pick(key, default=None):
-            if key in p and p[key] not in (None, ""): return p[key]
-            if key in app and app[key] not in (None, ""): return app[key]
-            if key in runtime and runtime[key] not in (None, ""): return runtime[key]
-            return default
+          api_base = (runtime.get("API_BASE_URL") or "").rstrip("/")
+          # normalize: if API_BASE_URL mistakenly includes /api, strip it
+          if api_base.endswith("/api"):
+            api_base = api_base[:-4]
 
-          def clean_b64(s: str) -> str:
-            s = (s or "").strip()
-            s = "".join(s.split())  # remove ALL whitespace/newlines
-            return s
+          link_id = str(p.get("OWNER_PROJECT_LINK_ID") or "").strip()
 
-          def must(key):
-            v = pick(key)
-            if v is None or str(v).strip() == "":
-              print(f"❌ Missing required key: {key}")
-              sys.exit(1)
-            return v
+          if not api_base:
+            raise SystemExit("Missing RUNTIME.API_BASE_URL in payload")
+          if not link_id:
+            raise SystemExit("Missing OWNER_PROJECT_LINK_ID in payload")
 
-          # Required keys exactly like your flutter run
-          api_base = str(must("API_BASE_URL")).rstrip("/")
-          link_id  = str(must("OWNER_PROJECT_LINK_ID")).strip()
-
-          env = {
-            "API_BASE_URL": api_base,
-            "APP_NAME": str(must("APP_NAME")),
-            "APP_TYPE": str(must("APP_TYPE")),
-            "OWNER_PROJECT_LINK_ID": link_id,
-            "PROJECT_ID": str(must("PROJECT_ID")),
-            "CURRENCY_ID": str(must("CURRENCY_ID")),
-
-            # These MUST be base64 (same as flutter run)
-            "THEME_JSON_B64": clean_b64(str(must("THEME_JSON_B64"))),
-            "NAV_JSON_B64": clean_b64(str(must("NAV_JSON_B64"))),
-            "ENABLED_FEATURES_JSON_B64": clean_b64(str(must("ENABLED_FEATURES_JSON_B64"))),
-            "HOME_JSON_B64": clean_b64(str(must("HOME_JSON_B64"))),
-          }
-
-          # Validate base64
-          for k in ["THEME_JSON_B64","NAV_JSON_B64","ENABLED_FEATURES_JSON_B64","HOME_JSON_B64"]:
-            try:
-              base64.b64decode(env[k], validate=True)
-            except Exception as e:
-              print(f"❌ {k} invalid base64: {e}")
-              print(f"Value starts with: {env[k][:60]} ...")
-              sys.exit(1)
-
-          # Write helper files for later steps
+          # helper files for later steps
           open("ci_api_base.txt","w",encoding="utf-8").write(api_base)
           open("ci_link_id.txt","w",encoding="utf-8").write(link_id)
+
+          token = (os.environ.get("CI_CALLBACK_TOKEN") or "").strip()
+          if not token:
+            raise SystemExit("Missing CI_CALLBACK_TOKEN secret")
+
+          # ✅ SINGLE SOURCE OF TRUTH
+          url = f"{api_base}/api/ci/owner-project-links/{link_id}/build-config"
+          req = urllib.request.Request(url, headers={"X-Auth-Token": token})
+          with urllib.request.urlopen(req) as r:
+            cfg = json.loads(r.read().decode("utf-8"))
+
+          # keep keys EXACT (THEME_JSON_B64, NAV_JSON_B64, ENABLED_FEATURES_JSON_B64, BRANDING_JSON_B64...)
+          env = dict(cfg)
+
+          # ensure runtime settings exist (app reads this)
+          env.setdefault("RUNTIME", {})
+          env["RUNTIME"].setdefault("WS_PATH", runtime.get("WS_PATH") or "/api/ws")
+          env["RUNTIME"].setdefault("OWNER_ATTACH_MODE", runtime.get("OWNER_ATTACH_MODE") or "header")
+          env["RUNTIME"].setdefault("APP_ROLE", runtime.get("APP_ROLE") or "both")
 
           with open("lib/env/ci_env.json","w",encoding="utf-8") as f:
             json.dump(env, f, ensure_ascii=False, indent=2)
 
-          print("✅ ci_env.json written with flutter-equivalent keys")
+          print("✅ ci_env.json written from backend build-config")
           print("API_BASE_URL =", api_base)
-          print("OWNER_PROJECT_LINK_ID =", link_id)
+          print("LINK_ID =", link_id)
           PY
 
       - name: Flutter pub get
         run: flutter pub get
 
-      # ✅ Branding + strings.xml clean
+      # ✅ Branding + strings.xml clean (reads from ci_env.json)
       - name: Apply branding
         run: |
           set -e
@@ -143,20 +129,16 @@ jobs:
           import json, urllib.request, pathlib, shutil
           from xml.sax.saxutils import escape
 
-          # optional: logoUrl may come in payload as APP_LOGO_URL (top-level or APP)
-          p = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
-          app = p.get("APP") or {}
-
-          def pick(key, default=""):
-            if key in p and p[key] not in (None, ""): return p[key]
-            if key in app and app[key] not in (None, ""): return app[key]
-            return default
-
           cfg = json.load(open("lib/env/ci_env.json","r",encoding="utf-8"))
-          app_name_raw = cfg.get("APP_NAME","My App")
+
+          app_name_raw = cfg.get("APP_NAME") or "My App"
           app_name = escape(app_name_raw)
 
-          logo = pick("APP_LOGO_URL","")
+          # Branding source priority:
+          # 1) BRANDING.logoUrl (if your build-config returns it)
+          # 2) APP_LOGO_URL fallback
+          branding = cfg.get("BRANDING") or {}
+          logo = branding.get("logoUrl") or cfg.get("APP_LOGO_URL") or ""
 
           pathlib.Path("assets/branding").mkdir(parents=True, exist_ok=True)
 
@@ -166,7 +148,7 @@ jobs:
             shutil.copyfile("assets/branding/logo.png","assets/branding/launcher.png")
             shutil.copyfile("assets/branding/logo.png","assets/branding/splash.png")
           else:
-            print("No logo url provided")
+            print("No logo url in config")
 
           values_dir = pathlib.Path("android/app/src/main/res/values")
           values_dir.mkdir(parents=True, exist_ok=True)
@@ -184,21 +166,20 @@ jobs:
           flutter pub run flutter_launcher_icons
           flutter pub run flutter_native_splash:create
 
-      # ✅ Disable R8 (Stripe fix) safely (no duplicate release block)
+      # ✅ Disable R8 (SAFE)
       - name: Disable R8
         run: |
           set -e
           FILE="android/app/build.gradle.kts"
 
-          if grep -q "isMinifyEnabled" "$FILE"; then
-            sed -i 's/isMinifyEnabled *= *.*/isMinifyEnabled = false/' "$FILE"
+          if grep -q 'isMinifyEnabled\s*=' "$FILE"; then
+            sed -i -E 's/isMinifyEnabled\s*=\s*true/isMinifyEnabled = false/g' "$FILE"
+          fi
+          if grep -q 'isShrinkResources\s*=' "$FILE"; then
+            sed -i -E 's/isShrinkResources\s*=\s*true/isShrinkResources = false/g' "$FILE"
           fi
 
-          if grep -q "isShrinkResources" "$FILE"; then
-            sed -i 's/isShrinkResources *= *.*/isShrinkResources = false/' "$FILE"
-          fi
-
-          if ! grep -q "isMinifyEnabled" "$FILE"; then
+          if ! grep -q 'isMinifyEnabled\s*=' "$FILE"; then
             perl -0777 -i -pe 's/release\s*\{\s*/release {\n            isMinifyEnabled = false\n            isShrinkResources = false\n/s' "$FILE"
           fi
 
@@ -232,7 +213,7 @@ jobs:
           echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
           echo "LINK_ID=$LINK_ID" >> $GITHUB_ENV
 
-      # ✅ CALLBACK (save URLs)
+      # ✅ CALLBACK backend (SAVE URLs) - clean base url, no /api/api, no //
       - name: Callback backend (SAVE URLs)
         run: |
           set -e
