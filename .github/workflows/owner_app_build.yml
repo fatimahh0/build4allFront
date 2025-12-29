@@ -18,13 +18,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Java (Android)
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      # ✅ FIX 1: Pin an actual Flutter version (no more "Unable to determine")
+      # Flutter pinned
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -41,157 +41,220 @@ jobs:
         run: |
           echo '${{ toJson(github.event.client_payload) }}'
 
-      # ✅ FIX 2: NDK 27 required by plugins
-      - name: Force Android NDK 27 everywhere
+      # Force Android NDK 27 (safe replace)
+      - name: Force Android NDK 27
         run: |
           set -e
-          echo "---- Searching ndkVersion ----"
-          grep -R "ndkVersion" -n android/app || true
+          FILE="android/app/build.gradle.kts"
 
-          if [ -f "android/app/build.gradle.kts" ]; then
-            FILE="android/app/build.gradle.kts"
-            echo "Patching $FILE"
-
-            if grep -q 'ndkVersion' "$FILE"; then
-              # replace any existing ndkVersion assignment
-              sed -i 's/ndkVersion *= *.*/ndkVersion = "27.0.12077973"/' "$FILE"
+          if [ -f "$FILE" ]; then
+            # If ndkVersion already exists, replace the whole line
+            if grep -q "ndkVersion" "$FILE"; then
+              sed -i 's/^[[:space:]]*ndkVersion *=.*/    ndkVersion = "27.0.12077973"/' "$FILE"
             else
-              # inject under android { ... }
+              # Inject ndkVersion inside android { } if missing
               perl -0777 -i -pe 's/android\s*\{\s*/android {\n    ndkVersion = "27.0.12077973"\n/s' "$FILE"
             fi
 
-            echo "---- Result ----"
+            echo "---- ndkVersion ----"
             grep -n "ndkVersion" "$FILE" || true
+          else
+            echo "android/app/build.gradle.kts not found"
+            exit 1
           fi
 
-          if [ -f "android/app/build.gradle" ]; then
-            FILE="android/app/build.gradle"
-            echo "Patching $FILE"
-
-            if grep -q 'ndkVersion' "$FILE"; then
-              sed -i 's/ndkVersion .*/ndkVersion "27.0.12077973"/' "$FILE"
-            else
-              perl -0777 -i -pe 's/android\s*\{\s*/android {\n    ndkVersion "27.0.12077973"\n/s' "$FILE"
-            fi
-
-            echo "---- Result ----"
-            grep -n "ndkVersion" "$FILE" || true
-          fi
-
-      - name: Build env json from payload (lib/env/ci_env.json)
+      # Build ci_env.json from client_payload.CONFIG + extract API_BASE + LINK_ID
+      - name: Build ci_env.json + extract CI vars
         run: |
+          set -e
           mkdir -p lib/env
+
           python3 - <<'PY'
-          import json, base64
+          import json
 
-          p = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
+          # Full client_payload from repository_dispatch
+          payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
 
-          runtime = p.get("RUNTIME") or {}
-          api_base = (runtime.get("API_BASE_URL") or "").rstrip("/")
-          ws_path = runtime.get("WS_PATH") or "/api/ws"
-          owner_attach_mode = runtime.get("OWNER_ATTACH_MODE") or "header"
-          app_role = runtime.get("APP_ROLE") or "both"
+          # Our real config is under CONFIG (from CiBuildService)
+          cfg = payload.get("CONFIG") or {}
 
-          link_id = str(p.get("OWNER_PROJECT_LINK_ID") or "")
-          project_id = str(p.get("PROJECT_ID") or "")
+          api_base = (cfg.get("API_BASE_URL") or "").rstrip("/")
+          if not api_base:
+              raise SystemExit("Missing CONFIG.API_BASE_URL in payload")
 
-          app = p.get("APP") or {}
-          app_name = app.get("APP_NAME") or "My App"
-          slug = app.get("SLUG") or "app"
+          app_name = cfg.get("APP_NAME") or "My App"
+          app_type = cfg.get("APP_TYPE") or "ECOMMERCE"
 
-          currency_id = app.get("CURRENCY_ID")
-          currency_id_str = str(currency_id) if currency_id is not None and str(currency_id).strip() != "" else None
+          link_id = str(cfg.get("OWNER_PROJECT_LINK_ID") or "").strip()
+          if not link_id:
+              raise SystemExit("Missing CONFIG.OWNER_PROJECT_LINK_ID in payload")
 
-          theme_json = app.get("APP_THEME_JSON") or "{}"
-          theme_b64 = base64.b64encode(theme_json.encode("utf-8")).decode("utf-8")
+          project_id = str(cfg.get("PROJECT_ID") or "").strip()
 
           env = {
-            "API_BASE_URL": api_base,
-            "APP_NAME": app_name,
-            "APP_TYPE": p.get("APP_TYPE") or "ECOMMERCE",
-            "OWNER_PROJECT_LINK_ID": link_id,
-            "PROJECT_ID": project_id,
-            "CURRENCY_ID": currency_id_str,
-            "THEME_JSON_B64": theme_b64,
-            "BRANDING": {
-              "logoUrl": app.get("APP_LOGO_URL") or "",
-              "splashColor": "#FFFFFF"
-            },
-            "RUNTIME": {
-              "WS_PATH": ws_path,
-              "OWNER_ATTACH_MODE": owner_attach_mode,
-              "APP_ROLE": app_role
-            }
+              "API_BASE_URL": api_base,
+              "APP_NAME": app_name,
+              "APP_TYPE": app_type,
+              "OWNER_PROJECT_LINK_ID": link_id,
+              "PROJECT_ID": project_id,
           }
 
-          env = {k:v for k,v in env.items() if v is not None}
+          # optional currency
+          currency_id = cfg.get("CURRENCY_ID")
+          if currency_id not in (None, "", 0):
+              env["CURRENCY_ID"] = str(currency_id)
 
-          out = "lib/env/ci_env.json"
-          with open(out, "w", encoding="utf-8") as f:
-            json.dump(env, f, ensure_ascii=False, indent=2)
+          # Base64 JSONs (already encoded by backend)
+          for key in [
+              "THEME_JSON_B64",
+              "NAV_JSON_B64",
+              "HOME_JSON_B64",
+              "ENABLED_FEATURES_JSON_B64",
+              "BRANDING_JSON_B64",
+          ]:
+              v = cfg.get(key)
+              if v:
+                  env[key] = v
 
-          print("Wrote", out)
-          print("APP_NAME =", env.get("APP_NAME"))
-          print("CURRENCY_ID =", env.get("CURRENCY_ID"))
+          # LOGO_URL (raw GitHub URL from CiBuildService.ensureLogoRawUrl)
+          logo_url = (cfg.get("LOGO_URL") or "").strip()
+          if logo_url:
+              env["LOGO_URL"] = logo_url
+
+          # write helper files for callback step
+          open("ci_api_base.txt", "w", encoding="utf-8").write(api_base)
+          open("ci_link_id.txt", "w", encoding="utf-8").write(link_id)
+
+          with open("lib/env/ci_env.json", "w", encoding="utf-8") as f:
+              json.dump(env, f, ensure_ascii=False, indent=2)
+
+          print("ci_env.json written")
+          print("API_BASE_URL =", api_base)
+          print("OWNER_PROJECT_LINK_ID =", link_id)
           PY
 
-      - name: Flutter pub get
-        run: flutter pub get
-
-      # ✅ FIX 3: Branding + strings.xml rewritten cleanly (no trailing garbage)
-      - name: Apply branding (CI)
+      # Branding + strings.xml using LOGO_URL from ci_env.json
+      - name: Apply branding
         run: |
+          set -e
+
           python3 - <<'PY'
           import json, urllib.request, pathlib, shutil
           from xml.sax.saxutils import escape
 
           cfg = json.load(open("lib/env/ci_env.json","r",encoding="utf-8"))
-          app_name_raw = cfg.get("APP_NAME","My App")
 
-          # escape XML special chars ( &, <, >, ", ' )
+          app_name_raw = cfg.get("APP_NAME","My App")
           app_name = escape(app_name_raw)
 
-          branding = cfg.get("BRANDING", {})
-          logo_url = branding.get("logoUrl","")
+          logo_url = (cfg.get("LOGO_URL") or "").strip()
+
+          print("APP_NAME:", app_name_raw)
+          print("LOGO_URL:", logo_url)
 
           pathlib.Path("assets/branding").mkdir(parents=True, exist_ok=True)
 
           if logo_url:
-            print("Downloading logo:", logo_url)
-            urllib.request.urlretrieve(logo_url, "assets/branding/logo.png")
-            shutil.copyfile("assets/branding/logo.png", "assets/branding/launcher.png")
-            shutil.copyfile("assets/branding/logo.png", "assets/branding/splash.png")
+              print("Downloading logo:", logo_url)
+              urllib.request.urlretrieve(logo_url, "assets/branding/logo.png")
+              shutil.copyfile("assets/branding/logo.png","assets/branding/launcher.png")
+              shutil.copyfile("assets/branding/logo.png","assets/branding/splash.png")
           else:
-            print("No logoUrl provided, skipping logo download")
+              print("No LOGO_URL – skipping logo download")
 
-          strings_path = pathlib.Path("android/app/src/main/res/values/strings.xml")
-          strings_path.parent.mkdir(parents=True, exist_ok=True)
+          values_dir = pathlib.Path("android/app/src/main/res/values")
+          values_dir.mkdir(parents=True, exist_ok=True)
 
-          # write exact valid XML (no BOM, no junk)
-          content = f'<?xml version="1.0" encoding="utf-8"?>\n<resources>\n  <string name="app_name">{app_name}</string>\n</resources>\n'
-          strings_path.write_text(content, encoding="utf-8")
-
-          print("Branding applied. app_name =", app_name_raw)
-          print("---- strings.xml ----")
-          print(strings_path.read_text(encoding="utf-8"))
+          strings_xml = (
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            '<resources>\n'
+            f'  <string name="app_name">{app_name}</string>\n'
+            '</resources>\n'
+          )
+          (values_dir/"strings.xml").write_text(strings_xml, encoding="utf-8")
+          print("strings.xml written for:", app_name_raw)
           PY
 
           flutter pub run flutter_launcher_icons
           flutter pub run flutter_native_splash:create
 
-      - name: Verify Android resources (app_name must exist)
+      # Disable R8
+      - name: Disable R8
         run: |
-          echo "---- AndroidManifest label ----"
-          grep -n "android:label" android/app/src/main/AndroidManifest.xml || true
+          set -e
+          FILE="android/app/build.gradle.kts"
 
-          echo "---- strings.xml ----"
-          cat android/app/src/main/res/values/strings.xml
+          # If isMinifyEnabled exists, replace whole line
+          if grep -q "isMinifyEnabled" "$FILE"; then
+            sed -i 's/^[[:space:]]*isMinifyEnabled *=.*/            isMinifyEnabled = false/' "$FILE"
+          fi
 
-          echo "---- Verify app_name exists ----"
-          grep -n 'name="app_name"' android/app/src/main/res/values/strings.xml
+          # If isShrinkResources exists, replace whole line
+          if grep -q "isShrinkResources" "$FILE"; then
+            sed -i 's/^[[:space:]]*isShrinkResources *=.*/            isShrinkResources = false/' "$FILE"
+          fi
 
+          # If neither exists, inject inside release { }
+          if ! grep -q "isMinifyEnabled" "$FILE"; then
+            perl -0777 -i -pe 's/release\s*\{\s*/release {\n            isMinifyEnabled = false\n            isShrinkResources = false\n/s' "$FILE"
+          fi
+
+          echo "---- R8 flags ----"
+          grep -n "isMinifyEnabled\|isShrinkResources" "$FILE" || true
+
+      # Build
       - name: Build APK
         run: flutter build apk --release --dart-define-from-file=lib/env/ci_env.json
 
       - name: Build AAB
         run: flutter build appbundle --release --dart-define-from-file=lib/env/ci_env.json
+
+      # Release + Upload
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          LINK_ID=$(cat ci_link_id.txt)
+          TAG="build-${LINK_ID}-${{ github.run_number }}"
+
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --title "$TAG" --notes "CI build"
+
+          gh release upload "$TAG" \
+            build/app/outputs/flutter-apk/app-release.apk \
+            build/app/outputs/bundle/release/app-release.aab \
+            --clobber
+
+          echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
+          echo "LINK_ID=$LINK_ID" >> $GITHUB_ENV
+
+      # CALLBACK (uses API_BASE_URL from env + X-Auth-Token)
+      - name: Callback backend (SAVE URLs)
+        run: |
+          set -e
+
+          API_BASE=$(cat ci_api_base.txt)
+          LINK_ID=$(cat ci_link_id.txt)
+          TAG="${RELEASE_TAG}"
+
+          OWNER="${{ github.repository_owner }}"
+          REPO="${{ github.event.repository.name }}"
+
+          APK_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/app-release.apk"
+          AAB_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/app-release.aab"
+
+          echo "API_BASE=$API_BASE"
+          echo "LINK_ID=$LINK_ID"
+          echo "APK_URL=$APK_URL"
+          echo "AAB_URL=$AAB_URL"
+
+          curl -sS -f -X PUT "${API_BASE}/api/ci/owner-project-links/${LINK_ID}/apk-url" \
+            -H "Content-Type: application/json" \
+            -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
+            -d "{\"apkUrl\":\"${APK_URL}\"}"
+
+          curl -sS -f -X PUT "${API_BASE}/api/ci/owner-project-links/${LINK_ID}/aab-url" \
+            -H "Content-Type: application/json" \
+            -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
+            -d "{\"aabUrl\":\"${AAB_URL}\"}"
