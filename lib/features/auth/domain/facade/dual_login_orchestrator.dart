@@ -68,10 +68,12 @@ class DualLoginOrchestrator {
 
     // ===================== 1) Try ADMIN/OWNER/MANAGER =====================
     try {
-      final adminRes = await authApi.adminLogin(
+     final adminRes = await authApi.adminLogin(
         usernameOrEmail: identifier,
         password: password,
+        ownerProjectId: ownerProjectLinkId, 
       );
+
       adminToken = adminRes.token;
       adminRole = adminRes.role;
       adminData = adminRes.admin;

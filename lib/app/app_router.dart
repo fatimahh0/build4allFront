@@ -1,6 +1,7 @@
 // lib/app/app_router.dart
 
 import 'package:build4front/features/auth/data/services/admin_token_store.dart';
+import 'package:build4front/features/checkout/domain/usecases/get_last_shipping_address.dart';
 import 'package:build4front/features/forgotpassword/data/repositories/forgot_password_repository_impl.dart';
 import 'package:build4front/features/forgotpassword/data/services/forgot_password_api_service.dart';
 import 'package:build4front/features/forgotpassword/domain/repositories/forgot_password_repository.dart';
@@ -72,11 +73,9 @@ class AppRouter {
   static const String myOrders = '/my-orders';
 
   static const String notifications = '/notifications';
-static const forgotEmail = '/forgot/email';
+  static const forgotEmail = '/forgot/email';
   static const forgotVerify = '/forgot/verify';
   static const forgotUpdate = '/forgot/update';
-
-
 
   static Route<dynamic> onGenerateRoute(
     RouteSettings settings,
@@ -96,7 +95,7 @@ static const forgotEmail = '/forgot/email';
           settings: settings,
         );
 
-case forgotEmail:
+      case forgotEmail:
         return MaterialPageRoute(
           builder: (ctx) => _forgotFeature(
             context: ctx,
@@ -111,7 +110,6 @@ case forgotEmail:
             value: ctx.read<ForgotPasswordBloc>(),
             child: ForgotPasswordVerifyScreen(
               email: args['email'],
-             
             ),
           ),
         );
@@ -189,12 +187,10 @@ case forgotEmail:
         {
           final args = settings.arguments as Map<String, dynamic>?;
 
-          final ownerProjectId =
-              (args?['ownerProjectId'] as int?) ??
+          final ownerProjectId = (args?['ownerProjectId'] as int?) ??
               (int.tryParse(Env.ownerProjectLinkId) ?? 0);
 
-          final currencyId =
-              (args?['currencyId'] as int?) ??
+          final currencyId = (args?['currencyId'] as int?) ??
               (int.tryParse(Env.currencyId) ?? 1);
 
           return MaterialPageRoute(
@@ -211,6 +207,7 @@ case forgotEmail:
                   placeOrder: PlaceOrder(repo),
                   ownerProjectId: ownerProjectId,
                   currencyId: currencyId,
+                  getLastShippingAddress: GetLastShippingAddress(repo),
                 ),
                 child: CheckoutScreen(
                   appConfig: appConfig,
@@ -248,6 +245,7 @@ case forgotEmail:
     }
   }
 }
+
 Widget _forgotFeature({required BuildContext context, required Widget child}) {
   final repo = context.read<ForgotPasswordRepository>();
 
@@ -260,4 +258,3 @@ Widget _forgotFeature({required BuildContext context, required Widget child}) {
     child: child,
   );
 }
-

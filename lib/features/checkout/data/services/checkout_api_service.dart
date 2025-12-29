@@ -47,6 +47,22 @@ class CheckoutApiService {
     return Map<String, dynamic>.from(res.data as Map);
   }
 
+
+  /// Prefill checkout shipping form (most recent order)
+  /// GET /api/orders/myorders/last-shipping-address
+  Future<Map<String, dynamic>> getMyLastShippingAddress() async {
+    final res = await _fetch.fetch(
+      HttpMethod.get,
+      '/api/orders/myorders/last-shipping-address',
+    );
+
+    // backend returns Map with null values allowed
+    if (res.data is Map) {
+      return Map<String, dynamic>.from(res.data as Map);
+    }
+    return <String, dynamic>{};
+  }
+
   /// ⚠️ Legacy endpoint (OLD flow: create intent from mobile).
   /// If your backend moved fully to orchestrator, you can delete this safely.
   /// Keeping it here does NOT hurt as long as it is not used by the bloc.

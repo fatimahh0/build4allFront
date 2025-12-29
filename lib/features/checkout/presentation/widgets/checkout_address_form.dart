@@ -44,7 +44,15 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
   late final TextEditingController _cityCtrl;
   late final TextEditingController _postalCtrl;
 
+  late final TextEditingController _addressCtrl;
+  late final TextEditingController _phoneCtrl;
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _notesCtrl;
+
   Timer? _debounce;
+
+  // ✅ prevent auto-prefill from overwriting user edits after first apply
+  bool _prefillAppliedOnce = false;
 
   @override
   void initState() {
@@ -53,8 +61,18 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
     _cityCtrl = TextEditingController(text: widget.initial.city ?? '');
     _postalCtrl = TextEditingController(text: widget.initial.postalCode ?? '');
 
+    _addressCtrl =
+        TextEditingController(text: widget.initial.addressLine ?? '');
+    _phoneCtrl = TextEditingController(text: widget.initial.phone ?? '');
+    _nameCtrl = TextEditingController(text: widget.initial.fullName ?? '');
+    _notesCtrl = TextEditingController(text: widget.initial.notes ?? '');
+
     _cityCtrl.addListener(_debouncedNotify);
     _postalCtrl.addListener(_debouncedNotify);
+    _addressCtrl.addListener(_debouncedNotify);
+    _phoneCtrl.addListener(_debouncedNotify);
+    _nameCtrl.addListener(_debouncedNotify);
+    _notesCtrl.addListener(_debouncedNotify);
 
     _bootstrapCatalog(
       initialCountryId: widget.initial.countryId,
@@ -67,12 +85,16 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
     _debounce?.cancel();
     _cityCtrl.dispose();
     _postalCtrl.dispose();
+    _addressCtrl.dispose();
+    _phoneCtrl.dispose();
+    _nameCtrl.dispose();
+    _notesCtrl.dispose();
     super.dispose();
   }
 
   void _debouncedNotify() {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 400), _notifyParent);
+    _debounce = Timer(const Duration(milliseconds: 350), _notifyParent);
   }
 
   void _notifyParent() {
@@ -80,17 +102,36 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
       ShippingAddress(
         countryId: _selectedCountry?.id,
         regionId: _selectedRegion?.id,
-        city: _cityCtrl.text.trim().isEmpty ? null : _cityCtrl.text.trim(),
-        postalCode: _postalCtrl.text.trim().isEmpty
-            ? null
-            : _postalCtrl.text.trim(),
+        city: _emptyToNull(_cityCtrl.text),
+        postalCode: _emptyToNull(_postalCtrl.text),
+        addressLine: _emptyToNull(_addressCtrl.text),
+        phone: _emptyToNull(_phoneCtrl.text),
+        fullName: _emptyToNull(_nameCtrl.text),
+        notes: _emptyToNull(_notesCtrl.text),
       ),
     );
   }
 
-  // ✅ helper: find Lebanon from API list
+  String? _emptyToNull(String? s) {
+    final v = (s ?? '').trim();
+    return v.isEmpty ? null : v;
+  }
+
+  // ✅ Only set controller if incoming is NOT null (null => do nothing)
+  void _applyIfNotNull(TextEditingController ctrl, String? incoming) {
+    if (incoming == null) return; // keep user text / keep empty
+    final v = incoming.trim();
+    if (v == ctrl.text) return;
+
+    ctrl.value = ctrl.value.copyWith(
+      text: v,
+      selection: TextSelection.collapsed(offset: v.length),
+      composing: TextRange.empty,
+    );
+  }
+
+  // ✅ Lebanon default helper
   CountryModel? _findLebanon(List<CountryModel> countries) {
-    // Prefer ISO2 "LB", fallback by name match
     return countries
             .where((c) => (c.iso2Code).toUpperCase() == 'LB')
             .firstOrNull ??
@@ -100,6 +141,57 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
         countries
             .where((c) => c.name.toLowerCase().contains('lebanon'))
             .firstOrNull;
+  }
+
+  // ✅ Apply widget.initial into the UI (controllers + pickers) but ONLY when fields are not null
+  void _applyInitialToUi(ShippingAddress s) {
+    // Important: don’t keep re-applying and overriding user edits.
+    // We allow ONE auto-prefill when new data arrives.
+    if (_prefillAppliedOnce) return;
+
+    _applyIfNotNull(_cityCtrl, s.city);
+    _applyIfNotNull(_postalCtrl, s.postalCode);
+    _applyIfNotNull(_addressCtrl, s.addressLine);
+    _applyIfNotNull(_phoneCtrl, s.phone);
+    _applyIfNotNull(_nameCtrl, s.fullName);
+    _applyIfNotNull(_notesCtrl, s.notes);
+
+    // Update selected country / region if ids are present and catalog loaded
+    if (s.countryId != null && _countries.isNotEmpty) {
+      final found = _countries.where((c) => c.id == s.countryId).firstOrNull;
+      if (found != null) _selectedCountry = found;
+    }
+
+    if (s.regionId != null && _allRegions.isNotEmpty) {
+      final found = _allRegions.where((r) => r.id == s.regionId).firstOrNull;
+      if (found != null) {
+        // ensure region belongs to selected country
+        if (_selectedCountry == null ||
+            found.countryId == _selectedCountry!.id) {
+          _selectedRegion = found;
+        }
+      }
+    }
+
+    _prefillAppliedOnce = true;
+    _debouncedNotify();
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void didUpdateWidget(covariant CheckoutAddressForm oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // If parent gave a new instance (like after API last shipping)
+    if (identical(widget.initial, oldWidget.initial)) return;
+
+    // allow prefill again for brand new incoming address
+    _prefillAppliedOnce = false;
+
+    // If catalog already loaded, apply immediately. Otherwise it will apply after bootstrap.
+    if (!_loadingCatalog && _countries.isNotEmpty) {
+      _applyInitialToUi(widget.initial);
+    }
   }
 
   Future<void> _bootstrapCatalog({
@@ -128,23 +220,21 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
 
       // 1) try saved IDs
       if (initialCountryId != null) {
-        initCountry = countries
-            .where((c) => c.id == initialCountryId)
-            .firstOrNull;
+        initCountry =
+            countries.where((c) => c.id == initialCountryId).firstOrNull;
       }
       if (initialRegionId != null) {
         initRegion = regions.where((r) => r.id == initialRegionId).firstOrNull;
       }
       if (initCountry == null && initRegion != null) {
-        initCountry = countries
-            .where((c) => c.id == initRegion!.countryId)
-            .firstOrNull;
+        initCountry =
+            countries.where((c) => c.id == initRegion!.countryId).firstOrNull;
       }
 
-      // ✅ 2) default to Lebanon if still null
+      // 2) default to Lebanon if still null
       initCountry ??= _findLebanon(countries);
 
-      // ✅ 3) if region doesn't match selected country, reset it
+      // 3) if region doesn't match selected country, reset it
       if (initRegion != null && initCountry != null) {
         if (initRegion.countryId != initCountry.id) {
           initRegion = null;
@@ -159,6 +249,9 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
         _loadingCatalog = false;
         _catalogError = null;
       });
+
+      // ✅ Apply last shipping address values AFTER catalog exists
+      _applyInitialToUi(widget.initial);
 
       _notifyParent();
     } catch (e) {
@@ -231,7 +324,6 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
       children: [
         Text(l10n.adminTaxCountryLabel),
         SizedBox(height: spacing.xs),
-
         _SearchablePicker<CountryModel>(
           items: _countries,
           value: _selectedCountry,
@@ -245,12 +337,9 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
             _notifyParent();
           },
         ),
-
         SizedBox(height: spacing.md),
-
         Text(l10n.adminTaxRegionLabel),
         SizedBox(height: spacing.xs),
-
         _SearchablePicker<RegionModel>(
           items: _filteredRegions,
           value: _selectedRegion,
@@ -262,22 +351,47 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
             _notifyParent();
           },
         ),
-
         SizedBox(height: spacing.md),
-
+        AppTextField(
+          label: l10n.checkoutFullNameLabel,
+          controller: _nameCtrl,
+          hintText: l10n.checkoutFullNameHint,
+          textInputAction: TextInputAction.next,
+        ),
+        SizedBox(height: spacing.sm),
+        AppTextField(
+          label: l10n.checkoutAddressLineLabel,
+          controller: _addressCtrl,
+          hintText: l10n.checkoutAddressLineHint,
+          textInputAction: TextInputAction.next,
+        ),
+        SizedBox(height: spacing.sm),
         AppTextField(
           label: l10n.checkoutCityLabel,
           controller: _cityCtrl,
           hintText: l10n.checkoutCityHint,
           textInputAction: TextInputAction.next,
         ),
-
         SizedBox(height: spacing.sm),
-
         AppTextField(
           label: l10n.checkoutPostalCodeLabel,
           controller: _postalCtrl,
           hintText: l10n.checkoutPostalCodeHint,
+          textInputAction: TextInputAction.next,
+        ),
+        SizedBox(height: spacing.sm),
+        AppTextField(
+          label: l10n.checkoutPhoneLabel,
+          controller: _phoneCtrl,
+          hintText: l10n.checkoutPhoneHint,
+          keyboardType: TextInputType.phone,
+          textInputAction: TextInputAction.next,
+        ),
+        SizedBox(height: spacing.sm),
+        AppTextField(
+          label: l10n.checkoutNotesLabel,
+          controller: _notesCtrl,
+          hintText: l10n.checkoutNotesHint,
           textInputAction: TextInputAction.done,
         ),
       ],
@@ -401,8 +515,8 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
       _filtered = q.isEmpty
           ? widget.items
           : widget.items
-                .where((i) => widget.label(i).toLowerCase().contains(q))
-                .toList();
+              .where((i) => widget.label(i).toLowerCase().contains(q))
+              .toList();
     });
   }
 
@@ -423,8 +537,6 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
     final h = MediaQuery.of(context).size.height;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
-    // ✅ KEY FIX: give the sheet a real height + Expanded list
-    // No fixed "420" anymore => no overflow when keyboard opens.
     return AnimatedPadding(
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOut,
@@ -459,16 +571,12 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
                   ),
                 ],
               ),
-
               SizedBox(height: spacing.md),
-
               AppSearchField(
                 hintText: l10n.searchLabel,
                 controller: _searchCtrl,
               ),
-
               SizedBox(height: spacing.md),
-
               Expanded(
                 child: _filtered.isEmpty
                     ? Center(

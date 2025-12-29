@@ -3918,6 +3918,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Passwords do not match'**
   String get passwordsDontMatch;
+
+  /// No description provided for @checkoutFullNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Full name'**
+  String get checkoutFullNameLabel;
+
+  /// No description provided for @checkoutFullNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **' your Name'**
+  String get checkoutFullNameHint;
+
+  /// No description provided for @checkoutAddressLineLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Street address'**
+  String get checkoutAddressLineLabel;
+
+  /// No description provided for @checkoutAddressLineHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Building, floor, street name'**
+  String get checkoutAddressLineHint;
+
+  /// No description provided for @checkoutPhoneLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone number'**
+  String get checkoutPhoneLabel;
+
+  /// No description provided for @checkoutPhoneHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. +961 70 123 456'**
+  String get checkoutPhoneHint;
+
+  /// No description provided for @checkoutNotesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery notes (optional)'**
+  String get checkoutNotesLabel;
+
+  /// No description provided for @checkoutNotesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Call me when you arrive'**
+  String get checkoutNotesHint;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -37,4 +37,7 @@ abstract class CheckoutRepository {
     /// ✅ NEW: Stripe Connect destination account (acct_...)
     String? destinationAccountId,
   });
+
+  Future<ShippingAddress> getMyLastShippingAddress();
+
 }

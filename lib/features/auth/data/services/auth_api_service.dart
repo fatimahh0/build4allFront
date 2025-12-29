@@ -22,8 +22,8 @@ class AuthApiService {
   final AuthTokenStore _tokenStore;
 
   AuthApiService({http.Client? client, required AuthTokenStore tokenStore})
-    : _client = client ?? http.Client(),
-      _tokenStore = tokenStore;
+      : _client = client ?? http.Client(),
+        _tokenStore = tokenStore;
 
   String get _base => Env.apiBaseUrl;
   Uri _uri(String path) => Uri.parse('$_base$path');
@@ -293,14 +293,20 @@ class AuthApiService {
   /// - Calls /api/auth/reactivate with { "id": userId }
   /// - Stores the new JWT token in AuthTokenStore
   /// - Does NOT try to parse a UserModel (to avoid decode errors).
-  Future<void> reactivateUser({required int userId}) async {
+  Future<void> reactivateUser({
+    required int userId,
+    required int ownerProjectLinkId,
+  }) async {
     final uri = _uri('/api/auth/reactivate');
 
     try {
       final resp = await _safePost(
         uri,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'id': userId}),
+        body: jsonEncode({
+          'id': userId,
+          'ownerProjectLinkId': ownerProjectLinkId, // ✅ REQUIRED
+        }),
       );
 
       debugPrint('♻️ REACTIVATE USER → ${resp.statusCode}');
@@ -316,8 +322,6 @@ class AuthApiService {
         );
       }
 
-      // Backend returns: { message, token, user: {...} }
-      // We only care about the token here.
       final storePayload = <String, dynamic>{
         'token': decoded['token'],
         'wasInactive': false,
@@ -336,56 +340,31 @@ class AuthApiService {
   Future<AdminLoginResponse> adminLogin({
     required String usernameOrEmail,
     required String password,
+    int? ownerProjectId, // optional
   }) async {
     final uri = _uri('/api/auth/admin/login');
 
-    debugPrint('🛡️ ADMIN LOGIN → $uri');
-    debugPrint('BODY: usernameOrEmail=$usernameOrEmail');
+    final payload = {
+      'usernameOrEmail': usernameOrEmail,
+      'password': password,
+      if (ownerProjectId != null) 'ownerProjectId': ownerProjectId,
+    };
 
-    try {
-      final resp = await _safePost(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'usernameOrEmail': usernameOrEmail,
-          'password': password,
-        }),
-      );
+    final resp = await _safePost(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(payload),
+    );
 
-      debugPrint('🛡️ ADMIN LOGIN RESP → ${resp.statusCode}');
-      debugPrint('BODY: ${resp.body}');
+    final decoded = _safeJson(resp.body);
+    if (resp.statusCode >= 400) _throwAdminFromLogin(resp, decoded);
 
-      final decoded = _safeJson(resp.body);
-
-      if (resp.statusCode >= 400) {
-        _throwAdminFromLogin(resp, decoded);
-      }
-
-      final token = (decoded['token'] as String?) ?? '';
-      final role = (decoded['role'] as String?) ?? '';
-      final admin =
-          (decoded['admin'] as Map?)?.cast<String, dynamic>() ??
-          const <String, dynamic>{};
-
-      if (token.isEmpty || role.isEmpty) {
-        throw AuthException(
-          'Invalid server response for admin login',
-          original: resp,
-        );
-      }
-
-      // Note: do not store admin token in user AuthTokenStore.
-      return AdminLoginResponse(token: token, role: role, admin: admin);
-    } on AppException {
-      rethrow;
-    } catch (e) {
-      throw AppException('Failed to login as admin', original: e);
-    }
+    return AdminLoginResponse.fromJson(decoded); // ✅
   }
 
   // ============================= TOKEN HELPERS ==========================
 
- Future<void> _storeAuthFromLogin(Map<String, dynamic> json) async {
+  Future<void> _storeAuthFromLogin(Map<String, dynamic> json) async {
     final token = json['token'] as String?;
     final wasInactive = json['wasInactive'] as bool? ?? false;
 
@@ -457,9 +436,8 @@ class AuthApiService {
 
   Future<http.Response> _safeSend(http.BaseRequest request) async {
     try {
-      final streamed = await _client
-          .send(request)
-          .timeout(const Duration(seconds: 60));
+      final streamed =
+          await _client.send(request).timeout(const Duration(seconds: 60));
       return await http.Response.fromStream(streamed);
     } on SocketException catch (e) {
       throw NetworkException('No internet connection', original: e);
@@ -478,8 +456,7 @@ class AuthApiService {
     final backendMsg = _extractBackendMessage(decoded);
     final status = resp.statusCode;
 
-    final message =
-        backendMsg ??
+    final message = backendMsg ??
         () {
           switch (status) {
             case 400:
@@ -504,12 +481,10 @@ class AuthApiService {
     throw AuthException(message, original: resp);
   }
 
-
-Future<void> clearUserSession() async {
+  Future<void> clearUserSession() async {
     await _tokenStore.clear();
     g.setAuthToken('');
   }
-
 
   Never _throwAuthFromLogin(http.Response resp, Map<String, dynamic> decoded) {
     final status = resp.statusCode;
@@ -573,8 +548,7 @@ Future<void> clearUserSession() async {
       );
     }
 
-    final msg =
-        _extractBackendMessage(decoded) ??
+    final msg = _extractBackendMessage(decoded) ??
         'Admin login failed. Please try again.';
     throw AuthException(msg, code: 'ADMIN_AUTH_ERROR', original: resp);
   }

@@ -923,6 +923,17 @@
   "codeTooShort": "Code is too short",
   "verifyButton": "Verify",
   "resendCode": "Resend code",
-  "passwordsDontMatch": "Passwords do not match"
+  "passwordsDontMatch": "Passwords do not match",
+   "checkoutFullNameLabel": "Full name",
+  "checkoutFullNameHint": " your Name",
+
+  "checkoutAddressLineLabel": "Street address",
+  "checkoutAddressLineHint": "e.g. Building, floor, street name",
+
+  "checkoutPhoneLabel": "Phone number",
+  "checkoutPhoneHint": "e.g. +961 70 123 456",
+
+  "checkoutNotesLabel": "Delivery notes (optional)",
+  "checkoutNotesHint": "e.g. Call me when you arrive"
   
 }

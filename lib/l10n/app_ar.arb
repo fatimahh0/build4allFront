@@ -780,5 +780,16 @@
   "codeTooShort": "الرمز قصير جدًا",
   "verifyButton": "تحقق",
   "resendCode": "إعادة إرسال الرمز",
-  "passwordsDontMatch": "كلمتا المرور غير متطابقتين"
+  "passwordsDontMatch": "كلمتا المرور غير متطابقتين",
+   "checkoutFullNameLabel": "الاسم الكامل",
+  "checkoutFullNameHint": "اسمك",
+
+  "checkoutAddressLineLabel": "العنوان",
+  "checkoutAddressLineHint": "مثال: المبنى، الطابق، اسم الشارع",
+
+  "checkoutPhoneLabel": "رقم الهاتف",
+  "checkoutPhoneHint": "مثال: +961 70 123 456",
+
+  "checkoutNotesLabel": "ملاحظات التوصيل (اختياري)",
+  "checkoutNotesHint": "مثال: اتصل بي عند الوصول"
 }

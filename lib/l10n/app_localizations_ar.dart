@@ -1988,4 +1988,28 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get passwordsDontMatch => 'كلمتا المرور غير متطابقتين';
+
+  @override
+  String get checkoutFullNameLabel => 'الاسم الكامل';
+
+  @override
+  String get checkoutFullNameHint => 'اسمك';
+
+  @override
+  String get checkoutAddressLineLabel => 'العنوان';
+
+  @override
+  String get checkoutAddressLineHint => 'مثال: المبنى، الطابق، اسم الشارع';
+
+  @override
+  String get checkoutPhoneLabel => 'رقم الهاتف';
+
+  @override
+  String get checkoutPhoneHint => 'مثال: +961 70 123 456';
+
+  @override
+  String get checkoutNotesLabel => 'ملاحظات التوصيل (اختياري)';
+
+  @override
+  String get checkoutNotesHint => 'مثال: اتصل بي عند الوصول';
 }

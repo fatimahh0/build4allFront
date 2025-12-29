@@ -1,21 +1,4 @@
-// lib/features/checkout/presentation/bloc/checkout_bloc.dart
-//
-// CheckoutBloc
-// ------------
-// This bloc drives the whole Checkout flow:
-// 1) Load cart + payment methods
-// 2) Load shipping quotes + tax preview
-// 3) Place order (POST /api/orders/checkout)
-// 4) If provider == STRIPE -> backend returns:
-//      - clientSecret (pi_..._secret_...)
-//      - publishableKey (pk_...)
-//    Then we initialize Stripe dynamically and show PaymentSheet.
-//
-// IMPORTANT (Multi-tenant Build4All):
-// - We DO NOT read Stripe publishable key from Env anymore.
-// - publishableKey is returned by backend per order/tenant,
-//   so each ownerProject can have its own Stripe config safely.
-
+import 'package:build4front/features/checkout/domain/usecases/get_last_shipping_address.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_stripe/flutter_stripe.dart' hide PaymentMethod;
 
@@ -37,16 +20,12 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
   final GetCheckoutCart getCart;
   final GetPaymentMethods getPaymentMethods;
   final GetShippingQuotes getShippingQuotes;
+  final GetLastShippingAddress getLastShippingAddress;
   final PreviewTax previewTax;
-
-  /// NEW backend flow:
-  /// This calls POST /api/orders/checkout and returns CheckoutSummaryModel
   final PlaceOrder placeOrder;
 
-  /// Tenant scope (generated app)
-  final int ownerProjectId;
 
-  /// Optional currency selection (fallback to Env.currencyId)
+  final int ownerProjectId;
   final int? currencyId;
 
   CheckoutBloc({
@@ -57,6 +36,8 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     required this.placeOrder,
     required this.ownerProjectId,
     required this.currencyId,
+    required this.getLastShippingAddress,
+
   }) : super(CheckoutState.initial()) {
     on<CheckoutStarted>(_onStarted);
     on<CheckoutAddressChanged>(_onAddressChanged);
@@ -67,17 +48,6 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     on<CheckoutPlaceOrderPressed>(_onPlaceOrder);
   }
 
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
-
-  /// Convert cart items into checkout lines for backend.
-  /// We send: itemId, quantity, unitPrice (selling price).
-  ///
-  /// Why compute "effectiveUnit"?
-  /// - Sometimes backend returns a lineTotal which already includes discounts.
-  /// - To ensure backend and frontend are consistent, we compute unit = lineTotal/qty
-  ///   if lineTotal exists; otherwise use unitPrice.
   List<CartLine> _linesFromCart(CheckoutCart cart) {
     return cart.items.where((x) => x.itemId != 0 && x.quantity > 0).map((x) {
       final effectiveUnit = (x.lineTotal > 0 && x.quantity > 0)
@@ -92,39 +62,11 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     }).toList();
   }
 
-  /// Tax preview object type may vary (dynamic mapping).
-  /// This function safely tries multiple field names.
-  double _safeTaxTotal(Object? taxObj) {
-    if (taxObj == null) return 0.0;
-    try {
-      final t = taxObj as dynamic;
-
-      final v1 = t.totalTax;
-      if (v1 is num) return v1.toDouble();
-
-      final v2 = t.taxTotal;
-      if (v2 is num) return v2.toDouble();
-
-      final v3 = t.total;
-      if (v3 is num) return v3.toDouble();
-
-      final v4 = t.amount;
-      if (v4 is num) return v4.toDouble();
-
-      return 0.0;
-    } catch (_) {
-      return 0.0;
-    }
-  }
-
-  /// Stripe Connect destination account id (acct_...) can be stored in payment method config.
-  /// Backend can store it under different keys; we try several.
   String? _stripeAccountIdFromPaymentMethod(PaymentMethod pm) {
     final cfg = pm.configMap;
     if (cfg == null) return null;
 
-    final raw =
-        cfg['stripeAccountId'] ??
+    final raw = cfg['stripeAccountId'] ??
         cfg['stripe_account_id'] ??
         cfg['accountId'] ??
         cfg['connectedAccountId'] ??
@@ -134,24 +76,18 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     return s.isEmpty ? null : s;
   }
 
-  // ---------------------------------------------------------------------------
-  // Load shipping quotes + tax preview (re-run when address/shipping changes)
-  // ---------------------------------------------------------------------------
-
   Future<void> _loadQuotesAndTax(
     CheckoutCart cart, {
     int? preferMethodId,
   }) async {
     final lines = _linesFromCart(cart);
 
-    // 1) Shipping quotes
     final quotes = await getShippingQuotes(
       ownerProjectId: ownerProjectId,
       address: state.address,
       lines: lines,
     );
 
-    // Choose the preferred shipping method if available
     ShippingQuote? chosen;
     if (quotes.isNotEmpty) {
       final pref = preferMethodId ?? state.selectedShippingMethodId;
@@ -161,7 +97,6 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
       );
     }
 
-    // 2) Tax preview (needs shipping total)
     final tax = await previewTax(
       ownerProjectId: ownerProjectId,
       address: state.address,
@@ -180,46 +115,45 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Events
-  // ---------------------------------------------------------------------------
-
   Future<void> _onStarted(
     CheckoutStarted e,
     Emitter<CheckoutState> emit,
   ) async {
-    emit(
-      state.copyWith(
-        loading: true,
-        clearError: true,
-        clearOrderId: true,
-        clearOrderSummary: true,
-      ),
-    );
+    emit(state.copyWith(
+      loading: true,
+      clearError: true,
+      clearOrderId: true,
+      clearOrderSummary: true,
+    ));
 
     try {
-      // Load cart and payment methods
       final cart = await getCart();
       final pms = await getPaymentMethods();
 
-      // Keep previously selected payment index (if still valid)
+      // ✅ NEW: prefill address from backend
+      ShippingAddress lastAddr = const ShippingAddress();
+      try {
+        lastAddr = await getLastShippingAddress();
+      } catch (_) {
+        // ignore - keep empty
+      }
+
       final prevIndex = state.selectedPaymentIndex;
       final nextIndex =
           (prevIndex != null && prevIndex >= 0 && prevIndex < pms.length)
-          ? prevIndex
-          : null;
+              ? prevIndex
+              : null;
 
-      emit(
-        state.copyWith(
-          cart: cart,
-          paymentMethods: pms,
-          selectedPaymentIndex: nextIndex,
-          loading: false,
-          clearError: true,
-        ),
-      );
+      // ✅ IMPORTANT: emit address BEFORE quotes/tax
+      emit(state.copyWith(
+        cart: cart,
+        paymentMethods: pms,
+        selectedPaymentIndex: nextIndex,
+        address: lastAddr,
+        loading: false,
+        clearError: true,
+      ));
 
-      // Load shipping/tax if cart is not empty
       if (!cart.isEmpty) {
         await _loadQuotesAndTax(
           cart,
@@ -255,8 +189,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     Emitter<CheckoutState> emit,
   ) async {
     emit(
-      state.copyWith(selectedShippingMethodId: e.methodId, clearError: true),
-    );
+        state.copyWith(selectedShippingMethodId: e.methodId, clearError: true));
 
     final cart = state.cart;
     if (cart == null || cart.isEmpty) return;
@@ -296,15 +229,10 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // ✅ NEW checkout + payment flow (backend orchestrated)
-  // ---------------------------------------------------------------------------
-
   Future<void> _onPlaceOrder(
     CheckoutPlaceOrderPressed e,
     Emitter<CheckoutState> emit,
   ) async {
-    // Prevent double clicks
     if (state.placing) return;
 
     final cart = state.cart;
@@ -313,7 +241,6 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
       return;
     }
 
-    // Payment method validation
     final idx = state.selectedPaymentIndex;
     if (idx == null || idx < 0 || idx >= state.paymentMethods.length) {
       emit(state.copyWith(error: 'Select a payment method'));
@@ -327,8 +254,9 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
       return;
     }
 
-    // Shipping address validation (backend also validates)
     final addr = state.address;
+
+    // ✅ REQUIRED (as before)
     if (addr.countryId == null) {
       emit(state.copyWith(error: 'Select a country'));
       return;
@@ -342,10 +270,18 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
       return;
     }
 
-    //  postalCode OPTIONAL: do not block checkout if empty
-    // backend will receive null from the form when empty
+    // ✅ NEW REQUIRED shipping fields (because backend added them)
+    if ((addr.addressLine ?? '').trim().isEmpty) {
+      emit(state.copyWith(error: 'Enter address'));
+      return;
+    }
+    if ((addr.phone ?? '').trim().isEmpty) {
+      emit(state.copyWith(error: 'Enter phone'));
+      return;
+    }
 
-    // Shipping method validation
+    // postalCode optional
+
     final quote = state.selectedQuote;
     final shipId = quote?.methodId ?? state.selectedShippingMethodId;
     final shipName = quote?.methodName ?? 'Shipping';
@@ -359,57 +295,34 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
       return;
     }
 
-    // ✅ IMPORTANT CHANGE:
-    // We DO NOT validate Stripe publishableKey from Env anymore.
-    // In multi-tenant mode, backend returns publishableKey (pk_...) per checkout order.
-    // We validate pk_ AFTER we receive the checkout response.
-
     emit(state.copyWith(placing: true, clearError: true));
 
     try {
-      // Build checkout lines
       final lines = _linesFromCart(cart);
 
-      // Stripe Connect destination account (acct_...) if configured in PaymentMethod.configMap
       final destinationAccountId = (pmCode == 'STRIPE')
           ? _stripeAccountIdFromPaymentMethod(selectedPm)
           : null;
 
-      // 1) Call backend checkout ONCE:
-      //    - creates Order + OrderItems
-      //    - starts payment session (Stripe PaymentIntent / etc.)
-      //    - returns CheckoutSummaryModel including:
-      //        clientSecret + publishableKey (Stripe)
       final CheckoutSummaryModel summary = await placeOrder(
         ownerProjectId: ownerProjectId,
         currencyId: (currencyId ?? int.tryParse(Env.currencyId) ?? 1),
         paymentMethod: pmCode,
         couponCode: state.coupon.trim().isEmpty ? null : state.coupon.trim(),
-
-        // NEW flow: always null; backend creates/starts payment
         stripePaymentId: null,
-
-        // Optional Stripe Connect
         destinationAccountId: destinationAccountId,
-
-        // Shipping + address
         shippingMethodId: shipId,
         shippingMethodName: shipName,
         shippingAddress: addr,
-
-        // Lines
         lines: lines,
       );
 
-      // 2) Choose provider:
-      // Backend uses paymentProviderCode. If missing, fallback to selected pmCode.
       final provider = (summary.paymentProviderCode ?? pmCode)
           .toString()
           .trim()
           .toUpperCase();
 
       if (provider == 'STRIPE') {
-        // ✅ Stripe requires both clientSecret + publishableKey
         final clientSecret = (summary.clientSecret ?? '').toString().trim();
         final publishableKey = (summary.publishableKey ?? '').toString().trim();
 
@@ -418,31 +331,21 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
         }
         if (publishableKey.isEmpty) {
           throw Exception(
-            'Checkout did not return Stripe publishableKey (pk_...)',
-          );
+              'Checkout did not return Stripe publishableKey (pk_...)');
         }
 
         try {
-          // ✅ Multi-tenant Stripe:
-          // Apply publishable key dynamically (pk_...) then show PaymentSheet.
           await StripePaymentSheet.pay(
             publishableKey: publishableKey,
             clientSecret: clientSecret,
             merchantName: Env.appName,
           );
         } on StripeException catch (se) {
-          // User canceled or payment failed
           final msg = se.error.message ?? 'Stripe payment canceled';
           throw Exception(msg);
         }
       }
 
-      // PAYPAL: backend may return redirectUrl (not handled here to keep code minimal)
-      // if (provider == 'PAYPAL') { launchUrl(summary.redirectUrl) ... }
-
-      // CASH: no client action required
-
-      // 3) Emit success -> UI can navigate to OrderDetails
       emit(
         state.copyWith(
           placing: false,

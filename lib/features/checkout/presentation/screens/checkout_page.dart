@@ -1,5 +1,6 @@
 import 'package:build4front/features/checkout/data/repositories/checkout_repository_impl.dart';
 import 'package:build4front/features/checkout/data/services/checkout_api_service.dart';
+import 'package:build4front/features/checkout/domain/usecases/get_last_shipping_address.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -48,6 +49,8 @@ class CheckoutPage extends StatelessWidget {
         placeOrder: place,
         ownerProjectId: ownerId,
         currencyId: currencyId,
+       getLastShippingAddress: GetLastShippingAddress(CheckoutRepositoryImpl(CheckoutApiService()), 
+      ),
       ),
       child: CheckoutScreen(appConfig: appConfig, ownerProjectId: ownerId),
     );

@@ -114,12 +114,12 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
         if (token == null || token.isEmpty) return;
 
         context.read<AuthBloc>().add(
-          AuthLoginHydrated(
-            user: user,
-            token: token,
-            wasInactive: wasInactiveFlag,
-          ),
-        );
+              AuthLoginHydrated(
+                user: user,
+                token: token,
+                wasInactive: wasInactiveFlag,
+              ),
+            );
       }
 
       Future<void> _enterUserFlow(bool wasInactiveUser) async {
@@ -136,7 +136,11 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
           }
 
           try {
-            await authApi.reactivateUser(userId: user.id);
+            await authApi.reactivateUser(
+              userId: user.id,
+              ownerProjectLinkId: int.tryParse(Env.ownerProjectLinkId) ?? 0,
+            );
+
             if (!mounted) return;
 
             AppToast.show(context, l10n.loginInactiveSuccess);
@@ -409,7 +413,6 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
-
                     Container(
                       width: double.infinity,
                       padding: EdgeInsets.all(card.padding),
@@ -442,7 +445,6 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                               ),
                             ),
                             const SizedBox(height: 16),
-
                             _LoginMethodToggle(
                               method: _method,
                               onChanged: (m) {
@@ -457,9 +459,7 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                               textTheme: t,
                               l10n: l10n,
                             ),
-
                             const SizedBox(height: 20),
-
                             if (!isPhone)
                               AppTextField(
                                 label: l10n.emailLabel,
@@ -482,9 +482,7 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                                 onChanged: (fullPhone) =>
                                     _fullPhone = fullPhone,
                               ),
-
                             const SizedBox(height: 16),
-
                             AppTextField(
                               label: l10n.passwordLabel,
                               controller: _passwordCtrl,
@@ -497,15 +495,12 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                                 return null;
                               },
                             ),
-
                             const SizedBox(height: 16),
-
                             PrimaryButton(
                               label: l10n.loginButton,
                               isLoading: state.isLoading,
                               onPressed: () => _onLoginPressed(context),
                             ),
-
                             Align(
                               alignment: Alignment.centerRight,
                               child: TextButton(
@@ -543,14 +538,11 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                               ),
                             ),
                             const SizedBox(height: 8),
-
                           ],
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 16),
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -583,7 +575,6 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                               color: colors.primary,
                               fontWeight: FontWeight.w600,
                             ),
-                            
                           ),
                         ),
                       ],

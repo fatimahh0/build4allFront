@@ -47,8 +47,6 @@ class HomePagedItemsSection extends StatefulWidget {
   State<HomePagedItemsSection> createState() => _HomePagedItemsSectionState();
 }
 
-/// Small helper type to avoid importing your private class.
-/// Same fields you already use.
 class PricingView {
   final String? currentLabel;
   final String? oldLabel;
@@ -101,6 +99,11 @@ class _HomePagedItemsSectionState extends State<HomePagedItemsSection> {
     );
   }
 
+  int _rowsNeeded(int count, int cols, int maxRows) {
+    final needed = ((count + cols - 1) ~/ cols);
+    return needed.clamp(1, maxRows);
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
@@ -128,18 +131,14 @@ class _HomePagedItemsSectionState extends State<HomePagedItemsSection> {
             onTap: widget.onTrailingTap,
             child: Padding(
               padding: EdgeInsets.symmetric(
-                horizontal: spacing.sm,
-                vertical: spacing.xs,
-              ),
+                  horizontal: spacing.sm, vertical: spacing.xs),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     widget.trailingText!,
                     style: t.bodySmall?.copyWith(
-                      color: c.primary,
-                      fontWeight: FontWeight.w700,
-                    ),
+                        color: c.primary, fontWeight: FontWeight.w700),
                   ),
                   if (widget.trailingIcon != null) ...[
                     SizedBox(width: spacing.xs),
@@ -159,7 +158,7 @@ class _HomePagedItemsSectionState extends State<HomePagedItemsSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         header,
-        SizedBox(height: spacing.xs), // ✅ no gap
+        SizedBox(height: spacing.xs),
         if (widget.mode == HomePagerMode.gridPages)
           _buildGridPager(context, items)
         else if (single)
@@ -273,8 +272,15 @@ class _HomePagedItemsSectionState extends State<HomePagedItemsSection> {
         final aspect = w < 420 ? 0.66 : (w < 700 ? 0.74 : 0.82);
         final itemW = (w - spacing.md) / 2.0;
         final itemH = itemW / aspect;
+
+        // ✅ FIX: compute rowsNeeded for CURRENT page so height shrinks if 1–2 items
+        final start = safePage * perPage;
+        final end = math.min(start + perPage, items.length);
+        final pageCount = start >= items.length ? 0 : (end - start);
+        final rowsNeeded = _rowsNeeded(pageCount, cols, rowsPerPage);
+
         final gridHeight =
-            (rowsPerPage * itemH) + ((rowsPerPage - 1) * spacing.md);
+            (rowsNeeded * itemH) + ((rowsNeeded - 1) * spacing.md);
 
         return Column(
           mainAxisSize: MainAxisSize.min,

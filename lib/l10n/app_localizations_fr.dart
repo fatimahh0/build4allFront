@@ -1988,4 +1988,28 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get passwordsDontMatch => 'Les mots de passe ne correspondent pas';
+
+  @override
+  String get checkoutFullNameLabel => 'Nom complet';
+
+  @override
+  String get checkoutFullNameHint => 'ton nom';
+
+  @override
+  String get checkoutAddressLineLabel => 'Adresse';
+
+  @override
+  String get checkoutAddressLineHint => 'ex. Immeuble, étage, rue';
+
+  @override
+  String get checkoutPhoneLabel => 'Numéro de téléphone';
+
+  @override
+  String get checkoutPhoneHint => 'ex. +961 70 123 456';
+
+  @override
+  String get checkoutNotesLabel => 'Notes de livraison (optionnel)';
+
+  @override
+  String get checkoutNotesHint => 'ex. Appelez-moi en arrivant';
 }

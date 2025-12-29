@@ -37,11 +37,17 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
     );
   }
 
-  Map<String, dynamic> _addressToJson(ShippingAddress a) => {
+ Map<String, dynamic> _addressToJson(ShippingAddress a) => {
         'countryId': a.countryId,
         'regionId': a.regionId,
         'city': a.city,
         'postalCode': a.postalCode,
+
+        //  NEW fields
+        'addressLine': a.addressLine,
+        'phone': a.phone,
+        'fullName': a.fullName,
+        'notes': a.notes,
       };
 
   Map<String, dynamic> _lineToJson(CartLine l) => {
@@ -77,6 +83,18 @@ class CheckoutRepositoryImpl implements CheckoutRepository {
         )
         .toList();
   }
+
+    @override
+  Future<ShippingAddress> getMyLastShippingAddress() async {
+    final json = await api.getMyLastShippingAddress();
+
+    // If backend returns empty map -> no previous address
+    if (json.isEmpty) return const ShippingAddress();
+
+    // IMPORTANT: you need fromJson in ShippingAddress entity
+    return ShippingAddress.fromJson(json);
+  }
+
 
   @override
   Future<TaxPreview> previewTax({

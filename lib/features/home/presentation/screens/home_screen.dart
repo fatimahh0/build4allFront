@@ -34,7 +34,7 @@ import 'package:build4front/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:build4front/features/cart/presentation/bloc/cart_event.dart';
 import 'package:build4front/common/widgets/app_toast.dart';
 
-// ✅ dynamic currency formatter (this is the one that uses context.select internally)
+// ✅ dynamic currency formatter
 import 'package:build4front/features/catalog/cubit/money.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -125,8 +125,8 @@ class _HomeScreenState extends State<HomeScreen>
               final hasLast = (user.lastName ?? '').trim().isNotEmpty;
 
               if (hasFirst || hasLast) {
-                fullName = '${user.firstName ?? ''} ${user.lastName ?? ''}'
-                    .trim();
+                fullName =
+                    '${user.firstName ?? ''} ${user.lastName ?? ''}'.trim();
               } else if ((user.username ?? '').trim().isNotEmpty) {
                 fullName = user.username!.trim();
               } else if ((user.email ?? '').trim().isNotEmpty) {
@@ -165,9 +165,8 @@ class _HomeScreenState extends State<HomeScreen>
                       return Align(
                         alignment: Alignment.topCenter,
                         child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: contentMaxWidth,
-                          ),
+                          constraints:
+                              BoxConstraints(maxWidth: contentMaxWidth),
                           child: ListView.builder(
                             physics: const AlwaysScrollableScrollPhysics(),
                             padding: EdgeInsets.fromLTRB(hp, top, hp, bottom),
@@ -305,25 +304,23 @@ class _HomeScreenState extends State<HomeScreen>
 
         if (itemsForSection.isEmpty) return const SizedBox.shrink();
 
-        final sectionTitle =
-            section.title ??
+        final sectionTitle = section.title ??
             (section.id == 'recommended'
                 ? l10n.home_recommended_title
                 : section.id == 'popular'
-                ? l10n.home_popular_title
-                : section.id == 'flash_sale'
-                ? l10n.home_flash_sale_title
-                : section.id == 'new_arrivals'
-                ? l10n.home_new_arrivals_title
-                : section.id == 'best_sellers'
-                ? l10n.home_best_sellers_title
-                : section.id == 'top_rated'
-                ? l10n.home_top_rated_title
-                : l10n.home_items_default_title);
+                    ? l10n.home_popular_title
+                    : section.id == 'flash_sale'
+                        ? l10n.home_flash_sale_title
+                        : section.id == 'new_arrivals'
+                            ? l10n.home_new_arrivals_title
+                            : section.id == 'best_sellers'
+                                ? l10n.home_best_sellers_title
+                                : section.id == 'top_rated'
+                                    ? l10n.home_top_rated_title
+                                    : l10n.home_items_default_title);
 
         final icon = _iconForSection(section);
         final trailing = _trailingForSection(section, l10n);
-
         final isArrivals = section.id == 'new_arrivals';
 
         return Padding(
@@ -339,18 +336,16 @@ class _HomeScreenState extends State<HomeScreen>
             trailingText: trailing.text,
             trailingIcon: trailing.icon,
             onTrailingTap: () {
-              Navigator.of(
-                context,
-              ).pushNamed('/explore', arguments: {'sectionId': section.id});
+              Navigator.of(context).pushNamed(
+                '/explore',
+                arguments: {'sectionId': section.id},
+              );
             },
             items: itemsForSection,
-
-            // ✅ IMPORTANT: do NOT close over sliver context anymore
             pricingFor: _pricingFor,
             subtitleFor: _subtitleFor,
             metaFor: _metaLabelFor,
             ctaLabelFor: _ctaLabelFor,
-
             onTapItem: (id) => _openDetails(context, id),
             onCtaPressed: (item) => _handleCtaPressed(context, item),
           ),
@@ -392,9 +387,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   List<ItemSummary> _mapItemsForSection(
-    HomeSectionConfig section,
-    HomeState homeState,
-  ) {
+      HomeSectionConfig section, HomeState homeState) {
     switch (section.id) {
       case 'recommended':
         return homeState.recommendedItems.isNotEmpty
@@ -418,8 +411,8 @@ class _HomeScreenState extends State<HomeScreen>
         return homeState.topRatedItems.isNotEmpty
             ? homeState.topRatedItems
             : (homeState.bestSellersItems.isNotEmpty
-                  ? homeState.bestSellersItems
-                  : homeState.popularItems);
+                ? homeState.bestSellersItems
+                : homeState.popularItems);
       default:
         return homeState.popularItems;
     }
@@ -441,9 +434,9 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _openDetails(BuildContext context, int itemId) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => ItemDetailsPage(itemId: itemId)));
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ItemDetailsPage(itemId: itemId)),
+    );
   }
 
   String _ctaLabelFor(BuildContext context, ItemSummary item) {
@@ -502,9 +495,9 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     if (item.kind == ItemKind.product) {
-      context.read<CartBloc>().add(
-        CartAddItemRequested(itemId: item.id, quantity: 1),
-      );
+      context
+          .read<CartBloc>()
+          .add(CartAddItemRequested(itemId: item.id, quantity: 1));
       AppToast.show(context, l10n.cart_item_added_snackbar);
       return;
     }
@@ -531,15 +524,13 @@ class _HomeScreenState extends State<HomeScreen>
         : item.price;
   }
 
-  // ✅ dynamic currency using money(context, ...)
   _PricingView _pricingFor(BuildContext context, ItemSummary item) {
     final l10n = AppLocalizations.of(context)!;
     final saleActive = item.onSale && _isSaleActiveNow(item);
     final current = _currentPrice(item);
 
-    final currentLabel = current != null
-        ? money(context, current.toDouble())
-        : null;
+    final currentLabel =
+        current != null ? money(context, current.toDouble()) : null;
 
     String? oldLabel;
     if (saleActive && item.price != null && current != null) {
@@ -559,16 +550,11 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     return _PricingView(
-      currentLabel: currentLabel,
-      oldLabel: oldLabel,
-      tagLabel: tagLabel,
-    );
+        currentLabel: currentLabel, oldLabel: oldLabel, tagLabel: tagLabel);
   }
 
   _TrailingData _trailingForSection(
-    HomeSectionConfig section,
-    AppLocalizations l10n,
-  ) {
+      HomeSectionConfig section, AppLocalizations l10n) {
     switch (section.id) {
       case 'flash_sale':
         return _TrailingData(text: l10n.home_trailing_limited_time);
@@ -587,9 +573,7 @@ class _HomeScreenState extends State<HomeScreen>
 
 // ================================
 // ✅ PRO PAGINATION SECTION
-// New Arrivals: 3x2 grid pages
-// Others: 1 row, 2 cards per page
-// 1 item: centered, same size
+// FIXED: New Arrivals height shrinks when page has 1–2 items
 // ================================
 
 enum _HomePagerLayout { rowPages2, grid3x2 }
@@ -607,7 +591,6 @@ class _HomeItemsPagerSection extends StatefulWidget {
 
   final List<ItemSummary> items;
 
-  // ✅ FIX: give these a BuildContext so we can call them from a safe Builder context
   final _PricingView Function(BuildContext, ItemSummary) pricingFor;
   final String? Function(ItemSummary) subtitleFor;
   final String? Function(BuildContext, ItemSummary) metaFor;
@@ -661,6 +644,11 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
     return 0.68;
   }
 
+  int _rowsNeeded(int count, int cols, int maxRows) {
+    final needed = ((count + cols - 1) ~/ cols); // ceil without doubles
+    return needed.clamp(1, maxRows);
+  }
+
   void _jumpTo(int p) {
     if (!_pc.hasClients) return;
     _pc.animateToPage(
@@ -697,9 +685,7 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
             onTap: widget.onTrailingTap,
             child: Padding(
               padding: EdgeInsets.symmetric(
-                horizontal: spacing.sm,
-                vertical: spacing.xs,
-              ),
+                  horizontal: spacing.sm, vertical: spacing.xs),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -749,12 +735,19 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
             final cardW = (w - ((cols - 1) * spacing.md)) / cols;
             final cardH = cardW / aspect;
 
-            final viewH = widget.layout == _HomePagerLayout.grid3x2
-                ? (rows * cardH) + ((rows - 1) * spacing.md)
-                : cardH;
+            // ✅ FIXED: shrink height based on items count of CURRENT page
+            final viewH = () {
+              if (widget.layout != _HomePagerLayout.grid3x2) return cardH;
+
+              final start = safePage * perPage;
+              final end = math.min(start + perPage, items.length);
+              final pageCount = start >= items.length ? 0 : (end - start);
+
+              final rowsNeeded = _rowsNeeded(pageCount, cols, rows);
+              return (rowsNeeded * cardH) + ((rowsNeeded - 1) * spacing.md);
+            }();
 
             Widget card(ItemSummary item) {
-              // ✅ critical fix: create a safe context (NOT the sliver itemBuilder context)
               return Builder(
                 builder: (ctx) {
                   final pricing = widget.pricingFor(ctx, item);
@@ -764,7 +757,7 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
 
                   return ItemCard(
                     width: double.infinity,
-                    imageFit: BoxFit.cover,
+                    imageFit: fit, // ✅ use it
                     title: item.title,
                     subtitle: widget.subtitleFor(item),
                     imageUrl: item.imageUrl,
@@ -814,17 +807,15 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
                           padding: EdgeInsets.zero,
                           gridDelegate:
                               SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                mainAxisSpacing: spacing.md,
-                                crossAxisSpacing: spacing.md,
-                                childAspectRatio: aspect,
-                              ),
+                            crossAxisCount: 2,
+                            mainAxisSpacing: spacing.md,
+                            crossAxisSpacing: spacing.md,
+                            childAspectRatio: aspect,
+                          ),
                           itemCount: pageItems.length,
                           itemBuilder: (context, i) {
                             return SizedBox(
-                              width: cardW,
-                              child: card(pageItems[i]),
-                            );
+                                width: cardW, child: card(pageItems[i]));
                           },
                         );
                       }
@@ -942,10 +933,7 @@ class _ProPagerBar extends StatelessWidget {
   }
 
   List<Widget> _dotsWithEllipsis(
-    List<int> dots,
-    Widget Function(int) buildDot,
-    double gap,
-  ) {
+      List<int> dots, Widget Function(int) buildDot, double gap) {
     final widgets = <Widget>[];
     for (var i = 0; i < dots.length; i++) {
       widgets.add(

@@ -859,5 +859,16 @@
   "codeTooShort": "Le code est trop court",
   "verifyButton": "Vérifier",
   "resendCode": "Renvoyer le code",
-  "passwordsDontMatch": "Les mots de passe ne correspondent pas"
+  "passwordsDontMatch": "Les mots de passe ne correspondent pas",
+    "checkoutFullNameLabel": "Nom complet",
+  "checkoutFullNameHint": "ton nom",
+
+  "checkoutAddressLineLabel": "Adresse",
+  "checkoutAddressLineHint": "ex. Immeuble, étage, rue",
+
+  "checkoutPhoneLabel": "Numéro de téléphone",
+  "checkoutPhoneHint": "ex. +961 70 123 456",
+
+  "checkoutNotesLabel": "Notes de livraison (optionnel)",
+  "checkoutNotesHint": "ex. Appelez-moi en arrivant"
 }

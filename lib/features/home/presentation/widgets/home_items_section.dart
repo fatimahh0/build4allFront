@@ -103,36 +103,28 @@ class HomeItemsSection extends StatelessWidget {
               },
             )
           else
-            // ✅ GRID (New Arrivals forced to 2 per row)
             LayoutBuilder(
               builder: (context, constraints) {
                 final w = constraints.maxWidth;
 
                 // ✅ Always 2 columns for New Arrivals
-                final cols = forceTwoColumns
-                    ? 2
-                    : (w < 520 ? 2 : (w < 900 ? 3 : 4));
+                final cols =
+                    forceTwoColumns ? 2 : (w < 520 ? 2 : (w < 900 ? 3 : 4));
 
-                // ✅ Aspect tuned to avoid huge white gaps
                 final aspect = forceTwoColumns
                     ? (w < 520 ? 0.74 : 0.85)
                     : (w < 520 ? 0.74 : (w < 900 ? 0.78 : 0.82));
 
-                return GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: items.length,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: cols,
-                    mainAxisSpacing: spacing.md,
-                    crossAxisSpacing: spacing.md,
-                    childAspectRatio: aspect,
-                  ),
-                  itemBuilder: (context, index) {
-                    final item = items[index];
-                    final pricing = _pricingFor(context, item);
+                // ✅ Card width derived from columns (same math as grid)
+                final cardW = (w - ((cols - 1) * spacing.md)) / cols;
+                final cardH = cardW / aspect;
 
-                    return ItemCard(
+                // ✅ helper card widget
+                Widget card(ItemSummary item) {
+                  final pricing = _pricingFor(context, item);
+                  return SizedBox(
+                    width: double.infinity,
+                    child: ItemCard(
                       title: item.title,
                       subtitle: _subtitleFor(item),
                       imageUrl: item.imageUrl,
@@ -143,8 +135,47 @@ class HomeItemsSection extends StatelessWidget {
                       ctaLabel: _ctaLabelFor(context, item),
                       onTap: () => _openDetails(context, item.id),
                       onCtaPressed: () => _handleCtaPressed(context, item),
-                    );
-                  },
+                    ),
+                  );
+                }
+
+                // ✅ NEW: no-gap layout for New Arrivals when few items
+                if (forceTwoColumns && items.length == 1) {
+                  return Center(
+                    child: SizedBox(
+                      width: cardW, // same size as a grid card
+                      height: cardH,
+                      child: card(items.first),
+                    ),
+                  );
+                }
+
+                if (forceTwoColumns && items.length == 2) {
+                  return Row(
+                    children: [
+                      Expanded(
+                          child:
+                              SizedBox(height: cardH, child: card(items[0]))),
+                      SizedBox(width: spacing.md),
+                      Expanded(
+                          child:
+                              SizedBox(height: cardH, child: card(items[1]))),
+                    ],
+                  );
+                }
+
+                // ✅ Default grid (3+ items or not forced)
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: items.length,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: cols,
+                    mainAxisSpacing: spacing.md,
+                    crossAxisSpacing: spacing.md,
+                    childAspectRatio: aspect,
+                  ),
+                  itemBuilder: (context, index) => card(items[index]),
                 );
               },
             ),
@@ -261,8 +292,8 @@ class HomeItemsSection extends StatelessWidget {
 
     if (item.kind == ItemKind.product) {
       context.read<CartBloc>().add(
-        CartAddItemRequested(itemId: item.id, quantity: 1),
-      );
+            CartAddItemRequested(itemId: item.id, quantity: 1),
+          );
       AppToast.show(context, l10n.cart_item_added_snackbar);
       return;
     }
