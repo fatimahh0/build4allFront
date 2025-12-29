@@ -5,7 +5,7 @@ class AdminOrderDetailsState extends Equatable {
   final bool loading;
   final bool updating;
   final String? error;
-  final String? message; // ✅ success toast
+  final String? message;
   final OrderDetailsResponse? data;
 
   const AdminOrderDetailsState({
@@ -17,12 +17,12 @@ class AdminOrderDetailsState extends Equatable {
   });
 
   factory AdminOrderDetailsState.initial() => const AdminOrderDetailsState(
-    loading: false,
-    updating: false,
-    error: null,
-    message: null,
-    data: null,
-  );
+        loading: false,
+        updating: false,
+        error: null,
+        message: null,
+        data: null,
+      );
 
   AdminOrderDetailsState copyWith({
     bool? loading,

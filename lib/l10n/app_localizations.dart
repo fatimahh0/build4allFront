@@ -3966,6 +3966,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'e.g. Call me when you arrive'**
   String get checkoutNotesHint;
+
+  /// No description provided for @phone.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone'**
+  String get phone;
+
+  /// No description provided for @address.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get address;
+
+  /// No description provided for @postalCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Postal code'**
+  String get postalCode;
+
+  /// No description provided for @adminShippingTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Shipping total'**
+  String get adminShippingTotal;
+
+  /// No description provided for @adminItemsTaxTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Items tax total'**
+  String get adminItemsTaxTotal;
+
+  /// No description provided for @adminShippingTaxTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Shipping tax total'**
+  String get adminShippingTaxTotal;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

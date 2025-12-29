@@ -11,7 +11,7 @@ class AdminOrderDetailsBloc
   final AdminOrdersRepository repo;
 
   AdminOrderDetailsBloc({required this.getDetails, required this.repo})
-    : super(AdminOrderDetailsState.initial()) {
+      : super(AdminOrderDetailsState.initial()) {
     on<AdminOrderDetailsStarted>(_onLoad);
     on<AdminOrderStatusUpdateRequested>(_onUpdateStatus);
 
@@ -68,28 +68,41 @@ class AdminOrderDetailsBloc
     Emitter<AdminOrderDetailsState> emit,
   ) async {
     emit(state.copyWith(updating: true, clearError: true, clearMessage: true));
+
     try {
+      // 1️⃣ mark cash paid
       await repo.updateOrderPaymentState(
         orderId: event.orderId,
         paymentState: event.paymentState,
       );
 
+      // 2️⃣ reload order
       final res = await getDetails(orderId: event.orderId);
-      emit(
-        state.copyWith(
-          updating: false,
-          data: res,
-          clearError: true,
-          message: 'Payment updated',
-        ),
-      );
+
+      final isPaid = res.order.payment.paymentState.toUpperCase() == 'PAID' ||
+          res.order.fullyPaid == true;
+
+      // 3️⃣ ONLY if paid → set completed
+      if (isPaid) {
+        await repo.updateOrderStatus(
+          orderId: event.orderId,
+          status: 'COMPLETED',
+        );
+      }
+
+      // 4️⃣ reload again
+      final res2 = await getDetails(orderId: event.orderId);
+
+      emit(state.copyWith(
+        updating: false,
+        data: res2,
+        message: isPaid ? 'Paid + Completed' : 'Payment updated',
+      ));
     } catch (e) {
-      emit(
-        state.copyWith(
-          updating: false,
-          error: e.toString().replaceFirst('Exception: ', ''),
-        ),
-      );
+      emit(state.copyWith(
+        updating: false,
+        error: e.toString(),
+      ));
     }
   }
 }

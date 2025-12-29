@@ -28,11 +28,11 @@ class AdminOrderStatusUpdateRequested extends AdminOrderDetailsEvent {
   List<Object?> get props => [orderId, status];
 }
 
-///  manual payment state change
+/// manual payment state change
 class AdminOrderPaymentStateUpdateRequested extends AdminOrderDetailsEvent {
   final int orderId;
   final String paymentState; // UNPAID / PARTIAL / PAID
-  final double? amount; //  for PARTIAL
+  final double? amount; // for PARTIAL (optional)
 
   const AdminOrderPaymentStateUpdateRequested({
     required this.orderId,

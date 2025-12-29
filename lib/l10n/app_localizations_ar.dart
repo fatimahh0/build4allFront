@@ -2012,4 +2012,22 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get checkoutNotesHint => 'مثال: اتصل بي عند الوصول';
+
+  @override
+  String get phone => 'الهاتف';
+
+  @override
+  String get address => 'العنوان';
+
+  @override
+  String get postalCode => 'الرمز البريدي';
+
+  @override
+  String get adminShippingTotal => 'إجمالي التوصيل';
+
+  @override
+  String get adminItemsTaxTotal => 'إجمالي ضريبة العناصر';
+
+  @override
+  String get adminShippingTaxTotal => 'إجمالي ضريبة التوصيل';
 }

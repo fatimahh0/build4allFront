@@ -2012,4 +2012,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get checkoutNotesHint => 'e.g. Call me when you arrive';
+
+  @override
+  String get phone => 'Phone';
+
+  @override
+  String get address => 'Address';
+
+  @override
+  String get postalCode => 'Postal code';
+
+  @override
+  String get adminShippingTotal => 'Shipping total';
+
+  @override
+  String get adminItemsTaxTotal => 'Items tax total';
+
+  @override
+  String get adminShippingTaxTotal => 'Shipping tax total';
 }

@@ -934,6 +934,13 @@
   "checkoutPhoneHint": "e.g. +961 70 123 456",
 
   "checkoutNotesLabel": "Delivery notes (optional)",
-  "checkoutNotesHint": "e.g. Call me when you arrive"
+  "checkoutNotesHint": "e.g. Call me when you arrive",
+   "phone": "Phone",
+  "address": "Address",
+  "postalCode": "Postal code",
+
+  "adminShippingTotal": "Shipping total",
+  "adminItemsTaxTotal": "Items tax total",
+  "adminShippingTaxTotal": "Shipping tax total"
   
 }

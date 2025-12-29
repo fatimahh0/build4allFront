@@ -62,6 +62,10 @@ class OrderHeaderRowModel {
   final bool fullyPaid;
   final PaymentSummaryModel payment;
 
+  // ✅ NEW
+  final String? phone;
+  final String? addressLine;
+
   OrderHeaderRowModel({
     required this.id,
     required this.orderDate,
@@ -71,6 +75,8 @@ class OrderHeaderRowModel {
     required this.itemsCount,
     required this.fullyPaid,
     required this.payment,
+    this.phone,
+    this.addressLine,
   });
 
   factory OrderHeaderRowModel.fromJson(Map<String, dynamic> json) {
@@ -85,20 +91,29 @@ class OrderHeaderRowModel {
       payment: PaymentSummaryModel.fromJson(
         (json['payment'] as Map?)?.cast<String, dynamic>() ?? const {},
       ),
+
+      // ✅ NEW keys from list endpoint
+      phone: json['phone']?.toString(),
+      addressLine: json['addressline']?.toString(), // backend uses addressline
     );
   }
 
   OrderHeaderRow toEntity() => OrderHeaderRow(
-    id: id,
-    orderDate: orderDate,
-    totalPrice: totalPrice,
-    status: status,
-    statusUi: statusUi,
-    itemsCount: itemsCount,
-    fullyPaid: fullyPaid,
-    payment: payment.toEntity(),
-  );
+        id: id,
+        orderDate: orderDate,
+        totalPrice: totalPrice,
+        status: status,
+        statusUi: statusUi,
+        itemsCount: itemsCount,
+        fullyPaid: fullyPaid,
+        payment: payment.toEntity(),
+
+        //  NEW
+        phone: phone,
+        addressLine: addressLine,
+      );
 }
+
 
 class CurrencyMiniModel {
   final String? code;
@@ -231,6 +246,11 @@ class OrderDetailsHeaderModel {
 
   final String? shippingCity;
   final String? shippingPostalCode;
+
+  // ✅ NEW
+  final String? shippingPhone;
+  final String? shippingAddress;
+
   final int? shippingMethodId;
   final String? shippingMethodName;
   final double? shippingTotal;
@@ -252,6 +272,8 @@ class OrderDetailsHeaderModel {
     this.currency,
     this.shippingCity,
     this.shippingPostalCode,
+    this.shippingPhone,
+    this.shippingAddress,
     this.shippingMethodId,
     this.shippingMethodName,
     this.shippingTotal,
@@ -270,14 +292,21 @@ class OrderDetailsHeaderModel {
       totalPrice: _toDouble(json['totalPrice']),
       status: (json['status'] ?? '').toString(),
       statusUi: (json['statusUi'] ?? '').toString(),
+
       paymentMethod: json['paymentMethod']?.toString(),
       currency: (json['currency'] is Map)
           ? CurrencyMiniModel.fromJson(
               (json['currency'] as Map).cast<String, dynamic>(),
             )
           : null,
+
       shippingCity: json['shippingCity']?.toString(),
       shippingPostalCode: json['shippingPostalCode']?.toString(),
+
+      // ✅ NEW from details response
+      shippingPhone: json['shippingPhone']?.toString(),
+      shippingAddress: json['shippingAddress']?.toString(),
+
       shippingMethodId: json['shippingMethodId'] == null
           ? null
           : _toInt(json['shippingMethodId']),
@@ -285,9 +314,8 @@ class OrderDetailsHeaderModel {
       shippingTotal: json['shippingTotal'] == null
           ? null
           : _toDouble(json['shippingTotal']),
-      itemTaxTotal: json['itemTaxTotal'] == null
-          ? null
-          : _toDouble(json['itemTaxTotal']),
+      itemTaxTotal:
+          json['itemTaxTotal'] == null ? null : _toDouble(json['itemTaxTotal']),
       shippingTaxTotal: json['shippingTaxTotal'] == null
           ? null
           : _toDouble(json['shippingTaxTotal']),
@@ -295,6 +323,7 @@ class OrderDetailsHeaderModel {
       couponDiscount: json['couponDiscount'] == null
           ? null
           : _toDouble(json['couponDiscount']),
+
       fullyPaid: json['fullyPaid'] == true,
       payment: PaymentSummaryModel.fromJson(
         (json['payment'] as Map?)?.cast<String, dynamic>() ?? const {},
@@ -303,25 +332,32 @@ class OrderDetailsHeaderModel {
   }
 
   OrderDetailsHeader toEntity() => OrderDetailsHeader(
-    id: id,
-    orderDate: orderDate,
-    totalPrice: totalPrice,
-    status: status,
-    statusUi: statusUi,
-    paymentMethod: paymentMethod,
-    currency: currency?.toEntity(),
-    shippingCity: shippingCity,
-    shippingPostalCode: shippingPostalCode,
-    shippingMethodId: shippingMethodId,
-    shippingMethodName: shippingMethodName,
-    shippingTotal: shippingTotal,
-    itemTaxTotal: itemTaxTotal,
-    shippingTaxTotal: shippingTaxTotal,
-    couponCode: couponCode,
-    couponDiscount: couponDiscount,
-    fullyPaid: fullyPaid,
-    payment: payment.toEntity(),
-  );
+        id: id,
+        orderDate: orderDate,
+        totalPrice: totalPrice,
+        status: status,
+        statusUi: statusUi,
+        paymentMethod: paymentMethod,
+        currency: currency?.toEntity(),
+
+        shippingCity: shippingCity,
+        shippingPostalCode: shippingPostalCode,
+
+        // ✅ NEW
+        shippingPhone: shippingPhone,
+        shippingAddress: shippingAddress,
+
+        shippingMethodId: shippingMethodId,
+        shippingMethodName: shippingMethodName,
+        shippingTotal: shippingTotal,
+        itemTaxTotal: itemTaxTotal,
+        shippingTaxTotal: shippingTaxTotal,
+        couponCode: couponCode,
+        couponDiscount: couponDiscount,
+
+        fullyPaid: fullyPaid,
+        payment: payment.toEntity(),
+      );
 }
 
 class OrderDetailsResponseModel {

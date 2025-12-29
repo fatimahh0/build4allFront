@@ -870,5 +870,12 @@
   "checkoutPhoneHint": "ex. +961 70 123 456",
 
   "checkoutNotesLabel": "Notes de livraison (optionnel)",
-  "checkoutNotesHint": "ex. Appelez-moi en arrivant"
+  "checkoutNotesHint": "ex. Appelez-moi en arrivant",
+  "phone": "Téléphone",
+  "address": "Adresse",
+  "postalCode": "Code postal",
+
+  "adminShippingTotal": "Total livraison",
+  "adminItemsTaxTotal": "Total taxe articles",
+  "adminShippingTaxTotal": "Total taxe livraison"
 }

@@ -791,5 +791,12 @@
   "checkoutPhoneHint": "مثال: +961 70 123 456",
 
   "checkoutNotesLabel": "ملاحظات التوصيل (اختياري)",
-  "checkoutNotesHint": "مثال: اتصل بي عند الوصول"
+  "checkoutNotesHint": "مثال: اتصل بي عند الوصول",
+    "phone": "الهاتف",
+  "address": "العنوان",
+  "postalCode": "الرمز البريدي",
+
+  "adminShippingTotal": "إجمالي التوصيل",
+  "adminItemsTaxTotal": "إجمالي ضريبة العناصر",
+  "adminShippingTaxTotal": "إجمالي ضريبة التوصيل"
 }

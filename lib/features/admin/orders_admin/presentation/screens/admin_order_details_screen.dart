@@ -1,4 +1,3 @@
-// admin_order_details_screen.dart
 import 'package:build4front/features/admin/orders_admin/domain/entities/admin_order_entities.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -25,7 +24,6 @@ class AdminOrderDetailsScreen extends StatefulWidget {
 class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
   late final AdminOrderDetailsBloc _bloc;
 
-  // ✅ only set to true AFTER a successful update
   bool _changed = false;
 
   static const _statusOptions = <String>[
@@ -87,7 +85,6 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
     required dynamic tokens,
     required dynamic colors,
     required dynamic spacing,
-    required int orderId,
   }) async {
     return (await showDialog<bool>(
           context: context,
@@ -185,7 +182,6 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
           ),
           body: SafeArea(
             child: BlocConsumer<AdminOrderDetailsBloc, AdminOrderDetailsState>(
-              // ✅ toast only when error/message changes
               listenWhen: (p, c) =>
                   p.error != c.error || p.message != c.message,
               listener: (context, state) {
@@ -194,7 +190,6 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                   _toast(err, error: true);
                   return;
                 }
-
                 final msg = (state.message ?? '').trim();
                 if (msg.isNotEmpty) {
                   _changed = true;
@@ -229,9 +224,8 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                     ? o.totalPrice
                     : o.payment.orderTotal;
                 final paid = o.payment.paidAmount;
-                final progress = total <= 0
-                    ? 0.0
-                    : (paid / total).clamp(0.0, 1.0);
+                final progress =
+                    total <= 0 ? 0.0 : (paid / total).clamp(0.0, 1.0);
 
                 final currencySymbol = (o.currency?.symbol ?? '').trim();
                 String money(double v) {
@@ -252,8 +246,8 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                 final isCash = paymentMethod == 'CASH';
                 final canMarkCashPaid = isCash && paymentState != 'PAID';
 
-                final currentStatus = (o.status.isEmpty ? 'PENDING' : o.status)
-                    .toUpperCase();
+                final currentStatus =
+                    (o.status.isEmpty ? 'PENDING' : o.status).toUpperCase();
                 final dropdownValue = _statusOptions.contains(currentStatus)
                     ? currentStatus
                     : _statusOptions.first;
@@ -315,21 +309,13 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                         ),
                         SizedBox(height: spacing.sm),
                         _kv(tokens, colors, l10n.adminOrderTotal, money(total)),
-                        _kv(
-                          tokens,
-                          colors,
-                          l10n.adminPaid,
-                          money(o.payment.paidAmount),
-                        ),
+                        _kv(tokens, colors, l10n.adminPaid,
+                            money(o.payment.paidAmount)),
                         if (!o.fullyPaid)
-                          _kv(
-                            tokens,
-                            colors,
-                            l10n.adminRemaining,
-                            money(o.payment.remainingAmount),
-                          ),
+                          _kv(tokens, colors, l10n.adminRemaining,
+                              money(o.payment.remainingAmount)),
 
-                        // ✅ CASH mark paid button (localized)
+                        // ✅ CASH button: ONLY triggers payment event
                         if (canMarkCashPaid) ...[
                           SizedBox(height: spacing.md),
                           Row(
@@ -345,16 +331,17 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                                             tokens: tokens,
                                             colors: colors,
                                             spacing: spacing,
-                                            orderId: o.id,
                                           );
                                           if (!ok) return;
 
-                                          context.read<AdminOrderDetailsBloc>().add(
-                                            AdminOrderPaymentStateUpdateRequested(
-                                              orderId: o.id,
-                                              paymentState: 'PAID',
-                                            ),
-                                          );
+                                          context
+                                              .read<AdminOrderDetailsBloc>()
+                                              .add(
+                                                AdminOrderPaymentStateUpdateRequested(
+                                                  orderId: o.id,
+                                                  paymentState: 'PAID',
+                                                ),
+                                              );
                                         },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: colors.success,
@@ -370,8 +357,10 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                                   icon: const Icon(Icons.check_circle_outline),
                                   label: Text(
                                     l10n.adminMarkCashPaidButton,
-                                    style: tokens.typography.bodyMedium
-                                        .copyWith(fontWeight: FontWeight.w900),
+                                    style:
+                                        tokens.typography.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.w900,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -380,9 +369,8 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                                 const SizedBox(
                                   width: 18,
                                   height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
                                 ),
                               ],
                             ],
@@ -399,9 +387,8 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                     decoration: BoxDecoration(
                       color: colors.surface,
                       borderRadius: BorderRadius.circular(tokens.card.radius),
-                      border: Border.all(
-                        color: colors.border.withOpacity(0.22),
-                      ),
+                      border:
+                          Border.all(color: colors.border.withOpacity(0.22)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -416,9 +403,8 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                         SizedBox(height: spacing.sm),
                         Text(
                           '${l10n.adminStatus}: ${o.statusUi}',
-                          style: tokens.typography.bodyMedium.copyWith(
-                            color: colors.body,
-                          ),
+                          style: tokens.typography.bodyMedium
+                              .copyWith(color: colors.body),
                         ),
                         SizedBox(height: spacing.sm),
                         Row(
@@ -457,9 +443,9 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                                     ? null
                                     : (v) {
                                         if (v == null) return;
-                                        if (v.toUpperCase() == currentStatus)
+                                        if (v.toUpperCase() == currentStatus) {
                                           return;
-
+                                        }
                                         context
                                             .read<AdminOrderDetailsBloc>()
                                             .add(
@@ -476,52 +462,12 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                               const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
                               ),
                             ],
                           ],
                         ),
-                        SizedBox(height: spacing.sm),
-                        if (o.paymentMethod != null)
-                          Text(
-                            '${l10n.adminPaymentMethod}: ${o.paymentMethod}',
-                            style: tokens.typography.bodyMedium.copyWith(
-                              color: colors.body,
-                            ),
-                          ),
-                        if (o.currency?.code != null ||
-                            o.currency?.symbol != null)
-                          Text(
-                            '${l10n.adminCurrency}: ${(o.currency?.symbol ?? '')} ${(o.currency?.code ?? '')}'
-                                .trim(),
-                            style: tokens.typography.bodyMedium.copyWith(
-                              color: colors.body,
-                            ),
-                          ),
-                        SizedBox(height: spacing.sm),
-                        if (o.shippingCity != null)
-                          Text(
-                            '${l10n.adminShippingCity}: ${o.shippingCity}',
-                            style: tokens.typography.bodyMedium.copyWith(
-                              color: colors.body,
-                            ),
-                          ),
-                        if (o.shippingMethodName != null)
-                          Text(
-                            '${l10n.adminShippingMethod}: ${o.shippingMethodName}',
-                            style: tokens.typography.bodyMedium.copyWith(
-                              color: colors.body,
-                            ),
-                          ),
-                        if (o.couponCode != null)
-                          Text(
-                            '${l10n.adminCoupon}: ${o.couponCode} (-${(o.couponDiscount ?? 0).toStringAsFixed(2)})',
-                            style: tokens.typography.bodyMedium.copyWith(
-                              color: colors.body,
-                            ),
-                          ),
                       ],
                     ),
                   );
@@ -545,9 +491,8 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                     decoration: BoxDecoration(
                       color: colors.surface,
                       borderRadius: BorderRadius.circular(tokens.card.radius),
-                      border: Border.all(
-                        color: colors.border.withOpacity(0.22),
-                      ),
+                      border:
+                          Border.all(color: colors.border.withOpacity(0.22)),
                     ),
                     child: Row(
                       children: [
@@ -556,19 +501,16 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                           child: SizedBox(
                             width: 56,
                             height: 56,
-                            child: it.item.imageUrl == null
+                            child: (it.item.imageUrl == null)
                                 ? Container(
-                                    color: colors.border.withOpacity(0.2),
-                                  )
+                                    color: colors.border.withOpacity(0.2))
                                 : Image.network(
                                     it.item.imageUrl!,
                                     fit: BoxFit.cover,
                                     errorBuilder: (_, __, ___) => Container(
                                       color: colors.border.withOpacity(0.2),
-                                      child: Icon(
-                                        Icons.image_not_supported,
-                                        color: colors.muted,
-                                      ),
+                                      child: Icon(Icons.image_not_supported,
+                                          color: colors.muted),
                                     ),
                                   ),
                           ),
@@ -590,20 +532,16 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                               SizedBox(height: spacing.xs),
                               Text(
                                 '${l10n.adminCustomer}: ${it.user.fullName}',
-                                style: tokens.typography.bodySmall.copyWith(
-                                  color: colors.muted,
-                                ),
+                                style: tokens.typography.bodySmall
+                                    .copyWith(color: colors.muted),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Text(
                                 l10n.adminQtyPriceLine(
-                                  it.quantity,
-                                  money(it.price),
-                                ),
-                                style: tokens.typography.bodySmall.copyWith(
-                                  color: colors.muted,
-                                ),
+                                    it.quantity, money(it.price)),
+                                style: tokens.typography.bodySmall
+                                    .copyWith(color: colors.muted),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -627,12 +565,10 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                   if (!isWide) {
                     return Column(
                       children: data.items
-                          .map(
-                            (it) => Padding(
-                              padding: EdgeInsets.only(bottom: spacing.sm),
-                              child: itemCard(it),
-                            ),
-                          )
+                          .map((it) => Padding(
+                                padding: EdgeInsets.only(bottom: spacing.sm),
+                                child: itemCard(it),
+                              ))
                           .toList(),
                     );
                   }
@@ -645,7 +581,7 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                       const cardHeight = 92.0;
                       final cardWidth =
                           (w - (crossAxisCount - 1) * spacing.sm) /
-                          crossAxisCount;
+                              crossAxisCount;
                       final aspect = cardWidth / cardHeight;
 
                       return GridView.builder(

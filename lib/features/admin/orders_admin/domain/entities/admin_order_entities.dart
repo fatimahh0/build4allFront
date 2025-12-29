@@ -26,6 +26,10 @@ class OrderHeaderRow {
   final bool fullyPaid;
   final PaymentSummary payment;
 
+  // ✅ NEW from list API
+  final String? phone;
+  final String? addressLine;
+
   const OrderHeaderRow({
     required this.id,
     required this.orderDate,
@@ -35,6 +39,8 @@ class OrderHeaderRow {
     required this.itemsCount,
     required this.fullyPaid,
     required this.payment,
+    this.phone,
+    this.addressLine,
   });
 }
 
@@ -110,6 +116,11 @@ class OrderDetailsHeader {
 
   final String? shippingCity;
   final String? shippingPostalCode;
+
+  // ✅ NEW
+  final String? shippingPhone;
+  final String? shippingAddress;
+
   final int? shippingMethodId;
   final String? shippingMethodName;
   final double? shippingTotal;
@@ -131,6 +142,8 @@ class OrderDetailsHeader {
     this.currency,
     this.shippingCity,
     this.shippingPostalCode,
+    this.shippingPhone,
+    this.shippingAddress,
     this.shippingMethodId,
     this.shippingMethodName,
     this.shippingTotal,
