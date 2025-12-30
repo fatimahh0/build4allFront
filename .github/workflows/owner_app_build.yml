@@ -63,14 +63,14 @@ jobs:
             exit 1
           fi
 
-      # Build ci_env.json from client_payload.CONFIG + extract API_BASE + LINK_ID
+      # Build ci_env.json from client_payload.CONFIG + extract API_BASE + LINK_ID + PACKAGE_NAME
       - name: Build ci_env.json + extract CI vars
         run: |
           set -e
           mkdir -p lib/env
 
           python3 - <<'PY'
-          import json
+          import json, re, os
 
           # Full client_payload from repository_dispatch
           payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
@@ -91,12 +91,27 @@ jobs:
 
           project_id = str(cfg.get("PROJECT_ID") or "").strip()
 
+          # ✅ NEW: unique PACKAGE_NAME (applicationId) per tenant
+          pkg = (cfg.get("PACKAGE_NAME") or cfg.get("APPLICATION_ID") or "").strip()
+          if not pkg:
+              # fallback: com.build4all.app<LINK_ID>
+              pkg = f"com.build4all.app{link_id}"
+
+          # normalize: lowercase + allowed chars only (a-z0-9._)
+          pkg = pkg.lower()
+          pkg = re.sub(r"[^a-z0-9._]", "", pkg)
+
+          if pkg.count(".") < 1:
+              # ensure it looks like a real package
+              pkg = f"com.build4all.{pkg}"
+
           env = {
-              "API_BASE_URL": api_base,
+              "API_BASE_URL": api_base,            # ✅ مهم للـ logo + callback
               "APP_NAME": app_name,
               "APP_TYPE": app_type,
               "OWNER_PROJECT_LINK_ID": link_id,
               "PROJECT_ID": project_id,
+              "PACKAGE_NAME": pkg,
           }
 
           # optional currency
@@ -116,14 +131,15 @@ jobs:
               if v:
                   env[key] = v
 
-          # LOGO_URL (raw GitHub URL from CiBuildService.ensureLogoRawUrl)
-          logo_url = (cfg.get("LOGO_URL") or "").strip()
+          # LOGO_URL: ممكن يجي LOGO_URL أو LOGO_PATH من الباكند
+          logo_url = (cfg.get("LOGO_URL") or cfg.get("LOGO_PATH") or "").strip()
           if logo_url:
               env["LOGO_URL"] = logo_url
 
           # write helper files for callback step
           open("ci_api_base.txt", "w", encoding="utf-8").write(api_base)
           open("ci_link_id.txt", "w", encoding="utf-8").write(link_id)
+          open("ci_package_name.txt", "w", encoding="utf-8").write(pkg)
 
           with open("lib/env/ci_env.json", "w", encoding="utf-8") as f:
               json.dump(env, f, ensure_ascii=False, indent=2)
@@ -131,7 +147,37 @@ jobs:
           print("ci_env.json written")
           print("API_BASE_URL =", api_base)
           print("OWNER_PROJECT_LINK_ID =", link_id)
+          print("PACKAGE_NAME =", pkg)
           PY
+
+      # ✅ Apply unique applicationId (PACKAGE_NAME)
+      - name: Set unique applicationId (PACKAGE_NAME)
+        run: |
+          set -e
+          FILE="android/app/build.gradle.kts"
+          PKG="$(cat ci_package_name.txt | tr -d '\r\n')"
+
+          if [ ! -f "$FILE" ]; then
+            echo "android/app/build.gradle.kts not found"
+            exit 1
+          fi
+
+          echo "Setting applicationId to: $PKG"
+
+          # Replace applicationId = "..."
+          if grep -qE 'applicationId\s*=\s*"' "$FILE"; then
+            sed -i "s/applicationId\s*=\s*\"[^\"]*\"/applicationId = \"$PKG\"/g" "$FILE"
+          # Or applicationId "..." (Groovy style, just in case)
+          elif grep -qE 'applicationId\s*"' "$FILE"; then
+            sed -i "s/applicationId\s*\"[^\"]*\"/applicationId \"$PKG\"/g" "$FILE"
+          else
+            echo "ERROR: Could not find applicationId in $FILE"
+            grep -n "applicationId" "$FILE" || true
+            exit 1
+          fi
+
+          echo "---- applicationId now ----"
+          grep -n "applicationId" "$FILE" || true
 
       # Branding + strings.xml using LOGO_URL from ci_env.json
       - name: Apply branding
@@ -147,18 +193,33 @@ jobs:
           app_name_raw = cfg.get("APP_NAME","My App")
           app_name = escape(app_name_raw)
 
+          api_base = (cfg.get("API_BASE_URL") or "").rstrip("/")
           logo_url = (cfg.get("LOGO_URL") or "").strip()
 
           print("APP_NAME:", app_name_raw)
-          print("LOGO_URL:", logo_url)
+          print("LOGO_URL (raw):", logo_url)
+          print("API_BASE_URL:", api_base)
 
           pathlib.Path("assets/branding").mkdir(parents=True, exist_ok=True)
 
+          # ✅ إذا LOGO_URL نسبي (/uploads/...) بنكمّلو مع API_BASE_URL
+          if logo_url and logo_url.startswith("/"):
+              if api_base:
+                  logo_url = api_base + logo_url
+                  print("Resolved absolute LOGO_URL:", logo_url)
+              else:
+                  print("Relative LOGO_URL but API_BASE_URL missing -> skipping logo download")
+                  logo_url = ""
+
           if logo_url:
-              print("Downloading logo:", logo_url)
-              urllib.request.urlretrieve(logo_url, "assets/branding/logo.png")
-              shutil.copyfile("assets/branding/logo.png","assets/branding/launcher.png")
-              shutil.copyfile("assets/branding/logo.png","assets/branding/splash.png")
+              try:
+                  print("Downloading logo from:", logo_url)
+                  urllib.request.urlretrieve(logo_url, "assets/branding/logo.png")
+                  shutil.copyfile("assets/branding/logo.png","assets/branding/launcher.png")
+                  shutil.copyfile("assets/branding/logo.png","assets/branding/splash.png")
+              except Exception as e:
+                  print("⚠️ Failed to download logo:", e)
+                  print("Continuing without custom logo...")
           else:
               print("No LOGO_URL – skipping logo download")
 
