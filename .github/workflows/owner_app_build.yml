@@ -13,9 +13,6 @@ jobs:
 
     env:
       CI_CALLBACK_TOKEN: ${{ secrets.CI_CALLBACK_TOKEN }}
-      # ✅ From backend CONFIG (CiBuildService)
-      ANDROID_VERSION_CODE: ${{ github.event.client_payload.CONFIG.ANDROID_VERSION_CODE }}
-      ANDROID_VERSION_NAME: ${{ github.event.client_payload.CONFIG.ANDROID_VERSION_NAME }}
 
     steps:
       - name: Checkout
@@ -73,7 +70,7 @@ jobs:
           mkdir -p lib/env
 
           python3 - <<'PY'
-          import json, re
+          import json, re, os
 
           # Full client_payload from repository_dispatch
           payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
@@ -94,7 +91,7 @@ jobs:
 
           project_id = str(cfg.get("PROJECT_ID") or "").strip()
 
-          # ✅ PACKAGE_NAME (unique per tenant)
+          # ✅ NEW: unique PACKAGE_NAME (applicationId) per tenant
           pkg = (cfg.get("PACKAGE_NAME") or cfg.get("APPLICATION_ID") or "").strip()
           if not pkg:
               # fallback: com.build4all.app<LINK_ID>
@@ -109,7 +106,7 @@ jobs:
               pkg = f"com.build4all.{pkg}"
 
           env = {
-              "API_BASE_URL": api_base,
+              "API_BASE_URL": api_base,            # ✅ مهم للـ logo + callback
               "APP_NAME": app_name,
               "APP_TYPE": app_type,
               "OWNER_PROJECT_LINK_ID": link_id,
@@ -134,7 +131,7 @@ jobs:
               if v:
                   env[key] = v
 
-          # LOGO_URL / LOGO_PATH (support both)
+          # LOGO_URL: ممكن يجي LOGO_URL أو LOGO_PATH من الباكند
           logo_url = (cfg.get("LOGO_URL") or cfg.get("LOGO_PATH") or "").strip()
           if logo_url:
               env["LOGO_URL"] = logo_url
@@ -196,18 +193,33 @@ jobs:
           app_name_raw = cfg.get("APP_NAME","My App")
           app_name = escape(app_name_raw)
 
+          api_base = (cfg.get("API_BASE_URL") or "").rstrip("/")
           logo_url = (cfg.get("LOGO_URL") or "").strip()
 
           print("APP_NAME:", app_name_raw)
-          print("LOGO_URL:", logo_url)
+          print("LOGO_URL (raw):", logo_url)
+          print("API_BASE_URL:", api_base)
 
           pathlib.Path("assets/branding").mkdir(parents=True, exist_ok=True)
 
+          # ✅ إذا LOGO_URL نسبي (/uploads/...) بنكمّلو مع API_BASE_URL
+          if logo_url and logo_url.startswith("/"):
+              if api_base:
+                  logo_url = api_base + logo_url
+                  print("Resolved absolute LOGO_URL:", logo_url)
+              else:
+                  print("Relative LOGO_URL but API_BASE_URL missing -> skipping logo download")
+                  logo_url = ""
+
           if logo_url:
-              print("Downloading logo:", logo_url)
-              urllib.request.urlretrieve(logo_url, "assets/branding/logo.png")
-              shutil.copyfile("assets/branding/logo.png","assets/branding/launcher.png")
-              shutil.copyfile("assets/branding/logo.png","assets/branding/splash.png")
+              try:
+                  print("Downloading logo from:", logo_url)
+                  urllib.request.urlretrieve(logo_url, "assets/branding/logo.png")
+                  shutil.copyfile("assets/branding/logo.png","assets/branding/launcher.png")
+                  shutil.copyfile("assets/branding/logo.png","assets/branding/splash.png")
+              except Exception as e:
+                  print("⚠️ Failed to download logo:", e)
+                  print("Continuing without custom logo...")
           else:
               print("No LOGO_URL – skipping logo download")
 
@@ -250,46 +262,6 @@ jobs:
 
           echo "---- R8 flags ----"
           grep -n "isMinifyEnabled\|isShrinkResources" "$FILE" || true
-
-      # ✅ NEW: Apply Android version from backend (versionCode/versionName)
-      - name: Apply Android version from backend
-        run: |
-          set -e
-
-          python3 - <<'PY'
-          import os, re, pathlib
-
-          code = os.environ.get("ANDROID_VERSION_CODE") or "1"
-          name = os.environ.get("ANDROID_VERSION_NAME") or "1.0.0"
-
-          path = pathlib.Path("android/app/build.gradle.kts")
-          if not path.exists():
-              print("android/app/build.gradle.kts not found")
-              raise SystemExit(1)
-
-          txt = path.read_text(encoding="utf-8")
-
-          # Replace any line with versionCode = ...
-          txt, n1 = re.subn(
-              r'versionCode\s*=\s*.*',
-              f'versionCode = {code}',
-              txt,
-              flags=re.MULTILINE
-          )
-
-          # Replace any line with versionName = "..."
-          txt, n2 = re.subn(
-              r'versionName\s*=\s*".*"',
-              f'versionName = "{name}"',
-              txt,
-              flags=re.MULTILINE
-          )
-
-          path.write_text(txt, encoding="utf-8")
-          print("Updated android/app/build.gradle.kts with:")
-          print("  versionCode =", code)
-          print("  versionName =", name)
-          PY
 
       # Build
       - name: Build APK
