@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.build4front"
+    namespace = "com.build4all.front"
     compileSdk = flutter.compileSdkVersion
 
     // ✅ FIX: force NDK version required by your plugins

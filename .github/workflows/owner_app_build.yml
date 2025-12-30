@@ -13,6 +13,9 @@ jobs:
 
     env:
       CI_CALLBACK_TOKEN: ${{ secrets.CI_CALLBACK_TOKEN }}
+      # ✅ From backend CONFIG (CiBuildService)
+      ANDROID_VERSION_CODE: ${{ github.event.client_payload.CONFIG.ANDROID_VERSION_CODE }}
+      ANDROID_VERSION_NAME: ${{ github.event.client_payload.CONFIG.ANDROID_VERSION_NAME }}
 
     steps:
       - name: Checkout
@@ -63,14 +66,14 @@ jobs:
             exit 1
           fi
 
-      # Build ci_env.json from client_payload.CONFIG + extract API_BASE + LINK_ID
+      # Build ci_env.json from client_payload.CONFIG + extract API_BASE + LINK_ID + PACKAGE_NAME
       - name: Build ci_env.json + extract CI vars
         run: |
           set -e
           mkdir -p lib/env
 
           python3 - <<'PY'
-          import json
+          import json, re
 
           # Full client_payload from repository_dispatch
           payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
@@ -91,12 +94,27 @@ jobs:
 
           project_id = str(cfg.get("PROJECT_ID") or "").strip()
 
+          # ✅ PACKAGE_NAME (unique per tenant)
+          pkg = (cfg.get("PACKAGE_NAME") or cfg.get("APPLICATION_ID") or "").strip()
+          if not pkg:
+              # fallback: com.build4all.app<LINK_ID>
+              pkg = f"com.build4all.app{link_id}"
+
+          # normalize: lowercase + allowed chars only (a-z0-9._)
+          pkg = pkg.lower()
+          pkg = re.sub(r"[^a-z0-9._]", "", pkg)
+
+          if pkg.count(".") < 1:
+              # ensure it looks like a real package
+              pkg = f"com.build4all.{pkg}"
+
           env = {
               "API_BASE_URL": api_base,
               "APP_NAME": app_name,
               "APP_TYPE": app_type,
               "OWNER_PROJECT_LINK_ID": link_id,
               "PROJECT_ID": project_id,
+              "PACKAGE_NAME": pkg,
           }
 
           # optional currency
@@ -116,14 +134,15 @@ jobs:
               if v:
                   env[key] = v
 
-          # LOGO_URL (raw GitHub URL from CiBuildService.ensureLogoRawUrl)
-          logo_url = (cfg.get("LOGO_URL") or "").strip()
+          # LOGO_URL / LOGO_PATH (support both)
+          logo_url = (cfg.get("LOGO_URL") or cfg.get("LOGO_PATH") or "").strip()
           if logo_url:
               env["LOGO_URL"] = logo_url
 
           # write helper files for callback step
           open("ci_api_base.txt", "w", encoding="utf-8").write(api_base)
           open("ci_link_id.txt", "w", encoding="utf-8").write(link_id)
+          open("ci_package_name.txt", "w", encoding="utf-8").write(pkg)
 
           with open("lib/env/ci_env.json", "w", encoding="utf-8") as f:
               json.dump(env, f, ensure_ascii=False, indent=2)
@@ -131,7 +150,37 @@ jobs:
           print("ci_env.json written")
           print("API_BASE_URL =", api_base)
           print("OWNER_PROJECT_LINK_ID =", link_id)
+          print("PACKAGE_NAME =", pkg)
           PY
+
+      # ✅ Apply unique applicationId (PACKAGE_NAME)
+      - name: Set unique applicationId (PACKAGE_NAME)
+        run: |
+          set -e
+          FILE="android/app/build.gradle.kts"
+          PKG="$(cat ci_package_name.txt | tr -d '\r\n')"
+
+          if [ ! -f "$FILE" ]; then
+            echo "android/app/build.gradle.kts not found"
+            exit 1
+          fi
+
+          echo "Setting applicationId to: $PKG"
+
+          # Replace applicationId = "..."
+          if grep -qE 'applicationId\s*=\s*"' "$FILE"; then
+            sed -i "s/applicationId\s*=\s*\"[^\"]*\"/applicationId = \"$PKG\"/g" "$FILE"
+          # Or applicationId "..." (Groovy style, just in case)
+          elif grep -qE 'applicationId\s*"' "$FILE"; then
+            sed -i "s/applicationId\s*\"[^\"]*\"/applicationId \"$PKG\"/g" "$FILE"
+          else
+            echo "ERROR: Could not find applicationId in $FILE"
+            grep -n "applicationId" "$FILE" || true
+            exit 1
+          fi
+
+          echo "---- applicationId now ----"
+          grep -n "applicationId" "$FILE" || true
 
       # Branding + strings.xml using LOGO_URL from ci_env.json
       - name: Apply branding
@@ -201,6 +250,46 @@ jobs:
 
           echo "---- R8 flags ----"
           grep -n "isMinifyEnabled\|isShrinkResources" "$FILE" || true
+
+      # ✅ NEW: Apply Android version from backend (versionCode/versionName)
+      - name: Apply Android version from backend
+        run: |
+          set -e
+
+          python3 - <<'PY'
+          import os, re, pathlib
+
+          code = os.environ.get("ANDROID_VERSION_CODE") or "1"
+          name = os.environ.get("ANDROID_VERSION_NAME") or "1.0.0"
+
+          path = pathlib.Path("android/app/build.gradle.kts")
+          if not path.exists():
+              print("android/app/build.gradle.kts not found")
+              raise SystemExit(1)
+
+          txt = path.read_text(encoding="utf-8")
+
+          # Replace any line with versionCode = ...
+          txt, n1 = re.subn(
+              r'versionCode\s*=\s*.*',
+              f'versionCode = {code}',
+              txt,
+              flags=re.MULTILINE
+          )
+
+          # Replace any line with versionName = "..."
+          txt, n2 = re.subn(
+              r'versionName\s*=\s*".*"',
+              f'versionName = "{name}"',
+              txt,
+              flags=re.MULTILINE
+          )
+
+          path.write_text(txt, encoding="utf-8")
+          print("Updated android/app/build.gradle.kts with:")
+          print("  versionCode =", code)
+          print("  versionName =", name)
+          PY
 
       # Build
       - name: Build APK
