@@ -342,7 +342,7 @@ class AuthApiService {
     required String password,
     int? ownerProjectId, // optional
   }) async {
-    final uri = _uri('/api/auth/admin/login');
+    final uri = _uri('/api/auth/admin/login/front');
 
     final payload = {
       'usernameOrEmail': usernameOrEmail,
