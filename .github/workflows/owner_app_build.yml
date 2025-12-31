@@ -48,11 +48,9 @@ jobs:
           FILE="android/app/build.gradle.kts"
 
           if [ -f "$FILE" ]; then
-            # If ndkVersion already exists, replace the whole line
             if grep -q "ndkVersion" "$FILE"; then
               sed -i 's/^[[:space:]]*ndkVersion *=.*/    ndkVersion = "27.0.12077973"/' "$FILE"
             else
-              # Inject ndkVersion inside android { } if missing
               perl -0777 -i -pe 's/android\s*\{\s*/android {\n    ndkVersion = "27.0.12077973"\n/s' "$FILE"
             fi
 
@@ -63,7 +61,39 @@ jobs:
             exit 1
           fi
 
-      # Build ci_env.json from client_payload.CONFIG + extract API_BASE + LINK_ID + PACKAGE_NAME
+      # ✅ NEW: Fetch runtime config by linkId (source of truth)
+      - name: Fetch runtime config by linkId
+        run: |
+          set -e
+          API_BASE="${{ github.event.client_payload.API_BASE_URL }}"
+          LINK_ID="${{ github.event.client_payload.OWNER_PROJECT_LINK_ID }}"
+
+          if [ -z "$API_BASE" ]; then
+            echo "Missing client_payload.API_BASE_URL"
+            exit 1
+          fi
+
+          if [ -z "$LINK_ID" ]; then
+            echo "Missing client_payload.OWNER_PROJECT_LINK_ID"
+            exit 1
+          fi
+
+          API_BASE="${API_BASE%/}"
+
+          echo "API_BASE=$API_BASE"
+          echo "LINK_ID=$LINK_ID"
+
+          curl -sS -f "${API_BASE}/api/public/runtime-config/by-link?linkId=${LINK_ID}" \
+            -o runtime_config.json
+
+          echo "---- runtime_config.json ----"
+          cat runtime_config.json
+
+          # Save API base + link for later steps (callback + branding)
+          echo -n "$API_BASE" > ci_api_base.txt
+          echo -n "$LINK_ID" > ci_link_id.txt
+
+      # ✅ Build ci_env.json from runtime_config.json + (optional) PACKAGE_NAME override
       - name: Build ci_env.json + extract CI vars
         run: |
           set -e
@@ -72,41 +102,46 @@ jobs:
           python3 - <<'PY'
           import json, re, os
 
-          # Full client_payload from repository_dispatch
+          # Runtime config fetched from backend
+          cfg = json.load(open("runtime_config.json", "r", encoding="utf-8")) or {}
+
+          # From dispatch payload (top-level), not CONFIG
           payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
 
-          # Our real config is under CONFIG (from CiBuildService)
-          cfg = payload.get("CONFIG") or {}
-
-          api_base = (cfg.get("API_BASE_URL") or "").rstrip("/")
+          api_base = (payload.get("API_BASE_URL") or "").rstrip("/")
           if not api_base:
-              raise SystemExit("Missing CONFIG.API_BASE_URL in payload")
+              raise SystemExit("Missing client_payload.API_BASE_URL")
 
-          app_name = cfg.get("APP_NAME") or "My App"
-          app_type = cfg.get("APP_TYPE") or "ECOMMERCE"
-
-          link_id = str(cfg.get("OWNER_PROJECT_LINK_ID") or "").strip()
+          link_id = str(payload.get("OWNER_PROJECT_LINK_ID") or "").strip()
           if not link_id:
-              raise SystemExit("Missing CONFIG.OWNER_PROJECT_LINK_ID in payload")
+              # fallback from cfg (should exist anyway)
+              link_id = str(cfg.get("OWNER_PROJECT_LINK_ID") or "").strip()
+          if not link_id:
+              raise SystemExit("Missing OWNER_PROJECT_LINK_ID")
 
+          app_name = (cfg.get("APP_NAME") or "My App")
+          app_type = (cfg.get("APP_TYPE") or "ECOMMERCE")
           project_id = str(cfg.get("PROJECT_ID") or "").strip()
 
-          # ✅ NEW: unique PACKAGE_NAME (applicationId) per tenant
-          pkg = (cfg.get("PACKAGE_NAME") or cfg.get("APPLICATION_ID") or "").strip()
+          # ✅ PACKAGE_NAME
+          # 1) prefer explicit dispatch payload
+          pkg = (payload.get("PACKAGE_NAME") or payload.get("APPLICATION_ID") or "").strip()
+
+          # 2) fallback to cfg (if you ever add it later in backend)
           if not pkg:
-              # fallback: com.build4all.app<LINK_ID>
+              pkg = (cfg.get("PACKAGE_NAME") or cfg.get("APPLICATION_ID") or "").strip()
+
+          # 3) fallback deterministic
+          if not pkg:
               pkg = f"com.build4all.app{link_id}"
 
-          # normalize: lowercase + allowed chars only (a-z0-9._)
           pkg = pkg.lower()
           pkg = re.sub(r"[^a-z0-9._]", "", pkg)
-
           if pkg.count(".") < 1:
-              # ensure it looks like a real package
               pkg = f"com.build4all.{pkg}"
 
           env = {
-              "API_BASE_URL": api_base,            # ✅ مهم للـ logo + callback
+              "API_BASE_URL": api_base,
               "APP_NAME": app_name,
               "APP_TYPE": app_type,
               "OWNER_PROJECT_LINK_ID": link_id,
@@ -114,7 +149,7 @@ jobs:
               "PACKAGE_NAME": pkg,
           }
 
-          # optional currency
+          # Optional currency (if you later add CURRENCY_ID in backend config)
           currency_id = cfg.get("CURRENCY_ID")
           if currency_id not in (None, "", 0):
               env["CURRENCY_ID"] = str(currency_id)
@@ -131,14 +166,11 @@ jobs:
               if v:
                   env[key] = v
 
-          # LOGO_URL: ممكن يجي LOGO_URL أو LOGO_PATH من الباكند
+          # LOGO_URL
           logo_url = (cfg.get("LOGO_URL") or cfg.get("LOGO_PATH") or "").strip()
           if logo_url:
               env["LOGO_URL"] = logo_url
 
-          # write helper files for callback step
-          open("ci_api_base.txt", "w", encoding="utf-8").write(api_base)
-          open("ci_link_id.txt", "w", encoding="utf-8").write(link_id)
           open("ci_package_name.txt", "w", encoding="utf-8").write(pkg)
 
           with open("lib/env/ci_env.json", "w", encoding="utf-8") as f:
@@ -166,10 +198,8 @@ jobs:
 
           echo "Setting applicationId to: $PKG"
 
-          # Replace applicationId = "..."
           if grep -qE 'applicationId\s*=\s*"' "$FILE"; then
             sed -i "s/applicationId\s*=\s*\"[^\"]*\"/applicationId = \"$PKG\"/g" "$FILE"
-          # Or applicationId "..." (Groovy style, just in case)
           elif grep -qE 'applicationId\s*"' "$FILE"; then
             sed -i "s/applicationId\s*\"[^\"]*\"/applicationId \"$PKG\"/g" "$FILE"
           else
@@ -204,7 +234,7 @@ jobs:
 
           pathlib.Path("assets/branding").mkdir(parents=True, exist_ok=True)
 
-          # ✅ إذا LOGO_URL نسبي (/uploads/...) بنكمّلو مع API_BASE_URL
+          # If LOGO_URL is relative, resolve it
           if logo_url and logo_url.startswith("/"):
               if api_base:
                   logo_url = api_base + logo_url
@@ -238,6 +268,7 @@ jobs:
           print("strings.xml written for:", app_name_raw)
           PY
 
+          flutter pub get
           flutter pub run flutter_launcher_icons
           flutter pub run flutter_native_splash:create
 
@@ -247,17 +278,14 @@ jobs:
           set -e
           FILE="android/app/build.gradle.kts"
 
-          # If isMinifyEnabled exists, replace whole line
           if grep -q "isMinifyEnabled" "$FILE"; then
             sed -i 's/^[[:space:]]*isMinifyEnabled *=.*/            isMinifyEnabled = false/' "$FILE"
           fi
 
-          # If isShrinkResources exists, replace whole line
           if grep -q "isShrinkResources" "$FILE"; then
             sed -i 's/^[[:space:]]*isShrinkResources *=.*/            isShrinkResources = false/' "$FILE"
           fi
 
-          # If neither exists, inject inside release { }
           if ! grep -q "isMinifyEnabled" "$FILE"; then
             perl -0777 -i -pe 's/release\s*\{\s*/release {\n            isMinifyEnabled = false\n            isShrinkResources = false\n/s' "$FILE"
           fi
@@ -292,7 +320,7 @@ jobs:
           echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
           echo "LINK_ID=$LINK_ID" >> $GITHUB_ENV
 
-      # CALLBACK (uses API_BASE_URL from env + X-Auth-Token)
+      # CALLBACK (uses API_BASE_URL + X-Auth-Token)
       - name: Callback backend (SAVE URLs)
         run: |
           set -e
