@@ -1,3 +1,4 @@
+import 'package:build4front/debug/debug_config_banner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 
@@ -21,5 +22,5 @@ void main() async {
     debugPrint("Stripe init failed: $e");
   }
 
-  runApp(const Build4AllFrontApp());
+  runApp(const DebugConfigBanner(child: Build4AllFrontApp()));
 }

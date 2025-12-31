@@ -148,6 +148,8 @@ jobs:
           print("API_BASE_URL =", api_base)
           print("OWNER_PROJECT_LINK_ID =", link_id)
           print("PACKAGE_NAME =", pkg)
+          print("------ ci_env.json CONTENT ------")
+          print(json.dumps(env, ensure_ascii=False, indent=2))
           PY
 
       # ✅ Apply unique applicationId (PACKAGE_NAME)
