@@ -24,7 +24,6 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      # Flutter pinned
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -41,7 +40,6 @@ jobs:
         run: |
           echo '${{ toJson(github.event.client_payload) }}'
 
-      # Force Android NDK 27 (safe replace)
       - name: Force Android NDK 27
         run: |
           set -e
@@ -61,77 +59,55 @@ jobs:
             exit 1
           fi
 
-      # ✅ NEW: Fetch runtime config by linkId (source of truth)
-      - name: Fetch runtime config by linkId
-        run: |
-          set -e
-          API_BASE="${{ github.event.client_payload.API_BASE_URL }}"
-          LINK_ID="${{ github.event.client_payload.OWNER_PROJECT_LINK_ID }}"
-
-          if [ -z "$API_BASE" ]; then
-            echo "Missing client_payload.API_BASE_URL"
-            exit 1
-          fi
-
-          if [ -z "$LINK_ID" ]; then
-            echo "Missing client_payload.OWNER_PROJECT_LINK_ID"
-            exit 1
-          fi
-
-          API_BASE="${API_BASE%/}"
-
-          echo "API_BASE=$API_BASE"
-          echo "LINK_ID=$LINK_ID"
-
-          curl -sS -f "${API_BASE}/api/public/runtime-config/by-link?linkId=${LINK_ID}" \
-            -o runtime_config.json
-
-          echo "---- runtime_config.json ----"
-          cat runtime_config.json
-
-          # Save API base + link for later steps (callback + branding)
-          echo -n "$API_BASE" > ci_api_base.txt
-          echo -n "$LINK_ID" > ci_link_id.txt
-
-      # ✅ Build ci_env.json from runtime_config.json + (optional) PACKAGE_NAME override
-      - name: Build ci_env.json + extract CI vars
+      # ✅ HYBRID: Use CONFIG if exists, otherwise fetch by-link
+      - name: Build ci_env.json (CONFIG or by-link fallback)
         run: |
           set -e
           mkdir -p lib/env
 
           python3 - <<'PY'
-          import json, re, os
+          import json, re, os, sys, urllib.request
 
-          # Runtime config fetched from backend
-          cfg = json.load(open("runtime_config.json", "r", encoding="utf-8")) or {}
-
-          # From dispatch payload (top-level), not CONFIG
           payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
+          cfg = payload.get("CONFIG") or {}
 
-          api_base = (payload.get("API_BASE_URL") or "").rstrip("/")
-          if not api_base:
-              raise SystemExit("Missing client_payload.API_BASE_URL")
-
-          link_id = str(payload.get("OWNER_PROJECT_LINK_ID") or "").strip()
-          if not link_id:
-              # fallback from cfg (should exist anyway)
+          # ---------------------------------
+          # 1) Prefer old style: CONFIG exists
+          # ---------------------------------
+          if cfg.get("API_BASE_URL") and cfg.get("OWNER_PROJECT_LINK_ID"):
+              source = "CONFIG"
+              runtime = cfg
+              api_base = (cfg.get("API_BASE_URL") or "").rstrip("/")
               link_id = str(cfg.get("OWNER_PROJECT_LINK_ID") or "").strip()
-          if not link_id:
-              raise SystemExit("Missing OWNER_PROJECT_LINK_ID")
 
-          app_name = (cfg.get("APP_NAME") or "My App")
-          app_type = (cfg.get("APP_TYPE") or "ECOMMERCE")
-          project_id = str(cfg.get("PROJECT_ID") or "").strip()
+          else:
+              # ---------------------------------
+              # 2) Fallback: by-link
+              # expects top-level API_BASE_URL + OWNER_PROJECT_LINK_ID
+              # ---------------------------------
+              source = "BY_LINK"
+              api_base = (payload.get("API_BASE_URL") or "").rstrip("/")
+              link_id = str(payload.get("OWNER_PROJECT_LINK_ID") or "").strip()
 
-          # ✅ PACKAGE_NAME
-          # 1) prefer explicit dispatch payload
-          pkg = (payload.get("PACKAGE_NAME") or payload.get("APPLICATION_ID") or "").strip()
+              if not api_base:
+                  raise SystemExit("Missing API_BASE_URL. Provide either CONFIG.API_BASE_URL or top-level API_BASE_URL")
+              if not link_id:
+                  raise SystemExit("Missing OWNER_PROJECT_LINK_ID. Provide either CONFIG.OWNER_PROJECT_LINK_ID or top-level OWNER_PROJECT_LINK_ID")
 
-          # 2) fallback to cfg (if you ever add it later in backend)
-          if not pkg:
-              pkg = (cfg.get("PACKAGE_NAME") or cfg.get("APPLICATION_ID") or "").strip()
+              url = f"{api_base}/api/public/runtime-config/by-link?linkId={link_id}"
+              print("Fetching runtime config:", url)
+              with urllib.request.urlopen(url) as r:
+                  runtime = json.loads(r.read().decode("utf-8"))
 
-          # 3) fallback deterministic
+          print("CONFIG SOURCE =", source)
+
+          # Common fields
+          app_name = runtime.get("APP_NAME") or "My App"
+          app_type = runtime.get("APP_TYPE") or "ECOMMERCE"
+          project_id = str(runtime.get("PROJECT_ID") or "").strip()
+
+          # PACKAGE_NAME: allow override either in CONFIG or top-level
+          pkg = (runtime.get("PACKAGE_NAME") or runtime.get("APPLICATION_ID") or payload.get("PACKAGE_NAME") or payload.get("APPLICATION_ID") or "").strip()
           if not pkg:
               pkg = f"com.build4all.app{link_id}"
 
@@ -149,12 +125,7 @@ jobs:
               "PACKAGE_NAME": pkg,
           }
 
-          # Optional currency (if you later add CURRENCY_ID in backend config)
-          currency_id = cfg.get("CURRENCY_ID")
-          if currency_id not in (None, "", 0):
-              env["CURRENCY_ID"] = str(currency_id)
-
-          # Base64 JSONs (already encoded by backend)
+          # Base64 JSONs
           for key in [
               "THEME_JSON_B64",
               "NAV_JSON_B64",
@@ -162,15 +133,16 @@ jobs:
               "ENABLED_FEATURES_JSON_B64",
               "BRANDING_JSON_B64",
           ]:
-              v = cfg.get(key)
+              v = runtime.get(key)
               if v:
                   env[key] = v
 
-          # LOGO_URL
-          logo_url = (cfg.get("LOGO_URL") or cfg.get("LOGO_PATH") or "").strip()
+          logo_url = (runtime.get("LOGO_URL") or runtime.get("LOGO_PATH") or "").strip()
           if logo_url:
               env["LOGO_URL"] = logo_url
 
+          open("ci_api_base.txt", "w", encoding="utf-8").write(api_base)
+          open("ci_link_id.txt", "w", encoding="utf-8").write(link_id)
           open("ci_package_name.txt", "w", encoding="utf-8").write(pkg)
 
           with open("lib/env/ci_env.json", "w", encoding="utf-8") as f:
@@ -180,21 +152,13 @@ jobs:
           print("API_BASE_URL =", api_base)
           print("OWNER_PROJECT_LINK_ID =", link_id)
           print("PACKAGE_NAME =", pkg)
-          print("------ ci_env.json CONTENT ------")
-          print(json.dumps(env, ensure_ascii=False, indent=2))
           PY
 
-      # ✅ Apply unique applicationId (PACKAGE_NAME)
       - name: Set unique applicationId (PACKAGE_NAME)
         run: |
           set -e
           FILE="android/app/build.gradle.kts"
           PKG="$(cat ci_package_name.txt | tr -d '\r\n')"
-
-          if [ ! -f "$FILE" ]; then
-            echo "android/app/build.gradle.kts not found"
-            exit 1
-          fi
 
           echo "Setting applicationId to: $PKG"
 
@@ -208,10 +172,8 @@ jobs:
             exit 1
           fi
 
-          echo "---- applicationId now ----"
           grep -n "applicationId" "$FILE" || true
 
-      # Branding + strings.xml using LOGO_URL from ci_env.json
       - name: Apply branding
         run: |
           set -e
@@ -228,32 +190,18 @@ jobs:
           api_base = (cfg.get("API_BASE_URL") or "").rstrip("/")
           logo_url = (cfg.get("LOGO_URL") or "").strip()
 
-          print("APP_NAME:", app_name_raw)
-          print("LOGO_URL (raw):", logo_url)
-          print("API_BASE_URL:", api_base)
-
           pathlib.Path("assets/branding").mkdir(parents=True, exist_ok=True)
 
-          # If LOGO_URL is relative, resolve it
-          if logo_url and logo_url.startswith("/"):
-              if api_base:
-                  logo_url = api_base + logo_url
-                  print("Resolved absolute LOGO_URL:", logo_url)
-              else:
-                  print("Relative LOGO_URL but API_BASE_URL missing -> skipping logo download")
-                  logo_url = ""
+          if logo_url and logo_url.startswith("/") and api_base:
+              logo_url = api_base + logo_url
 
           if logo_url:
               try:
-                  print("Downloading logo from:", logo_url)
                   urllib.request.urlretrieve(logo_url, "assets/branding/logo.png")
                   shutil.copyfile("assets/branding/logo.png","assets/branding/launcher.png")
                   shutil.copyfile("assets/branding/logo.png","assets/branding/splash.png")
               except Exception as e:
                   print("⚠️ Failed to download logo:", e)
-                  print("Continuing without custom logo...")
-          else:
-              print("No LOGO_URL – skipping logo download")
 
           values_dir = pathlib.Path("android/app/src/main/res/values")
           values_dir.mkdir(parents=True, exist_ok=True)
@@ -265,14 +213,11 @@ jobs:
             '</resources>\n'
           )
           (values_dir/"strings.xml").write_text(strings_xml, encoding="utf-8")
-          print("strings.xml written for:", app_name_raw)
           PY
 
-          flutter pub get
           flutter pub run flutter_launcher_icons
           flutter pub run flutter_native_splash:create
 
-      # Disable R8
       - name: Disable R8
         run: |
           set -e
@@ -290,17 +235,12 @@ jobs:
             perl -0777 -i -pe 's/release\s*\{\s*/release {\n            isMinifyEnabled = false\n            isShrinkResources = false\n/s' "$FILE"
           fi
 
-          echo "---- R8 flags ----"
-          grep -n "isMinifyEnabled\|isShrinkResources" "$FILE" || true
-
-      # Build
       - name: Build APK
         run: flutter build apk --release --dart-define-from-file=lib/env/ci_env.json
 
       - name: Build AAB
         run: flutter build appbundle --release --dart-define-from-file=lib/env/ci_env.json
 
-      # Release + Upload
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -320,7 +260,6 @@ jobs:
           echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
           echo "LINK_ID=$LINK_ID" >> $GITHUB_ENV
 
-      # CALLBACK (uses API_BASE_URL + X-Auth-Token)
       - name: Callback backend (SAVE URLs)
         run: |
           set -e
@@ -334,11 +273,6 @@ jobs:
 
           APK_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/app-release.apk"
           AAB_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/app-release.aab"
-
-          echo "API_BASE=$API_BASE"
-          echo "LINK_ID=$LINK_ID"
-          echo "APK_URL=$APK_URL"
-          echo "AAB_URL=$AAB_URL"
 
           curl -sS -f -X PUT "${API_BASE}/api/ci/owner-project-links/${LINK_ID}/apk-url" \
             -H "Content-Type: application/json" \
