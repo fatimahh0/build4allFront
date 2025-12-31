@@ -22,5 +22,5 @@ void main() async {
     debugPrint("Stripe init failed: $e");
   }
 
-  runApp(const DebugConfigBanner(child: Build4AllFrontApp()));
+  runApp(const Build4AllFrontApp()); 
 }
