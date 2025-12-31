@@ -260,26 +260,60 @@ jobs:
           echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
           echo "LINK_ID=$LINK_ID" >> $GITHUB_ENV
 
-      - name: Callback backend (SAVE URLs)
+      - name: Callback backend (SAVE URLs) + show links
         run: |
           set -e
-
-          API_BASE=$(cat ci_api_base.txt)
-          LINK_ID=$(cat ci_link_id.txt)
+      
+          API_BASE="$(cat ci_api_base.txt | tr -d '\r\n')"
+          LINK_ID="$(cat ci_link_id.txt | tr -d '\r\n')"
           TAG="${RELEASE_TAG}"
-
+      
           OWNER="${{ github.repository_owner }}"
           REPO="${{ github.event.repository.name }}"
-
+      
           APK_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/app-release.apk"
           AAB_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/app-release.aab"
-
-          curl -sS -f -X PUT "${API_BASE}/api/ci/owner-project-links/${LINK_ID}/apk-url" \
+      
+          echo ""
+          echo "========================================"
+          echo "✅ BUILD OUTPUT LINKS"
+          echo "TAG:     $TAG"
+          echo "APK URL: $APK_URL"
+          echo "AAB URL: $AAB_URL"
+          echo "LINK_ID: $LINK_ID"
+          echo "API:     $API_BASE"
+          echo "========================================"
+          echo ""
+      
+          # Try callback - but DO NOT fail before printing links
+          echo "---- Callback: save APK URL ----"
+          APK_HTTP=$(curl -sS -o apk_resp.txt -w "%{http_code}" -X PUT \
+            "${API_BASE}/api/ci/owner-project-links/${LINK_ID}/apk-url" \
             -H "Content-Type: application/json" \
             -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
-            -d "{\"apkUrl\":\"${APK_URL}\"}"
-
-          curl -sS -f -X PUT "${API_BASE}/api/ci/owner-project-links/${LINK_ID}/aab-url" \
+            -d "{\"apkUrl\":\"${APK_URL}\"}" || true)
+      
+          echo "HTTP_STATUS=$APK_HTTP"
+          echo "RESPONSE:"
+          cat apk_resp.txt || true
+          echo ""
+      
+          echo "---- Callback: save AAB URL ----"
+          AAB_HTTP=$(curl -sS -o aab_resp.txt -w "%{http_code}" -X PUT \
+            "${API_BASE}/api/ci/owner-project-links/${LINK_ID}/aab-url" \
             -H "Content-Type: application/json" \
             -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
-            -d "{\"aabUrl\":\"${AAB_URL}\"}"
+            -d "{\"aabUrl\":\"${AAB_URL}\"}" || true)
+      
+          echo "HTTP_STATUS=$AAB_HTTP"
+          echo "RESPONSE:"
+          cat aab_resp.txt || true
+          echo ""
+      
+          # Optional: fail the workflow if callback failed (but AFTER printing links)
+          if [ "$APK_HTTP" -ge 400 ] || [ "$AAB_HTTP" -ge 400 ]; then
+            echo "❌ Callback failed (backend did not save URLs). Links above are still valid."
+            exit 1
+          fi
+      
+          echo "✅ Callback succeeded. Backend saved URLs."
