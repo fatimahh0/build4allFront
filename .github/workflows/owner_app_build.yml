@@ -13,7 +13,7 @@ jobs:
 
     env:
       CI_CALLBACK_TOKEN: ${{ secrets.CI_CALLBACK_TOKEN }}
-      RUNTIME_CONFIG_TOKEN: ${{ secrets.RUNTIME_CONFIG_TOKEN }}
+      CI_RUNTIME_TOKEN: ${{ secrets.CI_RUNTIME_TOKEN }}
 
     steps:
       - name: Checkout
@@ -60,7 +60,7 @@ jobs:
             exit 1
           fi
 
-      # ✅ FIXED: BY_LINK fetch now supports Authorization/Bearer or X-Auth-Token via secret
+      # ✅ BY_LINK fetch using CI token (X-Auth-Token)
       - name: Build ci_env.json (BY_LINK runtime-config + fallback)
         run: |
           set -e
@@ -84,13 +84,10 @@ jobs:
           runtime = {}
           source = "FALLBACK (payload/defaults)"
 
-          token = (os.getenv("RUNTIME_CONFIG_TOKEN") or "").strip()
+          token = (os.getenv("CI_RUNTIME_TOKEN") or "").strip()
 
           headers = {"Accept": "application/json"}
           if token:
-              # Works if backend expects Bearer JWT
-              headers["Authorization"] = f"Bearer {token}"
-              # Works if backend expects CI-style token header
               headers["X-Auth-Token"] = token
 
           try:
