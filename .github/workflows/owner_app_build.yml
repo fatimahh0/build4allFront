@@ -59,19 +59,18 @@ jobs:
             exit 1
           fi
 
-      # ✅ FORCE BY_LINK: always fetch runtime-config from backend (green theme source of truth)
-      - name: Build ci_env.json (FORCE by-link runtime-config)
+      # ✅ BEST EFFORT BY_LINK: fetch runtime-config, but NEVER fail build
+      - name: Build ci_env.json (BEST EFFORT by-link runtime-config + fallback)
         run: |
           set -e
           mkdir -p lib/env
 
           python3 - <<'PY'
-          import json, re, os, urllib.request
+          import json, re, os, urllib.request, urllib.error, socket
 
           payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
           cfg = payload.get("CONFIG") or {}
 
-          # Get api_base/link_id from CONFIG (old sender) OR top-level (new sender)
           api_base = (cfg.get("API_BASE_URL") or payload.get("API_BASE_URL") or "").rstrip("/")
           link_id  = str(cfg.get("OWNER_PROJECT_LINK_ID") or payload.get("OWNER_PROJECT_LINK_ID") or "").strip()
 
@@ -80,21 +79,38 @@ jobs:
           if not link_id:
               raise SystemExit("Missing OWNER_PROJECT_LINK_ID (need CONFIG.OWNER_PROJECT_LINK_ID or top-level OWNER_PROJECT_LINK_ID)")
 
-          # ✅ Always fetch runtime config from backend (theme/nav/home/features/branding)
           url = f"{api_base}/api/public/runtime-config/by-link?linkId={link_id}"
-          print("Fetching runtime config:", url)
-          with urllib.request.urlopen(url) as r:
-              runtime = json.loads(r.read().decode("utf-8"))
+          runtime = {}
+          source = "FALLBACK (payload/defaults)"
 
-          print("CONFIG SOURCE = BY_LINK (forced)")
+          try:
+              print("Fetching runtime config:", url)
+              req = urllib.request.Request(url, headers={"Accept": "application/json"})
+              with urllib.request.urlopen(req, timeout=12) as r:
+                  runtime = json.loads(r.read().decode("utf-8"))
+              source = "BY_LINK"
+          except (urllib.error.HTTPError, urllib.error.URLError, socket.timeout, json.JSONDecodeError) as e:
+              print("⚠️ runtime-config fetch failed, using fallback:", repr(e))
 
-          app_name = runtime.get("APP_NAME") or cfg.get("APP_NAME") or "My App"
-          app_type = runtime.get("APP_TYPE") or cfg.get("APP_TYPE") or "ECOMMERCE"
-          project_id = str(runtime.get("PROJECT_ID") or cfg.get("PROJECT_ID") or "").strip()
+          print("CONFIG SOURCE =", source)
 
-          # PACKAGE_NAME from CONFIG/top-level override, else fallback
-          pkg = (cfg.get("PACKAGE_NAME") or cfg.get("APPLICATION_ID") or
-                 payload.get("PACKAGE_NAME") or payload.get("APPLICATION_ID") or "").strip()
+          def pick(key, default=None):
+              v = runtime.get(key)
+              if v not in (None, "", []):
+                  return v
+              v = cfg.get(key)
+              if v not in (None, "", []):
+                  return v
+              v = payload.get(key)
+              if v not in (None, "", []):
+                  return v
+              return default
+
+          app_name = pick("APP_NAME", "My App")
+          app_type = pick("APP_TYPE", "ECOMMERCE")
+          project_id = str(pick("PROJECT_ID", "")).strip()
+
+          pkg = (pick("PACKAGE_NAME") or pick("APPLICATION_ID") or "").strip()
           if not pkg:
               pkg = f"com.build4all.app{link_id}"
 
@@ -110,9 +126,9 @@ jobs:
               "OWNER_PROJECT_LINK_ID": link_id,
               "PROJECT_ID": project_id,
               "PACKAGE_NAME": pkg,
+              "CONFIG_SOURCE": source,
           }
 
-          # Base64 JSONs from runtime-config (authoritative)
           for key in [
               "THEME_JSON_B64",
               "NAV_JSON_B64",
@@ -120,12 +136,11 @@ jobs:
               "ENABLED_FEATURES_JSON_B64",
               "BRANDING_JSON_B64",
           ]:
-              v = runtime.get(key)
+              v = pick(key)
               if v:
                   env[key] = v
 
-          # Logo url/path from runtime-config
-          logo_url = (runtime.get("LOGO_URL") or runtime.get("LOGO_PATH") or "").strip()
+          logo_url = (pick("LOGO_URL") or pick("LOGO_PATH") or "").strip()
           if logo_url:
               env["LOGO_URL"] = logo_url
 
@@ -186,7 +201,6 @@ jobs:
 
           pathlib.Path("assets/branding").mkdir(parents=True, exist_ok=True)
 
-          # if logo is relative, prefix api_base
           if logo_url and logo_url.startswith("/") and api_base:
               logo_url = api_base + logo_url
               print("Resolved absolute LOGO_URL:", logo_url)
@@ -214,6 +228,7 @@ jobs:
           print("strings.xml written for:", app_name_raw)
           PY
 
+          flutter pub get
           flutter pub run flutter_launcher_icons
           flutter pub run flutter_native_splash:create
 
@@ -262,7 +277,7 @@ jobs:
           echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
           echo "LINK_ID=$LINK_ID" >> $GITHUB_ENV
 
-      - name: Callback backend (SAVE URLs) + show links
+      - name: Callback backend (SAVE URLs) + show links (NON-BLOCKING)
         run: |
           set -e
 
@@ -312,8 +327,9 @@ jobs:
           echo ""
 
           if [ "$APK_HTTP" -ge 400 ] || [ "$AAB_HTTP" -ge 400 ]; then
-            echo "❌ Callback failed (backend did not save URLs). Links above are still valid."
-            exit 1
+            echo "⚠️ Callback failed (backend did not save URLs)."
+            echo "✅ BUT build/release links above are still valid, so we won’t fail the job."
+            exit 0
           fi
 
           echo "✅ Callback succeeded. Backend saved URLs."
