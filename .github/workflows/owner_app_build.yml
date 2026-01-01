@@ -13,6 +13,7 @@ jobs:
 
     env:
       CI_CALLBACK_TOKEN: ${{ secrets.CI_CALLBACK_TOKEN }}
+      RUNTIME_CONFIG_TOKEN: ${{ secrets.RUNTIME_CONFIG_TOKEN }}
 
     steps:
       - name: Checkout
@@ -59,8 +60,8 @@ jobs:
             exit 1
           fi
 
-      # ✅ BEST EFFORT BY_LINK: fetch runtime-config, but NEVER fail build
-      - name: Build ci_env.json (BEST EFFORT by-link runtime-config + fallback)
+      # ✅ FIXED: BY_LINK fetch now supports Authorization/Bearer or X-Auth-Token via secret
+      - name: Build ci_env.json (BY_LINK runtime-config + fallback)
         run: |
           set -e
           mkdir -p lib/env
@@ -83,9 +84,19 @@ jobs:
           runtime = {}
           source = "FALLBACK (payload/defaults)"
 
+          token = (os.getenv("RUNTIME_CONFIG_TOKEN") or "").strip()
+
+          headers = {"Accept": "application/json"}
+          if token:
+              # Works if backend expects Bearer JWT
+              headers["Authorization"] = f"Bearer {token}"
+              # Works if backend expects CI-style token header
+              headers["X-Auth-Token"] = token
+
           try:
               print("Fetching runtime config:", url)
-              req = urllib.request.Request(url, headers={"Accept": "application/json"})
+              print("Auth header present =", "YES" if token else "NO")
+              req = urllib.request.Request(url, headers=headers)
               with urllib.request.urlopen(req, timeout=12) as r:
                   runtime = json.loads(r.read().decode("utf-8"))
               source = "BY_LINK"
