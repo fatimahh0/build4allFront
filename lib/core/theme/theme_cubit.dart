@@ -59,7 +59,9 @@ class ThemeCubit extends Cubit<ThemeState> {
 
       emit(ThemeState(themeData: themeData, tokens: tokens, isLoaded: true));
     } catch (e) {
-   
+      // so you don't go insane next time
+      // ignore: avoid_print
+      print("Theme load failed: $e");
       emit(state.copyWith(isLoaded: true));
     }
   }
