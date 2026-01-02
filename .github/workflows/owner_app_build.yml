@@ -60,7 +60,7 @@ jobs:
             exit 1
           fi
 
-      # ✅ BY_LINK fetch using CI token (X-Auth-Token)
+      # ✅ BY_LINK fetch using CI token (X-Auth-Token) + SAFE FALLBACK + B64-ONLY
       - name: Build ci_env.json (BY_LINK runtime-config + fallback)
         run: |
           set -e
@@ -85,7 +85,6 @@ jobs:
           source = "FALLBACK (payload/defaults)"
 
           token = (os.getenv("CI_RUNTIME_TOKEN") or "").strip()
-
           headers = {"Accept": "application/json"}
           if token:
               headers["X-Auth-Token"] = token
@@ -95,7 +94,8 @@ jobs:
               print("Auth header present =", "YES" if token else "NO")
               req = urllib.request.Request(url, headers=headers)
               with urllib.request.urlopen(req, timeout=12) as r:
-                  runtime = json.loads(r.read().decode("utf-8"))
+                  raw = r.read().decode("utf-8")
+                  runtime = json.loads(raw)
               source = "BY_LINK"
           except (urllib.error.HTTPError, urllib.error.URLError, socket.timeout, json.JSONDecodeError) as e:
               print("⚠️ runtime-config fetch failed, using fallback:", repr(e))
@@ -114,18 +114,21 @@ jobs:
                   return v
               return default
 
-          app_name = pick("APP_NAME", "My App")
-          app_type = pick("APP_TYPE", "ECOMMERCE")
+          app_name   = pick("APP_NAME", "My App")
+          app_type   = pick("APP_TYPE", "ECOMMERCE")
           project_id = str(pick("PROJECT_ID", "")).strip()
 
-          pkg = (pick("PACKAGE_NAME") or pick("APPLICATION_ID") or "").strip()
-          if not pkg:
-              pkg = f"com.build4all.app{link_id}"
+          # ✅ Package name: sanitize + fallback if broken
+          pkg_raw = (pick("PACKAGE_NAME") or pick("APPLICATION_ID") or "").strip()
+          if not pkg_raw:
+              pkg_raw = f"com.build4all.app{link_id}"
 
-          pkg = pkg.lower()
+          pkg = pkg_raw.lower()
           pkg = re.sub(r"[^a-z0-9._]", "", pkg)
-          if pkg.count(".") < 1:
-              pkg = f"com.build4all.{pkg}"
+          pkg = re.sub(r"\.+", ".", pkg).strip(".")  # collapse dots
+
+          if not pkg or pkg.count(".") < 1:
+              pkg = f"com.build4all.app{link_id}"
 
           env = {
               "API_BASE_URL": api_base,
@@ -137,6 +140,7 @@ jobs:
               "CONFIG_SOURCE": source,
           }
 
+          # ✅ HARD GUARANTEE: B64 ONLY (avoids broken NAV_JSON newlines etc.)
           for key in [
               "THEME_JSON_B64",
               "NAV_JSON_B64",
@@ -148,6 +152,7 @@ jobs:
               if v:
                   env[key] = v
 
+          # logo
           logo_url = (pick("LOGO_URL") or pick("LOGO_PATH") or "").strip()
           if logo_url:
               env["LOGO_URL"] = logo_url
@@ -164,6 +169,9 @@ jobs:
           print("API_BASE_URL =", api_base)
           print("OWNER_PROJECT_LINK_ID =", link_id)
           print("PACKAGE_NAME =", pkg)
+
+          for k in ["THEME_JSON_B64","NAV_JSON_B64","HOME_JSON_B64","ENABLED_FEATURES_JSON_B64","BRANDING_JSON_B64"]:
+              print(k, "=", "YES" if env.get(k) else "NO")
           PY
 
       - name: Set unique applicationId (PACKAGE_NAME)
@@ -271,7 +279,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
-          LINK_ID=$(cat ci_link_id.txt)
+          LINK_ID=$(cat ci_link_id.txt | tr -d '\r\n')
           TAG="build-${LINK_ID}-${{ github.run_number }}"
 
           gh release view "$TAG" >/dev/null 2>&1 || \
@@ -288,6 +296,9 @@ jobs:
       - name: Callback backend (SAVE URLs) + show links (NON-BLOCKING)
         run: |
           set -e
+
+          echo "RUNTIME TOKEN len=${#CI_RUNTIME_TOKEN}"
+          echo "CALLBACK TOKEN len=${#CI_CALLBACK_TOKEN}"
 
           API_BASE="$(cat ci_api_base.txt | tr -d '\r\n')"
           LINK_ID="$(cat ci_link_id.txt | tr -d '\r\n')"
