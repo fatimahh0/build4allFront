@@ -60,7 +60,7 @@ jobs:
             exit 1
           fi
 
-      # ✅ BY_LINK fetch using CI token (X-Auth-Token) + SAFE FALLBACK + B64-ONLY
+      # ✅ BY_LINK fetch using CI token (X-Auth-Token) + SAFE FALLBACK + B64-ONLY + ✅ CURRENCY FIX
       - name: Build ci_env.json (BY_LINK runtime-config + fallback)
         run: |
           set -e
@@ -73,7 +73,13 @@ jobs:
           cfg = payload.get("CONFIG") or {}
 
           api_base = (cfg.get("API_BASE_URL") or payload.get("API_BASE_URL") or "").rstrip("/")
-          link_id  = str(cfg.get("OWNER_PROJECT_LINK_ID") or payload.get("OWNER_PROJECT_LINK_ID") or "").strip()
+          link_id  = str(
+              cfg.get("OWNER_PROJECT_LINK_ID")
+              or payload.get("OWNER_PROJECT_LINK_ID")
+              or payload.get("ownerProjectLinkId")
+              or cfg.get("ownerProjectLinkId")
+              or ""
+          ).strip()
 
           if not api_base:
               raise SystemExit("Missing API_BASE_URL (need CONFIG.API_BASE_URL or top-level API_BASE_URL)")
@@ -130,6 +136,17 @@ jobs:
           if not pkg or pkg.count(".") < 1:
               pkg = f"com.build4all.app{link_id}"
 
+          # ✅ Version info (fallback safe)
+          vc = pick("ANDROID_VERSION_CODE")
+          vn = pick("ANDROID_VERSION_NAME")
+
+          try:
+              vc_int = int(vc) if vc not in (None,"",[]) else None
+          except Exception:
+              vc_int = None
+
+          vn_str = (str(vn).strip() if vn not in (None,"",[]) else "")
+
           env = {
               "API_BASE_URL": api_base,
               "APP_NAME": app_name,
@@ -137,8 +154,22 @@ jobs:
               "OWNER_PROJECT_LINK_ID": link_id,
               "PROJECT_ID": project_id,
               "PACKAGE_NAME": pkg,
+              "ANDROID_VERSION_CODE": vc_int if vc_int is not None else 1,
+              "ANDROID_VERSION_NAME": vn_str if vn_str else "1.0.0",
               "CONFIG_SOURCE": source,
           }
+
+          # ✅ Currency FIX: accept CURRENCY_ID or currencyId (camelCase)
+          currency_id = pick("CURRENCY_ID")
+          if currency_id in (None, "", []):
+              currency_id = (
+                  runtime.get("currencyId")
+                  or cfg.get("currencyId")
+                  or payload.get("currencyId")
+                  or payload.get("CURRENCY_ID")
+              )
+          if currency_id not in (None, "", []):
+              env["CURRENCY_ID"] = str(currency_id).strip()
 
           # ✅ HARD GUARANTEE: B64 ONLY (avoids broken NAV_JSON newlines etc.)
           for key in [
@@ -154,12 +185,18 @@ jobs:
 
           # logo
           logo_url = (pick("LOGO_URL") or pick("LOGO_PATH") or "").strip()
+          if not logo_url:
+              # also accept camelCase
+              logo_url = (runtime.get("logoUrl") or cfg.get("logoUrl") or payload.get("logoUrl") or "").strip()
           if logo_url:
               env["LOGO_URL"] = logo_url
 
           open("ci_api_base.txt", "w", encoding="utf-8").write(api_base)
           open("ci_link_id.txt", "w", encoding="utf-8").write(link_id)
           open("ci_package_name.txt", "w", encoding="utf-8").write(pkg)
+
+          open("ci_android_version_code.txt", "w", encoding="utf-8").write(str(env["ANDROID_VERSION_CODE"]))
+          open("ci_android_version_name.txt", "w", encoding="utf-8").write(env["ANDROID_VERSION_NAME"])
 
           os.makedirs("lib/env", exist_ok=True)
           with open("lib/env/ci_env.json", "w", encoding="utf-8") as f:
@@ -168,10 +205,32 @@ jobs:
           print("ci_env.json written")
           print("API_BASE_URL =", api_base)
           print("OWNER_PROJECT_LINK_ID =", link_id)
+          print("PROJECT_ID =", project_id)
           print("PACKAGE_NAME =", pkg)
+          print("ANDROID_VERSION_CODE =", env["ANDROID_VERSION_CODE"])
+          print("ANDROID_VERSION_NAME =", env["ANDROID_VERSION_NAME"])
+          print("CURRENCY_ID =", env.get("CURRENCY_ID"))
+          print("CONFIG_SOURCE =", source)
 
           for k in ["THEME_JSON_B64","NAV_JSON_B64","HOME_JSON_B64","ENABLED_FEATURES_JSON_B64","BRANDING_JSON_B64"]:
               print(k, "=", "YES" if env.get(k) else "NO")
+          PY
+
+      - name: Debug env (check currency + version)
+        run: |
+          echo "----- ci_env.json -----"
+          cat lib/env/ci_env.json
+          echo ""
+          python3 - <<'PY'
+          import json
+          cfg=json.load(open("lib/env/ci_env.json"))
+          print("OWNER_PROJECT_LINK_ID =", cfg.get("OWNER_PROJECT_LINK_ID"))
+          print("PROJECT_ID =", cfg.get("PROJECT_ID"))
+          print("PACKAGE_NAME =", cfg.get("PACKAGE_NAME"))
+          print("ANDROID_VERSION_CODE =", cfg.get("ANDROID_VERSION_CODE"))
+          print("ANDROID_VERSION_NAME =", cfg.get("ANDROID_VERSION_NAME"))
+          print("CURRENCY_ID =", cfg.get("CURRENCY_ID"))
+          print("CONFIG_SOURCE =", cfg.get("CONFIG_SOURCE"))
           PY
 
       - name: Set unique applicationId (PACKAGE_NAME)
@@ -194,6 +253,104 @@ jobs:
 
           echo "---- applicationId now ----"
           grep -n "applicationId" "$FILE" || true
+
+      # ✅🔥 NEW: Apply namespace + versionCode/versionName + MainActivity package + move file
+      - name: Apply PACKAGE_NAME + VERSION (namespace + MainActivity + folders)
+        run: |
+          set -e
+
+          PKG="$(cat ci_package_name.txt | tr -d '\r\n')"
+          VC="$(cat ci_android_version_code.txt | tr -d '\r\n')"
+          VN="$(cat ci_android_version_name.txt | tr -d '\r\n')"
+
+          FILE="android/app/build.gradle.kts"
+
+          echo "PKG=$PKG"
+          echo "VERSION_CODE=$VC"
+          echo "VERSION_NAME=$VN"
+
+          # 1) namespace
+          if grep -qE 'namespace\s*=\s*"' "$FILE"; then
+            sed -i "s/namespace\s*=\s*\"[^\"]*\"/namespace = \"$PKG\"/g" "$FILE"
+          else
+            # Insert namespace inside android { ... }
+            perl -0777 -i -pe "s/android\\s*\\{\\s*/android {\\n    namespace = \\\"$PKG\\\"\\n/s" "$FILE"
+          fi
+
+          # 2) versionCode / versionName
+          if grep -qE 'versionCode\s*=\s*[0-9]+' "$FILE"; then
+            sed -i "s/versionCode\s*=\s*[0-9]\+/versionCode = $VC/g" "$FILE"
+          else
+            perl -0777 -i -pe "s/defaultConfig\\s*\\{\\s*/defaultConfig {\\n        versionCode = $VC\\n/s" "$FILE"
+          fi
+
+          if grep -qE 'versionName\s*=\s*"' "$FILE"; then
+            sed -i "s/versionName\s*=\s*\"[^\"]*\"/versionName = \"$VN\"/g" "$FILE"
+          else
+            perl -0777 -i -pe "s/defaultConfig\\s*\\{\\s*/defaultConfig {\\n        versionName = \\\"$VN\\\"\\n/s" "$FILE"
+          fi
+
+          echo "---- build.gradle.kts (key lines) ----"
+          grep -n "namespace\|applicationId\|versionCode\|versionName" "$FILE" || true
+
+          # 3) Update MainActivity package + move file to new folder
+          # Kotlin path preferred
+          ROOT_KT="android/app/src/main/kotlin"
+          ROOT_JAVA="android/app/src/main/java"
+
+          NEW_PATH_REL="$(echo "$PKG" | tr '.' '/')"
+
+          fix_activity_in_root () {
+            local ROOT="$1"
+            if [ ! -d "$ROOT" ]; then
+              return 0
+            fi
+
+            # find MainActivity.kt or MainActivity.java
+            local ACT
+            ACT="$(find "$ROOT" -type f \( -name "MainActivity.kt" -o -name "MainActivity.java" \) | head -n 1 || true)"
+            if [ -z "$ACT" ]; then
+              echo "No MainActivity found under $ROOT (ok if your project differs)."
+              return 0
+            fi
+
+            echo "Found MainActivity: $ACT"
+
+            # read old package from first "package ..."
+            local OLD_PKG
+            OLD_PKG="$(grep -m1 '^package ' "$ACT" | awk '{print $2}' | tr -d '\r\n' || true)"
+            if [ -z "$OLD_PKG" ]; then
+              echo "Could not detect old package line in MainActivity. Will still try to move."
+            else
+              echo "Old package: $OLD_PKG"
+              # replace package line
+              sed -i "s/^package .*/package $PKG/" "$ACT"
+            fi
+
+            # destination folder
+            local DEST_DIR="$ROOT/$NEW_PATH_REL"
+            mkdir -p "$DEST_DIR"
+
+            # move file
+            local BASENAME
+            BASENAME="$(basename "$ACT")"
+            mv "$ACT" "$DEST_DIR/$BASENAME"
+
+            echo "Moved MainActivity to: $DEST_DIR/$BASENAME"
+          }
+
+          fix_activity_in_root "$ROOT_KT"
+          fix_activity_in_root "$ROOT_JAVA"
+
+          # 4) AndroidManifest.xml package attr (only if exists)
+          MAN="android/app/src/main/AndroidManifest.xml"
+          if [ -f "$MAN" ]; then
+            # only change if it has a package=""
+            if grep -q 'package="' "$MAN"; then
+              sed -i "s/package=\"[^\"]*\"/package=\"$PKG\"/g" "$MAN"
+              echo "Updated AndroidManifest package."
+            fi
+          fi
 
       - name: Apply branding
         run: |
