@@ -60,7 +60,7 @@ jobs:
             exit 1
           fi
 
-      # ✅ BY_LINK fetch using CI token (X-Auth-Token) + SAFE FALLBACK + B64-ONLY + ✅ CURRENCY FIX
+      # ✅ BY_LINK fetch using CI token (X-Auth-Token) + SAFE FALLBACK + B64-ONLY + ✅ CURRENCY FIX + ✅ VERSION
       - name: Build ci_env.json (BY_LINK runtime-config + fallback)
         run: |
           set -e
@@ -186,7 +186,6 @@ jobs:
           # logo
           logo_url = (pick("LOGO_URL") or pick("LOGO_PATH") or "").strip()
           if not logo_url:
-              # also accept camelCase
               logo_url = (runtime.get("logoUrl") or cfg.get("logoUrl") or payload.get("logoUrl") or "").strip()
           if logo_url:
               env["LOGO_URL"] = logo_url
@@ -254,7 +253,7 @@ jobs:
           echo "---- applicationId now ----"
           grep -n "applicationId" "$FILE" || true
 
-      # ✅🔥 NEW: Apply namespace + versionCode/versionName + MainActivity package + move file
+      # ✅ Apply namespace + versionCode/versionName + MainActivity package + move file
       - name: Apply PACKAGE_NAME + VERSION (namespace + MainActivity + folders)
         run: |
           set -e
@@ -273,7 +272,6 @@ jobs:
           if grep -qE 'namespace\s*=\s*"' "$FILE"; then
             sed -i "s/namespace\s*=\s*\"[^\"]*\"/namespace = \"$PKG\"/g" "$FILE"
           else
-            # Insert namespace inside android { ... }
             perl -0777 -i -pe "s/android\\s*\\{\\s*/android {\\n    namespace = \\\"$PKG\\\"\\n/s" "$FILE"
           fi
 
@@ -294,10 +292,8 @@ jobs:
           grep -n "namespace\|applicationId\|versionCode\|versionName" "$FILE" || true
 
           # 3) Update MainActivity package + move file to new folder
-          # Kotlin path preferred
           ROOT_KT="android/app/src/main/kotlin"
           ROOT_JAVA="android/app/src/main/java"
-
           NEW_PATH_REL="$(echo "$PKG" | tr '.' '/')"
 
           fix_activity_in_root () {
@@ -306,7 +302,6 @@ jobs:
               return 0
             fi
 
-            # find MainActivity.kt or MainActivity.java
             local ACT
             ACT="$(find "$ROOT" -type f \( -name "MainActivity.kt" -o -name "MainActivity.java" \) | head -n 1 || true)"
             if [ -z "$ACT" ]; then
@@ -316,22 +311,18 @@ jobs:
 
             echo "Found MainActivity: $ACT"
 
-            # read old package from first "package ..."
             local OLD_PKG
             OLD_PKG="$(grep -m1 '^package ' "$ACT" | awk '{print $2}' | tr -d '\r\n' || true)"
             if [ -z "$OLD_PKG" ]; then
               echo "Could not detect old package line in MainActivity. Will still try to move."
             else
               echo "Old package: $OLD_PKG"
-              # replace package line
               sed -i "s/^package .*/package $PKG/" "$ACT"
             fi
 
-            # destination folder
             local DEST_DIR="$ROOT/$NEW_PATH_REL"
             mkdir -p "$DEST_DIR"
 
-            # move file
             local BASENAME
             BASENAME="$(basename "$ACT")"
             mv "$ACT" "$DEST_DIR/$BASENAME"
@@ -345,7 +336,6 @@ jobs:
           # 4) AndroidManifest.xml package attr (only if exists)
           MAN="android/app/src/main/AndroidManifest.xml"
           if [ -f "$MAN" ]; then
-            # only change if it has a package=""
             if grep -q 'package="' "$MAN"; then
               sed -i "s/package=\"[^\"]*\"/package=\"$PKG\"/g" "$MAN"
               echo "Updated AndroidManifest package."
@@ -424,6 +414,27 @@ jobs:
 
           echo "---- R8 flags ----"
           grep -n "isMinifyEnabled\|isShrinkResources" "$FILE" || true
+
+      # ✅✅✅ FIXED: Signing in CI (decode keystore + generate android/key.properties)
+      - name: Setup Android signing (decode keystore + key.properties)
+        run: |
+          set -e
+          mkdir -p android/app
+
+          echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 --decode > android/app/build4all-release.p12
+
+          cat > android/key.properties <<EOF
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=app/build4all-release.p12
+          EOF
+
+          echo "✅ Keystore created:"
+          ls -la android/app/build4all-release.p12
+
+          echo "✅ key.properties created:"
+          cat android/key.properties
 
       - name: Build APK
         run: flutter build apk --release --dart-define-from-file=lib/env/ci_env.json
