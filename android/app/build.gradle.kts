@@ -1,15 +1,21 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
     namespace = "com.build4all.front"
     compileSdk = flutter.compileSdkVersion
-
-    // ✅ FIX: force NDK version required by your plugins
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -22,19 +28,32 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.build4front"
+        applicationId = "com.example.build4front" // later you’ll change per app
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+  signingConfigs {
+    create("release") {
+        keyAlias = keystoreProperties.getProperty("keyAlias")
+        keyPassword = keystoreProperties.getProperty("keyPassword")
+        storePassword = keystoreProperties.getProperty("storePassword")
+
+        val storeFilePath = keystoreProperties.getProperty("storeFile")
+        if (!storeFilePath.isNullOrBlank()) {
+            storeFile = file(storeFilePath) // relative to android/app because you're in app module
+        }
+    }
+}
+
+
     buildTypes {
         release {
-            // Signing with debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release") // ✅ IMPORTANT
             isMinifyEnabled = false
-        isShrinkResources = false
+            isShrinkResources = false
         }
     }
 }
