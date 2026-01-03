@@ -416,25 +416,27 @@ jobs:
           grep -n "isMinifyEnabled\|isShrinkResources" "$FILE" || true
 
       # ✅✅✅ FIXED: Signing in CI (decode keystore + generate android/key.properties)
-      - name: Setup Android signing (decode keystore + key.properties)
+      - name: Setup Android signing
         run: |
           set -e
           mkdir -p android/app
 
+          # decode keystore into android/app/
           echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 --decode > android/app/build4all-release.p12
 
-          cat > android/key.properties <<EOF
+          # key.properties must be inside android/
+          cat > android/key.properties <<'EOF'
           storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
           keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-          storeFile=app/build4all-release.p12
+          storeFile=build4all-release.p12
           EOF
 
-          echo "✅ Keystore created:"
-          ls -la android/app/build4all-release.p12
+          echo "✅ signing files:"
+          ls -la android/app
+          echo "✅ key.properties:"
+          cat android/key.properties | sed 's/storePassword=.*/storePassword=***/; s/keyPassword=.*/keyPassword=***/'
 
-          echo "✅ key.properties created:"
-          cat android/key.properties
 
       - name: Build APK
         run: flutter build apk --release --dart-define-from-file=lib/env/ci_env.json
