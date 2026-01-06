@@ -115,7 +115,7 @@ class _MainShellState extends State<MainShell> {
           return HomeScreen(
             appConfig: widget.appConfig,
             sections: homeSections,
-            // ✅ THIS is the important line
+            // ✅ important link: lets HomeScreen open profile tab
             onOpenProfileTab: _openProfileTab,
           );
 
@@ -170,33 +170,65 @@ class _MainShellState extends State<MainShell> {
             return prevToken != nextToken || prevId != nextId;
           },
           listener: (ctx, st) => _maybeLoadProfileFromAuth(st),
-          child: _tabs.length < 2
-              ? Scaffold(body: body)
-              : Scaffold(
-                  body: body,
-                  bottomNavigationBar: BottomNavigationBar(
-                    currentIndex: _currentIndex,
-                    type: BottomNavigationBarType.fixed,
-                    selectedItemColor: c.primary,
-                    unselectedItemColor: c.onSurface.withOpacity(0.6),
-                    showUnselectedLabels: true,
-                    items: _tabs
-                        .map(
-                          (t) => BottomNavigationBarItem(
-                            icon: Icon(t.icon),
-                            label: t.label,
-                          ),
-                        )
-                        .toList(),
-                    onTap: (index) => setState(() => _currentIndex = index),
-                  ),
+          child: Scaffold(
+            appBar: AppBar(
+              backgroundColor: c.surface,
+              title: Text(
+                _tabs[_currentIndex].label,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(color: c.onSurface),
+              ),
+              leading: Builder(
+                builder: (ctx) => IconButton(
+                  icon: const Icon(Icons.menu),
+                  onPressed: () => Scaffold.of(ctx).openDrawer(),
                 ),
+              ),
+            ),
+            drawer: Drawer(
+              child: SafeArea(
+                child: ListView.builder(
+                  padding: EdgeInsets.zero,
+                  itemCount: _tabs.length,
+                  itemBuilder: (ctx, index) {
+                    final t = _tabs[index];
+                    final selected = index == _currentIndex;
+
+                    return ListTile(
+                      leading: Icon(
+                        t.icon,
+                        color:
+                            selected ? c.primary : c.onSurface.withOpacity(0.7),
+                      ),
+                      title: Text(
+                        t.label,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: selected
+                                  ? c.primary
+                                  : c.onSurface.withOpacity(0.9),
+                              fontWeight:
+                                  selected ? FontWeight.w600 : FontWeight.w400,
+                            ),
+                      ),
+                      selected: selected,
+                      onTap: () {
+                        setState(() => _currentIndex = index);
+                        Navigator.of(context).pop(); // close drawer
+                      },
+                    );
+                  },
+                ),
+              ),
+            ),
+            body: body,
+          ),
         ),
       ),
     );
   }
 
-  // ✅ the rest of your methods stay the same (maybeLoadProfileFromAuth, _userIdFromToken, _mapIconName...)
   void _maybeLoadProfileFromAuth(AuthState authState) {
     final token = ((authState.token ?? '').trim().isNotEmpty)
         ? authState.token!.trim()
@@ -282,7 +314,7 @@ class NavItemView {
 }
 
 /// ===============================
-///  Profile tab wrapper (NOW SIMPLE)
+///  Profile tab wrapper (NO changes)
 /// ===============================
 class _ProfileTabShell extends StatelessWidget {
   final AppConfig appConfig;
@@ -309,9 +341,6 @@ class _ProfileTabShell extends StatelessWidget {
         : g.readAuthToken().trim();
 
     final userId = authState.user?.id ?? _userIdFromToken(token);
-
-    // No BlocProvider here anymore ✅
-    // It comes from MainShell, so Home + Profile share the same profile state.
 
     return UserProfileScreen(
       token: token,

@@ -26,15 +26,6 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
 
   bool _changed = false;
 
-  static const _statusOptions = <String>[
-    'PENDING',
-    'CANCEL_REQUESTED',
-    'CANCELED',
-    'REJECTED',
-    'REFUNDED',
-    'COMPLETED',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -246,12 +237,6 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                 final isCash = paymentMethod == 'CASH';
                 final canMarkCashPaid = isCash && paymentState != 'PAID';
 
-                final currentStatus =
-                    (o.status.isEmpty ? 'PENDING' : o.status).toUpperCase();
-                final dropdownValue = _statusOptions.contains(currentStatus)
-                    ? currentStatus
-                    : _statusOptions.first;
-
                 Widget paymentCard() {
                   return Container(
                     padding: EdgeInsets.all(spacing.md),
@@ -387,12 +372,14 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                     decoration: BoxDecoration(
                       color: colors.surface,
                       borderRadius: BorderRadius.circular(tokens.card.radius),
-                      border:
-                          Border.all(color: colors.border.withOpacity(0.22)),
+                      border: Border.all(
+                        color: colors.border.withOpacity(0.22),
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Title
                         Text(
                           l10n.adminOrderInfo,
                           style: tokens.typography.titleMedium.copyWith(
@@ -400,74 +387,43 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                             fontWeight: FontWeight.w900,
                           ),
                         ),
+
                         SizedBox(height: spacing.sm),
-                        Text(
-                          '${l10n.adminStatus}: ${o.statusUi}',
-                          style: tokens.typography.bodyMedium
-                              .copyWith(color: colors.body),
-                        ),
-                        SizedBox(height: spacing.sm),
+
+                        // 🔹 Read-only status with pill style
                         Row(
                           children: [
-                            Expanded(
-                              child: DropdownButtonFormField<String>(
-                                value: dropdownValue,
-                                isExpanded: true,
-                                decoration: InputDecoration(
-                                  filled: true,
-                                  fillColor: colors.background,
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: spacing.md,
-                                    vertical: spacing.sm,
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                    borderSide: BorderSide(
-                                      color: colors.border.withOpacity(0.35),
-                                    ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                    borderSide: BorderSide(
-                                      color: colors.border.withOpacity(0.35),
-                                    ),
-                                  ),
-                                ),
-                                items: _statusOptions.map((code) {
-                                  return DropdownMenuItem(
-                                    value: code,
-                                    child: Text(_statusLabel(l10n, code)),
-                                  );
-                                }).toList(),
-                                onChanged: state.updating
-                                    ? null
-                                    : (v) {
-                                        if (v == null) return;
-                                        if (v.toUpperCase() == currentStatus) {
-                                          return;
-                                        }
-                                        context
-                                            .read<AdminOrderDetailsBloc>()
-                                            .add(
-                                              AdminOrderStatusUpdateRequested(
-                                                orderId: o.id,
-                                                status: v,
-                                              ),
-                                            );
-                                      },
+                            Text(
+                              '${l10n.adminStatus}: ',
+                              style: tokens.typography.bodyMedium.copyWith(
+                                color: colors.body,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
-                            if (state.updating) ...[
-                              SizedBox(width: spacing.sm),
-                              const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: spacing.sm,
+                                vertical: spacing.xs,
                               ),
-                            ],
+                              decoration: BoxDecoration(
+                                color: colors.primary.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: colors.primary.withOpacity(0.35),
+                                ),
+                              ),
+                              child: Text(
+                                o.statusUi, // already pretty / localized from backend
+                                style: tokens.typography.bodySmall.copyWith(
+                                  color: colors.primary,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
+
+                        // 👉 If you want more info later (date, id, etc.), add here with more SizedBox + Text
                       ],
                     ),
                   );

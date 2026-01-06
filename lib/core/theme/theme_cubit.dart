@@ -14,21 +14,27 @@ class ThemeState {
   final AppThemeTokens tokens;
   final bool isLoaded;
 
+  // 🔹 NEW:
+  final String menuType; // "bottom", "drawer", etc.
+
   const ThemeState({
     required this.themeData,
     required this.tokens,
     required this.isLoaded,
+    required this.menuType,
   });
 
   ThemeState copyWith({
     ThemeData? themeData,
     AppThemeTokens? tokens,
     bool? isLoaded,
+    String? menuType,
   }) {
     return ThemeState(
       themeData: themeData ?? this.themeData,
       tokens: tokens ?? this.tokens,
       isLoaded: isLoaded ?? this.isLoaded,
+      menuType: menuType ?? this.menuType,
     );
   }
 
@@ -38,6 +44,7 @@ class ThemeState {
       themeData: AppThemeBuilder.build(tokens),
       tokens: tokens,
       isLoaded: false,
+      menuType: 'bottom', // default
     );
   }
 }
@@ -89,20 +96,25 @@ class ThemeCubit extends Cubit<ThemeState> {
     }
   }
 
-  void _applyThemeFromB64(String b64, {required String source}) {
+ void _applyThemeFromB64(String b64, {required String source}) {
     try {
-      // quick debug so you know which path was used
-      // ignore: avoid_print
       print('Applying theme from $source (len=${b64.length})');
 
       final remote = RemoteThemeDto.fromBase64Json(b64);
       final tokens = AppThemeTokens.fromRemote(remote);
       final themeData = AppThemeBuilder.build(tokens);
 
-      emit(ThemeState(themeData: themeData, tokens: tokens, isLoaded: true));
+      emit(
+        state.copyWith(
+          themeData: themeData,
+          tokens: tokens,
+          isLoaded: true,
+          menuType: (remote.menuType ?? 'bottom').toLowerCase(),
+        ),
+      );
     } catch (e) {
-      // ignore: avoid_print
       print('Theme apply failed ($source): $e');
     }
   }
+
 }
