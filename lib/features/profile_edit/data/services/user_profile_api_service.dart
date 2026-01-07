@@ -25,9 +25,9 @@ class UserProfileApiService {
       Options(headers: {'Authorization': 'Bearer ${_cleanToken(token)}'});
 
   Options _authMultipart(String token) => Options(
-    headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
-    contentType: Headers.multipartFormDataContentType,
-  );
+        headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
+        contentType: Headers.multipartFormDataContentType,
+      );
 
   // ---- API ----
   Future<Map<String, dynamic>> getUserById({
@@ -86,10 +86,21 @@ class UserProfileApiService {
     required int userId,
     required String password,
   }) async {
-    await dio.delete(
+    final res = await dio.delete(
       '${_apiRoot()}/users/$userId',
       data: {'password': password},
-      options: _authJson(token),
+      options: Options(
+        headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
+        responseType: ResponseType.plain,
+        validateStatus: (s) => s != null && s >= 200 && s < 500,
+      ),
     );
+
+    final text = (res.data ?? '').toString().trim();
+
+    if (res.statusCode == null || res.statusCode! >= 400) {
+      throw Exception(
+          text.isNotEmpty ? text : 'Delete failed (${res.statusCode})');
+    }
   }
 }

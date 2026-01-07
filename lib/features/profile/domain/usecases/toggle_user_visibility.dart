@@ -4,6 +4,17 @@ class ToggleUserVisibility {
   final UserProfileRepository repo;
   ToggleUserVisibility(this.repo);
 
-  Future<void> call(String token, bool isPublic) =>
-      repo.setVisibility(token: token, isPublic: isPublic);
+  Future<void> call({
+    required String token,
+    required int userId,
+    required bool isPublic,
+    required int ownerProjectLinkId,
+  }) {
+    return repo.setVisibility(
+      token: token,
+      userId: userId,
+      isPublic: isPublic,
+      ownerProjectLinkId: ownerProjectLinkId,
+    );
+  }
 }

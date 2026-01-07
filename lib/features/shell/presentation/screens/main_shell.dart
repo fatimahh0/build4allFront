@@ -1,7 +1,9 @@
 // lib/features/shell/presentation/screens/main_shell.dart
 
 import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:build4front/core/config/env.dart';
 import 'package:build4front/core/l10n/locale_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -56,6 +58,7 @@ class _MainShellState extends State<MainShell> {
   // ✅ guard so we don’t spam LoadUserProfile every rebuild
   String _lastProfileToken = '';
   int _lastProfileUserId = 0;
+  int _lastProfileOwnerId = 0;
 
   // ----------------------------
   // ✅ Profile tab detection (robust)
@@ -167,7 +170,14 @@ class _MainShellState extends State<MainShell> {
             final nextToken = (next.token ?? '').trim();
             final prevId = prev.user?.id ?? 0;
             final nextId = next.user?.id ?? 0;
-            return prevToken != nextToken || prevId != nextId;
+
+            // ownerId comes from env (same value used by service layer)
+            final prevOwner = _envOwnerId();
+            final nextOwner = _envOwnerId();
+
+            return prevToken != nextToken ||
+                prevId != nextId ||
+                prevOwner != nextOwner;
           },
           listener: (ctx, st) => _maybeLoadProfileFromAuth(st),
           child: Scaffold(
@@ -229,21 +239,33 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
+  int _envOwnerId() => int.tryParse(Env.ownerProjectLinkId) ?? 0;
+
   void _maybeLoadProfileFromAuth(AuthState authState) {
+    // pick token (auth -> globals)
     final token = ((authState.token ?? '').trim().isNotEmpty)
         ? authState.token!.trim()
         : g.readAuthToken().trim();
 
     final userId = authState.user?.id ?? _userIdFromToken(token);
+    final ownerId = _envOwnerId();
 
-    if (token.isEmpty || userId <= 0) return;
+    if (token.isEmpty || userId <= 0 || ownerId <= 0) return;
 
-    if (token == _lastProfileToken && userId == _lastProfileUserId) return;
+    if (token == _lastProfileToken &&
+        userId == _lastProfileUserId &&
+        ownerId == _lastProfileOwnerId) {
+      return;
+    }
 
     _lastProfileToken = token;
     _lastProfileUserId = userId;
+    _lastProfileOwnerId = ownerId;
 
-    context.read<UserProfileBloc>().add(LoadUserProfile(token, userId));
+    //  new signature needs ownerProjectLinkId
+    context
+        .read<UserProfileBloc>()
+        .add(LoadUserProfile(token, userId, ownerId));
   }
 
   int _userIdFromToken(String token) {
@@ -261,6 +283,7 @@ class _MainShellState extends State<MainShell> {
       final payload = utf8.decode(
         base64Url.decode(base64Url.normalize(parts[1])),
       );
+
       final map = jsonDecode(payload);
       if (map is! Map<String, dynamic>) return 0;
 

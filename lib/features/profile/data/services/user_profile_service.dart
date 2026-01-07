@@ -1,5 +1,3 @@
-// lib/features/profile/data/services/user_profile_service.dart
-
 import 'package:dio/dio.dart';
 import 'package:build4front/core/network/globals.dart' as g;
 import 'package:build4front/core/config/env.dart';
@@ -7,14 +5,12 @@ import 'package:build4front/core/config/env.dart';
 class UserProfileService {
   final Dio _dio = g.appDio!;
 
-  // ---- helpers ----
   String _cleanToken(String token) {
     final t = token.trim();
     return t.toLowerCase().startsWith('bearer ') ? t.substring(7).trim() : t;
   }
 
   String get _apiRoot {
-    // g.appServerRoot might be "http://x:8080" OR "http://x:8080/api"
     final raw = g.appServerRoot.trim().isNotEmpty
         ? g.appServerRoot.trim()
         : Env.apiBaseUrl.trim();
@@ -26,17 +22,14 @@ class UserProfileService {
 
   String get _base => '$_apiRoot/users';
 
-  // ---- API ----
-
   Future<Map<String, dynamic>> fetchProfileMap({
     required String token,
     required int userId,
+    required int ownerProjectLinkId,
   }) async {
-    final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
-
     final res = await _dio.get(
       '$_base/$userId',
-      queryParameters: {'ownerProjectLinkId': ownerId},
+      queryParameters: {'ownerProjectLinkId': ownerProjectLinkId},
       options: Options(
         headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
         responseType: ResponseType.json,
@@ -53,21 +46,20 @@ class UserProfileService {
     );
   }
 
-  /// ✅ FIXED: prevent JSON parsing crash when backend returns empty body (204/200 empty)
+  /// ✅ FIX: pass userId in path so backend doesn't rely on token identity
   Future<void> updateVisibility({
     required String token,
+    required int userId,
     required bool isPublic,
+    required int ownerProjectLinkId,
   }) async {
-    final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
-
     await _dio.put(
-      '$_base/profile-visibility',
-      queryParameters: {'isPublic': isPublic, 'ownerProjectLinkId': ownerId},
-
-      // ✅ send empty json body (safe)
+      '$_base/$userId/profile-visibility',
+      queryParameters: {
+        'isPublic': isPublic,
+        'ownerProjectLinkId': ownerProjectLinkId,
+      },
       data: const {},
-
-      // ✅ critical: don't try to parse empty response as JSON
       options: Options(
         headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
         responseType: ResponseType.plain,
@@ -80,10 +72,9 @@ class UserProfileService {
     required String token,
     required int userId,
     required String status,
+    required int ownerProjectLinkId,
     String? password,
   }) async {
-    final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
-
     final body = <String, dynamic>{'status': status};
     if (status.toUpperCase() == 'INACTIVE' && (password?.isNotEmpty ?? false)) {
       body['password'] = password;
@@ -91,11 +82,11 @@ class UserProfileService {
 
     await _dio.put(
       '$_base/$userId/status',
-      queryParameters: {'ownerProjectLinkId': ownerId},
+      queryParameters: {'ownerProjectLinkId': ownerProjectLinkId},
       data: body,
       options: Options(
         headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
-        responseType: ResponseType.json, // this one usually returns JSON
+        responseType: ResponseType.json,
         validateStatus: (s) => s != null && s >= 200 && s < 300,
       ),
     );

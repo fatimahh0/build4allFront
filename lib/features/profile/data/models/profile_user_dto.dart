@@ -1,4 +1,3 @@
-import 'package:build4front/core/config/env.dart';
 import 'package:build4front/features/auth/domain/entities/user_entity.dart';
 
 class ProfileUserDto {
@@ -29,10 +28,7 @@ class ProfileUserDto {
     final st = m['status'];
     final name = st is Map ? st['name'] as String? : m['status'] as String?;
 
-    final ownerProjectLinkId =
-        (m['ownerProjectLinkId'] as num?)?.toInt() ??
-        int.tryParse(Env.ownerProjectLinkId) ??
-        0;
+    final ownerProjectLinkId = (m['ownerProjectLinkId'] as num?)?.toInt() ?? 0;
 
     final dynamic rawImage = m['profilePictureUrl'] ?? m['profileImageUrl'];
 
@@ -51,15 +47,15 @@ class ProfileUserDto {
   }
 
   UserEntity toEntity() => UserEntity(
-    id: id,
-    ownerProjectLinkId: ownerProjectLinkId,
-    username: null,
-    firstName: firstName.isEmpty ? null : firstName,
-    lastName: lastName.isEmpty ? null : lastName,
-    email: email,
-    phoneNumber: phoneNumber,
-    profilePictureUrl: profileImageUrl,
-    isPublicProfile: publicProfile,
-    status: statusName,
-  );
+        id: id,
+        ownerProjectLinkId: ownerProjectLinkId,
+        username: null,
+        firstName: firstName.isEmpty ? null : firstName,
+        lastName: lastName.isEmpty ? null : lastName,
+        email: email,
+        phoneNumber: phoneNumber,
+        profilePictureUrl: profileImageUrl,
+        isPublicProfile: publicProfile,
+        status: statusName,
+      );
 }

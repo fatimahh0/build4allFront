@@ -1,20 +1,20 @@
-// lib/features/profile/presentation/widgets/deactivate_user_dialog.dart
-
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:build4front/l10n/app_localizations.dart';
 
-// call the profile service directly
-import 'package:build4front/features/profile/data/services/user_profile_service.dart'
-    as svc;
+import 'package:build4front/features/profile/presentation/bloc/user_profile_bloc.dart';
+import 'package:build4front/features/profile/presentation/bloc/user_profile_event.dart';
 
 class DeactivateUserDialog extends StatefulWidget {
   final String token;
   final int userId;
+  final int ownerProjectLinkId;
 
   const DeactivateUserDialog({
     super.key,
     required this.token,
     required this.userId,
+    required this.ownerProjectLinkId,
   });
 
   @override
@@ -38,17 +38,17 @@ class _DeactivateUserDialogState extends State<DeactivateUserDialog> {
     final tr = AppLocalizations.of(context)!;
 
     return AlertDialog(
-      title: Text(tr.deactivate_title), // add key in ARB
+      title: Text(tr.deactivate_title),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(tr.deactivate_warning), // add key in ARB
+          Text(tr.deactivate_warning),
           const SizedBox(height: 12),
           TextField(
             controller: _ctrl,
             obscureText: true,
             decoration: InputDecoration(
-              labelText: tr.current_password_label, // add key
+              labelText: tr.current_password_label,
               errorText: _error,
               filled: true,
             ),
@@ -89,23 +89,22 @@ class _DeactivateUserDialogState extends State<DeactivateUserDialog> {
     });
 
     try {
-      final service = svc.UserProfileService();
+      // Fire the bloc event instead of calling service directly
+      context.read<UserProfileBloc>().add(
+            UpdateStatusPressed(
+              widget.token,
+              widget.userId,
+              'INACTIVE',
+              widget.ownerProjectLinkId,
+              password: pwd,
+            ),
+          );
 
-      await service.updateStatus(
-        token: widget.token,
-        userId: widget.userId,
-        status: 'INACTIVE',
-        password: pwd,
-      );
-
-      // ✅ tell parent we’re done & successful
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       setState(() => _error = e.toString());
     } finally {
-      if (mounted) {
-        setState(() => _busy = false);
-      }
+      if (mounted) setState(() => _busy = false);
     }
   }
 }

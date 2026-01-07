@@ -1,4 +1,5 @@
 import 'package:build4front/app/app_router.dart';
+import 'package:build4front/core/config/env.dart';
 import 'package:build4front/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:build4front/features/cart/presentation/bloc/cart_event.dart';
 import 'package:build4front/features/profile/presentation/screens/privacy_policy_screen.dart';
@@ -49,8 +50,13 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   String _effectiveToken = '';
   int _effectiveUserId = 0;
 
+  // ✅ multi-tenant ownerProjectLinkId (start from Env, then lock from loaded profile)
+  int _effectiveOwnerProjectLinkId = 0;
+
+  // ✅ guard to prevent spam reloads
   String _lastToken = '';
   int _lastUserId = 0;
+  int _lastOwnerId = 0;
 
   @override
   void initState() {
@@ -66,11 +72,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   }
 
   void _resetSessionUi() {
-    // ✅ wipe cart UI state (does NOT delete server cart)
     context.read<CartBloc>().add(const CartReset());
-
-    // optional: reset other blocs if you have them (orders, favorites, etc.)
-    // context.read<OrdersBloc>().add(const OrdersReset());
   }
 
   @override
@@ -94,6 +96,8 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     return s;
   }
 
+  int _envOwnerId() => int.tryParse(Env.ownerProjectLinkId) ?? 0;
+
   Future<void> _hydrateSession() async {
     setState(() => _hydrating = true);
 
@@ -101,14 +105,18 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     final tGlobal = g.readAuthToken().trim();
     final tStored = (await _store.getToken())?.trim() ?? '';
 
-    final tokenFull = _firstNonEmpty([tWidget, tGlobal, tStored]);
+    // ✅ IMPORTANT: stored before global to avoid wrong token from another app/session
+    final tokenFull = _firstNonEmpty([tWidget, tStored, tGlobal]);
     final tokenRaw = _stripBearer(tokenFull);
 
-    int id = widget.userId;
-
-    if (id <= 0 && tokenRaw.isNotEmpty) {
+    // ✅ FIX: ALWAYS take userId from token first (single source of truth)
+    int id = 0;
+    if (tokenRaw.isNotEmpty) {
       id = JwtUtils.userIdFromToken(tokenRaw) ?? 0;
     }
+
+    // fallback فقط إذا التوكن ما فيه id
+    if (id <= 0) id = widget.userId;
 
     if (id <= 0) {
       final storedId = await _store.getUserId();
@@ -122,6 +130,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
       if (v is String) id = int.tryParse(v.trim()) ?? 0;
     }
 
+    // keep global token synced (some parts read it)
     if (tokenFull.isNotEmpty) {
       g.setAuthToken(tokenFull);
     }
@@ -131,6 +140,10 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     setState(() {
       _effectiveToken = tokenRaw;
       _effectiveUserId = id;
+
+      // start with env ownerId; once profile loads we lock on real ownerId
+      _effectiveOwnerProjectLinkId = _envOwnerId();
+
       _hydrating = false;
     });
 
@@ -140,14 +153,19 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   void _kickLoadIfNeeded() {
     final token = _effectiveToken.trim();
     final id = _effectiveUserId;
+    final ownerId = _effectiveOwnerProjectLinkId;
 
-    if (token.isEmpty || id <= 0) return;
-    if (token == _lastToken && id == _lastUserId) return;
+    if (token.isEmpty || id <= 0 || ownerId <= 0) return;
+
+    if (token == _lastToken && id == _lastUserId && ownerId == _lastOwnerId) {
+      return;
+    }
 
     _lastToken = token;
     _lastUserId = id;
+    _lastOwnerId = ownerId;
 
-    context.read<UserProfileBloc>().add(LoadUserProfile(token, id));
+    context.read<UserProfileBloc>().add(LoadUserProfile(token, id, ownerId));
   }
 
   void _goToLogin(BuildContext context) {
@@ -156,40 +174,24 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     Navigator.pushNamedAndRemoveUntil(context, AppRouter.startup, (_) => false);
   }
 
-  /// ✅ Patch AuthBloc from the profile dto we already have (most reliable).
-  void _patchAuthFromProfileDto(dynamic userDto) {
-    // userDto is state.user from UserProfileLoaded (your ProfileUserDto most likely)
-    // We read only fields we know exist in your dto.
-    try {
-      final firstName = (userDto.firstName as String?)?.trim();
-      final lastName = (userDto.lastName as String?)?.trim();
-      final username = (userDto.username as String?)?.trim(); // if exists
-      final profileUrl = (userDto.profileImageUrl as String?)
-          ?.trim(); // your dto uses this
-      final isPublic = (userDto.publicProfile as bool?);
-      final statusName = (userDto.statusName as String?)?.trim();
+  /// ✅ Patch AuthBloc from loaded profile entity (safe)
+  void _patchAuthFromProfile(UserProfileLoaded st) {
+    final user = st.user;
 
-      context.read<AuthBloc>().add(
-        AuthUserPatched(
-          firstName: firstName,
-          lastName: lastName,
-          username: username,
-          profilePictureUrl: profileUrl,
-          isPublicProfile: isPublic,
-          status: statusName,
-        ),
-      );
-    } catch (_) {
-      // If dto shape differs, no crash. We still refresh profile UI anyway.
-    }
+    context.read<AuthBloc>().add(
+          AuthUserPatched(
+            firstName: user.firstName,
+            lastName: user.lastName,
+            username: user.username,
+            profilePictureUrl: user.profilePictureUrl,
+            isPublicProfile: user.isPublicProfile,
+            status: user.status,
+          ),
+        );
   }
 
-  // ✅ go to edit + refresh after pop + PATCH AuthBloc so HomeHeader updates
   Future<void> _goToEditProfile(
-    BuildContext context,
-    int ownerProjectLinkId,
-  ) async {
-    // We don't rely on return value. Some edit screens return nothing.
+      BuildContext context, int ownerProjectLinkId) async {
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -203,10 +205,11 @@ class _UserProfileScreenState extends State<UserProfileScreen>
 
     if (!mounted) return;
 
-    // ✅ refresh profile screen data
+    // refresh (same owner)
     context.read<UserProfileBloc>().add(
-      LoadUserProfile(_effectiveToken, _effectiveUserId),
-    );
+          LoadUserProfile(
+              _effectiveToken, _effectiveUserId, ownerProjectLinkId),
+        );
   }
 
   @override
@@ -247,9 +250,14 @@ class _UserProfileScreenState extends State<UserProfileScreen>
 
     return BlocConsumer<UserProfileBloc, UserProfileState>(
       listener: (context, state) {
-        // ✅ When profile reloads after edit, patch AuthBloc immediately
         if (state is UserProfileLoaded) {
-          _patchAuthFromProfileDto(state.user);
+          _patchAuthFromProfile(state);
+
+          // ✅ lock onto REAL ownerProjectLinkId after we load it
+          final realOwnerId = state.user.ownerProjectLinkId;
+          if (realOwnerId > 0 && realOwnerId != _effectiveOwnerProjectLinkId) {
+            setState(() => _effectiveOwnerProjectLinkId = realOwnerId);
+          }
         }
       },
       builder: (context, state) {
@@ -263,8 +271,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
           final theme = Theme.of(context);
           final msg = state.message.toLowerCase();
 
-          final loginRequired =
-              msg.contains('unauthorized') ||
+          final loginRequired = msg.contains('unauthorized') ||
               msg.contains('401') ||
               msg.contains('please log in') ||
               msg.contains('please login');
@@ -293,11 +300,14 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                       onPressed: loginRequired
                           ? () => _goToLogin(context)
                           : () => context.read<UserProfileBloc>().add(
-                              LoadUserProfile(
-                                _effectiveToken,
-                                _effectiveUserId,
+                                LoadUserProfile(
+                                  _effectiveToken,
+                                  _effectiveUserId,
+                                  _effectiveOwnerProjectLinkId > 0
+                                      ? _effectiveOwnerProjectLinkId
+                                      : _envOwnerId(),
+                                ),
                               ),
-                            ),
                       icon: Icon(loginRequired ? Icons.login : Icons.refresh),
                       label: Text(loginRequired ? tr.login : tr.retry),
                     ),
@@ -323,7 +333,6 @@ class _UserProfileScreenState extends State<UserProfileScreen>
           final user = state.user;
           final theme = Theme.of(context);
 
-          // ✅ ownerProjectLinkId from profile dto
           final ownerId = user.ownerProjectLinkId;
 
           return Scaffold(
@@ -331,28 +340,23 @@ class _UserProfileScreenState extends State<UserProfileScreen>
             appBar: AppBar(),
             body: SafeArea(
               child: ListView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 children: [
                   UserProfileHeader(user: user),
                   const SizedBox(height: 16),
-
                   _tile(
                     context,
                     icon: Icons.edit,
                     title: tr.editProfileTitle,
                     onTap: () => _goToEditProfile(context, ownerId),
                   ),
-
                   _tile(
                     context,
                     icon: Icons.language,
                     title: tr.language,
                     onTap: () => _showLanguageSelector(context),
                   ),
-
                   _tile(
                     context,
                     icon: Icons.receipt_long_outlined,
@@ -360,7 +364,6 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                     onTap: () =>
                         Navigator.pushNamed(context, AppRouter.myOrders),
                   ),
-
                   _tile(
                     context,
                     icon: Icons.privacy_tip,
@@ -368,21 +371,17 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => const PrivacyPolicyScreen(),
-                        ),
+                            builder: (_) => const PrivacyPolicyScreen()),
                       );
                     },
                   ),
-
                   _tile(
                     context,
                     icon: Icons.logout,
                     title: tr.logout,
                     onTap: () => _confirmLogout(context),
                   ),
-
                   const SizedBox(height: 8),
-
                   ExpansionTile(
                     leading: const Icon(Icons.settings),
                     title: Text(tr.manageAccount),
@@ -394,11 +393,13 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                             ? tr.profileMakePrivate
                             : tr.profileMakePublic,
                         onTap: () => context.read<UserProfileBloc>().add(
-                          ToggleVisibilityPressed(
-                            _effectiveToken,
-                            !(user.isPublicProfile ?? true),
-                          ),
-                        ),
+                              ToggleVisibilityPressed(
+                                _effectiveToken,
+                                user.id!, 
+                                !(user.isPublicProfile ?? true),
+                                ownerId,
+                              ),
+                            ),
                       ),
                       _tile(
                         context,
@@ -411,8 +412,10 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                             builder: (ctx) => DeactivateUserDialog(
                               token: _effectiveToken,
                               userId: _effectiveUserId,
+                              ownerProjectLinkId: ownerId,
                             ),
                           );
+
                           if (ok == true) {
                             _resetSessionUi();
                             widget.onLogout();
@@ -427,10 +430,8 @@ class _UserProfileScreenState extends State<UserProfileScreen>
           );
         }
 
-        // if bloc didn't load yet, trigger it once
-        WidgetsBinding.instance.addPostFrameCallback(
-          (_) => _kickLoadIfNeeded(),
-        );
+        WidgetsBinding.instance
+            .addPostFrameCallback((_) => _kickLoadIfNeeded());
         return const Scaffold(body: SizedBox.shrink());
       },
     );
@@ -450,7 +451,6 @@ class _UserProfileScreenState extends State<UserProfileScreen>
           trailing: const Icon(Icons.chevron_right),
           onTap: onTap,
         ),
-
         const Divider(height: 1),
       ],
     );

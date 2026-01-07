@@ -5,6 +5,14 @@ class GetUserProfile {
   final UserProfileRepository repo;
   GetUserProfile(this.repo);
 
-  Future<UserEntity> call(String token, int id) =>
-      repo.getProfile(token: token, userId: id);
+  Future<UserEntity> call({
+    required String token,
+    required int userId,
+    required int ownerProjectLinkId,
+  }) =>
+      repo.getProfile(
+        token: token,
+        userId: userId,
+        ownerProjectLinkId: ownerProjectLinkId,
+      );
 }

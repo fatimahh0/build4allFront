@@ -28,7 +28,11 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
   ) async {
     emit(const UserProfileLoading());
     try {
-      final user = await getUser(e.token, e.userId);
+      final user = await getUser(
+        token: e.token,
+        userId: e.userId,
+        ownerProjectLinkId: e.ownerProjectLinkId,
+      );
       emit(UserProfileLoaded(user));
     } catch (err) {
       emit(UserProfileError(err.toString()));
@@ -43,8 +47,14 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
     if (prev is! UserProfileLoaded) return;
 
     try {
-      await toggleVisibility(e.token, e.newValue);
-      add(LoadUserProfile(e.token, prev.user.id!));
+      await toggleVisibility(
+        token: e.token,
+        userId: e.userId, // ✅ use explicit userId
+        isPublic: e.newValue,
+        ownerProjectLinkId: e.ownerProjectLinkId,
+      );
+
+      add(LoadUserProfile(e.token, e.userId, e.ownerProjectLinkId));
     } catch (err) {
       emit(UserProfileError(err.toString()));
     }
@@ -59,9 +69,11 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
         token: e.token,
         userId: e.userId,
         status: e.status,
+        ownerProjectLinkId: e.ownerProjectLinkId,
         password: e.password,
       );
-      add(LoadUserProfile(e.token, e.userId));
+
+      add(LoadUserProfile(e.token, e.userId, e.ownerProjectLinkId));
     } catch (err) {
       emit(UserProfileError(err.toString()));
     }
