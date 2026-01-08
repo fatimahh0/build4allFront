@@ -1,0 +1,284 @@
+name: Owner App Build (iOS IPA)
+
+on:
+  repository_dispatch:
+    types: [owner_app_build_ios]
+
+permissions:
+  contents: write
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+
+    env:
+      CI_CALLBACK_TOKEN: ${{ secrets.CI_CALLBACK_TOKEN }}
+      CI_RUNTIME_TOKEN: ${{ secrets.CI_RUNTIME_TOKEN }}
+
+      # iOS signing secrets (optional for first run)
+      IOS_P12_B64: ${{ secrets.IOS_P12_B64 }}
+      IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+      IOS_MOBILEPROVISION_B64: ${{ secrets.IOS_MOBILEPROVISION_B64 }}
+      IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+      IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }} # ad-hoc | app-store | development | enterprise
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.32.0"
+          channel: stable
+          cache: true
+
+      - name: Show Flutter/Dart versions
+        run: |
+          flutter --version
+          dart --version
+
+      - name: Show payload (debug)
+        run: |
+          echo '${{ toJson(github.event.client_payload) }}'
+
+      # ✅ Same idea as Android: build lib/env/ci_env.json from payload or runtime-config
+      - name: Build ci_env.json (BY_LINK runtime-config + fallback)
+        run: |
+          set -e
+          mkdir -p lib/env
+
+          python3 - <<'PY'
+          import json, re, os, urllib.request, urllib.error, socket
+
+          payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
+          cfg = payload.get("CONFIG") or {}
+
+          api_base = (cfg.get("API_BASE_URL") or payload.get("API_BASE_URL") or "").rstrip("/")
+          link_id  = str(
+              cfg.get("OWNER_PROJECT_LINK_ID")
+              or payload.get("OWNER_PROJECT_LINK_ID")
+              or payload.get("ownerProjectLinkId")
+              or cfg.get("ownerProjectLinkId")
+              or ""
+          ).strip()
+
+          if not api_base:
+              raise SystemExit("Missing API_BASE_URL")
+          if not link_id:
+              raise SystemExit("Missing OWNER_PROJECT_LINK_ID")
+
+          url = f"{api_base}/api/public/runtime-config/by-link?linkId={link_id}"
+          runtime = {}
+          source = "FALLBACK"
+
+          token = (os.getenv("CI_RUNTIME_TOKEN") or "").strip()
+          headers = {"Accept": "application/json"}
+          if token:
+              headers["X-Auth-Token"] = token
+
+          try:
+              print("Fetching runtime config:", url)
+              req = urllib.request.Request(url, headers=headers)
+              with urllib.request.urlopen(req, timeout=12) as r:
+                  runtime = json.loads(r.read().decode("utf-8"))
+              source = "BY_LINK"
+          except (urllib.error.HTTPError, urllib.error.URLError, socket.timeout, json.JSONDecodeError) as e:
+              print("⚠️ runtime-config fetch failed, using fallback:", repr(e))
+
+          def pick(key, default=None):
+              v = runtime.get(key)
+              if v not in (None, "", []):
+                  return v
+              v = cfg.get(key)
+              if v not in (None, "", []):
+                  return v
+              v = payload.get(key)
+              if v not in (None, "", []):
+                  return v
+              return default
+
+          env = {
+              "API_BASE_URL": api_base,
+              "APP_NAME": pick("APP_NAME", "My App"),
+              "APP_TYPE": pick("APP_TYPE", "ECOMMERCE"),
+              "OWNER_PROJECT_LINK_ID": link_id,
+              "PROJECT_ID": str(pick("PROJECT_ID", "")).strip(),
+              "CONFIG_SOURCE": source,
+          }
+
+          # currency support
+          currency_id = pick("CURRENCY_ID") or runtime.get("currencyId") or cfg.get("currencyId") or payload.get("currencyId")
+          if currency_id not in (None, "", []):
+              env["CURRENCY_ID"] = str(currency_id).strip()
+
+          # B64 configs
+          for key in ["THEME_JSON_B64","NAV_JSON_B64","HOME_JSON_B64","ENABLED_FEATURES_JSON_B64","BRANDING_JSON_B64"]:
+              v = pick(key)
+              if v:
+                  env[key] = v
+
+          logo_url = (pick("LOGO_URL") or pick("LOGO_PATH") or runtime.get("logoUrl") or "").strip()
+          if logo_url:
+              env["LOGO_URL"] = logo_url
+
+          os.makedirs("lib/env", exist_ok=True)
+          with open("lib/env/ci_env.json", "w", encoding="utf-8") as f:
+              json.dump(env, f, ensure_ascii=False, indent=2)
+
+          open("ci_api_base.txt", "w", encoding="utf-8").write(api_base)
+          open("ci_link_id.txt", "w", encoding="utf-8").write(link_id)
+
+          print("✅ ci_env.json written. source=", source)
+          print("API_BASE_URL =", api_base)
+          print("OWNER_PROJECT_LINK_ID =", link_id)
+          print("CURRENCY_ID =", env.get("CURRENCY_ID"))
+          PY
+
+      - name: Debug ci_env.json
+        run: |
+          echo "----- ci_env.json -----"
+          cat lib/env/ci_env.json
+
+      - name: Apply branding (icons + splash)
+        run: |
+          set -e
+          flutter pub get
+          flutter pub run flutter_launcher_icons
+          flutter pub run flutter_native_splash:create
+
+      # ✅ Create ExportOptions.plist (needed for IPA export)
+      - name: Create ExportOptions.plist
+        run: |
+          set -e
+          METHOD="${IOS_EXPORT_METHOD:-ad-hoc}"
+          TEAM="${IOS_TEAM_ID:-}"
+          cat > ios/ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>${METHOD}</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>stripSwiftSymbols</key>
+            <true/>
+            <key>compileBitcode</key>
+            <false/>
+            <key>destination</key>
+            <string>export</string>
+          </dict>
+          </plist>
+          EOF
+
+          echo "---- ExportOptions.plist ----"
+          cat ios/ExportOptions.plist
+
+      # ✅ If iOS secrets exist -> setup signing. If not -> skip (first-run debug)
+      - name: Setup iOS signing (if secrets exist)
+        run: |
+          set -e
+
+          if [ -z "${IOS_P12_B64}" ] || [ -z "${IOS_MOBILEPROVISION_B64}" ]; then
+            echo "⚠️ iOS secrets missing -> will build without codesign (debug run)."
+            exit 0
+          fi
+
+          security create-keychain -p "" build.keychain
+          security set-keychain-settings -lut 21600 build.keychain
+          security unlock-keychain -p "" build.keychain
+
+          echo "$IOS_P12_B64" | base64 --decode > ios_cert.p12
+          security import ios_cert.p12 -k build.keychain -P "$IOS_P12_PASSWORD" -T /usr/bin/codesign
+          security list-keychains -d user -s build.keychain
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          echo "$IOS_MOBILEPROVISION_B64" | base64 --decode > profile.mobileprovision
+          UUID=$(grep -a -E -o "[-A-F0-9]{36}" profile.mobileprovision | head -n 1)
+          cp profile.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
+
+          echo "✅ Installed provisioning profile UUID=$UUID"
+
+      - name: Build iOS (signed if secrets exist, else no-codesign)
+        run: |
+          set -e
+
+          if [ -z "${IOS_P12_B64}" ] || [ -z "${IOS_MOBILEPROVISION_B64}" ]; then
+            echo "➡️ Building iOS without codesign (debug)."
+            flutter build ios --release --no-codesign --dart-define-from-file=lib/env/ci_env.json
+            exit 0
+          fi
+
+          echo "➡️ Building IPA (signed)."
+          flutter build ipa --release \
+            --export-options-plist=ios/ExportOptions.plist \
+            --dart-define-from-file=lib/env/ci_env.json
+
+      - name: List build outputs (debug)
+        run: |
+          echo "---- IPA folder ----"
+          ls -la build/ios/ipa || true
+          echo "---- Archive folder ----"
+          ls -la build/ios/archive || true
+          echo "---- iOS build dir ----"
+          ls -la build/ios || true
+
+      - name: Create GitHub Release + upload IPA (if exists)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+
+          if ! ls build/ios/ipa/*.ipa >/dev/null 2>&1; then
+            echo "⚠️ No IPA produced (likely no-codesign run). Skipping release upload."
+            exit 0
+          fi
+
+          LINK_ID=$(cat ci_link_id.txt | tr -d '\r\n')
+          TAG="ios-build-${LINK_ID}-${{ github.run_number }}"
+
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --title "$TAG" --notes "iOS CI build"
+
+          gh release upload "$TAG" build/ios/ipa/*.ipa --clobber
+
+          echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
+          echo "LINK_ID=$LINK_ID" >> $GITHUB_ENV
+
+      - name: Callback backend (SAVE IPA URL) (non-blocking)
+        run: |
+          set -e
+
+          if [ -z "${RELEASE_TAG}" ]; then
+            echo "⚠️ No release tag => no IPA => skipping callback."
+            exit 0
+          fi
+
+          API_BASE="$(cat ci_api_base.txt | tr -d '\r\n')"
+          LINK_ID="$(cat ci_link_id.txt | tr -d '\r\n')"
+          OWNER="${{ github.repository_owner }}"
+          REPO="${{ github.event.repository.name }}"
+
+          # assumes release asset name ends with .ipa
+          IPA_NAME=$(ls build/ios/ipa/*.ipa | xargs -n 1 basename | head -n 1)
+          IPA_URL="https://github.com/${OWNER}/${REPO}/releases/download/${RELEASE_TAG}/${IPA_NAME}"
+
+          echo "✅ IPA URL: $IPA_URL"
+
+          HTTP=$(curl -sS -o ipa_resp.txt -w "%{http_code}" -X PUT \
+            "${API_BASE}/api/ci/owner-project-links/${LINK_ID}/ipa-url" \
+            -H "Content-Type: application/json" \
+            -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
+            -d "{\"ipaUrl\":\"${IPA_URL}\"}" || true)
+
+          echo "HTTP_STATUS=$HTTP"
+          cat ipa_resp.txt || true
+
+          if [ "$HTTP" -ge 400 ]; then
+            echo "⚠️ Callback failed, but build is still valid."
+            exit 0
+          fi
+
+          echo "✅ Callback succeeded."
