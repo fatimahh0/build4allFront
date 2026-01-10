@@ -246,11 +246,11 @@ jobs:
           print("✅ profile.mobileprovision written from backend response")
           PY
 
-      # Fallback provisioning profile from secret
-      - name: Provisioning profile fallback from secret
+      # Fallback provisioning profile from secret (VALIDATED + FIXED)
+      - name: Provisioning profile fallback from secret (validated)
         run: |
           set -e
-          if [ -f profile.mobileprovision ]; then
+          if [ -f profile.mobileprovision ] && [ -s profile.mobileprovision ]; then
             echo "✅ profile.mobileprovision already present (fetched)."
             exit 0
           fi
@@ -260,26 +260,48 @@ jobs:
             exit 1
           fi
 
-          echo "$IOS_MOBILEPROVISION_B64" | base64 --decode > profile.mobileprovision
-          echo "✅ profile.mobileprovision written from secret."
+          # sanitize base64 (remove spaces/newlines)
+          echo "$IOS_MOBILEPROVISION_B64" | tr -d '\n\r ' | base64 --decode > profile.mobileprovision || {
+            echo "❌ base64 decode failed. IOS_MOBILEPROVISION_B64 is not valid base64."
+            exit 1
+          }
 
-      # Install provisioning profile by UUID (FIXED)
-      - name: Install provisioning profile (UUID-based) - FIXED
+          echo "✅ profile.mobileprovision written from secret."
+          ls -la profile.mobileprovision
+          file profile.mobileprovision || true
+
+      # Install provisioning profile by UUID (FIXED + DEBUG)
+      - name: Install provisioning profile (UUID-based) - with debug
         run: |
           set -e
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
 
           if [ ! -s profile.mobileprovision ]; then
             echo "❌ profile.mobileprovision missing/empty"
+            ls -la
             exit 1
           fi
 
-          UUID=$(/usr/bin/security cms -D -i profile.mobileprovision \
-            | /usr/libexec/PlistBuddy -c 'Print :UUID' /dev/stdin)
+          echo "---- profile.mobileprovision size ----"
+          ls -la profile.mobileprovision
+
+          echo "---- file type ----"
+          file profile.mobileprovision || true
+
+          echo "---- decode profile to plist (first try) ----"
+          if ! /usr/bin/security cms -D -i profile.mobileprovision > profile.plist 2>cms_err.txt; then
+            echo "❌ security cms failed. Here is stderr:"
+            cat cms_err.txt || true
+            echo ""
+            echo "❌ This usually means IOS_MOBILEPROVISION_B64 is wrong or the decoded file is not a .mobileprovision."
+            exit 1
+          fi
+
+          UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' profile.plist)
+          NAME=$(/usr/libexec/PlistBuddy -c 'Print :Name' profile.plist || true)
 
           cp profile.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
-
-          echo "✅ Installed provisioning profile UUID=$UUID"
+          echo "✅ Installed provisioning profile: $NAME (UUID=$UUID)"
           ls -la "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
 
       # Create ExportOptions.plist (dynamic provisioningProfiles mapping) - FIXED
@@ -290,7 +312,10 @@ jobs:
           TEAM="${IOS_TEAM_ID}"
           BUNDLE_ID=$(cat ci_ios_bundle_id.txt | tr -d '\r\n')
 
-          /usr/bin/security cms -D -i profile.mobileprovision > profile.plist
+          if [ ! -s profile.plist ]; then
+            /usr/bin/security cms -D -i profile.mobileprovision > profile.plist
+          fi
+
           PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" profile.plist)
 
           cat > ios/ExportOptions.plist <<EOF
