@@ -182,34 +182,43 @@ jobs:
           perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID;/g" "$PBX"
           grep -n "PRODUCT_BUNDLE_IDENTIFIER" "$PBX" | head -n 30
 
-      # Setup signing certificate in a custom keychain (FIXED)
-      - name: Setup iOS cert (keychain) - FIXED
+      # Force DEVELOPMENT_TEAM (helps Flutter/Xcode during archive)
+      - name: Set DEVELOPMENT_TEAM in pbxproj
         run: |
           set -e
+          PBX="ios/Runner.xcodeproj/project.pbxproj"
+          TEAM="${IOS_TEAM_ID}"
+          if [ -z "$TEAM" ]; then
+            echo "❌ IOS_TEAM_ID is missing"
+            exit 1
+          fi
+          perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = $TEAM;/g" "$PBX"
+          grep -n "DEVELOPMENT_TEAM" "$PBX" | head -n 30 || true
+
+      # Setup signing certificate in a custom keychain (FINAL)
+      - name: Setup iOS cert (keychain) - FINAL
+        run: |
+          set -e
+
           security create-keychain -p "" build.keychain
           security set-keychain-settings -lut 21600 build.keychain
           security unlock-keychain -p "" build.keychain
 
           echo "$IOS_P12_B64" | base64 --decode > ios_cert.p12
 
-          # ✅ IMPORTANT: -A so xcodebuild can use it
-          security import ios_cert.p12 -k build.keychain -P "$IOS_P12_PASSWORD" -A
+          # ✅ IMPORTANT: -A + trusted tools so xcodebuild/codesign can use it
+          security import ios_cert.p12 -k build.keychain -P "$IOS_P12_PASSWORD" -A \
+            -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/xcodebuild
 
-          # ✅ Make sure this keychain is searched/default
           security list-keychains -d user -s build.keychain
           security default-keychain -s build.keychain
 
           # ✅ Allow Apple tools to access private key in CI
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
 
-          echo "✅ Certificate imported into keychain."
-
-      # Verify the identity exists (critical debug)
-      - name: Verify codesign identity exists
-        run: |
-          set -e
           echo "---- identities in build.keychain ----"
           security find-identity -v -p codesigning build.keychain || true
+
           echo "---- identities overall ----"
           security find-identity -v -p codesigning || true
 
@@ -246,7 +255,7 @@ jobs:
           print("✅ profile.mobileprovision written from backend response")
           PY
 
-      # Fallback provisioning profile from secret (VALIDATED + FIXED)
+      # Fallback provisioning profile from secret (VALIDATED)
       - name: Provisioning profile fallback from secret (validated)
         run: |
           set -e
@@ -270,8 +279,8 @@ jobs:
           ls -la profile.mobileprovision
           file profile.mobileprovision || true
 
-      # Install provisioning profile by UUID (FIXED + DEBUG)
-      - name: Install provisioning profile (UUID-based) - with debug
+      # Install provisioning profile by UUID (DEBUGGED)
+      - name: Install provisioning profile (UUID-based) - DEBUGGED
         run: |
           set -e
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
@@ -288,12 +297,11 @@ jobs:
           echo "---- file type ----"
           file profile.mobileprovision || true
 
-          echo "---- decode profile to plist (first try) ----"
+          echo "---- decode profile to plist ----"
           if ! /usr/bin/security cms -D -i profile.mobileprovision > profile.plist 2>cms_err.txt; then
-            echo "❌ security cms failed. Here is stderr:"
+            echo "❌ security cms failed. stderr:"
             cat cms_err.txt || true
-            echo ""
-            echo "❌ This usually means IOS_MOBILEPROVISION_B64 is wrong or the decoded file is not a .mobileprovision."
+            echo "❌ The decoded file is not a valid .mobileprovision (wrong/truncated base64)."
             exit 1
           fi
 
@@ -304,17 +312,13 @@ jobs:
           echo "✅ Installed provisioning profile: $NAME (UUID=$UUID)"
           ls -la "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
 
-      # Create ExportOptions.plist (dynamic provisioningProfiles mapping) - FIXED
-      - name: Create ExportOptions.plist (dynamic) - FIXED
+      # Create ExportOptions.plist (dynamic provisioningProfiles mapping)
+      - name: Create ExportOptions.plist (dynamic)
         run: |
           set -e
           METHOD="${IOS_EXPORT_METHOD:-app-store}"
           TEAM="${IOS_TEAM_ID}"
           BUNDLE_ID=$(cat ci_ios_bundle_id.txt | tr -d '\r\n')
-
-          if [ ! -s profile.plist ]; then
-            /usr/bin/security cms -D -i profile.mobileprovision > profile.plist
-          fi
 
           PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" profile.plist)
 
@@ -349,7 +353,7 @@ jobs:
           echo "---- ExportOptions.plist ----"
           cat ios/ExportOptions.plist
 
-      # CocoaPods (recommended)
+      # CocoaPods
       - name: Install CocoaPods
         run: |
           set -e
@@ -382,7 +386,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
-
           if ! ls build/ios/ipa/*.ipa >/dev/null 2>&1; then
             echo "❌ No IPA produced."
             exit 1
@@ -402,7 +405,6 @@ jobs:
       - name: Callback backend (SAVE IPA URL) (non-blocking)
         run: |
           set -e
-
           if [ -z "${RELEASE_TAG}" ]; then
             echo "⚠️ No release tag => no IPA => skipping callback."
             exit 0
