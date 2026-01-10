@@ -15,16 +15,12 @@ jobs:
       CI_CALLBACK_TOKEN: ${{ secrets.CI_CALLBACK_TOKEN }}
       CI_RUNTIME_TOKEN: ${{ secrets.CI_RUNTIME_TOKEN }}
 
-      # iOS signing secrets
       IOS_P12_B64: ${{ secrets.IOS_P12_B64 }}
       IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
       IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
       IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }} # app-store | ad-hoc | development | enterprise
-
-      # Provisioning profile source:
       IOS_MOBILEPROVISION_B64: ${{ secrets.IOS_MOBILEPROVISION_B64 }}
 
-      # Backend path base (used for per-owner fetch)
       IOS_PROFILE_ENDPOINT_PATH: /api/ci/owner-project-links
 
     steps:
@@ -47,7 +43,6 @@ jobs:
         run: |
           echo '${{ toJson(github.event.client_payload) }}'
 
-      # Build ci_env.json from payload/runtime-config and extract iosBundleId -> ci_ios_bundle_id.txt
       - name: Build ci_env.json (BY_LINK runtime-config + fallback)
         run: |
           set -e
@@ -145,11 +140,6 @@ jobs:
 
           open("ci_api_base.txt", "w", encoding="utf-8").write(api_base)
           open("ci_link_id.txt", "w", encoding="utf-8").write(link_id)
-
-          print("✅ ci_env.json written. source=", source)
-          print("API_BASE_URL =", api_base)
-          print("OWNER_PROJECT_LINK_ID =", link_id)
-          print("CURRENCY_ID =", env.get("CURRENCY_ID"))
           PY
 
       - name: Debug ci_env.json
@@ -166,37 +156,24 @@ jobs:
           flutter pub run flutter_launcher_icons
           flutter pub run flutter_native_splash:create
 
-      # Patch bundle id in Xcode project (multi-app)
-      - name: Patch iOS bundle id from DB (ci_ios_bundle_id.txt)
+      - name: Patch iOS bundle id from DB
         run: |
           set -e
           BUNDLE_ID=$(cat ci_ios_bundle_id.txt | tr -d '\r\n')
-          echo "✅ Using iOS bundle id: $BUNDLE_ID"
-
           PBX="ios/Runner.xcodeproj/project.pbxproj"
-          if [ ! -f "$PBX" ]; then
-            echo "❌ Missing $PBX"
-            exit 1
-          fi
-
           perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID;/g" "$PBX"
-          grep -n "PRODUCT_BUNDLE_IDENTIFIER" "$PBX" | head -n 30
+          grep -n "PRODUCT_BUNDLE_IDENTIFIER" "$PBX" | head -n 20
 
-      # Force DEVELOPMENT_TEAM (helps Flutter/Xcode during archive)
       - name: Set DEVELOPMENT_TEAM in pbxproj
         run: |
           set -e
-          PBX="ios/Runner.xcodeproj/project.pbxproj"
           TEAM="${IOS_TEAM_ID}"
-          if [ -z "$TEAM" ]; then
-            echo "❌ IOS_TEAM_ID is missing"
-            exit 1
-          fi
+          PBX="ios/Runner.xcodeproj/project.pbxproj"
           perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = $TEAM;/g" "$PBX"
-          grep -n "DEVELOPMENT_TEAM" "$PBX" | head -n 30 || true
+          grep -n "DEVELOPMENT_TEAM" "$PBX" | head -n 20 || true
 
-      # Setup signing certificate in a custom keychain (FINAL)
-      - name: Setup iOS cert (keychain) - FINAL
+      # ---------- CERT + KEYCHAIN (HARD FAIL IF NO IDENTITY) ----------
+      - name: Setup iOS cert (keychain) - HARDENED
         run: |
           set -e
 
@@ -206,120 +183,62 @@ jobs:
 
           echo "$IOS_P12_B64" | base64 --decode > ios_cert.p12
 
-          # ✅ IMPORTANT: -A + trusted tools so xcodebuild/codesign can use it
           security import ios_cert.p12 -k build.keychain -P "$IOS_P12_PASSWORD" -A \
             -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/xcodebuild
 
           security list-keychains -d user -s build.keychain
           security default-keychain -s build.keychain
 
-          # ✅ Allow Apple tools to access private key in CI
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
 
-          echo "---- identities in build.keychain ----"
-          security find-identity -v -p codesigning build.keychain || true
+          echo "---- identities (build.keychain) ----"
+          security find-identity -v -p codesigning build.keychain
 
-          echo "---- identities overall ----"
-          security find-identity -v -p codesigning || true
-
-      # (Optional) Fetch provisioning profile per owner from backend
-      - name: Fetch provisioning profile per owner (optional)
-        run: |
-          set -e
-          API_BASE="$(cat ci_api_base.txt | tr -d '\r\n')"
-          LINK_ID="$(cat ci_link_id.txt | tr -d '\r\n')"
-
-          PROFILE_URL="${API_BASE}${IOS_PROFILE_ENDPOINT_PATH}/${LINK_ID}/ios-profile"
-          echo "Fetching profile from: $PROFILE_URL"
-
-          HTTP=$(curl -sS -o ios_profile.json -w "%{http_code}" \
-            -H "Accept: application/json" \
-            -H "X-Auth-Token: ${CI_RUNTIME_TOKEN}" \
-            "$PROFILE_URL" || true)
-
-          echo "HTTP_STATUS=$HTTP"
-          cat ios_profile.json || true
-
-          if [ "$HTTP" -ge 400 ]; then
-            echo "⚠️ Could not fetch per-owner profile. Will fallback to IOS_MOBILEPROVISION_B64 if provided."
-            exit 0
-          fi
-
-          python3 - <<'PY'
-          import json, base64
-          d=json.load(open("ios_profile.json","r",encoding="utf-8"))
-          b64=d.get("mobileprovisionB64") or d.get("IOS_MOBILEPROVISION_B64") or ""
-          if not b64:
-              raise SystemExit("No mobileprovisionB64 in response")
-          open("profile.mobileprovision","wb").write(base64.b64decode(b64))
-          print("✅ profile.mobileprovision written from backend response")
-          PY
-
-      # Fallback provisioning profile from secret (VALIDATED)
-      - name: Provisioning profile fallback from secret (validated)
-        run: |
-          set -e
-          if [ -f profile.mobileprovision ] && [ -s profile.mobileprovision ]; then
-            echo "✅ profile.mobileprovision already present (fetched)."
-            exit 0
-          fi
-
-          if [ -z "${IOS_MOBILEPROVISION_B64}" ]; then
-            echo "❌ Missing IOS_MOBILEPROVISION_B64 and no fetched profile.mobileprovision."
+          # HARD FAIL if none
+          CNT=$(security find-identity -v -p codesigning build.keychain | grep -c "\"")
+          if [ "$CNT" -lt 1 ]; then
+            echo "❌ No signing identities in build.keychain."
+            echo "Most common cause: your .p12 does NOT include the private key."
             exit 1
           fi
 
-          # sanitize base64 (remove spaces/newlines)
+      # ---------- PROVISIONING PROFILE (VALIDATED) ----------
+      - name: Provisioning profile from secret (validated)
+        run: |
+          set -e
+          if [ -z "${IOS_MOBILEPROVISION_B64}" ]; then
+            echo "❌ Missing IOS_MOBILEPROVISION_B64"
+            exit 1
+          fi
+
           echo "$IOS_MOBILEPROVISION_B64" | tr -d '\n\r ' | base64 --decode > profile.mobileprovision || {
-            echo "❌ base64 decode failed. IOS_MOBILEPROVISION_B64 is not valid base64."
+            echo "❌ base64 decode failed (IOS_MOBILEPROVISION_B64 invalid)."
             exit 1
           }
 
-          echo "✅ profile.mobileprovision written from secret."
-          ls -la profile.mobileprovision
-          file profile.mobileprovision || true
-
-      # Install provisioning profile by UUID (DEBUGGED)
-      - name: Install provisioning profile (UUID-based) - DEBUGGED
-        run: |
-          set -e
-          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-
-          if [ ! -s profile.mobileprovision ]; then
-            echo "❌ profile.mobileprovision missing/empty"
-            ls -la
-            exit 1
-          fi
-
-          echo "---- profile.mobileprovision size ----"
-          ls -la profile.mobileprovision
-
-          echo "---- file type ----"
-          file profile.mobileprovision || true
-
-          echo "---- decode profile to plist ----"
-          if ! /usr/bin/security cms -D -i profile.mobileprovision > profile.plist 2>cms_err.txt; then
-            echo "❌ security cms failed. stderr:"
-            cat cms_err.txt || true
-            echo "❌ The decoded file is not a valid .mobileprovision (wrong/truncated base64)."
-            exit 1
-          fi
+          /usr/bin/security cms -D -i profile.mobileprovision > profile.plist
 
           UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' profile.plist)
-          NAME=$(/usr/libexec/PlistBuddy -c 'Print :Name' profile.plist || true)
+          NAME=$(/usr/libexec/PlistBuddy -c 'Print :Name' profile.plist)
+          TEAM_IN_PROFILE=$(/usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' profile.plist || true)
+          APPID=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' profile.plist || true)
 
+          echo "Profile Name = $NAME"
+          echo "Profile UUID = $UUID"
+          echo "Profile Team = $TEAM_IN_PROFILE"
+          echo "Profile AppID = $APPID"
+
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           cp profile.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
-          echo "✅ Installed provisioning profile: $NAME (UUID=$UUID)"
-          ls -la "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
+          echo "✅ Installed profile UUID=$UUID"
 
-      # Create ExportOptions.plist (dynamic provisioningProfiles mapping)
+      # ---------- EXPORT OPTIONS (DYNAMIC MAPPING) ----------
       - name: Create ExportOptions.plist (dynamic)
         run: |
           set -e
           METHOD="${IOS_EXPORT_METHOD:-app-store}"
           TEAM="${IOS_TEAM_ID}"
           BUNDLE_ID=$(cat ci_ios_bundle_id.txt | tr -d '\r\n')
-
           PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" profile.plist)
 
           cat > ios/ExportOptions.plist <<EOF
@@ -333,13 +252,11 @@ jobs:
             <string>manual</string>
             <key>teamID</key>
             <string>${TEAM}</string>
-
             <key>provisioningProfiles</key>
             <dict>
               <key>${BUNDLE_ID}</key>
               <string>${PROFILE_NAME}</string>
             </dict>
-
             <key>compileBitcode</key>
             <false/>
             <key>stripSwiftSymbols</key>
@@ -353,7 +270,6 @@ jobs:
           echo "---- ExportOptions.plist ----"
           cat ios/ExportOptions.plist
 
-      # CocoaPods
       - name: Install CocoaPods
         run: |
           set -e
@@ -362,7 +278,7 @@ jobs:
           pod repo update
           pod install
 
-      # Build IPA
+      # ---------- BUILD ----------
       - name: Build iOS IPA (signed)
         run: |
           set -e
@@ -374,11 +290,8 @@ jobs:
 
       - name: List build outputs (debug)
         run: |
-          echo "---- IPA folder ----"
           ls -la build/ios/ipa || true
-          echo "---- Archive folder ----"
           ls -la build/ios/archive || true
-          echo "---- iOS build dir ----"
           ls -la build/ios || true
 
       - name: Create GitHub Release + upload IPA
@@ -405,11 +318,6 @@ jobs:
       - name: Callback backend (SAVE IPA URL) (non-blocking)
         run: |
           set -e
-          if [ -z "${RELEASE_TAG}" ]; then
-            echo "⚠️ No release tag => no IPA => skipping callback."
-            exit 0
-          fi
-
           API_BASE="$(cat ci_api_base.txt | tr -d '\r\n')"
           LINK_ID="$(cat ci_link_id.txt | tr -d '\r\n')"
           OWNER="${{ github.repository_owner }}"
@@ -417,8 +325,6 @@ jobs:
 
           IPA_NAME=$(ls build/ios/ipa/*.ipa | xargs -n 1 basename | head -n 1)
           IPA_URL="https://github.com/${OWNER}/${REPO}/releases/download/${RELEASE_TAG}/${IPA_NAME}"
-
-          echo "✅ IPA URL: $IPA_URL"
 
           HTTP=$(curl -sS -o ipa_resp.txt -w "%{http_code}" -X PUT \
             "${API_BASE}/api/ci/owner-project-links/${LINK_ID}/ipa-url" \
@@ -428,10 +334,4 @@ jobs:
 
           echo "HTTP_STATUS=$HTTP"
           cat ipa_resp.txt || true
-
-          if [ "$HTTP" -ge 400 ]; then
-            echo "⚠️ Callback failed, but build is still valid."
-            exit 0
-          fi
-
-          echo "✅ Callback succeeded."
+          exit 0
