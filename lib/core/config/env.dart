@@ -95,4 +95,18 @@ class Env {
     'CURRENCY_ID',
     defaultValue: '',
   );
+
+  // ✅ NEW: lets CI/backend tell the app which nav to use
+  // Values: "bottom" | "drawer" | "hamburger" (hamburger will be treated as drawer)
+  static const menuType = String.fromEnvironment(
+    'MENU_TYPE',
+    defaultValue: '',
+  );
+
+  // ✅ NEW: optional: manager already stores menuType in branding json
+  // You can pass it as base64 to avoid adding MENU_TYPE directly.
+  static const brandingJsonB64 = String.fromEnvironment(
+    'BRANDING_JSON_B64',
+    defaultValue: '',
+  );
 }

@@ -29,6 +29,13 @@ dependencies:
   pdf: ^3.11.0
   printing: ^5.13.0
   flutter_stripe: ^11.0.0
+  file_picker: ^8.1.2
+  path_provider: ^2.1.5
+  open_filex: ^4.5.0
+  permission_handler: ^11.3.1
+  share_plus: ^10.0.2
+  media_store_plus: ^1.0.3
+  flutter_file_dialog: ^3.0.2
 
 dev_dependencies:
   flutter_test:
@@ -65,6 +72,7 @@ flutter:
 
   assets:
     - assets/branding/
+    - assets/templates/Template.xlsx
 
 l10n:
   arb-dir: lib/l10n

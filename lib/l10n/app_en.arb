@@ -941,6 +941,53 @@
 
   "adminShippingTotal": "Shipping total",
   "adminItemsTaxTotal": "Items tax total",
-  "adminShippingTaxTotal": "Shipping tax total"
+  "adminShippingTaxTotal": "Shipping tax total",
+   "adminExcelImportTitle": "Excel Import",
+  "adminExcelImportSubtitle": "Upload your filled template, validate it, then import it safely into this tenant.",
+  "adminExcelPickBtn": "Pick",
+  "adminExcelFileLabel": "Selected file",
+  "adminExcelNoFile": "No Excel file selected yet",
+  "adminExcelValidateBtn": "Validate Excel",
+  "adminExcelImportBtn": "Import now",
+  "adminExcelErrorsTitle": "Errors",
+  "adminExcelWarningsTitle": "Warnings",
+  "adminExcelReplaceTitle": "Replace existing data",
+  "adminExcelReplaceHint": "If enabled, we delete existing tenant data before importing the new file.",
+  "adminExcelReplaceScopeLabel": "Replace scope",
+  "adminExcelProTipTitle": "Pro tip",
+  "adminExcelProTipBody": "Keep the sheet names and column headers exactly as the template. Don’t rename tabs — your backend parser expects them.",
+  "loadingLabel": "Loading...",
+  "adminExcelDownloadTemplateBtn": "Download template",
+  "adminExcelTemplateDownloaded": "Excel template downloaded",
+  "adminExcelTemplateReadyMsg": "Your Excel template is ready.",
+  "adminExcelOpenTemplateBtn": "Open template",
+  "adminExcelShareTemplateBtn": "Share template",
+  "adminExcelShareTemplateHint": "Share the Excel template via email or other apps.",
+  "adminExcelImportTitle": "Excel Import",
+  "adminExcelImportSubtitle": "Import data using an Excel template prepared by Build4All.",
+
+  "adminExcelStep1Title": "Step 1 · Download Template",
+  "adminExcelStep1Subtitle": "Download the official Excel template, fill it, then upload it back.",
+
+  "adminExcelDownloadTemplateBtn": "Download Excel Template",
+  "adminExcelTemplateSavedToast": "Excel template downloaded successfully",
+
+  "adminExcelSavedLocationTitle": "Template saved",
+  "adminExcelSavedLocationBody": "The Excel template has been saved locally on your device.",
+
+  "adminExcelOpenTemplateBtn": "Open Template",
+
+  "adminExcelStep2Title": "Step 2 · Upload & Validate",
+  "adminExcelStep2Subtitle": "Upload the filled Excel file and validate its content.",
+
+  "adminExcelValidateBtn": "Validate Excel",
+  "adminExcelImportBtn": "Import Data",
+
+  "adminExcelErrorsTitle": "Errors",
+  "adminExcelWarningsTitle": "Warnings",
+
+  "adminExcelProTipBody": " Always validate the Excel file before importing to avoid partial or invalid data.",
+
+  "loadingLabel": "Loading..."
   
 }

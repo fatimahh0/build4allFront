@@ -1,5 +1,11 @@
 // lib/app/app_router.dart
 
+import 'package:build4front/features/admin/excel_import/data/repositories/excel_import_repository_impl.dart';
+import 'package:build4front/features/admin/excel_import/data/services/excel_import_api_service.dart';
+import 'package:build4front/features/admin/excel_import/domain/usecases/import_excel_file.dart';
+import 'package:build4front/features/admin/excel_import/domain/usecases/validate_excel_file.dart';
+import 'package:build4front/features/admin/excel_import/presentation/bloc/excel_import_bloc.dart';
+import 'package:build4front/features/admin/excel_import/presentation/screens/admin_excel_import_screen.dart';
 import 'package:build4front/features/auth/data/services/admin_token_store.dart';
 import 'package:build4front/features/checkout/domain/usecases/get_last_shipping_address.dart';
 import 'package:build4front/features/forgotpassword/data/repositories/forgot_password_repository_impl.dart';
@@ -76,6 +82,7 @@ class AppRouter {
   static const forgotEmail = '/forgot/email';
   static const forgotVerify = '/forgot/verify';
   static const forgotUpdate = '/forgot/update';
+  static const adminExcelImport = '/admin/excel-import';
 
   static Route<dynamic> onGenerateRoute(
     RouteSettings settings,
@@ -235,6 +242,27 @@ class AppRouter {
               child: const NotificationsScreen(),
             );
           },
+        );
+
+      case adminExcelImport:
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => AdminGate(
+            builder: (ctx) {
+              final store = ctx.read<AdminTokenStore>();
+              final api =
+                  ExcelImportApiService(getToken: () => store.getToken());
+              final repo = ExcelImportRepositoryImpl(api: api);
+
+              return BlocProvider(
+                create: (_) => ExcelImportBloc(
+                  validateUc: ValidateExcelFile(repo),
+                  importUc: ImportExcelFile(repo),
+                ),
+                child: const AdminExcelImportScreen(),
+              );
+            },
+          ),
         );
 
       default:

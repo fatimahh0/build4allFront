@@ -2030,4 +2030,88 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get adminShippingTaxTotal => 'Shipping tax total';
+
+  @override
+  String get adminExcelImportTitle => 'Excel Import';
+
+  @override
+  String get adminExcelImportSubtitle => 'Import data using an Excel template prepared by Build4All.';
+
+  @override
+  String get adminExcelPickBtn => 'Pick';
+
+  @override
+  String get adminExcelFileLabel => 'Selected file';
+
+  @override
+  String get adminExcelNoFile => 'No Excel file selected yet';
+
+  @override
+  String get adminExcelValidateBtn => 'Validate Excel';
+
+  @override
+  String get adminExcelImportBtn => 'Import Data';
+
+  @override
+  String get adminExcelErrorsTitle => 'Errors';
+
+  @override
+  String get adminExcelWarningsTitle => 'Warnings';
+
+  @override
+  String get adminExcelReplaceTitle => 'Replace existing data';
+
+  @override
+  String get adminExcelReplaceHint => 'If enabled, we delete existing tenant data before importing the new file.';
+
+  @override
+  String get adminExcelReplaceScopeLabel => 'Replace scope';
+
+  @override
+  String get adminExcelProTipTitle => 'Pro tip';
+
+  @override
+  String get adminExcelProTipBody => 'Pro tip: Always validate the Excel file before importing to avoid partial or invalid data.';
+
+  @override
+  String get loadingLabel => 'Loading...';
+
+  @override
+  String get adminExcelDownloadTemplateBtn => 'Download Excel Template';
+
+  @override
+  String get adminExcelTemplateDownloaded => 'Excel template downloaded';
+
+  @override
+  String get adminExcelTemplateReadyMsg => 'Your Excel template is ready.';
+
+  @override
+  String get adminExcelOpenTemplateBtn => 'Open Template';
+
+  @override
+  String get adminExcelShareTemplateBtn => 'Share template';
+
+  @override
+  String get adminExcelShareTemplateHint => 'Share the Excel template via email or other apps.';
+
+  @override
+  String get adminExcelStep1Title => 'Step 1 · Download Template';
+
+  @override
+  String get adminExcelStep1Subtitle => 'Download the official Excel template, fill it, then upload it back.';
+
+  @override
+  String get adminExcelTemplateSavedToast => 'Excel template downloaded successfully';
+
+  @override
+  String get adminExcelSavedLocationTitle => 'Template saved';
+
+  @override
+  String get adminExcelSavedLocationBody => 'The Excel template has been saved locally on your device.';
+
+  @override
+  String get adminExcelStep2Title => 'Step 2 · Upload & Validate';
+
+  @override
+  String get adminExcelStep2Subtitle => 'Upload the filled Excel file and validate its content.';
 }

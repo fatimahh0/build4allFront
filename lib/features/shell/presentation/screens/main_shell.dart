@@ -151,6 +151,10 @@ class _MainShellState extends State<MainShell> {
     final c = Theme.of(context).colorScheme;
     final body = IndexedStack(index: _currentIndex, children: _pages);
 
+    // ✅ FINAL: now AppConfig has menuType, so use it directly.
+    // (No more guessing / dynamic hacks)
+    final isBottom = widget.appConfig.menuType.trim().toLowerCase() == 'bottom';
+
     return RepositoryProvider<UserProfileService>(
       create: (_) => UserProfileService(),
       child: BlocProvider<UserProfileBloc>(
@@ -190,49 +194,79 @@ class _MainShellState extends State<MainShell> {
                     .titleMedium
                     ?.copyWith(color: c.onSurface),
               ),
-              leading: Builder(
-                builder: (ctx) => IconButton(
-                  icon: const Icon(Icons.menu),
-                  onPressed: () => Scaffold.of(ctx).openDrawer(),
-                ),
-              ),
-            ),
-            drawer: Drawer(
-              child: SafeArea(
-                child: ListView.builder(
-                  padding: EdgeInsets.zero,
-                  itemCount: _tabs.length,
-                  itemBuilder: (ctx, index) {
-                    final t = _tabs[index];
-                    final selected = index == _currentIndex;
 
-                    return ListTile(
-                      leading: Icon(
-                        t.icon,
-                        color:
-                            selected ? c.primary : c.onSurface.withOpacity(0.7),
+              // ✅ Show hamburger ONLY in drawer mode
+              leading: isBottom
+                  ? null
+                  : Builder(
+                      builder: (ctx) => IconButton(
+                        icon: const Icon(Icons.menu),
+                        onPressed: () => Scaffold.of(ctx).openDrawer(),
                       ),
-                      title: Text(
-                        t.label,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    ),
+            ),
+
+            // ✅ Drawer ONLY in drawer mode
+            drawer: isBottom
+                ? null
+                : Drawer(
+                    child: SafeArea(
+                      child: ListView.builder(
+                        padding: EdgeInsets.zero,
+                        itemCount: _tabs.length,
+                        itemBuilder: (ctx, index) {
+                          final t = _tabs[index];
+                          final selected = index == _currentIndex;
+
+                          return ListTile(
+                            leading: Icon(
+                              t.icon,
                               color: selected
                                   ? c.primary
-                                  : c.onSurface.withOpacity(0.9),
-                              fontWeight:
-                                  selected ? FontWeight.w600 : FontWeight.w400,
+                                  : c.onSurface.withOpacity(0.7),
                             ),
+                            title: Text(
+                              t.label,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: selected
+                                        ? c.primary
+                                        : c.onSurface.withOpacity(0.9),
+                                    fontWeight: selected
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                                  ),
+                            ),
+                            selected: selected,
+                            onTap: () {
+                              setState(() => _currentIndex = index);
+                              Navigator.of(context).pop(); // close drawer
+                            },
+                          );
+                        },
                       ),
-                      selected: selected,
-                      onTap: () {
-                        setState(() => _currentIndex = index);
-                        Navigator.of(context).pop(); // close drawer
-                      },
-                    );
-                  },
-                ),
-              ),
-            ),
+                    ),
+                  ),
+
             body: body,
+
+            // ✅ Bottom nav ONLY in bottom mode
+            bottomNavigationBar: isBottom
+                ? BottomNavigationBar(
+                    currentIndex: _currentIndex,
+                    onTap: (i) => setState(() => _currentIndex = i),
+                    items: _tabs
+                        .map(
+                          (t) => BottomNavigationBarItem(
+                            icon: Icon(t.icon),
+                            label: t.label,
+                          ),
+                        )
+                        .toList(),
+                  )
+                : null,
           ),
         ),
       ),
@@ -262,7 +296,7 @@ class _MainShellState extends State<MainShell> {
     _lastProfileUserId = userId;
     _lastProfileOwnerId = ownerId;
 
-    //  new signature needs ownerProjectLinkId
+    // new signature needs ownerProjectLinkId
     context
         .read<UserProfileBloc>()
         .add(LoadUserProfile(token, userId, ownerId));

@@ -226,7 +226,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   onTap: () {
                     Navigator.of(context).pushNamed('/admin/orders');
                   },
+
                 ),
+
+                _AdminTile(
+                  icon: Icons.upload_file_outlined,
+                  title: l10n.adminExcelImportTitle,
+                  colors: colors,
+                  card: card,
+                  onTap: () =>
+                      Navigator.of(context).pushNamed('/admin/excel-import'),
+                ),
+
               ],
             ),
           ],

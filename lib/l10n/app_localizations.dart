@@ -4002,6 +4002,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Shipping tax total'**
   String get adminShippingTaxTotal;
+
+  /// No description provided for @adminExcelImportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Excel Import'**
+  String get adminExcelImportTitle;
+
+  /// No description provided for @adminExcelImportSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import data using an Excel template prepared by Build4All.'**
+  String get adminExcelImportSubtitle;
+
+  /// No description provided for @adminExcelPickBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick'**
+  String get adminExcelPickBtn;
+
+  /// No description provided for @adminExcelFileLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected file'**
+  String get adminExcelFileLabel;
+
+  /// No description provided for @adminExcelNoFile.
+  ///
+  /// In en, this message translates to:
+  /// **'No Excel file selected yet'**
+  String get adminExcelNoFile;
+
+  /// No description provided for @adminExcelValidateBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Validate Excel'**
+  String get adminExcelValidateBtn;
+
+  /// No description provided for @adminExcelImportBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Data'**
+  String get adminExcelImportBtn;
+
+  /// No description provided for @adminExcelErrorsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Errors'**
+  String get adminExcelErrorsTitle;
+
+  /// No description provided for @adminExcelWarningsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Warnings'**
+  String get adminExcelWarningsTitle;
+
+  /// No description provided for @adminExcelReplaceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace existing data'**
+  String get adminExcelReplaceTitle;
+
+  /// No description provided for @adminExcelReplaceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'If enabled, we delete existing tenant data before importing the new file.'**
+  String get adminExcelReplaceHint;
+
+  /// No description provided for @adminExcelReplaceScopeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace scope'**
+  String get adminExcelReplaceScopeLabel;
+
+  /// No description provided for @adminExcelProTipTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pro tip'**
+  String get adminExcelProTipTitle;
+
+  /// No description provided for @adminExcelProTipBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Pro tip: Always validate the Excel file before importing to avoid partial or invalid data.'**
+  String get adminExcelProTipBody;
+
+  /// No description provided for @loadingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading...'**
+  String get loadingLabel;
+
+  /// No description provided for @adminExcelDownloadTemplateBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Download Excel Template'**
+  String get adminExcelDownloadTemplateBtn;
+
+  /// No description provided for @adminExcelTemplateDownloaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Excel template downloaded'**
+  String get adminExcelTemplateDownloaded;
+
+  /// No description provided for @adminExcelTemplateReadyMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Excel template is ready.'**
+  String get adminExcelTemplateReadyMsg;
+
+  /// No description provided for @adminExcelOpenTemplateBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Template'**
+  String get adminExcelOpenTemplateBtn;
+
+  /// No description provided for @adminExcelShareTemplateBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Share template'**
+  String get adminExcelShareTemplateBtn;
+
+  /// No description provided for @adminExcelShareTemplateHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Share the Excel template via email or other apps.'**
+  String get adminExcelShareTemplateHint;
+
+  /// No description provided for @adminExcelStep1Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Step 1 · Download Template'**
+  String get adminExcelStep1Title;
+
+  /// No description provided for @adminExcelStep1Subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Download the official Excel template, fill it, then upload it back.'**
+  String get adminExcelStep1Subtitle;
+
+  /// No description provided for @adminExcelTemplateSavedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Excel template downloaded successfully'**
+  String get adminExcelTemplateSavedToast;
+
+  /// No description provided for @adminExcelSavedLocationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Template saved'**
+  String get adminExcelSavedLocationTitle;
+
+  /// No description provided for @adminExcelSavedLocationBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The Excel template has been saved locally on your device.'**
+  String get adminExcelSavedLocationBody;
+
+  /// No description provided for @adminExcelStep2Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Step 2 · Upload & Validate'**
+  String get adminExcelStep2Title;
+
+  /// No description provided for @adminExcelStep2Subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload the filled Excel file and validate its content.'**
+  String get adminExcelStep2Subtitle;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
