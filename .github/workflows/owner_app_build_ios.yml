@@ -15,6 +15,7 @@ jobs:
       CI_CALLBACK_TOKEN: ${{ secrets.CI_CALLBACK_TOKEN }}
       CI_RUNTIME_TOKEN: ${{ secrets.CI_RUNTIME_TOKEN }}
 
+      # iOS signing secrets
       IOS_P12_B64: ${{ secrets.IOS_P12_B64 }}
       IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
       IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
@@ -43,6 +44,7 @@ jobs:
         run: |
           echo '${{ toJson(github.event.client_payload) }}'
 
+      # Build ci_env.json from payload/runtime-config and extract iosBundleId -> ci_ios_bundle_id.txt
       - name: Build ci_env.json (BY_LINK runtime-config + fallback)
         run: |
           set -e
@@ -156,21 +158,19 @@ jobs:
           flutter pub run flutter_launcher_icons
           flutter pub run flutter_native_splash:create
 
-      - name: Patch iOS bundle id from DB
+      # Patch bundle id + team in Xcode project
+      - name: Patch iOS bundle id + team in pbxproj
         run: |
           set -e
           BUNDLE_ID=$(cat ci_ios_bundle_id.txt | tr -d '\r\n')
-          PBX="ios/Runner.xcodeproj/project.pbxproj"
-          perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID;/g" "$PBX"
-          grep -n "PRODUCT_BUNDLE_IDENTIFIER" "$PBX" | head -n 20
-
-      - name: Set DEVELOPMENT_TEAM in pbxproj
-        run: |
-          set -e
           TEAM="${IOS_TEAM_ID}"
           PBX="ios/Runner.xcodeproj/project.pbxproj"
+
+          perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID;/g" "$PBX"
           perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = $TEAM;/g" "$PBX"
-          grep -n "DEVELOPMENT_TEAM" "$PBX" | head -n 20 || true
+
+          echo "---- bundle/team lines ----"
+          grep -n "PRODUCT_BUNDLE_IDENTIFIER\|DEVELOPMENT_TEAM" "$PBX" | head -n 30
 
       # ---------- CERT + KEYCHAIN (HARD FAIL IF NO IDENTITY) ----------
       - name: Setup iOS cert (keychain) - HARDENED
@@ -194,7 +194,6 @@ jobs:
           echo "---- identities (build.keychain) ----"
           security find-identity -v -p codesigning build.keychain
 
-          # HARD FAIL if none
           CNT=$(security find-identity -v -p codesigning build.keychain | grep -c "\"")
           if [ "$CNT" -lt 1 ]; then
             echo "❌ No signing identities in build.keychain."
@@ -206,31 +205,56 @@ jobs:
       - name: Provisioning profile from secret (validated)
         run: |
           set -e
+
           if [ -z "${IOS_MOBILEPROVISION_B64}" ]; then
             echo "❌ Missing IOS_MOBILEPROVISION_B64"
             exit 1
           fi
 
-          echo "$IOS_MOBILEPROVISION_B64" | tr -d '\n\r ' | base64 --decode > profile.mobileprovision || {
-            echo "❌ base64 decode failed (IOS_MOBILEPROVISION_B64 invalid)."
-            exit 1
-          }
+          echo "$IOS_MOBILEPROVISION_B64" | tr -d '\n\r ' | base64 --decode > profile.mobileprovision
 
           /usr/bin/security cms -D -i profile.mobileprovision > profile.plist
 
-          UUID=$(/usr/libexec/PlistBuddy -c 'Print :UUID' profile.plist)
-          NAME=$(/usr/libexec/PlistBuddy -c 'Print :Name' profile.plist)
-          TEAM_IN_PROFILE=$(/usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' profile.plist || true)
-          APPID=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' profile.plist || true)
+          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" profile.plist)
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" profile.plist)
 
-          echo "Profile Name = $NAME"
-          echo "Profile UUID = $UUID"
-          echo "Profile Team = $TEAM_IN_PROFILE"
-          echo "Profile AppID = $APPID"
+          echo "$PROFILE_NAME" > ci_profile_name.txt
+          echo "$PROFILE_UUID" > ci_profile_uuid.txt
 
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          cp profile.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
-          echo "✅ Installed profile UUID=$UUID"
+          cp profile.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
+
+          echo "✅ Installed profile: $PROFILE_NAME (UUID=$PROFILE_UUID)"
+
+      # ---------- FORCE MANUAL SIGNING IN XCODE PROJECT (CRITICAL) ----------
+      - name: Force Manual Signing in Xcode project (CRITICAL)
+        run: |
+          set -e
+          PBX="ios/Runner.xcodeproj/project.pbxproj"
+          BUNDLE_ID=$(cat ci_ios_bundle_id.txt | tr -d '\r\n')
+          TEAM="${IOS_TEAM_ID}"
+          PROFILE_NAME=$(cat ci_profile_name.txt | tr -d '\r\n')
+
+          METHOD="${IOS_EXPORT_METHOD:-app-store}"
+          if [ "$METHOD" = "development" ]; then
+            IDENTITY="Apple Development"
+          else
+            IDENTITY="Apple Distribution"
+          fi
+
+          perl -pi -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PBX"
+          perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = $TEAM;/g" "$PBX"
+
+          perl -pi -e "s/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = $PROFILE_NAME;/g" "$PBX"
+          perl -pi -e "s/PROVISIONING_PROFILE_SPECIFIER = \"[^\"]*\";/PROVISIONING_PROFILE_SPECIFIER = $PROFILE_NAME;/g" "$PBX"
+
+          perl -pi -e "s/CODE_SIGN_IDENTITY = \"[^\"]*\";/CODE_SIGN_IDENTITY = \"$IDENTITY\";/g" "$PBX"
+          perl -pi -e "s/\"CODE_SIGN_IDENTITY\\[sdk=iphoneos\\*\\]\" = \"[^\"]*\";/\"CODE_SIGN_IDENTITY[sdk=iphoneos*]\" = \"$IDENTITY\";/g" "$PBX"
+
+          perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID;/g" "$PBX"
+
+          echo "---- signing lines (sample) ----"
+          grep -n "CODE_SIGN_STYLE\|CODE_SIGN_IDENTITY\|PROVISIONING_PROFILE_SPECIFIER\|DEVELOPMENT_TEAM" "$PBX" | head -n 80
 
       # ---------- EXPORT OPTIONS (DYNAMIC MAPPING) ----------
       - name: Create ExportOptions.plist (dynamic)
@@ -239,7 +263,7 @@ jobs:
           METHOD="${IOS_EXPORT_METHOD:-app-store}"
           TEAM="${IOS_TEAM_ID}"
           BUNDLE_ID=$(cat ci_ios_bundle_id.txt | tr -d '\r\n')
-          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" profile.plist)
+          PROFILE_NAME=$(cat ci_profile_name.txt | tr -d '\r\n')
 
           cat > ios/ExportOptions.plist <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
@@ -290,8 +314,11 @@ jobs:
 
       - name: List build outputs (debug)
         run: |
+          echo "---- IPA folder ----"
           ls -la build/ios/ipa || true
+          echo "---- Archive folder ----"
           ls -la build/ios/archive || true
+          echo "---- iOS build dir ----"
           ls -la build/ios || true
 
       - name: Create GitHub Release + upload IPA
@@ -299,6 +326,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
+
           if ! ls build/ios/ipa/*.ipa >/dev/null 2>&1; then
             echo "❌ No IPA produced."
             exit 1
@@ -318,6 +346,7 @@ jobs:
       - name: Callback backend (SAVE IPA URL) (non-blocking)
         run: |
           set -e
+
           API_BASE="$(cat ci_api_base.txt | tr -d '\r\n')"
           LINK_ID="$(cat ci_link_id.txt | tr -d '\r\n')"
           OWNER="${{ github.repository_owner }}"
@@ -325,6 +354,8 @@ jobs:
 
           IPA_NAME=$(ls build/ios/ipa/*.ipa | xargs -n 1 basename | head -n 1)
           IPA_URL="https://github.com/${OWNER}/${REPO}/releases/download/${RELEASE_TAG}/${IPA_NAME}"
+
+          echo "✅ IPA URL: $IPA_URL"
 
           HTTP=$(curl -sS -o ipa_resp.txt -w "%{http_code}" -X PUT \
             "${API_BASE}/api/ci/owner-project-links/${LINK_ID}/ipa-url" \
