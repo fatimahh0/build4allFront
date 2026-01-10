@@ -21,11 +21,12 @@ jobs:
       IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
       IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }} # ad-hoc | app-store | development | enterprise
 
-      # OPTION A (simple): single fixed provisioning profile (only works if ONE fixed bundle id)
+      # Provisioning profile source:
+      # - If your backend endpoint works, it will fetch per-owner profile (recommended for multi-app).
+      # - Otherwise it will fallback to this secret (works only for one fixed bundle id).
       IOS_MOBILEPROVISION_B64: ${{ secrets.IOS_MOBILEPROVISION_B64 }}
 
-      # OPTION B (recommended for multi-app): backend endpoint that returns profile base64 for this owner/link
-      # Example: GET {API_BASE_URL}/api/ci/owner-project-links/{linkId}/ios-profile  -> {"mobileprovisionB64":"..."}
+      # Backend path base (used for per-owner fetch)
       IOS_PROFILE_ENDPOINT_PATH: /api/ci/owner-project-links
 
     steps:
@@ -48,7 +49,7 @@ jobs:
         run: |
           echo '${{ toJson(github.event.client_payload) }}'
 
-      # Build lib/env/ci_env.json from payload or runtime-config + also extract iosBundleId into ci_ios_bundle_id.txt
+      # Build ci_env.json from payload/runtime-config and extract iosBundleId -> ci_ios_bundle_id.txt
       - name: Build ci_env.json (BY_LINK runtime-config + fallback)
         run: |
           set -e
@@ -128,7 +129,7 @@ jobs:
           if logo_url:
               env["LOGO_URL"] = logo_url
 
-          # ---- iOS bundle id for multi-app ----
+          # iOS bundle id for multi-app
           ios_bundle = (
               runtime.get("iosBundleId")
               or runtime.get("IOS_BUNDLE_ID")
@@ -170,7 +171,7 @@ jobs:
           flutter pub run flutter_launcher_icons
           flutter pub run flutter_native_splash:create
 
-      # ✅ Patch iOS bundle identifier BEFORE signing/build (multi-app)
+      # Patch bundle id in Xcode project (multi-app)
       - name: Patch iOS bundle id from DB (ci_ios_bundle_id.txt)
         run: |
           set -e
@@ -191,7 +192,7 @@ jobs:
           perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID;/g" "$PBX"
           grep -n "PRODUCT_BUNDLE_IDENTIFIER" "$PBX" | head -n 30
 
-      # ✅ Create ExportOptions.plist (needed for IPA export)
+      # Create ExportOptions.plist
       - name: Create ExportOptions.plist
         run: |
           set -e
@@ -219,7 +220,7 @@ jobs:
           echo "---- ExportOptions.plist ----"
           cat ios/ExportOptions.plist
 
-      # ✅ Setup signing keychain + cert
+      # Setup signing certificate in a custom keychain
       - name: Setup iOS cert (keychain)
         run: |
           set -e
@@ -239,15 +240,13 @@ jobs:
 
           echo "✅ Certificate imported into keychain."
 
-      # ✅ Provisioning profile: choose ONE of the following paths.
-      # Path B (recommended): fetch profile per owner/link from backend (scales for multi-app)
+      # (Recommended) Fetch provisioning profile per owner from backend
       - name: Fetch provisioning profile per owner (recommended)
         run: |
           set -e
           API_BASE="$(cat ci_api_base.txt | tr -d '\r\n')"
           LINK_ID="$(cat ci_link_id.txt | tr -d '\r\n')"
 
-          # If you don't have this endpoint yet, this step will fail. In that case, skip it and use the fixed secret step below.
           PROFILE_URL="${API_BASE}${IOS_PROFILE_ENDPOINT_PATH}/${LINK_ID}/ios-profile"
           echo "Fetching profile from: $PROFILE_URL"
 
@@ -274,7 +273,7 @@ jobs:
           print("✅ profile.mobileprovision written from backend response")
           PY
 
-      # Path A (simple fallback): use single fixed secret profile (NOT scalable for multi-bundle)
+      # Fallback: use single fixed secret profile (works only for one bundle id)
       - name: Provisioning profile fallback from secret (if not fetched)
         run: |
           set -e
@@ -291,17 +290,36 @@ jobs:
           echo "$IOS_MOBILEPROVISION_B64" | base64 --decode > profile.mobileprovision
           echo "✅ profile.mobileprovision written from secret."
 
-      - name: Install provisioning profile
+      # Sanity check the provisioning profile (helps debug base64 corruption)
+      - name: Debug provisioning profile (sanity)
+        run: |
+          set -e
+          echo "---- size ----"
+          ls -la profile.mobileprovision || true
+          echo "---- file type ----"
+          file profile.mobileprovision || true
+          echo "---- contains plist? ----"
+          grep -a -m1 -o "<plist" profile.mobileprovision || true
+
+      # Install provisioning profile WITHOUT UUID parsing (fixes your failure)
+      - name: Install provisioning profile (no UUID parsing)
         run: |
           set -e
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          UUID=$(grep -a -E -o "[-A-F0-9]{36}" profile.mobileprovision | head -n 1)
-          if [ -z "$UUID" ]; then
-            echo "❌ Could not extract UUID from provisioning profile."
+
+          BUNDLE_ID=$(cat ci_ios_bundle_id.txt 2>/dev/null | tr -d '\r\n' || echo "unknown")
+          DEST="$HOME/Library/MobileDevice/Provisioning Profiles/${BUNDLE_ID}.mobileprovision"
+
+          if [ ! -s profile.mobileprovision ]; then
+            echo "❌ profile.mobileprovision is missing or empty"
+            ls -la
             exit 1
           fi
-          cp profile.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
-          echo "✅ Installed provisioning profile UUID=$UUID"
+
+          cp profile.mobileprovision "$DEST"
+          echo "✅ Installed provisioning profile at: $DEST"
+          ls -la "$DEST"
+          file "$DEST" || true
 
       - name: Build iOS IPA (signed)
         run: |
