@@ -171,7 +171,7 @@ jobs:
           echo "---- bundle/team lines ----"
           grep -n "PRODUCT_BUNDLE_IDENTIFIER\|DEVELOPMENT_TEAM" "$PBX" | head -n 30
 
-      # ---------- CERT + KEYCHAIN (HARD FAIL IF NO IDENTITY) ----------
+      # ---------- CERT + KEYCHAIN ----------
       - name: Setup iOS cert (keychain) - HARDENED
         run: |
           set -euo pipefail
@@ -181,6 +181,7 @@ jobs:
           security set-keychain-settings -lut 21600 "$KEYCHAIN"
           security unlock-keychain -p "" "$KEYCHAIN"
 
+          # ✅ sanitize base64 (secrets often contain newlines/spaces)
           echo "$IOS_P12_B64" | tr -d '\n\r ' | base64 --decode > ios_cert.p12
 
           security import ios_cert.p12 -k "$KEYCHAIN" -P "$IOS_P12_PASSWORD" -A \
@@ -204,7 +205,7 @@ jobs:
             exit 1
           fi
 
-      # ---------- PROVISIONING PROFILE (VALIDATED) ----------
+      # ---------- PROVISIONING PROFILE ----------
       - name: Provisioning profile from secret (validated)
         run: |
           set -euo pipefail
@@ -224,11 +225,18 @@ jobs:
           echo "$PROFILE_UUID" > ci_profile_uuid.txt
 
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          cp profile.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
+          cp profile.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision
 
           echo "✅ Installed profile: $PROFILE_NAME (UUID=$PROFILE_UUID)"
 
-      # ---------- FORCE MANUAL SIGNING IN XCODE PROJECT (CRITICAL) ----------
+      - name: Verify profile bundle id (debug)
+        run: |
+          set -e
+          /usr/bin/security cms -D -i profile.mobileprovision > profile_check.plist
+          echo "application-identifier:"
+          /usr/libexec/PlistBuddy -c "Print :Entitlements:application-identifier" profile_check.plist || true
+
+      # ---------- FORCE MANUAL SIGNING ----------
       - name: Force Manual Signing in Xcode project (CRITICAL)
         run: |
           set -euo pipefail
@@ -259,7 +267,7 @@ jobs:
           echo "---- signing lines (sample) ----"
           grep -n "CODE_SIGN_STYLE\|CODE_SIGN_IDENTITY\|PROVISIONING_PROFILE_SPECIFIER\|DEVELOPMENT_TEAM" "$PBX" | head -n 80
 
-      # ---------- EXPORT OPTIONS (DYNAMIC MAPPING) ----------
+      # ---------- EXPORT OPTIONS ----------
       - name: Create ExportOptions.plist (dynamic)
         run: |
           set -euo pipefail
@@ -306,14 +314,14 @@ jobs:
           pod repo update
           pod install
 
-      - name: MUST SHOW signing status (before build)
+      - name: SHOW signing status (before build)
         run: |
           set -e
           echo "---- keychains ----"
           security list-keychains -d user || true
           echo "---- default keychain ----"
           security default-keychain || true
-          echo "---- identities (global search) ----"
+          echo "---- identities (global) ----"
           security find-identity -v -p codesigning || true
           echo "---- identities (build.keychain) ----"
           security find-identity -v -p codesigning build.keychain || true
