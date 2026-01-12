@@ -15,12 +15,13 @@ jobs:
       CI_CALLBACK_TOKEN: ${{ secrets.CI_CALLBACK_TOKEN }}
       CI_RUNTIME_TOKEN: ${{ secrets.CI_RUNTIME_TOKEN }}
 
-      # iOS signing secrets
+      # iOS signing secrets (match your screenshot)
       IOS_P12_B64: ${{ secrets.IOS_P12_B64 }}
       IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
       IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
       IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }} # app-store | ad-hoc | development | enterprise
       IOS_MOBILEPROVISION_B64: ${{ secrets.IOS_MOBILEPROVISION_B64 }}
+      IOS_CODE_SIGN_IDENTITY: ${{ secrets.IOS_CODE_SIGN_IDENTITY }} # optional but recommended
 
       IOS_PROFILE_ENDPOINT_PATH: /api/ci/owner-project-links
 
@@ -44,7 +45,7 @@ jobs:
         run: |
           echo '${{ toJson(github.event.client_payload) }}'
 
-      # Build ci_env.json from payload/runtime-config and extract iosBundleId -> ci_ios_bundle_id.txt
+      # Build ci_env.json and extract iosBundleId -> ci_ios_bundle_id.txt
       - name: Build ci_env.json (BY_LINK runtime-config + fallback)
         run: |
           set -e
@@ -176,32 +177,36 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Fail fast if secrets are empty
+          [ -n "${IOS_P12_B64:-}" ] || (echo "❌ Missing IOS_P12_B64" && exit 1)
+          [ -n "${IOS_P12_PASSWORD:-}" ] || (echo "❌ Missing IOS_P12_PASSWORD" && exit 1)
+
           KEYCHAIN=build.keychain
           security create-keychain -p "" "$KEYCHAIN"
           security set-keychain-settings -lut 21600 "$KEYCHAIN"
           security unlock-keychain -p "" "$KEYCHAIN"
 
-          # ✅ sanitize base64 (secrets often contain newlines/spaces)
+          # ✅ IMPORTANT: remove spaces/newlines before decoding
           echo "$IOS_P12_B64" | tr -d '\n\r ' | base64 --decode > ios_cert.p12
 
           security import ios_cert.p12 -k "$KEYCHAIN" -P "$IOS_P12_PASSWORD" -A \
             -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/xcodebuild
 
-          # ✅ Ensure Xcode searches this keychain
-          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          # Ensure Xcode searches our keychain
+          security list-keychains -d user -s "$KEYCHAIN"
           security default-keychain -s "$KEYCHAIN"
-
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KEYCHAIN"
 
-          echo "---- identities (in keychain) ----"
-          security find-identity -v -p codesigning "$KEYCHAIN"
+          echo "---- identities (in build.keychain) ----"
+          security find-identity -v -p codesigning "$KEYCHAIN" || true
 
           echo "---- identities (global) ----"
-          security find-identity -v -p codesigning
+          security find-identity -v -p codesigning || true
 
           CNT=$(security find-identity -v -p codesigning "$KEYCHAIN" | grep -c "\"")
           if [ "$CNT" -lt 1 ]; then
-            echo "❌ No signing identities in build.keychain (P12 likely missing private key)."
+            echo "❌ No signing identities imported."
+            echo "👉 Your .p12 is almost certainly missing the PRIVATE KEY (export from Keychain Access → My Certificates)."
             exit 1
           fi
 
@@ -209,11 +214,7 @@ jobs:
       - name: Provisioning profile from secret (validated)
         run: |
           set -euo pipefail
-
-          if [ -z "${IOS_MOBILEPROVISION_B64:-}" ]; then
-            echo "❌ Missing IOS_MOBILEPROVISION_B64"
-            exit 1
-          fi
+          [ -n "${IOS_MOBILEPROVISION_B64:-}" ] || (echo "❌ Missing IOS_MOBILEPROVISION_B64" && exit 1)
 
           echo "$IOS_MOBILEPROVISION_B64" | tr -d '\n\r ' | base64 --decode > profile.mobileprovision
           /usr/bin/security cms -D -i profile.mobileprovision > profile.plist
@@ -225,7 +226,7 @@ jobs:
           echo "$PROFILE_UUID" > ci_profile_uuid.txt
 
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          cp profile.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision
+          cp profile.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
 
           echo "✅ Installed profile: $PROFILE_NAME (UUID=$PROFILE_UUID)"
 
@@ -247,10 +248,16 @@ jobs:
           PROFILE_NAME=$(cat ci_profile_name.txt | tr -d '\r\n')
 
           METHOD="${IOS_EXPORT_METHOD:-app-store}"
-          if [ "$METHOD" = "development" ]; then
-            IDENTITY="Apple Development"
+
+          # Prefer explicit identity from secrets (you have IOS_CODE_SIGN_IDENTITY)
+          if [ -n "${IOS_CODE_SIGN_IDENTITY:-}" ]; then
+            IDENTITY="${IOS_CODE_SIGN_IDENTITY}"
           else
-            IDENTITY="Apple Distribution"
+            if [ "$METHOD" = "development" ]; then
+              IDENTITY="Apple Development"
+            else
+              IDENTITY="Apple Distribution"
+            fi
           fi
 
           perl -pi -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PBX"
@@ -265,7 +272,7 @@ jobs:
           perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID;/g" "$PBX"
 
           echo "---- signing lines (sample) ----"
-          grep -n "CODE_SIGN_STYLE\|CODE_SIGN_IDENTITY\|PROVISIONING_PROFILE_SPECIFIER\|DEVELOPMENT_TEAM" "$PBX" | head -n 80
+          grep -n "CODE_SIGN_STYLE\|CODE_SIGN_IDENTITY\|PROVISIONING_PROFILE_SPECIFIER\|DEVELOPMENT_TEAM" "$PBX" | head -n 120
 
       # ---------- EXPORT OPTIONS ----------
       - name: Create ExportOptions.plist (dynamic)
@@ -314,6 +321,7 @@ jobs:
           pod repo update
           pod install
 
+      # This step makes the logs undeniable (what Xcode sees before build)
       - name: SHOW signing status (before build)
         run: |
           set -e
