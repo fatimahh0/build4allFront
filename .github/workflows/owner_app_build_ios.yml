@@ -15,15 +15,13 @@ jobs:
       CI_CALLBACK_TOKEN: ${{ secrets.CI_CALLBACK_TOKEN }}
       CI_RUNTIME_TOKEN: ${{ secrets.CI_RUNTIME_TOKEN }}
 
-      # iOS signing secrets (match your screenshot)
+      # iOS signing secrets (match your repo secrets)
       IOS_P12_B64: ${{ secrets.IOS_P12_B64 }}
       IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
       IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
       IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }} # app-store | ad-hoc | development | enterprise
       IOS_MOBILEPROVISION_B64: ${{ secrets.IOS_MOBILEPROVISION_B64 }}
       IOS_CODE_SIGN_IDENTITY: ${{ secrets.IOS_CODE_SIGN_IDENTITY }} # optional but recommended
-
-      IOS_PROFILE_ENDPOINT_PATH: /api/ci/owner-project-links
 
     steps:
       - name: Checkout
@@ -45,7 +43,6 @@ jobs:
         run: |
           echo '${{ toJson(github.event.client_payload) }}'
 
-      # Build ci_env.json and extract iosBundleId -> ci_ios_bundle_id.txt
       - name: Build ci_env.json (BY_LINK runtime-config + fallback)
         run: |
           set -e
@@ -158,26 +155,21 @@ jobs:
           flutter pub run flutter_launcher_icons
           flutter pub run flutter_native_splash:create
 
-      # Patch bundle id + team in Xcode project
       - name: Patch iOS bundle id + team in pbxproj
         run: |
           set -e
           BUNDLE_ID=$(cat ci_ios_bundle_id.txt | tr -d '\r\n')
           TEAM="${IOS_TEAM_ID}"
           PBX="ios/Runner.xcodeproj/project.pbxproj"
-
           perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID;/g" "$PBX"
           perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = $TEAM;/g" "$PBX"
-
           echo "---- bundle/team lines ----"
           grep -n "PRODUCT_BUNDLE_IDENTIFIER\|DEVELOPMENT_TEAM" "$PBX" | head -n 30
 
-      # ---------- CERT + KEYCHAIN ----------
-      - name: Setup iOS cert (keychain) - HARDENED
+      # ---------------- CERTIFICATE / KEYCHAIN ----------------
+      - name: Setup iOS cert (keychain)
         run: |
           set -euo pipefail
-
-          # Fail fast if secrets are empty
           [ -n "${IOS_P12_B64:-}" ] || (echo "❌ Missing IOS_P12_B64" && exit 1)
           [ -n "${IOS_P12_PASSWORD:-}" ] || (echo "❌ Missing IOS_P12_PASSWORD" && exit 1)
 
@@ -186,32 +178,35 @@ jobs:
           security set-keychain-settings -lut 21600 "$KEYCHAIN"
           security unlock-keychain -p "" "$KEYCHAIN"
 
-          # ✅ IMPORTANT: remove spaces/newlines before decoding
           echo "$IOS_P12_B64" | tr -d '\n\r ' | base64 --decode > ios_cert.p12
 
           security import ios_cert.p12 -k "$KEYCHAIN" -P "$IOS_P12_PASSWORD" -A \
             -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/xcodebuild
 
-          # Ensure Xcode searches our keychain
           security list-keychains -d user -s "$KEYCHAIN"
           security default-keychain -s "$KEYCHAIN"
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KEYCHAIN"
 
-          echo "---- identities (in build.keychain) ----"
+          echo "---- identities (build.keychain) ----"
           security find-identity -v -p codesigning "$KEYCHAIN" || true
 
+      - name: HARD CHECK - signing identity must exist
+        run: |
+          set -e
           echo "---- identities (global) ----"
           security find-identity -v -p codesigning || true
-
-          CNT=$(security find-identity -v -p codesigning "$KEYCHAIN" | grep -c "\"")
+          echo "---- identities (build.keychain) ----"
+          security find-identity -v -p codesigning build.keychain || true
+          CNT=$(security find-identity -v -p codesigning build.keychain | grep -c "\"")
+          echo "IDENTITIES_IN_BUILD_KEYCHAIN=$CNT"
           if [ "$CNT" -lt 1 ]; then
-            echo "❌ No signing identities imported."
-            echo "👉 Your .p12 is almost certainly missing the PRIVATE KEY (export from Keychain Access → My Certificates)."
+            echo "❌ No signing identity in build.keychain."
+            echo "👉 Fix: regenerate IOS_P12_B64 from Keychain Access → My Certificates (must include private key)."
             exit 1
           fi
 
-      # ---------- PROVISIONING PROFILE ----------
-      - name: Provisioning profile from secret (validated)
+      # ---------------- PROVISIONING PROFILE ----------------
+      - name: Install provisioning profile
         run: |
           set -euo pipefail
           [ -n "${IOS_MOBILEPROVISION_B64:-}" ] || (echo "❌ Missing IOS_MOBILEPROVISION_B64" && exit 1)
@@ -237,8 +232,8 @@ jobs:
           echo "application-identifier:"
           /usr/libexec/PlistBuddy -c "Print :Entitlements:application-identifier" profile_check.plist || true
 
-      # ---------- FORCE MANUAL SIGNING ----------
-      - name: Force Manual Signing in Xcode project (CRITICAL)
+      # ---------------- FORCE MANUAL SIGNING ----------------
+      - name: Force Manual Signing in Xcode project
         run: |
           set -euo pipefail
 
@@ -249,7 +244,6 @@ jobs:
 
           METHOD="${IOS_EXPORT_METHOD:-app-store}"
 
-          # Prefer explicit identity from secrets (you have IOS_CODE_SIGN_IDENTITY)
           if [ -n "${IOS_CODE_SIGN_IDENTITY:-}" ]; then
             IDENTITY="${IOS_CODE_SIGN_IDENTITY}"
           else
@@ -262,23 +256,19 @@ jobs:
 
           perl -pi -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PBX"
           perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = $TEAM;/g" "$PBX"
-
           perl -pi -e "s/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = $PROFILE_NAME;/g" "$PBX"
           perl -pi -e "s/PROVISIONING_PROFILE_SPECIFIER = \"[^\"]*\";/PROVISIONING_PROFILE_SPECIFIER = $PROFILE_NAME;/g" "$PBX"
-
           perl -pi -e "s/CODE_SIGN_IDENTITY = \"[^\"]*\";/CODE_SIGN_IDENTITY = \"$IDENTITY\";/g" "$PBX"
           perl -pi -e "s/\"CODE_SIGN_IDENTITY\\[sdk=iphoneos\\*\\]\" = \"[^\"]*\";/\"CODE_SIGN_IDENTITY[sdk=iphoneos*]\" = \"$IDENTITY\";/g" "$PBX"
-
           perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID;/g" "$PBX"
 
           echo "---- signing lines (sample) ----"
           grep -n "CODE_SIGN_STYLE\|CODE_SIGN_IDENTITY\|PROVISIONING_PROFILE_SPECIFIER\|DEVELOPMENT_TEAM" "$PBX" | head -n 120
 
-      # ---------- EXPORT OPTIONS ----------
-      - name: Create ExportOptions.plist (dynamic)
+      # ---------------- EXPORT OPTIONS ----------------
+      - name: Create ExportOptions.plist
         run: |
           set -euo pipefail
-
           METHOD="${IOS_EXPORT_METHOD:-app-store}"
           TEAM="${IOS_TEAM_ID}"
           BUNDLE_ID=$(cat ci_ios_bundle_id.txt | tr -d '\r\n')
@@ -321,7 +311,6 @@ jobs:
           pod repo update
           pod install
 
-      # This step makes the logs undeniable (what Xcode sees before build)
       - name: SHOW signing status (before build)
         run: |
           set -e
@@ -336,7 +325,7 @@ jobs:
           echo "---- provisioning profiles ----"
           ls -la "$HOME/Library/MobileDevice/Provisioning Profiles" || true
 
-      # ---------- BUILD ----------
+      # ---------------- BUILD ----------------
       - name: Build iOS IPA (signed)
         env:
           OTHER_CODE_SIGN_FLAGS: "--keychain build.keychain"
@@ -362,7 +351,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
-
           if ! ls build/ios/ipa/*.ipa >/dev/null 2>&1; then
             echo "❌ No IPA produced."
             exit 1
@@ -382,7 +370,6 @@ jobs:
       - name: Callback backend (SAVE IPA URL) (non-blocking)
         run: |
           set -e
-
           API_BASE="$(cat ci_api_base.txt | tr -d '\r\n')"
           LINK_ID="$(cat ci_link_id.txt | tr -d '\r\n')"
           OWNER="${{ github.repository_owner }}"
