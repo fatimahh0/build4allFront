@@ -362,5 +362,3 @@ jobs:
           ls -la build/ios/archive || true
           echo "---- iOS build dir ----"
           ls -la build/ios || true
-
-          security find-identity -v -p codesigning "${GITHUB_WORKSPACE}/build.keychain"
