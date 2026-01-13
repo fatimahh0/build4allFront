@@ -15,18 +15,11 @@ jobs:
       CI_CALLBACK_TOKEN: ${{ secrets.CI_CALLBACK_TOKEN }}
       CI_RUNTIME_TOKEN: ${{ secrets.CI_RUNTIME_TOKEN }}
 
-      # Signing certificate (.p12) — Apple Distribution (must include private key)
       IOS_P12_B64: ${{ secrets.IOS_P12_B64 }}
       IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
-      IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }} # e.g. 7LL4J6N52N
-
-      # For TestFlight/App Store
-      IOS_EXPORT_METHOD: app-store
-
-      # App Store Connect API Key (Automation)
-      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-      ASC_KEY_P8_B64: ${{ secrets.ASC_KEY_P8_B64 }}
+      IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+      IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }} # app-store | ad-hoc | development | enterprise
+      IOS_MOBILEPROVISION_B64: ${{ secrets.IOS_MOBILEPROVISION_B64 }}
 
     steps:
       - name: Checkout
@@ -38,13 +31,6 @@ jobs:
           flutter-version: "3.32.0"
           channel: stable
           cache: true
-
-      - name: Install fastlane + cocoapods
-        shell: bash
-        run: |
-          set -euo pipefail
-          sudo gem install fastlane -N
-          sudo gem install cocoapods -N || true
 
       - name: Show Flutter/Dart versions
         shell: bash
@@ -59,7 +45,7 @@ jobs:
           set -euo pipefail
           echo '${{ toJson(github.event.client_payload) }}'
 
-      # ---------------- YOUR ci_env.json STEP (unchanged) ----------------
+      # ---------------- YOUR ci_env.json STEP (keep yours) ----------------
       - name: Build ci_env.json (BY_LINK runtime-config + fallback)
         shell: bash
         run: |
@@ -138,36 +124,14 @@ jobs:
               or payload.get("IOS_BUNDLE_ID")
           )
           if ios_bundle:
-              ios_bundle = str(ios_bundle).strip()
-              open("ci_ios_bundle_id.txt", "w", encoding="utf-8").write(ios_bundle)
+              open("ci_ios_bundle_id.txt", "w", encoding="utf-8").write(str(ios_bundle).strip())
               print("IOS_BUNDLE_ID =", ios_bundle)
           else:
-              # allow wildcard template; we will generate explicit later
-              open("ci_ios_bundle_id.txt", "w", encoding="utf-8").write("com.build4all.*")
-              print("IOS_BUNDLE_ID = com.build4all.* (template)")
-          
+              raise SystemExit("Missing IOS_BUNDLE_ID (runtime-config must provide iosBundleId)")
+
           with open("lib/env/ci_env.json", "w", encoding="utf-8") as f:
               json.dump(env, f, ensure_ascii=False, indent=2)
           PY
-
-      # ---------------- MAKE BUNDLE ID EXPLICIT (opl37) ----------------
-      - name: Generate explicit Bundle ID (com.build4all.oplXX.app)
-        shell: bash
-        run: |
-          set -euo pipefail
-          RAW="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
-
-          # Your app code (you said: opl37). If later you pass it in payload, replace this line.
-          CODE="opl37"
-
-          if [[ -z "$RAW" || "$RAW" == *"*"* ]]; then
-            BUNDLE_ID="com.build4all.${CODE}.app"
-          else
-            BUNDLE_ID="$RAW"
-          fi
-
-          echo "$BUNDLE_ID" > ci_ios_bundle_id.txt
-          echo "✅ IOS_BUNDLE_ID = $BUNDLE_ID"
 
       - name: Apply branding (icons + splash)
         shell: bash
@@ -189,7 +153,7 @@ jobs:
           perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${TEAM};/g" "$PBX"
 
       # ---------------- CERTIFICATE / KEYCHAIN ----------------
-      - name: Setup iOS cert (keychain)
+      - name: Setup iOS cert (keychain) + detect identity
         shell: bash
         run: |
           set -euo pipefail
@@ -216,82 +180,25 @@ jobs:
 
           CNT=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep -c "\"")
           if [ "$CNT" -lt 1 ]; then
-            echo "❌ No signing identity found in keychain. Your .p12 likely has no private key."
+            echo "❌ No signing identity found in keychain."
+            echo "👉 Your .p12 likely DOES NOT include the private key."
             exit 1
           fi
 
-      - name: DEBUG signing identities (after import)
+          # Auto-pick first identity name from keychain (works better than hardcoding secrets)
+          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | head -n 1 | sed -E 's/^.*"(.+)"$/\1/')
+          echo "Detected identity: $IDENTITY"
+          echo "$IDENTITY" > ci_identity.txt
+
+      # ---------------- PROVISIONING PROFILE ----------------
+      - name: Install provisioning profile
         shell: bash
         run: |
           set -euo pipefail
-          KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
-          echo "---- list keychains ----"
-          security list-keychains -d user
-          echo "---- default keychain ----"
-          security default-keychain -d user
-          echo "---- identities (build.keychain) ----"
-          security find-identity -v -p codesigning "$KEYCHAIN_PATH" || true
-          echo "---- identities (login keychain) ----"
-          security find-identity -v -p codesigning login.keychain-db || true
+          [ -n "${IOS_MOBILEPROVISION_B64:-}" ] || { echo "❌ Missing IOS_MOBILEPROVISION_B64"; exit 1; }
 
-      # ---------------- AUTO CREATE APP + PROFILE (FASTLANE) ----------------
-      - name: Create App Store Connect app + download App Store profile (fastlane)
-        shell: bash
-        run: |
-          set -euo pipefail
-          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
-          APP_NAME="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['APP_NAME'])" | tr -d '\r\n')"
-
-          mkdir -p fastlane_keys fastlane
-          echo "$ASC_KEY_P8_B64" | tr -d '\n\r ' | base64 --decode > fastlane_keys/AuthKey.p8
-
-          cat > fastlane/Fastfile <<'RUBY'
-          default_platform(:ios)
-
-          platform :ios do
-            lane :ensure_app_and_profile do |options|
-              bundle_id = options[:bundle_id]
-              app_name  = options[:app_name]
-              team_id   = options[:team_id]
-
-              api_key = app_store_connect_api_key(
-                key_id: ENV["ASC_KEY_ID"],
-                issuer_id: ENV["ASC_ISSUER_ID"],
-                key_filepath: "fastlane_keys/AuthKey.p8"
-              )
-
-              # Create App Store Connect app + register explicit App ID in Dev Portal
-              produce(
-                app_identifier: bundle_id,
-                app_name: app_name,
-                team_id: team_id,
-                api_key: api_key,
-                skip_itc: false,
-                skip_devcenter: false
-              )
-
-              # Download/create App Store provisioning profile
-              sigh(
-                app_identifier: bundle_id,
-                adhoc: false,
-                development: false,
-                skip_install: true,
-                api_key: api_key
-              )
-            end
-          end
-          RUBY
-
-          fastlane ios ensure_app_and_profile bundle_id:"$BUNDLE_ID" app_name:"$APP_NAME" team_id:"$IOS_TEAM_ID"
-
-          PROFILE_FILE="$(ls -t *.mobileprovision 2>/dev/null | head -n 1 || true)"
-          if [ -z "$PROFILE_FILE" ]; then
-            echo "❌ fastlane did not produce a .mobileprovision file in workspace."
-            exit 1
-          fi
-
-          echo "Using profile file: $PROFILE_FILE"
-          /usr/bin/security cms -D -i "$PROFILE_FILE" > profile.plist
+          echo "$IOS_MOBILEPROVISION_B64" | tr -d '\n\r ' | base64 --decode > profile.mobileprovision
+          /usr/bin/security cms -D -i profile.mobileprovision > profile.plist
 
           PROFILE_NAME="$("/usr/libexec/PlistBuddy" -c "Print :Name" profile.plist)"
           PROFILE_UUID="$("/usr/libexec/PlistBuddy" -c "Print :UUID" profile.plist)"
@@ -300,12 +207,12 @@ jobs:
           echo "$PROFILE_UUID" > ci_profile_uuid.txt
 
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          cp "$PROFILE_FILE" "$HOME/Library/MobileDevice/Provisioning Profiles/${PROFILE_UUID}.mobileprovision"
+          cp profile.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/${PROFILE_UUID}.mobileprovision"
 
           echo "✅ Installed profile: $PROFILE_NAME (UUID=$PROFILE_UUID)"
 
-      # ---------------- FORCE MANUAL SIGNING (DISTRIBUTION) ----------------
-      - name: Force Manual Signing in Xcode project (distribution + profile)
+      # ---------------- FORCE MANUAL SIGNING ----------------
+      - name: Force Manual Signing in Xcode project (identity + profile)
         shell: bash
         run: |
           set -euo pipefail
@@ -315,25 +222,26 @@ jobs:
           TEAM="${IOS_TEAM_ID}"
           PROFILE_NAME="$(cat ci_profile_name.txt | tr -d '\r\n')"
           PROFILE_UUID="$(cat ci_profile_uuid.txt | tr -d '\r\n')"
+          IDENTITY="$(cat ci_identity.txt | tr -d '\r\n')"
 
           perl -pi -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PBX"
           perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${TEAM};/g" "$PBX"
-
           perl -pi -e "s/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = ${PROFILE_NAME};/g" "$PBX"
           perl -pi -e "s/PROVISIONING_PROFILE = [^;]*;/PROVISIONING_PROFILE = ${PROFILE_UUID};/g" "$PBX"
 
-          # Force Distribution identity (prevents "No development certificates" errors)
-          perl -pi -e 's/CODE_SIGN_IDENTITY = ".*?";/CODE_SIGN_IDENTITY = "Apple Distribution";/g' "$PBX"
-          perl -pi -e 's/"CODE_SIGN_IDENTITY\\[sdk=iphoneos\\*\\]" = ".*?";/"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";/g' "$PBX"
-
+          perl -pi -e "s/CODE_SIGN_IDENTITY = \"[^\"]*\";/CODE_SIGN_IDENTITY = \"${IDENTITY}\";/g" "$PBX"
+          perl -pi -e "s/\"CODE_SIGN_IDENTITY\\[sdk=iphoneos\\*\\]\" = \"[^\"]*\";/\"CODE_SIGN_IDENTITY[sdk=iphoneos*]\" = \"${IDENTITY}\";/g" "$PBX"
           perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};/g" "$PBX"
+
+          perl -pi -e 's/CODE_SIGNING_ALLOWED = NO;/CODE_SIGNING_ALLOWED = YES;/g' "$PBX"
+          perl -pi -e 's/CODE_SIGNING_REQUIRED = NO;/CODE_SIGNING_REQUIRED = YES;/g' "$PBX"
 
       # ---------------- EXPORT OPTIONS ----------------
       - name: Create ExportOptions.plist
         shell: bash
         run: |
           set -euo pipefail
-          METHOD="${IOS_EXPORT_METHOD}"
+          METHOD="${IOS_EXPORT_METHOD:-app-store}"
           TEAM="${IOS_TEAM_ID}"
           BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
           PROFILE_NAME="$(cat ci_profile_name.txt | tr -d '\r\n')"
@@ -364,19 +272,21 @@ jobs:
           </plist>
           EOF
 
-      - name: Install CocoaPods (ios/)
+      - name: Install CocoaPods
         shell: bash
         run: |
           set -euo pipefail
+          sudo gem install cocoapods -N || true
           cd ios
           pod repo update
           pod install
 
-      - name: HARD CHECK right before build
+      - name: HARD CHECK right before build (identity must be visible)
         shell: bash
         run: |
           set -euo pipefail
           KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
+          echo "---- identities (build.keychain) ----"
           security find-identity -v -p codesigning "$KEYCHAIN_PATH"
 
       # ---------------- BUILD ----------------
