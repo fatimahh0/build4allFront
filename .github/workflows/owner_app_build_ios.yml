@@ -20,6 +20,7 @@ jobs:
       IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
       IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }} # app-store | ad-hoc | development | enterprise
       IOS_MOBILEPROVISION_B64: ${{ secrets.IOS_MOBILEPROVISION_B64 }}
+      IOS_CODE_SIGN_IDENTITY: ${{ secrets.IOS_CODE_SIGN_IDENTITY }} # e.g. Apple Distribution: Georges Lebbos (7LL4J6N52N)
 
     steps:
       - name: Checkout
@@ -45,7 +46,6 @@ jobs:
           set -euo pipefail
           echo '${{ toJson(github.event.client_payload) }}'
 
-      # ---------------- YOUR ci_env.json STEP (keep yours) ----------------
       - name: Build ci_env.json (BY_LINK runtime-config + fallback)
         shell: bash
         run: |
@@ -110,10 +110,18 @@ jobs:
               "CONFIG_SOURCE": source,
           }
 
+          currency_id = pick("CURRENCY_ID") or runtime.get("currencyId") or cfg.get("currencyId") or payload.get("currencyId")
+          if currency_id not in (None, "", []):
+              env["CURRENCY_ID"] = str(currency_id).strip()
+
           for key in ["THEME_JSON_B64","NAV_JSON_B64","HOME_JSON_B64","ENABLED_FEATURES_JSON_B64","BRANDING_JSON_B64"]:
               v = pick(key)
               if v:
                   env[key] = v
+
+          logo_url = (pick("LOGO_URL") or pick("LOGO_PATH") or runtime.get("logoUrl") or "").strip()
+          if logo_url:
+              env["LOGO_URL"] = logo_url
 
           ios_bundle = (
               runtime.get("iosBundleId")
@@ -131,7 +139,22 @@ jobs:
 
           with open("lib/env/ci_env.json", "w", encoding="utf-8") as f:
               json.dump(env, f, ensure_ascii=False, indent=2)
+
+          open("ci_api_base.txt", "w", encoding="utf-8").write(api_base)
+          open("ci_link_id.txt", "w", encoding="utf-8").write(link_id)
           PY
+
+      - name: Generate APP_IDENTIFIER (<TEAM_ID>.<BundleId>)
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
+          TEAM_ID="${IOS_TEAM_ID}"
+          APP_ID="${TEAM_ID}.${BUNDLE_ID}"
+          echo "$APP_ID" > ci_app_identifier.txt
+          echo "BUNDLE_ID=$BUNDLE_ID"
+          echo "TEAM_ID=$TEAM_ID"
+          echo "APP_IDENTIFIER=$APP_ID"
 
       - name: Apply branding (icons + splash)
         shell: bash
@@ -141,7 +164,7 @@ jobs:
           flutter pub run flutter_launcher_icons
           flutter pub run flutter_native_splash:create
 
-      - name: Patch iOS bundle id + team in pbxproj
+      - name: Patch iOS bundle id + team in pbxproj (bundle id only)
         shell: bash
         run: |
           set -euo pipefail
@@ -149,11 +172,11 @@ jobs:
           TEAM="${IOS_TEAM_ID}"
           PBX="ios/Runner.xcodeproj/project.pbxproj"
 
+          # IMPORTANT: bundle identifier is only com.xxx.yyy (no TEAM_ID prefix)
           perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};/g" "$PBX"
           perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${TEAM};/g" "$PBX"
 
-      # ---------------- CERTIFICATE / KEYCHAIN ----------------
-      - name: Setup iOS cert (keychain) + detect identity
+      - name: Setup iOS cert (keychain) + verify identity exists
         shell: bash
         run: |
           set -euo pipefail
@@ -161,7 +184,6 @@ jobs:
           [ -n "${IOS_P12_PASSWORD:-}" ] || { echo "❌ Missing IOS_P12_PASSWORD"; exit 1; }
 
           KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
-
           security create-keychain -p "" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "" "$KEYCHAIN_PATH"
@@ -171,8 +193,11 @@ jobs:
           security import ios_cert.p12 -k "$KEYCHAIN_PATH" -P "$IOS_P12_PASSWORD" -A \
             -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/xcodebuild
 
+          # Make visible to tools/Xcode
           security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
           security default-keychain -s "$KEYCHAIN_PATH"
+
+          # Allow non-interactive key access
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KEYCHAIN_PATH"
 
           echo "---- identities (build.keychain) ----"
@@ -180,18 +205,13 @@ jobs:
 
           CNT=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep -c "\"")
           if [ "$CNT" -lt 1 ]; then
-            echo "❌ No signing identity found in keychain."
-            echo "👉 Your .p12 likely DOES NOT include the private key."
+            echo "❌ No signing identity found in build.keychain."
+            echo "👉 Your P12 likely does NOT include the private key."
+            echo "Fix: Keychain Access → My Certificates → select Apple Distribution + its private key → Export .p12"
             exit 1
           fi
 
-          # Auto-pick first identity name from keychain (works better than hardcoding secrets)
-          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | head -n 1 | sed -E 's/^.*"(.+)"$/\1/')
-          echo "Detected identity: $IDENTITY"
-          echo "$IDENTITY" > ci_identity.txt
-
-      # ---------------- PROVISIONING PROFILE ----------------
-      - name: Install provisioning profile
+      - name: Install provisioning profile + verify it matches app identifier
         shell: bash
         run: |
           set -euo pipefail
@@ -202,41 +222,59 @@ jobs:
 
           PROFILE_NAME="$("/usr/libexec/PlistBuddy" -c "Print :Name" profile.plist)"
           PROFILE_UUID="$("/usr/libexec/PlistBuddy" -c "Print :UUID" profile.plist)"
+          PROFILE_APPID="$("/usr/libexec/PlistBuddy" -c "Print :Entitlements:application-identifier" profile.plist || true)"
 
           echo "$PROFILE_NAME" > ci_profile_name.txt
           echo "$PROFILE_UUID" > ci_profile_uuid.txt
+          echo "$PROFILE_APPID" > ci_profile_app_identifier.txt
 
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           cp profile.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/${PROFILE_UUID}.mobileprovision"
 
           echo "✅ Installed profile: $PROFILE_NAME (UUID=$PROFILE_UUID)"
+          echo "Profile application-identifier: $PROFILE_APPID"
 
-      # ---------------- FORCE MANUAL SIGNING ----------------
-      - name: Force Manual Signing in Xcode project (identity + profile)
+          EXPECTED="$(cat ci_app_identifier.txt | tr -d '\r\n')"
+          if [ -n "$PROFILE_APPID" ]; then
+            # Allow exact match OR wildcard match like TEAM.com.build4all.*
+            if [[ "$PROFILE_APPID" == "$EXPECTED" ]]; then
+              echo "✅ Profile matches exactly."
+            elif [[ "$PROFILE_APPID" == *"*"* ]]; then
+              PREFIX="${PROFILE_APPID%\*}"   # everything before *
+              if [[ "$EXPECTED" == "${PREFIX}"* ]]; then
+                echo "✅ Profile wildcard covers this app."
+              else
+                echo "❌ Profile wildcard does NOT cover this app."
+                echo "Expected: $EXPECTED"
+                echo "Profile  : $PROFILE_APPID"
+                exit 1
+              fi
+            else
+              echo "❌ Profile does NOT match this app."
+              echo "Expected: $EXPECTED"
+              echo "Profile  : $PROFILE_APPID"
+              exit 1
+            fi
+          else
+            echo "⚠️ Could not read Entitlements:application-identifier from profile.plist"
+          fi
+
+      - name: Force Manual Signing in Xcode project (safe minimal)
         shell: bash
         run: |
           set -euo pipefail
-
           PBX="ios/Runner.xcodeproj/project.pbxproj"
-          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
           TEAM="${IOS_TEAM_ID}"
           PROFILE_NAME="$(cat ci_profile_name.txt | tr -d '\r\n')"
-          PROFILE_UUID="$(cat ci_profile_uuid.txt | tr -d '\r\n')"
-          IDENTITY="$(cat ci_identity.txt | tr -d '\r\n')"
+          IDENTITY="${IOS_CODE_SIGN_IDENTITY:-Apple Distribution}"
 
+          # Only patch common lines; avoid breaking pbxproj formatting
           perl -pi -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PBX"
           perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${TEAM};/g" "$PBX"
           perl -pi -e "s/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = ${PROFILE_NAME};/g" "$PBX"
-          perl -pi -e "s/PROVISIONING_PROFILE = [^;]*;/PROVISIONING_PROFILE = ${PROFILE_UUID};/g" "$PBX"
-
           perl -pi -e "s/CODE_SIGN_IDENTITY = \"[^\"]*\";/CODE_SIGN_IDENTITY = \"${IDENTITY}\";/g" "$PBX"
           perl -pi -e "s/\"CODE_SIGN_IDENTITY\\[sdk=iphoneos\\*\\]\" = \"[^\"]*\";/\"CODE_SIGN_IDENTITY[sdk=iphoneos*]\" = \"${IDENTITY}\";/g" "$PBX"
-          perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};/g" "$PBX"
 
-          perl -pi -e 's/CODE_SIGNING_ALLOWED = NO;/CODE_SIGNING_ALLOWED = YES;/g' "$PBX"
-          perl -pi -e 's/CODE_SIGNING_REQUIRED = NO;/CODE_SIGNING_REQUIRED = YES;/g' "$PBX"
-
-      # ---------------- EXPORT OPTIONS ----------------
       - name: Create ExportOptions.plist
         shell: bash
         run: |
@@ -281,23 +319,29 @@ jobs:
           pod repo update
           pod install
 
-      - name: HARD CHECK right before build (identity must be visible)
+      - name: SHOW signing status (before build)
         shell: bash
         run: |
           set -euo pipefail
           KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
+          echo "---- keychains ----"
+          security list-keychains -d user || true
+          echo "---- default keychain ----"
+          security default-keychain || true
           echo "---- identities (build.keychain) ----"
-          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH" || true
+          echo "---- provisioning profiles ----"
+          ls -la "$HOME/Library/MobileDevice/Provisioning Profiles" || true
+          echo "---- APP_IDENTIFIER ----"
+          cat ci_app_identifier.txt || true
 
-      # ---------------- BUILD ----------------
       - name: Build iOS IPA (signed)
         shell: bash
-        env:
-          OTHER_CODE_SIGN_FLAGS: "--keychain ${{ github.workspace }}/build.keychain"
         run: |
           set -euo pipefail
           KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
 
+          # Ensure keychain is still visible/unlocked right before build
           security unlock-keychain -p "" "$KEYCHAIN_PATH" || true
           security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
           security default-keychain -s "$KEYCHAIN_PATH"
@@ -312,6 +356,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          echo "---- IPA folder ----"
           ls -la build/ios/ipa || true
+          echo "---- Archive folder ----"
           ls -la build/ios/archive || true
+          echo "---- iOS build dir ----"
           ls -la build/ios || true
