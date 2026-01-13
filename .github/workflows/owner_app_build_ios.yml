@@ -19,12 +19,15 @@ jobs:
       IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
       IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
       IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }} # app-store | ad-hoc | development | enterprise
-      IOS_CODE_SIGN_IDENTITY: ${{ secrets.IOS_CODE_SIGN_IDENTITY }} # e.g. Apple Distribution: Name (TEAMID)
+      IOS_CODE_SIGN_IDENTITY: ${{ secrets.IOS_CODE_SIGN_IDENTITY }} # optional; can be "Apple Distribution"
 
-      # App Store Connect API Key (P8 stored as base64 in GitHub Secrets)
+      # App Store Connect API Key
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
       ASC_KEY_P8_B64: ${{ secrets.ASC_KEY_P8_B64 }}
+
+      # Force non-enterprise for ASC token (almost always false)
+      SPACESHIP_CONNECT_API_IN_HOUSE: "false"
 
     steps:
       - name: Checkout
@@ -150,9 +153,8 @@ jobs:
         run: |
           set -euo pipefail
           BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
-          APP_ID="${IOS_TEAM_ID}.${BUNDLE_ID}"
-          echo "$APP_ID" > ci_app_identifier.txt
-          echo "APP_IDENTIFIER=$APP_ID"
+          echo "${IOS_TEAM_ID}.${BUNDLE_ID}" > ci_app_identifier.txt
+          echo "APP_IDENTIFIER=$(cat ci_app_identifier.txt)"
 
       - name: Apply branding (icons + splash)
         shell: bash
@@ -162,16 +164,21 @@ jobs:
           flutter pub run flutter_launcher_icons
           flutter pub run flutter_native_splash:create
 
-      - name: Patch iOS bundle id + team in pbxproj (bundle id only)
+      - name: Patch iOS bundle id + team in pbxproj
         shell: bash
         run: |
           set -euo pipefail
           BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
+          TEAM="${IOS_TEAM_ID}"
           PBX="ios/Runner.xcodeproj/project.pbxproj"
-          perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};/g" "$PBX"
-          perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${IOS_TEAM_ID};/g" "$PBX"
 
-      - name: Setup iOS cert (keychain) + verify identity exists
+          perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};/g" "$PBX"
+          perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${TEAM};/g" "$PBX"
+
+      # ---------------------------
+      # CERTIFICATE (P12) IMPORT
+      # ---------------------------
+      - name: Setup iOS signing certificate (keychain)
         shell: bash
         run: |
           set -euo pipefail
@@ -192,9 +199,18 @@ jobs:
           security default-keychain -s "$KEYCHAIN_PATH"
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KEYCHAIN_PATH"
 
-          CNT=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep -c "\"")
+      - name: Debug codesigning identities (must show Apple Distribution)
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
+          echo "---- identities in build.keychain ----"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH" || true
+
+          CNT=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep -c "Apple Distribution" || true)
           if [ "$CNT" -lt 1 ]; then
-            echo "❌ No signing identity found in build.keychain."
+            echo "❌ Apple Distribution identity not found."
+            echo "👉 Your IOS_P12_B64 likely is NOT an Apple Distribution cert, or missing private key."
             exit 1
           fi
 
@@ -208,30 +224,26 @@ jobs:
           pod repo update
           pod install
 
-      # ✅ FIXED + HARD VERIFIED
-      - name: Create App Store Connect api_key.json (HARD VERIFIED)
+      # ---------------------------
+      # APP STORE CONNECT API KEY
+      # ---------------------------
+      - name: Create App Store Connect api_key.json (verified)
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p .private
 
-          # Hard checks that secrets are present (prevents empty JSON)
-          [ -n "${ASC_KEY_ID:-}" ] || { echo "❌ ASC_KEY_ID is empty"; exit 1; }
-          [ -n "${ASC_ISSUER_ID:-}" ] || { echo "❌ ASC_ISSUER_ID is empty"; exit 1; }
-          [ -n "${ASC_KEY_P8_B64:-}" ] || { echo "❌ ASC_KEY_P8_B64 is empty"; exit 1; }
+          [ -n "${ASC_KEY_ID:-}" ] || { echo "❌ ASC_KEY_ID empty"; exit 1; }
+          [ -n "${ASC_ISSUER_ID:-}" ] || { echo "❌ ASC_ISSUER_ID empty"; exit 1; }
+          [ -n "${ASC_KEY_P8_B64:-}" ] || { echo "❌ ASC_KEY_P8_B64 empty"; exit 1; }
 
-          # Decode p8 safely
           echo "${ASC_KEY_P8_B64}" | tr -d '\n\r ' | base64 --decode > .private/AuthKey.p8
 
-          # Verify header/footer
           head -n 1 .private/AuthKey.p8 | grep -q "BEGIN PRIVATE KEY" || { echo "❌ p8 header missing"; exit 1; }
           tail -n 1 .private/AuthKey.p8 | grep -q "END PRIVATE KEY" || { echo "❌ p8 footer missing"; exit 1; }
-
-          # Verify OpenSSL can parse it (no secrets printed)
           openssl pkey -in .private/AuthKey.p8 -noout >/dev/null
           echo "✅ OpenSSL parsed p8"
 
-          # Create JSON with required "key"
           python3 - <<'PY'
           import json, pathlib, os
           p8 = pathlib.Path(".private/AuthKey.p8").read_text()
@@ -244,20 +256,20 @@ jobs:
           pathlib.Path(".private/api_key.json").write_text(json.dumps(data))
           PY
 
-          # Safe proof that JSON contains key (without printing it)
           python3 - <<'PY'
           import json
           j = json.load(open(".private/api_key.json"))
           print("✅ has key_id:", bool(j.get("key_id")))
           print("✅ has issuer_id:", bool(j.get("issuer_id")))
           print("✅ has key:", bool(j.get("key")))
-          print("✅ key starts with BEGIN:", str(j.get("key","")).lstrip().startswith("-----BEGIN PRIVATE KEY-----"))
           PY
 
-          # Ensure fastlane path exists
           test -f "$GITHUB_WORKSPACE/.private/api_key.json"
-          echo "✅ api_key.json path OK: $GITHUB_WORKSPACE/.private/api_key.json"
+          echo "✅ api_key.json path OK"
 
+      # ---------------------------
+      # PROVISIONING PROFILE (AUTO)
+      # ---------------------------
       - name: Automatic provisioning profile (App Store) via fastlane
         shell: bash
         run: |
@@ -268,7 +280,8 @@ jobs:
             app_identifier:"$BUNDLE_ID" \
             team_id:"${IOS_TEAM_ID}" \
             api_key_path:"$GITHUB_WORKSPACE/.private/api_key.json" \
-            provisioning_name:"B4A_${BUNDLE_ID}_APPSTORE"
+            provisioning_name:"B4A_${BUNDLE_ID}_APPSTORE" \
+            readonly:false
 
       - name: Detect installed provisioning profile UUID/name for this app
         shell: bash
@@ -299,21 +312,32 @@ jobs:
             exit 1
           fi
 
-      - name: Force Manual Signing in Xcode project (safe minimal)
+      # ---------------------------
+      # FORCE DISTRIBUTION SIGNING
+      # ---------------------------
+      - name: Force Manual Signing + Apple Distribution (strong)
         shell: bash
         run: |
           set -euo pipefail
           PBX="ios/Runner.xcodeproj/project.pbxproj"
+          TEAM="${IOS_TEAM_ID}"
           PROFILE_NAME="$(cat ci_profile_name.txt | tr -d '\r\n')"
           PROFILE_UUID="$(cat ci_profile_uuid.txt | tr -d '\r\n')"
-          IDENTITY="${IOS_CODE_SIGN_IDENTITY:-Apple Distribution}"
 
           perl -pi -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PBX"
-          perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${IOS_TEAM_ID};/g" "$PBX"
+          perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${TEAM};/g" "$PBX"
+
           perl -pi -e "s/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = ${PROFILE_NAME};/g" "$PBX"
-          perl -pi -e "s/PROVISIONING_PROFILE = [^;]*;/PROVISIONING_PROFILE = ${PROFILE_UUID};/g" "$PBX"
-          perl -pi -e "s/CODE_SIGN_IDENTITY = \"[^\"]*\";/CODE_SIGN_IDENTITY = \"${IDENTITY}\";/g" "$PBX"
-          perl -pi -e "s/\"CODE_SIGN_IDENTITY\\[sdk=iphoneos\\*\\]\" = \"[^\"]*\";/\"CODE_SIGN_IDENTITY[sdk=iphoneos*]\" = \"${IDENTITY}\";/g" "$PBX"
+          perl -pi -e "s/PROVISIONING_PROFILE = [^;]*;/PROVISIONING_PROFILE = ${PROFILE_UUID};/g" "$PBX" || true
+          perl -pi -e "s/PROVISIONING_PROFILE_SPECIFIER\\[sdk=iphoneos\\*\\] = [^;]*;/PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*] = ${PROFILE_NAME};/g" "$PBX" || true
+
+          # Remove dev identities
+          perl -pi -e 's/iPhone Developer/Apple Distribution/g' "$PBX"
+          perl -pi -e 's/Apple Development/Apple Distribution/g' "$PBX"
+
+          # Force distribution identity
+          perl -pi -e 's/CODE_SIGN_IDENTITY = \"[^\"]*\";/CODE_SIGN_IDENTITY = \"Apple Distribution\";/g' "$PBX"
+          perl -pi -e 's/\"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]\" = \"[^\"]*\";/\"CODE_SIGN_IDENTITY[sdk=iphoneos*]\" = \"Apple Distribution\";/g' "$PBX"
 
       - name: Create ExportOptions.plist
         shell: bash
@@ -351,6 +375,22 @@ jobs:
           </plist>
           EOF
 
+      - name: SHOW signing status (before build)
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
+          echo "---- identities ----"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH" || true
+          echo "---- profile ----"
+          cat ci_profile_name.txt || true
+          cat ci_profile_uuid.txt || true
+          echo "---- app identifier ----"
+          cat ci_app_identifier.txt || true
+
+      # ---------------------------
+      # BUILD
+      # ---------------------------
       - name: Build iOS IPA (signed)
         shell: bash
         run: |
@@ -362,6 +402,7 @@ jobs:
           security default-keychain -s "$KEYCHAIN_PATH"
 
           flutter pub get
+          echo "➡️ Building IPA (signed)."
           flutter build ipa --release \
             --export-options-plist=ios/ExportOptions.plist \
             --dart-define-from-file=lib/env/ci_env.json
@@ -370,6 +411,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          echo "---- IPA folder ----"
           ls -la build/ios/ipa || true
+          echo "---- Archive folder ----"
           ls -la build/ios/archive || true
+          echo "---- iOS build dir ----"
           ls -la build/ios || true
