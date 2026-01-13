@@ -21,10 +21,10 @@ jobs:
       IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }} # app-store | ad-hoc | development | enterprise
       IOS_CODE_SIGN_IDENTITY: ${{ secrets.IOS_CODE_SIGN_IDENTITY }} # e.g. Apple Distribution: Georges Lebbos (7LL4J6N52N)
 
-      # App Store Connect API Key (for automatic provisioning profiles)
+      # App Store Connect API Key (SAFE: store P8 as base64)
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      ASC_KEY_P8_B64: ${{ secrets.ASC_KEY_P8_B64 }}
 
     steps:
       - name: Checkout
@@ -220,22 +220,25 @@ jobs:
           pod repo update
           pod install
 
-      - name: Create App Store Connect api_key.json (fastlane requires 'key')
+      - name: Create App Store Connect api_key.json (safe) + verify p8
         shell: bash
         run: |
           set -euo pipefail
           [ -n "${ASC_KEY_ID:-}" ] || { echo "❌ Missing ASC_KEY_ID"; exit 1; }
           [ -n "${ASC_ISSUER_ID:-}" ] || { echo "❌ Missing ASC_ISSUER_ID"; exit 1; }
-          [ -n "${ASC_KEY_P8:-}" ] || { echo "❌ Missing ASC_KEY_P8"; exit 1; }
+          [ -n "${ASC_KEY_P8_B64:-}" ] || { echo "❌ Missing ASC_KEY_P8_B64"; exit 1; }
 
           mkdir -p .private
 
-          # Write the .p8 EXACTLY as stored in the secret (multiline)
-          cat > .private/AuthKey.p8 <<'EOF'
-          ${ASC_KEY_P8}
-          EOF
+          echo "$ASC_KEY_P8_B64" | tr -d '\n\r ' | base64 --decode > .private/AuthKey.p8
 
-          # Build JSON that fastlane 2.230+ expects: key_id, issuer_id, key
+          head -n 1 .private/AuthKey.p8 | grep -q "BEGIN PRIVATE KEY" || { echo "❌ p8 header missing"; exit 1; }
+          tail -n 1 .private/AuthKey.p8 | grep -q "END PRIVATE KEY" || { echo "❌ p8 footer missing"; exit 1; }
+
+          # Verify OpenSSL can parse it (no key printed)
+          openssl pkey -in .private/AuthKey.p8 -noout >/dev/null
+          echo "✅ OpenSSL can parse the p8 key"
+
           python3 - <<'PY'
           import json, pathlib, os
           p8 = pathlib.Path(".private/AuthKey.p8").read_text()
@@ -319,7 +322,7 @@ jobs:
 
           cat > ios/ExportOptions.plist <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
             <key>method</key>
