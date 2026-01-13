@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   build-ios:
-    runs-on: macos-13
+    runs-on: macos-14
 
     env:
       CI_CALLBACK_TOKEN: ${{ secrets.CI_CALLBACK_TOKEN }}
