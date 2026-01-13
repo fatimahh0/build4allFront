@@ -17,8 +17,8 @@ jobs:
 
       IOS_P12_B64: ${{ secrets.IOS_P12_B64 }}
       IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
-      IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
-      IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }} # app-store | ad-hoc | development | enterprise
+      IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}          # e.g. 7LL4J6N52N
+      IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }} # must be: app-store
       IOS_MOBILEPROVISION_B64: ${{ secrets.IOS_MOBILEPROVISION_B64 }}
 
     steps:
@@ -45,7 +45,7 @@ jobs:
           set -euo pipefail
           echo '${{ toJson(github.event.client_payload) }}'
 
-      # ---------------- YOUR ci_env.json STEP (keep yours) ----------------
+      # ---------------- ci_env.json STEP ----------------
       - name: Build ci_env.json (BY_LINK runtime-config + fallback)
         shell: bash
         run: |
@@ -153,7 +153,7 @@ jobs:
           perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${TEAM};/g" "$PBX"
 
       # ---------------- CERTIFICATE / KEYCHAIN ----------------
-      - name: Setup iOS cert (keychain) + detect identity
+      - name: Setup iOS cert (keychain)
         shell: bash
         run: |
           set -euo pipefail
@@ -185,10 +185,23 @@ jobs:
             exit 1
           fi
 
-          # Auto-pick first identity name from keychain (works better than hardcoding secrets)
-          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | head -n 1 | sed -E 's/^.*"(.+)"$/\1/')
-          echo "Detected identity: $IDENTITY"
-          echo "$IDENTITY" > ci_identity.txt
+      - name: DEBUG signing identities (after import)
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
+
+          echo "---- list keychains ----"
+          security list-keychains -d user
+
+          echo "---- default keychain ----"
+          security default-keychain -d user
+
+          echo "---- identities (build.keychain) ----"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH" || true
+
+          echo "---- identities (login keychain) ----"
+          security find-identity -v -p codesigning login.keychain-db || true
 
       # ---------------- PROVISIONING PROFILE ----------------
       - name: Install provisioning profile
@@ -211,8 +224,8 @@ jobs:
 
           echo "✅ Installed profile: $PROFILE_NAME (UUID=$PROFILE_UUID)"
 
-      # ---------------- FORCE MANUAL SIGNING ----------------
-      - name: Force Manual Signing in Xcode project (identity + profile)
+      # ---------------- FORCE MANUAL SIGNING (DISTRIBUTION) ----------------
+      - name: Force Manual Signing in Xcode project (distribution + profile)
         shell: bash
         run: |
           set -euo pipefail
@@ -222,15 +235,16 @@ jobs:
           TEAM="${IOS_TEAM_ID}"
           PROFILE_NAME="$(cat ci_profile_name.txt | tr -d '\r\n')"
           PROFILE_UUID="$(cat ci_profile_uuid.txt | tr -d '\r\n')"
-          IDENTITY="$(cat ci_identity.txt | tr -d '\r\n')"
 
           perl -pi -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PBX"
           perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${TEAM};/g" "$PBX"
+
           perl -pi -e "s/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = ${PROFILE_NAME};/g" "$PBX"
           perl -pi -e "s/PROVISIONING_PROFILE = [^;]*;/PROVISIONING_PROFILE = ${PROFILE_UUID};/g" "$PBX"
 
-          perl -pi -e "s/CODE_SIGN_IDENTITY = \"[^\"]*\";/CODE_SIGN_IDENTITY = \"${IDENTITY}\";/g" "$PBX"
-          perl -pi -e "s/\"CODE_SIGN_IDENTITY\\[sdk=iphoneos\\*\\]\" = \"[^\"]*\";/\"CODE_SIGN_IDENTITY[sdk=iphoneos*]\" = \"${IDENTITY}\";/g" "$PBX"
+          perl -pi -e 's/CODE_SIGN_IDENTITY = ".*?";/CODE_SIGN_IDENTITY = "Apple Distribution";/g' "$PBX"
+          perl -pi -e 's/"CODE_SIGN_IDENTITY\\[sdk=iphoneos\\*\\]" = ".*?";/"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";/g' "$PBX"
+
           perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};/g" "$PBX"
 
           perl -pi -e 's/CODE_SIGNING_ALLOWED = NO;/CODE_SIGNING_ALLOWED = YES;/g' "$PBX"
