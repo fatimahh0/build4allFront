@@ -15,12 +15,17 @@ jobs:
       CI_CALLBACK_TOKEN: ${{ secrets.CI_CALLBACK_TOKEN }}
       CI_RUNTIME_TOKEN: ${{ secrets.CI_RUNTIME_TOKEN }}
 
+      # Codesigning (still required)
       IOS_P12_B64: ${{ secrets.IOS_P12_B64 }}
       IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
       IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
       IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }} # app-store | ad-hoc | development | enterprise
-      IOS_MOBILEPROVISION_B64: ${{ secrets.IOS_MOBILEPROVISION_B64 }}
-      IOS_CODE_SIGN_IDENTITY: ${{ secrets.IOS_CODE_SIGN_IDENTITY }} # e.g. Apple Distribution: Georges Lebbos (7LL4J6N52N)
+      IOS_CODE_SIGN_IDENTITY: ${{ secrets.IOS_CODE_SIGN_IDENTITY }} # Apple Distribution: Name (TEAMID)
+
+      # App Store Connect API Key (automatic provisioning + optional upload)
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
 
     steps:
       - name: Checkout
@@ -164,7 +169,7 @@ jobs:
           flutter pub run flutter_launcher_icons
           flutter pub run flutter_native_splash:create
 
-      - name: Patch iOS bundle id + team in pbxproj (bundle id only)
+      - name: Patch iOS bundle id + team in pbxproj
         shell: bash
         run: |
           set -euo pipefail
@@ -172,7 +177,6 @@ jobs:
           TEAM="${IOS_TEAM_ID}"
           PBX="ios/Runner.xcodeproj/project.pbxproj"
 
-          # IMPORTANT: bundle identifier is only com.xxx.yyy (no TEAM_ID prefix)
           perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};/g" "$PBX"
           perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${TEAM};/g" "$PBX"
 
@@ -193,11 +197,8 @@ jobs:
           security import ios_cert.p12 -k "$KEYCHAIN_PATH" -P "$IOS_P12_PASSWORD" -A \
             -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/xcodebuild
 
-          # Make visible to tools/Xcode
           security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
           security default-keychain -s "$KEYCHAIN_PATH"
-
-          # Allow non-interactive key access
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KEYCHAIN_PATH"
 
           echo "---- identities (build.keychain) ----"
@@ -207,56 +208,79 @@ jobs:
           if [ "$CNT" -lt 1 ]; then
             echo "❌ No signing identity found in build.keychain."
             echo "👉 Your P12 likely does NOT include the private key."
-            echo "Fix: Keychain Access → My Certificates → select Apple Distribution + its private key → Export .p12"
             exit 1
           fi
 
-      - name: Install provisioning profile + verify it matches app identifier
+      - name: Install dependencies (CocoaPods + fastlane)
         shell: bash
         run: |
           set -euo pipefail
-          [ -n "${IOS_MOBILEPROVISION_B64:-}" ] || { echo "❌ Missing IOS_MOBILEPROVISION_B64"; exit 1; }
+          sudo gem install cocoapods -N || true
+          sudo gem install fastlane -N
+          cd ios
+          pod repo update
+          pod install
 
-          echo "$IOS_MOBILEPROVISION_B64" | tr -d '\n\r ' | base64 --decode > profile.mobileprovision
-          /usr/bin/security cms -D -i profile.mobileprovision > profile.plist
+      - name: Create App Store Connect API key files
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -n "${ASC_KEY_ID:-}" ] || { echo "❌ Missing ASC_KEY_ID"; exit 1; }
+          [ -n "${ASC_ISSUER_ID:-}" ] || { echo "❌ Missing ASC_ISSUER_ID"; exit 1; }
+          [ -n "${ASC_KEY_P8:-}" ] || { echo "❌ Missing ASC_KEY_P8"; exit 1; }
 
-          PROFILE_NAME="$("/usr/libexec/PlistBuddy" -c "Print :Name" profile.plist)"
-          PROFILE_UUID="$("/usr/libexec/PlistBuddy" -c "Print :UUID" profile.plist)"
-          PROFILE_APPID="$("/usr/libexec/PlistBuddy" -c "Print :Entitlements:application-identifier" profile.plist || true)"
+          mkdir -p .private
+          echo "$ASC_KEY_P8" > .private/AuthKey.p8
 
-          echo "$PROFILE_NAME" > ci_profile_name.txt
-          echo "$PROFILE_UUID" > ci_profile_uuid.txt
-          echo "$PROFILE_APPID" > ci_profile_app_identifier.txt
+          cat > .private/api_key.json <<EOF
+          {
+            "key_id": "${ASC_KEY_ID}",
+            "issuer_id": "${ASC_ISSUER_ID}",
+            "key_filepath": "${GITHUB_WORKSPACE}/.private/AuthKey.p8"
+          }
+          EOF
 
-          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          cp profile.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/${PROFILE_UUID}.mobileprovision"
+      - name: Automatic provisioning profile (App Store) via fastlane
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
+          TEAM_ID="${IOS_TEAM_ID}"
 
-          echo "✅ Installed profile: $PROFILE_NAME (UUID=$PROFILE_UUID)"
-          echo "Profile application-identifier: $PROFILE_APPID"
+          fastlane run get_provisioning_profile \
+            app_identifier:"$BUNDLE_ID" \
+            team_id:"$TEAM_ID" \
+            api_key_path:"$GITHUB_WORKSPACE/.private/api_key.json" \
+            provisioning_name:"B4A_${BUNDLE_ID}_APPSTORE"
 
-          EXPECTED="$(cat ci_app_identifier.txt | tr -d '\r\n')"
-          if [ -n "$PROFILE_APPID" ]; then
-            # Allow exact match OR wildcard match like TEAM.com.build4all.*
-            if [[ "$PROFILE_APPID" == "$EXPECTED" ]]; then
-              echo "✅ Profile matches exactly."
-            elif [[ "$PROFILE_APPID" == *"*"* ]]; then
-              PREFIX="${PROFILE_APPID%\*}"   # everything before *
-              if [[ "$EXPECTED" == "${PREFIX}"* ]]; then
-                echo "✅ Profile wildcard covers this app."
-              else
-                echo "❌ Profile wildcard does NOT cover this app."
-                echo "Expected: $EXPECTED"
-                echo "Profile  : $PROFILE_APPID"
-                exit 1
-              fi
-            else
-              echo "❌ Profile does NOT match this app."
-              echo "Expected: $EXPECTED"
-              echo "Profile  : $PROFILE_APPID"
-              exit 1
+      - name: Detect installed provisioning profile UUID/name for this app
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
+          TEAM_ID="${IOS_TEAM_ID}"
+          APP_ID="${TEAM_ID}.${BUNDLE_ID}"
+
+          PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          UUID_FOUND=""
+
+          for f in "$PROFILES_DIR"/*.mobileprovision; do
+            /usr/bin/security cms -D -i "$f" > /tmp/p.plist
+            P_APPID=$("/usr/libexec/PlistBuddy" -c "Print :Entitlements:application-identifier" /tmp/p.plist 2>/dev/null || true)
+            if [ "$P_APPID" = "$APP_ID" ]; then
+              UUID_FOUND=$("/usr/libexec/PlistBuddy" -c "Print :UUID" /tmp/p.plist)
+              PROFILE_NAME=$("/usr/libexec/PlistBuddy" -c "Print :Name" /tmp/p.plist)
+              echo "$UUID_FOUND" > ci_profile_uuid.txt
+              echo "$PROFILE_NAME" > ci_profile_name.txt
+              echo "✅ Using profile: $PROFILE_NAME ($UUID_FOUND)"
+              break
             fi
-          else
-            echo "⚠️ Could not read Entitlements:application-identifier from profile.plist"
+          done
+
+          if [ -z "$UUID_FOUND" ]; then
+            echo "❌ No installed profile matched $APP_ID"
+            ls -la "$PROFILES_DIR" || true
+            exit 1
           fi
 
       - name: Force Manual Signing in Xcode project (safe minimal)
@@ -266,12 +290,13 @@ jobs:
           PBX="ios/Runner.xcodeproj/project.pbxproj"
           TEAM="${IOS_TEAM_ID}"
           PROFILE_NAME="$(cat ci_profile_name.txt | tr -d '\r\n')"
+          PROFILE_UUID="$(cat ci_profile_uuid.txt | tr -d '\r\n')"
           IDENTITY="${IOS_CODE_SIGN_IDENTITY:-Apple Distribution}"
 
-          # Only patch common lines; avoid breaking pbxproj formatting
           perl -pi -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PBX"
           perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${TEAM};/g" "$PBX"
           perl -pi -e "s/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = ${PROFILE_NAME};/g" "$PBX"
+          perl -pi -e "s/PROVISIONING_PROFILE = [^;]*;/PROVISIONING_PROFILE = ${PROFILE_UUID};/g" "$PBX"
           perl -pi -e "s/CODE_SIGN_IDENTITY = \"[^\"]*\";/CODE_SIGN_IDENTITY = \"${IDENTITY}\";/g" "$PBX"
           perl -pi -e "s/\"CODE_SIGN_IDENTITY\\[sdk=iphoneos\\*\\]\" = \"[^\"]*\";/\"CODE_SIGN_IDENTITY[sdk=iphoneos*]\" = \"${IDENTITY}\";/g" "$PBX"
 
@@ -295,6 +320,8 @@ jobs:
             <string>manual</string>
             <key>teamID</key>
             <string>${TEAM}</string>
+            <key>signingCertificate</key>
+            <string>Apple Distribution</string>
             <key>provisioningProfiles</key>
             <dict>
               <key>${BUNDLE_ID}</key>
@@ -310,30 +337,20 @@ jobs:
           </plist>
           EOF
 
-      - name: Install CocoaPods
-        shell: bash
-        run: |
-          set -euo pipefail
-          sudo gem install cocoapods -N || true
-          cd ios
-          pod repo update
-          pod install
-
       - name: SHOW signing status (before build)
         shell: bash
         run: |
           set -euo pipefail
           KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
-          echo "---- keychains ----"
-          security list-keychains -d user || true
-          echo "---- default keychain ----"
-          security default-keychain || true
           echo "---- identities (build.keychain) ----"
           security find-identity -v -p codesigning "$KEYCHAIN_PATH" || true
           echo "---- provisioning profiles ----"
           ls -la "$HOME/Library/MobileDevice/Provisioning Profiles" || true
           echo "---- APP_IDENTIFIER ----"
           cat ci_app_identifier.txt || true
+          echo "---- Profile ----"
+          cat ci_profile_name.txt || true
+          cat ci_profile_uuid.txt || true
 
       - name: Build iOS IPA (signed)
         shell: bash
@@ -341,7 +358,6 @@ jobs:
           set -euo pipefail
           KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
 
-          # Ensure keychain is still visible/unlocked right before build
           security unlock-keychain -p "" "$KEYCHAIN_PATH" || true
           security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
           security default-keychain -s "$KEYCHAIN_PATH"
@@ -362,3 +378,17 @@ jobs:
           ls -la build/ios/archive || true
           echo "---- iOS build dir ----"
           ls -la build/ios || true
+
+      # OPTIONAL: Upload to TestFlight (send client_payload.UPLOAD_TESTFLIGHT=true)
+      - name: Upload to TestFlight (optional)
+        if: ${{ github.event.client_payload.UPLOAD_TESTFLIGHT == true }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          IPA_PATH="$(ls -1 build/ios/ipa/*.ipa | head -n 1)"
+          echo "Uploading: $IPA_PATH"
+
+          fastlane run upload_to_testflight \
+            api_key_path:"$GITHUB_WORKSPACE/.private/api_key.json" \
+            ipa:"$IPA_PATH" \
+            skip_waiting_for_build_processing:true
