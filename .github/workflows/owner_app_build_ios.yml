@@ -15,14 +15,13 @@ jobs:
       CI_CALLBACK_TOKEN: ${{ secrets.CI_CALLBACK_TOKEN }}
       CI_RUNTIME_TOKEN: ${{ secrets.CI_RUNTIME_TOKEN }}
 
-      # Codesigning (still required)
       IOS_P12_B64: ${{ secrets.IOS_P12_B64 }}
       IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
       IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
       IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }} # app-store | ad-hoc | development | enterprise
-      IOS_CODE_SIGN_IDENTITY: ${{ secrets.IOS_CODE_SIGN_IDENTITY }} # Apple Distribution: Name (TEAMID)
+      IOS_CODE_SIGN_IDENTITY: ${{ secrets.IOS_CODE_SIGN_IDENTITY }} # e.g. Apple Distribution: Georges Lebbos (7LL4J6N52N)
 
-      # App Store Connect API Key (automatic provisioning + optional upload)
+      # App Store Connect API Key (for automatic provisioning profiles)
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
       ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
@@ -169,7 +168,7 @@ jobs:
           flutter pub run flutter_launcher_icons
           flutter pub run flutter_native_splash:create
 
-      - name: Patch iOS bundle id + team in pbxproj
+      - name: Patch iOS bundle id + team in pbxproj (bundle id only)
         shell: bash
         run: |
           set -euo pipefail
@@ -211,7 +210,7 @@ jobs:
             exit 1
           fi
 
-      - name: Install dependencies (CocoaPods + fastlane)
+      - name: Install CocoaPods + fastlane
         shell: bash
         run: |
           set -euo pipefail
@@ -221,7 +220,7 @@ jobs:
           pod repo update
           pod install
 
-      - name: Create App Store Connect API key files
+      - name: Create App Store Connect api_key.json (fastlane requires 'key')
         shell: bash
         run: |
           set -euo pipefail
@@ -230,15 +229,24 @@ jobs:
           [ -n "${ASC_KEY_P8:-}" ] || { echo "❌ Missing ASC_KEY_P8"; exit 1; }
 
           mkdir -p .private
-          echo "$ASC_KEY_P8" > .private/AuthKey.p8
 
-          cat > .private/api_key.json <<EOF
-          {
-            "key_id": "${ASC_KEY_ID}",
-            "issuer_id": "${ASC_ISSUER_ID}",
-            "key_filepath": "${GITHUB_WORKSPACE}/.private/AuthKey.p8"
-          }
+          # Write the .p8 EXACTLY as stored in the secret (multiline)
+          cat > .private/AuthKey.p8 <<'EOF'
+          ${ASC_KEY_P8}
           EOF
+
+          # Build JSON that fastlane 2.230+ expects: key_id, issuer_id, key
+          python3 - <<'PY'
+          import json, pathlib, os
+          p8 = pathlib.Path(".private/AuthKey.p8").read_text()
+          data = {
+            "key_id": os.environ["ASC_KEY_ID"].strip(),
+            "issuer_id": os.environ["ASC_ISSUER_ID"].strip(),
+            "key": p8
+          }
+          pathlib.Path(".private/api_key.json").write_text(json.dumps(data))
+          print("✅ .private/api_key.json created")
+          PY
 
       - name: Automatic provisioning profile (App Store) via fastlane
         shell: bash
@@ -342,6 +350,10 @@ jobs:
         run: |
           set -euo pipefail
           KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
+          echo "---- keychains ----"
+          security list-keychains -d user || true
+          echo "---- default keychain ----"
+          security default-keychain || true
           echo "---- identities (build.keychain) ----"
           security find-identity -v -p codesigning "$KEYCHAIN_PATH" || true
           echo "---- provisioning profiles ----"
@@ -378,17 +390,3 @@ jobs:
           ls -la build/ios/archive || true
           echo "---- iOS build dir ----"
           ls -la build/ios || true
-
-      # OPTIONAL: Upload to TestFlight (send client_payload.UPLOAD_TESTFLIGHT=true)
-      - name: Upload to TestFlight (optional)
-        if: ${{ github.event.client_payload.UPLOAD_TESTFLIGHT == true }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          IPA_PATH="$(ls -1 build/ios/ipa/*.ipa | head -n 1)"
-          echo "Uploading: $IPA_PATH"
-
-          fastlane run upload_to_testflight \
-            api_key_path:"$GITHUB_WORKSPACE/.private/api_key.json" \
-            ipa:"$IPA_PATH" \
-            skip_waiting_for_build_processing:true
