@@ -40,7 +40,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer || true
           xcodebuild -version
 
       - name: Setup Flutter
@@ -175,7 +175,7 @@ jobs:
           test -f ios/Podfile
 
       # --------------------------------------------------
-      # PATCH iOS bundle/team in pbxproj
+      # PATCH iOS bundle/team in pbxproj (Runner only)
       # --------------------------------------------------
       - name: Patch iOS bundle id + team in pbxproj
         shell: bash
@@ -254,6 +254,10 @@ jobs:
           set -euo pipefail
           mkdir -p .private
 
+          [ -n "${ASC_KEY_ID:-}" ] || { echo "❌ ASC_KEY_ID empty"; exit 1; }
+          [ -n "${ASC_ISSUER_ID:-}" ] || { echo "❌ ASC_ISSUER_ID empty"; exit 1; }
+          [ -n "${ASC_KEY_P8_B64:-}" ] || { echo "❌ ASC_KEY_P8_B64 empty"; exit 1; }
+
           echo "${ASC_KEY_P8_B64}" | tr -d '\n\r ' | base64 --decode > .private/AuthKey_${ASC_KEY_ID}.p8
           openssl pkey -in .private/AuthKey_${ASC_KEY_ID}.p8 -noout >/dev/null
 
@@ -276,7 +280,7 @@ jobs:
             in_house:false
 
       # --------------------------------------------------
-      # PROVISIONING PROFILE (AUTO) + UUID extract
+      # PROVISIONING PROFILE (AUTO)
       # --------------------------------------------------
       - name: Automatic provisioning profile (App Store) via fastlane
         shell: bash
@@ -325,7 +329,7 @@ jobs:
           fi
 
       # --------------------------------------------------
-      # EXPORT OPTIONS
+      # EXPORT OPTIONS (profile mapping happens at export time, not for Pods)
       # --------------------------------------------------
       - name: Create ExportOptions.plist
         shell: bash
@@ -364,7 +368,7 @@ jobs:
           EOF
 
       # --------------------------------------------------
-      # BUILD (deterministic signing)
+      # BUILD (flutter no codesign)
       # --------------------------------------------------
       - name: Build iOS (flutter, no codesign)
         shell: bash
@@ -373,12 +377,34 @@ jobs:
           flutter build ios --release --no-codesign \
             --dart-define-from-file=lib/env/ci_env.json
 
+      # --------------------------------------------------
+      # FIX: Pods must be Automatic signing (no provisioning profiles)
+      # --------------------------------------------------
+      - name: Force Pods signing to Automatic (no provisioning profile)
+        shell: bash
+        run: |
+          set -euo pipefail
+          PODS_PBX="ios/Pods/Pods.xcodeproj/project.pbxproj"
+          if [ -f "$PODS_PBX" ]; then
+            echo "Patching Pods signing settings..."
+            perl -pi -e 's/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = "";/g' "$PODS_PBX"
+            perl -pi -e 's/PROVISIONING_PROFILE = [^;]*;/PROVISIONING_PROFILE = "";/g' "$PODS_PBX"
+            perl -pi -e 's/CODE_SIGN_STYLE = Manual;/CODE_SIGN_STYLE = Automatic;/g' "$PODS_PBX"
+            perl -pi -e 's/CODE_SIGN_IDENTITY = \"Apple Distribution\";/CODE_SIGN_IDENTITY = \"\";/g' "$PODS_PBX"
+            perl -pi -e 's/\"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]\" = \"Apple Distribution\";/\"CODE_SIGN_IDENTITY[sdk=iphoneos*]\" = \"\";/g' "$PODS_PBX"
+          else
+            echo "Pods project not found (ok)."
+          fi
+
+      # --------------------------------------------------
+      # ARCHIVE (Runner signed, Pods automatic)
+      # IMPORTANT: Do NOT pass PROVISIONING_PROFILE to archive (Pods error)
+      # --------------------------------------------------
       - name: Archive with explicit signing (xcodebuild)
         shell: bash
         run: |
           set -euo pipefail
           BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
-          PROFILE_UUID="$(cat ci_profile_uuid.txt | tr -d '\r\n')"
           TEAM="${IOS_TEAM_ID}"
           KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
 
@@ -398,7 +424,6 @@ jobs:
             PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE="$PROFILE_UUID" \
             archive
 
       - name: Export IPA (xcodebuild)
@@ -411,6 +436,14 @@ jobs:
             -archivePath ../build/ios/archive/Runner.xcarchive \
             -exportOptionsPlist ExportOptions.plist \
             -exportPath ../build/ios/ipa
+
+      - name: List outputs (debug)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "---- IPA folder ----"
+          ls -la build/ios/ipa || true
+          find build/ios/ipa -maxdepth 2 -type f -name "*.ipa" -print || true
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
