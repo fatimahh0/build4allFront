@@ -329,6 +329,34 @@ jobs:
           fi
 
       # --------------------------------------------------
+      # ✅ NEW: Apply provisioning profile to Runner ONLY (fixes "Runner requires profile")
+      # --------------------------------------------------
+      - name: Apply provisioning profile to Runner only
+        shell: bash
+        run: |
+          set -euo pipefail
+          TEAM="${IOS_TEAM_ID}"
+          PROFILE_NAME="$(cat ci_profile_name.txt | tr -d '\r\n')"
+          PBX="ios/Runner.xcodeproj/project.pbxproj"
+
+          [ -n "$PROFILE_NAME" ] || { echo "❌ ci_profile_name.txt empty"; exit 1; }
+          echo "✅ Runner profile: $PROFILE_NAME"
+
+          # Runner manual signing
+          perl -pi -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PBX"
+          perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${TEAM};/g" "$PBX"
+
+          # Set profile specifier for Runner
+          perl -pi -e "s/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = ${PROFILE_NAME};/g" "$PBX"
+          perl -pi -e "s/PROVISIONING_PROFILE_SPECIFIER\\[sdk=iphoneos\\*\\] = [^;]*;/PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*] = ${PROFILE_NAME};/g" "$PBX" || true
+
+          # Force distribution identity for Runner
+          perl -pi -e 's/Apple Development/Apple Distribution/g' "$PBX"
+          perl -pi -e 's/iPhone Developer/Apple Distribution/g' "$PBX"
+          perl -pi -e 's/CODE_SIGN_IDENTITY = \"[^\"]*\";/CODE_SIGN_IDENTITY = \"Apple Distribution\";/g' "$PBX"
+          perl -pi -e 's/\"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]\" = \"[^\"]*\";/\"CODE_SIGN_IDENTITY[sdk=iphoneos*]\" = \"Apple Distribution\";/g' "$PBX"
+
+      # --------------------------------------------------
       # EXPORT OPTIONS (profile mapping happens at export time, not for Pods)
       # --------------------------------------------------
       - name: Create ExportOptions.plist
@@ -398,14 +426,11 @@ jobs:
 
       # --------------------------------------------------
       # ARCHIVE (Runner signed, Pods automatic)
-      # IMPORTANT: Do NOT pass PROVISIONING_PROFILE to archive (Pods error)
       # --------------------------------------------------
       - name: Archive with explicit signing (xcodebuild)
         shell: bash
         run: |
           set -euo pipefail
-          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
-          TEAM="${IOS_TEAM_ID}"
           KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
 
           security default-keychain -s "$KEYCHAIN_PATH"
@@ -420,10 +445,6 @@ jobs:
             -configuration Release \
             -sdk iphoneos \
             -archivePath ../build/ios/archive/Runner.xcarchive \
-            DEVELOPMENT_TEAM="$TEAM" \
-            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
             archive
 
       - name: Export IPA (xcodebuild)
