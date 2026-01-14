@@ -5,7 +5,7 @@ on:
     types: [owner_app_build_ios]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-ios:
@@ -19,19 +19,31 @@ jobs:
       IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
       IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
       IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }} # app-store | ad-hoc | development | enterprise
-      IOS_CODE_SIGN_IDENTITY: ${{ secrets.IOS_CODE_SIGN_IDENTITY }} # optional; can be "Apple Distribution"
+      IOS_CODE_SIGN_IDENTITY: ${{ secrets.IOS_CODE_SIGN_IDENTITY }} # optional
 
       # App Store Connect API Key
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
       ASC_KEY_P8_B64: ${{ secrets.ASC_KEY_P8_B64 }}
 
-      # Force non-enterprise for ASC token (almost always false)
+      # Force non-enterprise for ASC token
       SPACESHIP_CONNECT_API_IN_HOUSE: "false"
+
+      # Speed up some tooling
+      COCOAPODS_DISABLE_STATS: "true"
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Select Xcode (macos-14)
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -152,26 +164,34 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
+          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
           echo "${IOS_TEAM_ID}.${BUNDLE_ID}" > ci_app_identifier.txt
           echo "APP_IDENTIFIER=$(cat ci_app_identifier.txt)"
+
+      - name: Flutter pub get
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter pub get
 
       - name: Apply branding (icons + splash)
         shell: bash
         run: |
           set -euo pipefail
-          flutter pub get
           flutter pub run flutter_launcher_icons
           flutter pub run flutter_native_splash:create
 
-      - name: Patch iOS bundle id + team in pbxproj
+      - name: Patch iOS bundle id + team in pbxproj (hardened)
         shell: bash
         run: |
           set -euo pipefail
-          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
+          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
           TEAM="${IOS_TEAM_ID}"
           PBX="ios/Runner.xcodeproj/project.pbxproj"
 
+          test -f "$PBX" || { echo "❌ pbxproj not found: $PBX"; exit 1; }
+
+          # Replace all occurrences safely
           perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};/g" "$PBX"
           perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${TEAM};/g" "$PBX"
 
@@ -204,25 +224,39 @@ jobs:
         run: |
           set -euo pipefail
           KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
-          echo "---- identities in build.keychain ----"
           security find-identity -v -p codesigning "$KEYCHAIN_PATH" || true
-
           CNT=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep -c "Apple Distribution" || true)
           if [ "$CNT" -lt 1 ]; then
             echo "❌ Apple Distribution identity not found."
-            echo "👉 Your IOS_P12_B64 likely is NOT an Apple Distribution cert, or missing private key."
+            echo "👉 IOS_P12_B64 likely is NOT an Apple Distribution cert, or missing private key."
             exit 1
           fi
+
+      # ---------------------------
+      # RUBY + COCOAPODS + FASTLANE (more stable)
+      # ---------------------------
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: false
 
       - name: Install CocoaPods + fastlane
         shell: bash
         run: |
           set -euo pipefail
-          sudo gem install cocoapods -N || true
-          sudo gem install fastlane -N
+          gem install cocoapods -N
+          gem install fastlane -N
+          pod --version
+          fastlane --version
+
+      - name: Install iOS Pods
+        shell: bash
+        run: |
+          set -euo pipefail
           cd ios
-          pod repo update
-          pod install
+          # Avoid slow/unreliable repo update; use CDN
+          pod install --repo-update=false
 
       # ---------------------------
       # APP STORE CONNECT API KEY
@@ -274,7 +308,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
+          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
 
           fastlane run get_provisioning_profile \
             app_identifier:"$BUNDLE_ID" \
@@ -283,27 +317,34 @@ jobs:
             provisioning_name:"B4A_${BUNDLE_ID}_APPSTORE" \
             readonly:false
 
-      - name: Detect installed provisioning profile UUID/name for this app
+      - name: Detect installed provisioning profile UUID/name for this app (hardened)
         shell: bash
         run: |
           set -euo pipefail
-          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
+          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
           APP_ID="${IOS_TEAM_ID}.${BUNDLE_ID}"
 
           PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILES_DIR"
+
           UUID_FOUND=""
+          PROFILE_NAME=""
 
           for f in "$PROFILES_DIR"/*.mobileprovision; do
-            /usr/bin/security cms -D -i "$f" > /tmp/p.plist
-            P_APPID=$("/usr/libexec/PlistBuddy" -c "Print :Entitlements:application-identifier" /tmp/p.plist 2>/dev/null || true)
+            [ -f "$f" ] || continue
+            TMP_PLIST="$(mktemp /tmp/profile.XXXXXX.plist)"
+            /usr/bin/security cms -D -i "$f" > "$TMP_PLIST"
+            P_APPID=$("/usr/libexec/PlistBuddy" -c "Print :Entitlements:application-identifier" "$TMP_PLIST" 2>/dev/null || true)
             if [ "$P_APPID" = "$APP_ID" ]; then
-              UUID_FOUND=$("/usr/libexec/PlistBuddy" -c "Print :UUID" /tmp/p.plist)
-              PROFILE_NAME=$("/usr/libexec/PlistBuddy" -c "Print :Name" /tmp/p.plist)
+              UUID_FOUND=$("/usr/libexec/PlistBuddy" -c "Print :UUID" "$TMP_PLIST")
+              PROFILE_NAME=$("/usr/libexec/PlistBuddy" -c "Print :Name" "$TMP_PLIST")
+              rm -f "$TMP_PLIST"
               echo "$UUID_FOUND" > ci_profile_uuid.txt
               echo "$PROFILE_NAME" > ci_profile_name.txt
               echo "✅ Using profile: $PROFILE_NAME ($UUID_FOUND)"
               break
             fi
+            rm -f "$TMP_PLIST"
           done
 
           if [ -z "$UUID_FOUND" ]; then
@@ -321,8 +362,8 @@ jobs:
           set -euo pipefail
           PBX="ios/Runner.xcodeproj/project.pbxproj"
           TEAM="${IOS_TEAM_ID}"
-          PROFILE_NAME="$(cat ci_profile_name.txt | tr -d '\r\n')"
-          PROFILE_UUID="$(cat ci_profile_uuid.txt | tr -d '\r\n')"
+          PROFILE_NAME="$(tr -d '\r\n' < ci_profile_name.txt)"
+          PROFILE_UUID="$(tr -d '\r\n' < ci_profile_uuid.txt)"
 
           perl -pi -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PBX"
           perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${TEAM};/g" "$PBX"
@@ -331,11 +372,9 @@ jobs:
           perl -pi -e "s/PROVISIONING_PROFILE = [^;]*;/PROVISIONING_PROFILE = ${PROFILE_UUID};/g" "$PBX" || true
           perl -pi -e "s/PROVISIONING_PROFILE_SPECIFIER\\[sdk=iphoneos\\*\\] = [^;]*;/PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*] = ${PROFILE_NAME};/g" "$PBX" || true
 
-          # Remove dev identities
           perl -pi -e 's/iPhone Developer/Apple Distribution/g' "$PBX"
           perl -pi -e 's/Apple Development/Apple Distribution/g' "$PBX"
 
-          # Force distribution identity
           perl -pi -e 's/CODE_SIGN_IDENTITY = \"[^\"]*\";/CODE_SIGN_IDENTITY = \"Apple Distribution\";/g' "$PBX"
           perl -pi -e 's/\"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]\" = \"[^\"]*\";/\"CODE_SIGN_IDENTITY[sdk=iphoneos*]\" = \"Apple Distribution\";/g' "$PBX"
 
@@ -344,8 +383,8 @@ jobs:
         run: |
           set -euo pipefail
           METHOD="${IOS_EXPORT_METHOD:-app-store}"
-          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
-          PROFILE_NAME="$(cat ci_profile_name.txt | tr -d '\r\n')"
+          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
+          PROFILE_NAME="$(tr -d '\r\n' < ci_profile_name.txt)"
 
           cat > ios/ExportOptions.plist <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
@@ -401,7 +440,6 @@ jobs:
           security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
           security default-keychain -s "$KEYCHAIN_PATH"
 
-          flutter pub get
           echo "➡️ Building IPA (signed)."
           flutter build ipa --release \
             --export-options-plist=ios/ExportOptions.plist \
@@ -411,9 +449,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "---- IPA folder ----"
           ls -la build/ios/ipa || true
-          echo "---- Archive folder ----"
           ls -la build/ios/archive || true
-          echo "---- iOS build dir ----"
           ls -la build/ios || true
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: build/ios/ipa/*.ipa
+          if-no-files-found: error
