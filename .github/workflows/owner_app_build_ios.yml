@@ -24,93 +24,157 @@ jobs:
       LC_ALL: en_US.UTF-8
 
     steps:
-    # --------------------------------------------------
-    # CHECKOUT
-    # --------------------------------------------------
-    - name: Checkout
-      uses: actions/checkout@v4
+      # --------------------------------------------------
+      # CHECKOUT
+      # --------------------------------------------------
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    # --------------------------------------------------
-    # XCODE
-    # --------------------------------------------------
-    - name: Select Xcode
-      run: |
-        sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-        xcodebuild -version
+      # --------------------------------------------------
+      # XCODE
+      # --------------------------------------------------
+      - name: Select Xcode
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
 
-    # --------------------------------------------------
-    # FLUTTER
-    # --------------------------------------------------
-    - name: Setup Flutter
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: "3.32.0"
-        channel: stable
-        cache: true
+      # --------------------------------------------------
+      # FLUTTER
+      # --------------------------------------------------
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.32.0"
+          channel: stable
+          cache: true
 
-    - name: Flutter pub get
-      run: flutter pub get
+      - name: Flutter pub get
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter pub get
 
-    # --------------------------------------------------
-    # BUILD ci_env.json + READ BUNDLE ID
-    # --------------------------------------------------
-    - name: Build ci_env.json & read bundle id
-      run: |
-        mkdir -p lib/env
-        python3 - <<'PY'
-        import json, os
-        payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''')
-        ios_bundle = payload.get("iosBundleId")
-        if not ios_bundle:
-            raise SystemExit("Missing iosBundleId")
-        open("ci_ios_bundle_id.txt","w").write(ios_bundle)
-        json.dump({}, open("lib/env/ci_env.json","w"))
-        print("IOS_BUNDLE_ID =", ios_bundle)
-        PY
+      - name: Show payload (debug)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '${{ toJson(github.event.client_payload) }}'
 
-    # --------------------------------------------------
-    # iOS PLATFORM
-    # --------------------------------------------------
-    - name: Ensure iOS platform
-      run: |
-        if [ ! -f ios/Podfile ]; then
-          flutter create .
-        fi
+      # --------------------------------------------------
+      # ✅ FIX: Build ci_env.json + fetch runtime-config/by-link + read iosBundleId
+      # --------------------------------------------------
+      - name: Build ci_env.json & read bundle id (runtime-config/by-link)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p lib/env
 
-    # --------------------------------------------------
-    # RUBY + FASTLANE
-    # --------------------------------------------------
-    - uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: "3.2"
+          python3 - <<'PY'
+          import json, os, urllib.request, urllib.error, socket
 
-    - name: Install Fastlane
-      run: gem install fastlane -N
+          payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
+          cfg = payload.get("CONFIG") or {}
 
-    # --------------------------------------------------
-    # APP STORE CONNECT API KEY
-    # --------------------------------------------------
-    - name: Create App Store Connect API key
-      run: |
-        mkdir -p .private
-        echo "${ASC_KEY_P8_B64}" | base64 --decode > .private/AuthKey_${ASC_KEY_ID}.p8
-        export ASC_KEY_PATH="$GITHUB_WORKSPACE/.private/AuthKey_${ASC_KEY_ID}.p8"
-        echo "ASC_KEY_PATH=$ASC_KEY_PATH" >> $GITHUB_ENV
+          api_base = (cfg.get("API_BASE_URL") or payload.get("API_BASE_URL") or "").rstrip("/")
+          link_id  = str(
+              cfg.get("OWNER_PROJECT_LINK_ID")
+              or payload.get("OWNER_PROJECT_LINK_ID")
+              or payload.get("ownerProjectLinkId")
+              or cfg.get("ownerProjectLinkId")
+              or ""
+          ).strip()
 
-    # --------------------------------------------------
-    # BUILD IPA (FASTLANE — CLEAN)
-    # --------------------------------------------------
-    - name: Build IPA (Clean & Stable)
-      run: |
-        cd ios
-        fastlane build_appstore \
-          bundle_id:"$(cat ../ci_ios_bundle_id.txt)"
+          if not api_base:
+              raise SystemExit("Missing API_BASE_URL in payload.CONFIG or payload root")
+          if not link_id:
+              raise SystemExit("Missing OWNER_PROJECT_LINK_ID in payload.CONFIG or payload root")
 
-    # --------------------------------------------------
-    # ARTIFACT
-    # --------------------------------------------------
-    - name: Upload IPA
-      uses: actions/upload-artifact@v4
-      with:
-        name: ios-ipa
-        path: build/ios/ipa/app.ipa
+          url = f"{api_base}/api/public/runtime-config/by-link?linkId={link_id}"
+          token = (os.getenv("CI_RUNTIME_TOKEN") or "").strip()
+
+          headers = {"Accept": "application/json"}
+          if token:
+              headers["X-Auth-Token"] = token
+
+          print("Fetching runtime config:", url)
+          try:
+              req = urllib.request.Request(url, headers=headers)
+              with urllib.request.urlopen(req, timeout=20) as r:
+                  runtime = json.loads(r.read().decode("utf-8"))
+          except (urllib.error.HTTPError, urllib.error.URLError, socket.timeout, json.JSONDecodeError) as e:
+              raise SystemExit(f"runtime-config/by-link failed: {e!r}")
+
+          ios_bundle = runtime.get("iosBundleId") or runtime.get("IOS_BUNDLE_ID")
+          if not ios_bundle:
+              raise SystemExit("runtime-config response missing iosBundleId")
+
+          open("ci_ios_bundle_id.txt", "w", encoding="utf-8").write(str(ios_bundle).strip())
+          print("IOS_BUNDLE_ID =", ios_bundle)
+
+          # Keep this file even if you don't use it yet (future-proof)
+          env = {
+              "API_BASE_URL": api_base,
+              "OWNER_PROJECT_LINK_ID": link_id,
+              "CONFIG_SOURCE": "BY_LINK"
+          }
+          with open("lib/env/ci_env.json", "w", encoding="utf-8") as f:
+              json.dump(env, f, ensure_ascii=False, indent=2)
+          PY
+
+      # --------------------------------------------------
+      # iOS PLATFORM
+      # --------------------------------------------------
+      - name: Ensure iOS platform
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f ios/Podfile ]; then
+            flutter create .
+          fi
+
+      # --------------------------------------------------
+      # RUBY + FASTLANE
+      # --------------------------------------------------
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+
+      - name: Install Fastlane
+        shell: bash
+        run: |
+          set -euo pipefail
+          gem install fastlane -N
+          fastlane --version
+
+      # --------------------------------------------------
+      # APP STORE CONNECT API KEY
+      # --------------------------------------------------
+      - name: Create App Store Connect API key
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .private
+          echo "${ASC_KEY_P8_B64}" | tr -d '\n\r ' | base64 --decode > .private/AuthKey_${ASC_KEY_ID}.p8
+          echo "ASC_KEY_PATH=$GITHUB_WORKSPACE/.private/AuthKey_${ASC_KEY_ID}.p8" >> $GITHUB_ENV
+
+      # --------------------------------------------------
+      # BUILD IPA (FASTLANE)
+      # --------------------------------------------------
+      - name: Build IPA (Clean & Stable)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd ios
+          fastlane build_appstore bundle_id:"$(cat ../ci_ios_bundle_id.txt | tr -d '\r\n')"
+
+      # --------------------------------------------------
+      # ARTIFACT
+      # --------------------------------------------------
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: ios/build/ios/ipa/app.ipa
+          if-no-files-found: error
