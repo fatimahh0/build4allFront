@@ -184,7 +184,7 @@ jobs:
           BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
           PBX="ios/Runner.xcodeproj/project.pbxproj"
           perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};/g" "$PBX"
-          perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${IOS_TEAM_ID};/g" "$PBX"
+          perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${IOS_TEAM_ID};/g" "$PBX" || true
 
       # --------------------------------------------------
       # CERTIFICATE (P12) IMPORT (robust)
@@ -329,7 +329,7 @@ jobs:
           fi
 
       # --------------------------------------------------
-      # ✅ NEW: Apply provisioning profile to Runner ONLY (fixes "Runner requires profile")
+      # Apply provisioning profile to Runner only
       # --------------------------------------------------
       - name: Apply provisioning profile to Runner only
         shell: bash
@@ -342,22 +342,30 @@ jobs:
           [ -n "$PROFILE_NAME" ] || { echo "❌ ci_profile_name.txt empty"; exit 1; }
           echo "✅ Runner profile: $PROFILE_NAME"
 
-          # Runner manual signing
           perl -pi -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PBX"
-          perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${TEAM};/g" "$PBX"
-
-          # Set profile specifier for Runner
+          perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${TEAM};/g" "$PBX" || true
           perl -pi -e "s/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = ${PROFILE_NAME};/g" "$PBX"
           perl -pi -e "s/PROVISIONING_PROFILE_SPECIFIER\\[sdk=iphoneos\\*\\] = [^;]*;/PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*] = ${PROFILE_NAME};/g" "$PBX" || true
-
-          # Force distribution identity for Runner
           perl -pi -e 's/Apple Development/Apple Distribution/g' "$PBX"
           perl -pi -e 's/iPhone Developer/Apple Distribution/g' "$PBX"
           perl -pi -e 's/CODE_SIGN_IDENTITY = \"[^\"]*\";/CODE_SIGN_IDENTITY = \"Apple Distribution\";/g' "$PBX"
           perl -pi -e 's/\"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]\" = \"[^\"]*\";/\"CODE_SIGN_IDENTITY[sdk=iphoneos*]\" = \"Apple Distribution\";/g' "$PBX"
 
       # --------------------------------------------------
-      # EXPORT OPTIONS (profile mapping happens at export time, not for Pods)
+      # ✅ NEW: Debug Runner signing settings (verify TEAM is set)
+      # --------------------------------------------------
+      - name: Debug Runner signing settings (verify TEAM is set)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "IOS_TEAM_ID=${IOS_TEAM_ID}"
+          echo "---- grep DEVELOPMENT_TEAM in Runner pbxproj ----"
+          grep -n "DEVELOPMENT_TEAM" ios/Runner.xcodeproj/project.pbxproj || true
+          echo "---- grep PROVISIONING_PROFILE_SPECIFIER in Runner pbxproj ----"
+          grep -n "PROVISIONING_PROFILE_SPECIFIER" ios/Runner.xcodeproj/project.pbxproj || true
+
+      # --------------------------------------------------
+      # EXPORT OPTIONS
       # --------------------------------------------------
       - name: Create ExportOptions.plist
         shell: bash
@@ -406,7 +414,7 @@ jobs:
             --dart-define-from-file=lib/env/ci_env.json
 
       # --------------------------------------------------
-      # FIX: Pods must be Automatic signing (no provisioning profiles)
+      # Pods must be Automatic signing
       # --------------------------------------------------
       - name: Force Pods signing to Automatic (no provisioning profile)
         shell: bash
@@ -425,13 +433,14 @@ jobs:
           fi
 
       # --------------------------------------------------
-      # ARCHIVE (Runner signed, Pods automatic)
+      # ✅ FIX: ARCHIVE with DEVELOPMENT_TEAM explicitly passed
       # --------------------------------------------------
-      - name: Archive with explicit signing (xcodebuild)
+      - name: Archive (xcodebuild) with Team + Signing
         shell: bash
         run: |
           set -euo pipefail
           KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
+          TEAM="${IOS_TEAM_ID}"
 
           security default-keychain -s "$KEYCHAIN_PATH"
           security unlock-keychain -p "" "$KEYCHAIN_PATH" || true
@@ -445,6 +454,9 @@ jobs:
             -configuration Release \
             -sdk iphoneos \
             -archivePath ../build/ios/archive/Runner.xcarchive \
+            DEVELOPMENT_TEAM="$TEAM" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
             archive
 
       - name: Export IPA (xcodebuild)
