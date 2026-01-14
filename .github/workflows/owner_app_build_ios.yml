@@ -181,7 +181,7 @@ jobs:
           flutter pub run flutter_launcher_icons
           flutter pub run flutter_native_splash:create
 
-      - name: Patch iOS bundle id + team in pbxproj (hardened)
+      - name: Patch iOS bundle id + team in pbxproj
         shell: bash
         run: |
           set -euo pipefail
@@ -191,7 +191,6 @@ jobs:
 
           test -f "$PBX" || { echo "❌ pbxproj not found: $PBX"; exit 1; }
 
-          # Replace all occurrences safely
           perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};/g" "$PBX"
           perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${TEAM};/g" "$PBX"
 
@@ -225,6 +224,7 @@ jobs:
           set -euo pipefail
           KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
           security find-identity -v -p codesigning "$KEYCHAIN_PATH" || true
+
           CNT=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep -c "Apple Distribution" || true)
           if [ "$CNT" -lt 1 ]; then
             echo "❌ Apple Distribution identity not found."
@@ -233,7 +233,7 @@ jobs:
           fi
 
       # ---------------------------
-      # RUBY + COCOAPODS + FASTLANE (more stable)
+      # RUBY + COCOAPODS + FASTLANE
       # ---------------------------
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -250,13 +250,12 @@ jobs:
           pod --version
           fastlane --version
 
-      - name: Install iOS Pods
+      - name: Install iOS Pods (safe)
         shell: bash
         run: |
           set -euo pipefail
           cd ios
-          # Avoid slow/unreliable repo update; use CDN
-          pod install --repo-update=false
+          pod install || (pod repo update && pod install)
 
       # ---------------------------
       # APP STORE CONNECT API KEY
@@ -317,7 +316,7 @@ jobs:
             provisioning_name:"B4A_${BUNDLE_ID}_APPSTORE" \
             readonly:false
 
-      - name: Detect installed provisioning profile UUID/name for this app (hardened)
+      - name: Detect installed provisioning profile UUID/name for this app
         shell: bash
         run: |
           set -euo pipefail
@@ -326,9 +325,7 @@ jobs:
 
           PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "$PROFILES_DIR"
-
           UUID_FOUND=""
-          PROFILE_NAME=""
 
           for f in "$PROFILES_DIR"/*.mobileprovision; do
             [ -f "$f" ] || continue
@@ -449,8 +446,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          echo "---- IPA folder ----"
           ls -la build/ios/ipa || true
+          echo "---- Archive folder ----"
           ls -la build/ios/archive || true
+          echo "---- iOS build dir ----"
           ls -la build/ios || true
 
       - name: Upload IPA artifact
