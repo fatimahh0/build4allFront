@@ -18,9 +18,9 @@ jobs:
       IOS_P12_B64: ${{ secrets.IOS_P12_B64 }}
       IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
       IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
-      IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }} # app-store
-      IOS_CODE_SIGN_IDENTITY: Apple Distribution
+      IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }} # app-store (recommended)
 
+      # App Store Connect API Key
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
       ASC_KEY_P8_B64: ${{ secrets.ASC_KEY_P8_B64 }}
@@ -31,7 +31,11 @@ jobs:
       LC_ALL: en_US.UTF-8
 
     steps:
-      - uses: actions/checkout@v4
+      # --------------------------------------------------
+      # CHECKOUT + TOOLCHAIN
+      # --------------------------------------------------
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Select Xcode
         shell: bash
@@ -47,14 +51,21 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Flutter pub get
+      - name: Show Flutter/Dart versions
         shell: bash
         run: |
           set -euo pipefail
-          flutter pub get
+          flutter --version
+          dart --version
+
+      - name: Show payload (debug)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '${{ toJson(github.event.client_payload) }}'
 
       # --------------------------------------------------
-      # BUILD RUNTIME CONFIG (bundle id)
+      # BUILD ci_env.json + READ iosBundleId
       # --------------------------------------------------
       - name: Build ci_env.json (BY_LINK runtime-config + fallback)
         shell: bash
@@ -91,25 +102,13 @@ jobs:
               headers["X-Auth-Token"] = token
 
           try:
+              print("Fetching runtime config:", url)
               req = urllib.request.Request(url, headers=headers)
               with urllib.request.urlopen(req, timeout=12) as r:
                   runtime = json.loads(r.read().decode("utf-8"))
               source = "BY_LINK"
-          except Exception as e:
+          except (urllib.error.HTTPError, urllib.error.URLError, socket.timeout, json.JSONDecodeError) as e:
               print("⚠️ runtime-config fetch failed, using fallback:", repr(e))
-
-          ios_bundle = (
-              runtime.get("iosBundleId")
-              or runtime.get("IOS_BUNDLE_ID")
-              or cfg.get("iosBundleId")
-              or cfg.get("IOS_BUNDLE_ID")
-              or payload.get("iosBundleId")
-              or payload.get("IOS_BUNDLE_ID")
-          )
-          if not ios_bundle:
-              raise SystemExit("Missing IOS_BUNDLE_ID (runtime-config must provide iosBundleId)")
-
-          open("ci_ios_bundle_id.txt", "w", encoding="utf-8").write(str(ios_bundle).strip())
 
           def pick(key, default=None):
               v = runtime.get(key)
@@ -132,26 +131,44 @@ jobs:
               "CONFIG_SOURCE": source,
           }
 
+          for key in ["THEME_JSON_B64","NAV_JSON_B64","HOME_JSON_B64","ENABLED_FEATURES_JSON_B64","BRANDING_JSON_B64"]:
+              v = pick(key)
+              if v:
+                  env[key] = v
+
+          ios_bundle = (
+              runtime.get("iosBundleId")
+              or runtime.get("IOS_BUNDLE_ID")
+              or cfg.get("iosBundleId")
+              or cfg.get("IOS_BUNDLE_ID")
+              or payload.get("iosBundleId")
+              or payload.get("IOS_BUNDLE_ID")
+          )
+          if ios_bundle:
+              open("ci_ios_bundle_id.txt", "w", encoding="utf-8").write(str(ios_bundle).strip())
+              print("IOS_BUNDLE_ID =", ios_bundle)
+          else:
+              raise SystemExit("Missing IOS_BUNDLE_ID (runtime-config must provide iosBundleId)")
+
           with open("lib/env/ci_env.json", "w", encoding="utf-8") as f:
               json.dump(env, f, ensure_ascii=False, indent=2)
           PY
 
       # --------------------------------------------------
-      # PATCH iOS PROJECT
+      # PATCH iOS bundle/team in pbxproj
       # --------------------------------------------------
       - name: Patch iOS bundle id + team in pbxproj
         shell: bash
         run: |
           set -euo pipefail
-          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
-          TEAM="${IOS_TEAM_ID}"
+          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
           PBX="ios/Runner.xcodeproj/project.pbxproj"
 
           perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};/g" "$PBX"
-          perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${TEAM};/g" "$PBX"
+          perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${IOS_TEAM_ID};/g" "$PBX"
 
       # --------------------------------------------------
-      # CERTIFICATE (P12) IMPORT + KEYCHAIN (FIX)
+      # CERTIFICATE (P12) IMPORT (robust)
       # --------------------------------------------------
       - name: Setup iOS signing certificate (keychain)
         shell: bash
@@ -167,7 +184,7 @@ jobs:
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN_PATH"
 
-          # Make sure Xcode searches this keychain
+          # Ensure Xcode searches this keychain first
           security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
           security default-keychain -s "$KEYCHAIN_PATH"
 
@@ -176,20 +193,23 @@ jobs:
           security import ios_cert.p12 -k "$KEYCHAIN_PATH" -P "$IOS_P12_PASSWORD" -A \
             -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/xcodebuild
 
+          # CRITICAL: allow codesign to access private key in CI
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PWD" "$KEYCHAIN_PATH"
 
-          echo "---- identities (default keychain) ----"
+          echo "---- identities (build.keychain) ----"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH" || true
+
+          echo "---- identities (search list) ----"
           security find-identity -v -p codesigning || true
 
           CNT=$(security find-identity -v -p codesigning | grep -c "Apple Distribution" || true)
           if [ "$CNT" -lt 1 ]; then
-            echo "❌ Apple Distribution identity not found in keychain search list."
-            echo "👉 Your IOS_P12_B64 is wrong OR missing private key."
+            echo "❌ Apple Distribution identity not found on runner."
             exit 1
           fi
 
       # --------------------------------------------------
-      # RUBY + PODS + FASTLANE
+      # COCOAPODS + FASTLANE
       # --------------------------------------------------
       - uses: ruby/setup-ruby@v1
         with:
@@ -243,7 +263,7 @@ jobs:
           pathlib.Path(".private/api_key.json").write_text(json.dumps(data))
           PY
 
-          # Quick validation by fastlane (will fail early if token is bad)
+          # Validate fastlane can read the key
           fastlane run app_store_connect_api_key \
             key_id:"${ASC_KEY_ID}" \
             issuer_id:"${ASC_ISSUER_ID}" \
@@ -251,14 +271,13 @@ jobs:
             in_house:false
 
       # --------------------------------------------------
-      # PROVISIONING PROFILE (AUTO)
+      # PROVISIONING PROFILE (AUTO) + UUID extract
       # --------------------------------------------------
       - name: Automatic provisioning profile (App Store) via fastlane
         shell: bash
         run: |
           set -euo pipefail
-          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
-
+          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
           fastlane run get_provisioning_profile \
             app_identifier:"$BUNDLE_ID" \
             team_id:"${IOS_TEAM_ID}" \
@@ -270,7 +289,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
+          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
           APP_ID="${IOS_TEAM_ID}.${BUNDLE_ID}"
 
           PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
@@ -301,39 +320,15 @@ jobs:
           fi
 
       # --------------------------------------------------
-      # FORCE DISTRIBUTION SIGNING (THIS FIXES YOUR ERROR)
+      # EXPORT OPTIONS (name-based) for export step
       # --------------------------------------------------
-      - name: Force Manual Signing + Apple Distribution (strong)
-        shell: bash
-        run: |
-          set -euo pipefail
-          PBX="ios/Runner.xcodeproj/project.pbxproj"
-          TEAM="${IOS_TEAM_ID}"
-          PROFILE_NAME="$(tr -d '\r\n' < ci_profile_name.txt)"
-          PROFILE_UUID="$(tr -d '\r\n' < ci_profile_uuid.txt)"
-
-          # Make signing manual everywhere
-          perl -pi -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PBX"
-          perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${TEAM};/g" "$PBX"
-
-          # Set profile
-          perl -pi -e "s/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = ${PROFILE_NAME};/g" "$PBX"
-          perl -pi -e "s/PROVISIONING_PROFILE = [^;]*;/PROVISIONING_PROFILE = ${PROFILE_UUID};/g" "$PBX" || true
-          perl -pi -e "s/PROVISIONING_PROFILE_SPECIFIER\\[sdk=iphoneos\\*\\] = [^;]*;/PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*] = ${PROFILE_NAME};/g" "$PBX" || true
-
-          # Force Distribution identity for device builds (Release)
-          perl -pi -e 's/iPhone Developer/Apple Distribution/g' "$PBX"
-          perl -pi -e 's/Apple Development/Apple Distribution/g' "$PBX"
-          perl -pi -e 's/CODE_SIGN_IDENTITY = \"[^\"]*\";/CODE_SIGN_IDENTITY = \"Apple Distribution\";/g' "$PBX"
-          perl -pi -e 's/\"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]\" = \"[^\"]*\";/\"CODE_SIGN_IDENTITY[sdk=iphoneos*]\" = \"Apple Distribution\";/g' "$PBX"
-
       - name: Create ExportOptions.plist
         shell: bash
         run: |
           set -euo pipefail
           METHOD="${IOS_EXPORT_METHOD:-app-store}"
-          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
-          PROFILE_NAME="$(tr -d '\r\n' < ci_profile_name.txt)"
+          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
+          PROFILE_NAME="$(cat ci_profile_name.txt | tr -d '\r\n')"
 
           cat > ios/ExportOptions.plist <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
@@ -364,26 +359,66 @@ jobs:
           EOF
 
       # --------------------------------------------------
-      # BUILD IPA
+      # BUILD (deterministic): flutter ios --no-codesign + xcodebuild archive with explicit signing
       # --------------------------------------------------
-      - name: Build iOS IPA (signed)
+      - name: Build iOS (flutter, no codesign)
         shell: bash
         run: |
           set -euo pipefail
+          flutter pub get
+          flutter build ios --release --no-codesign \
+            --dart-define-from-file=lib/env/ci_env.json
+
+      - name: Archive with explicit signing (xcodebuild)
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
+          PROFILE_UUID="$(cat ci_profile_uuid.txt | tr -d '\r\n')"
+          TEAM="${IOS_TEAM_ID}"
           KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
 
-          security unlock-keychain -p "" "$KEYCHAIN_PATH" || true
-          security list-keychains -d user
           security default-keychain -s "$KEYCHAIN_PATH"
+          security unlock-keychain -p "" "$KEYCHAIN_PATH" || true
 
-          echo "➡️ Building IPA (signed)."
-          flutter build ipa --release \
-            --export-options-plist=ios/ExportOptions.plist \
-            --dart-define-from-file=lib/env/ci_env.json
+          mkdir -p build/ios/archive
+
+          cd ios
+          xcodebuild \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath ../build/ios/archive/Runner.xcarchive \
+            DEVELOPMENT_TEAM="$TEAM" \
+            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE="$PROFILE_UUID" \
+            archive
+
+      - name: Export IPA (xcodebuild)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/ios/ipa
+          cd ios
+          xcodebuild -exportArchive \
+            -archivePath ../build/ios/archive/Runner.xcarchive \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath ../build/ios/ipa
+
+      - name: List outputs (debug)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "---- IPA folder ----"
+          ls -la build/ios/ipa || true
+          find build/ios/ipa -maxdepth 2 -type f -name "*.ipa" -print || true
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
           name: ios-ipa
-          path: build/ios/ipa/*.ipa
+          path: build/ios/ipa/**/*.ipa
           if-no-files-found: error
