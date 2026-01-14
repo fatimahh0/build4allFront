@@ -30,13 +30,10 @@ jobs:
       LC_ALL: en_US.UTF-8
 
     steps:
-      # --------------------------------------------------
-      # CHECKOUT + TOOLCHAIN
-      # --------------------------------------------------
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode (macos-14 already has Xcode 15.x)
+      - name: Select Xcode
         shell: bash
         run: |
           set -euo pipefail
@@ -64,19 +61,16 @@ jobs:
           echo '${{ toJson(github.event.client_payload) }}'
 
       # --------------------------------------------------
-      # ✅ OPTION A FIX: Build ci_env.json + read iosBundleId reliably
-      #   - Prefer iosBundleId from dispatch payload (your API response contains it)
-      #   - Else fetch runtimeConfigUrl from payload (if present)
-      #   - Else last resort: by-link
+      # Build ci_env.json & read iosBundleId (reliable)
       # --------------------------------------------------
-      - name: Build ci_env.json & read bundle id (Option A - stable)
+      - name: Build ci_env.json & read bundle id
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p lib/env
 
           python3 - <<'PY'
-          import json, os, urllib.request, urllib.error, socket
+          import json, os, urllib.request
           from urllib.parse import urljoin
 
           payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
@@ -96,6 +90,15 @@ jobs:
           if not link_id:
               raise SystemExit("Missing OWNER_PROJECT_LINK_ID / ownerProjectLinkId")
 
+          def pick(d, *keys):
+              if not isinstance(d, dict):
+                  return None
+              for k in keys:
+                  v = d.get(k)
+                  if v not in (None, "", [], {}):
+                      return v
+              return None
+
           token = (os.getenv("CI_RUNTIME_TOKEN") or "").strip()
           headers = {"Accept": "application/json"}
           if token:
@@ -105,15 +108,6 @@ jobs:
               req = urllib.request.Request(url, headers=headers)
               with urllib.request.urlopen(req, timeout=25) as r:
                   return json.loads(r.read().decode("utf-8"))
-
-          def pick(d, *keys):
-              if not isinstance(d, dict):
-                  return None
-              for k in keys:
-                  v = d.get(k)
-                  if v not in (None, "", [], {}):
-                      return v
-              return None
 
           ios_bundle = pick(payload, "iosBundleId", "IOS_BUNDLE_ID") or pick(cfg, "iosBundleId", "IOS_BUNDLE_ID")
           runtime = None
@@ -126,24 +120,18 @@ jobs:
                   full_url = urljoin(api_base + "/", runtime_url.lstrip("/"))
               elif not runtime_url.startswith("http"):
                   full_url = urljoin(api_base + "/", runtime_url)
-
-              print("Fetching runtime config via runtimeConfigUrl:", full_url)
               runtime = http_get_json(full_url)
               ios_bundle = pick(runtime, "iosBundleId", "IOS_BUNDLE_ID")
               source = "RUNTIME_CONFIG_URL"
 
           if not ios_bundle:
               by_link = f"{api_base}/api/public/runtime-config/by-link?linkId={link_id}"
-              print("Fetching runtime config via by-link:", by_link)
               runtime = http_get_json(by_link)
               ios_bundle = pick(runtime, "iosBundleId", "IOS_BUNDLE_ID")
               source = "BY_LINK"
 
           if not ios_bundle:
-              if isinstance(runtime, dict):
-                  print("runtime keys:", sorted(runtime.keys()))
-                  print("runtime json:", json.dumps(runtime, ensure_ascii=False)[:3000])
-              raise SystemExit("Missing iosBundleId from payload + runtimeConfigUrl + by-link")
+              raise SystemExit("Missing iosBundleId from payload/runtimeConfigUrl/by-link")
 
           ios_bundle = str(ios_bundle).strip()
           open("ci_ios_bundle_id.txt", "w", encoding="utf-8").write(ios_bundle)
@@ -156,92 +144,57 @@ jobs:
               "CONFIG_SOURCE": source,
           }
 
-          for key in ["THEME_JSON_B64","NAV_JSON_B64","HOME_JSON_B64","ENABLED_FEATURES_JSON_B64","BRANDING_JSON_B64"]:
-              v = pick(payload, key) or pick(cfg, key)
-              if v:
-                  env[key] = v
-
           with open("lib/env/ci_env.json", "w", encoding="utf-8") as f:
               json.dump(env, f, ensure_ascii=False, indent=2)
           PY
 
-      # --------------------------------------------------
-      # ENSURE iOS PLATFORM EXISTS (Podfile)
-      # --------------------------------------------------
       - name: Ensure iOS Podfile exists
         shell: bash
         run: |
           set -euo pipefail
           if [ ! -f "ios/Podfile" ]; then
-            echo "⚠️ ios/Podfile missing -> running flutter create ."
             flutter create .
           fi
           test -f ios/Podfile
-          ls -la ios
 
-      # --------------------------------------------------
-      # PATCH Runner bundle/team + enforce Runner manual signing
-      # (Do NOT apply provisioning to Pods)
-      # --------------------------------------------------
-      - name: Patch Runner bundle id + team + signing (Runner only)
+      - name: Patch Runner bundle id + enforce manual signing
         shell: bash
         run: |
           set -euo pipefail
           BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
           PBX="ios/Runner.xcodeproj/project.pbxproj"
 
-          # Bundle id
           perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};/g" "$PBX"
-
-          # Team id (may be absent in template; inject if missing)
-          if ! grep -q "DEVELOPMENT_TEAM" "$PBX"; then
-            echo "⚠️ DEVELOPMENT_TEAM not found; will rely on xcodebuild override."
-          else
-            perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${IOS_TEAM_ID};/g" "$PBX"
-          fi
-
-          # Make Runner manual signing (safe if already manual)
           perl -pi -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PBX"
-
-          # Ensure distribution identity for Runner
           perl -pi -e 's/Apple Development/Apple Distribution/g' "$PBX"
           perl -pi -e 's/iPhone Developer/Apple Distribution/g' "$PBX"
 
       # --------------------------------------------------
-      # CERTIFICATE IMPORT (P12) in an isolated keychain
+      # Certificate import
       # --------------------------------------------------
       - name: Setup iOS signing certificate (keychain)
         shell: bash
         run: |
           set -euo pipefail
-          [ -n "${IOS_P12_B64:-}" ] || { echo "❌ Missing IOS_P12_B64"; exit 1; }
-          [ -n "${IOS_P12_PASSWORD:-}" ] || { echo "❌ Missing IOS_P12_PASSWORD"; exit 1; }
-
           KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
           KEYCHAIN_PWD=""
 
           security create-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN_PATH"
+
           security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
           security default-keychain -s "$KEYCHAIN_PATH"
 
-          echo "$IOS_P12_B64" | tr -d '\n\r ' | base64 --decode > ios_cert.p12
-          security import ios_cert.p12 -k "$KEYCHAIN_PATH" -P "$IOS_P12_PASSWORD" -A \
+          echo "${IOS_P12_B64}" | tr -d '\n\r ' | base64 --decode > ios_cert.p12
+          security import ios_cert.p12 -k "$KEYCHAIN_PATH" -P "${IOS_P12_PASSWORD}" -A \
             -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/xcodebuild
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PWD" "$KEYCHAIN_PATH"
 
-          echo "---- identities ----"
           security find-identity -v -p codesigning || true
 
-          CNT=$(security find-identity -v -p codesigning | grep -c "Apple Distribution" || true)
-          if [ "$CNT" -lt 1 ]; then
-            echo "❌ Apple Distribution identity not found."
-            exit 1
-          fi
-
       # --------------------------------------------------
-      # RUBY + COCOAPODS + FASTLANE
+      # Ruby + cocoapods + fastlane
       # --------------------------------------------------
       - uses: ruby/setup-ruby@v1
         with:
@@ -264,55 +217,40 @@ jobs:
           pod install || (pod repo update && pod install)
 
       # --------------------------------------------------
-      # APP STORE CONNECT API KEY
+      # App Store Connect API key
       # --------------------------------------------------
-      - name: Create App Store Connect api_key.json (verified)
+      - name: Create App Store Connect api_key.json
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p .private
-
-          [ -n "${ASC_KEY_ID:-}" ] || { echo "❌ ASC_KEY_ID empty"; exit 1; }
-          [ -n "${ASC_ISSUER_ID:-}" ] || { echo "❌ ASC_ISSUER_ID empty"; exit 1; }
-          [ -n "${ASC_KEY_P8_B64:-}" ] || { echo "❌ ASC_KEY_P8_B64 empty"; exit 1; }
-
           echo "${ASC_KEY_P8_B64}" | tr -d '\n\r ' | base64 --decode > .private/AuthKey_${ASC_KEY_ID}.p8
           openssl pkey -in .private/AuthKey_${ASC_KEY_ID}.p8 -noout >/dev/null
 
           python3 - <<'PY'
           import json, pathlib, os
           p8 = pathlib.Path(f".private/AuthKey_{os.environ['ASC_KEY_ID']}.p8").read_text()
-          data = {
+          pathlib.Path(".private/api_key.json").write_text(json.dumps({
             "key_id": os.environ["ASC_KEY_ID"].strip(),
             "issuer_id": os.environ["ASC_ISSUER_ID"].strip(),
             "key": p8,
             "in_house": False
-          }
-          pathlib.Path(".private/api_key.json").write_text(json.dumps(data))
+          }))
           PY
 
-          fastlane run app_store_connect_api_key \
-            key_id:"${ASC_KEY_ID}" \
-            issuer_id:"${ASC_ISSUER_ID}" \
-            key_filepath:"$GITHUB_WORKSPACE/.private/AuthKey_${ASC_KEY_ID}.p8" \
-            in_house:false
-
       # --------------------------------------------------
-      # ✅ Provisioning: ensure App ID exists (create if missing) then get profile
-      #   This is what was failing when bundle id was not created in Apple portal.
+      # Ensure App ID exists then get provisioning profile
       # --------------------------------------------------
       - name: Ensure App ID exists on Apple Developer (produce)
         shell: bash
         run: |
           set -euo pipefail
           BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
-          # produce uses developer portal; --skip_itc avoids App Store Connect app creation
           fastlane run produce \
             app_identifier:"$BUNDLE_ID" \
             team_id:"${IOS_TEAM_ID}" \
             api_key_path:"$GITHUB_WORKSPACE/.private/api_key.json" \
             skip_itc:true \
-            language:en \
             app_name:"Runner" || true
 
       - name: Get App Store provisioning profile (sigh)
@@ -327,39 +265,46 @@ jobs:
             provisioning_name:"B4A_${BUNDLE_ID}_APPSTORE" \
             readonly:false
 
-      - name: Detect installed provisioning profile name (for export)
+      # --------------------------------------------------
+      # ✅ CRITICAL: Save BOTH profile NAME and UUID
+      # --------------------------------------------------
+      - name: Detect installed provisioning profile (name + uuid)
         shell: bash
         run: |
           set -euo pipefail
           BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
           APP_ID="${IOS_TEAM_ID}.${BUNDLE_ID}"
+
           PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "$PROFILES_DIR"
 
           FOUND_NAME=""
+          FOUND_UUID=""
+
           for f in "$PROFILES_DIR"/*.mobileprovision; do
             [ -f "$f" ] || continue
             TMP_PLIST="$(mktemp /tmp/profile.XXXXXX.plist)"
             /usr/bin/security cms -D -i "$f" > "$TMP_PLIST"
+
             P_APPID=$("/usr/libexec/PlistBuddy" -c "Print :Entitlements:application-identifier" "$TMP_PLIST" 2>/dev/null || true)
             if [ "$P_APPID" = "$APP_ID" ]; then
               FOUND_NAME=$("/usr/libexec/PlistBuddy" -c "Print :Name" "$TMP_PLIST" 2>/dev/null || true)
+              FOUND_UUID=$("/usr/libexec/PlistBuddy" -c "Print :UUID" "$TMP_PLIST" 2>/dev/null || true)
+
               echo "$FOUND_NAME" > ci_profile_name.txt
-              echo "✅ Profile: $FOUND_NAME"
+              echo "$FOUND_UUID" > ci_profile_uuid.txt
+              echo "✅ Profile matched: $FOUND_NAME ($FOUND_UUID)"
               rm -f "$TMP_PLIST"
               break
             fi
             rm -f "$TMP_PLIST"
           done
 
-          if [ -z "$FOUND_NAME" ]; then
-            echo "❌ No installed profile matched $APP_ID"
-            ls -la "$PROFILES_DIR" || true
-            exit 1
-          fi
+          [ -n "$FOUND_NAME" ] || { echo "❌ No profile matched $APP_ID"; exit 1; }
+          [ -n "$FOUND_UUID" ] || { echo "❌ Profile UUID not found"; exit 1; }
 
       # --------------------------------------------------
-      # ExportOptions.plist (map bundle id -> profile name)
+      # ExportOptions.plist
       # --------------------------------------------------
       - name: Create ExportOptions.plist
         shell: bash
@@ -397,9 +342,6 @@ jobs:
           </plist>
           EOF
 
-      # --------------------------------------------------
-      # Build iOS (no codesign) then archive with explicit signing (THIS IS THE FIX)
-      # --------------------------------------------------
       - name: Build iOS (flutter, no codesign)
         shell: bash
         run: |
@@ -420,13 +362,18 @@ jobs:
             perl -pi -e 's/\"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]\" = \"Apple Distribution\";/\"CODE_SIGN_IDENTITY[sdk=iphoneos*]\" = \"\";/g' "$PODS_PBX"
           fi
 
-      - name: Archive (xcodebuild) — Correct command (Team + Bundle + Manual)
+      # --------------------------------------------------
+      # ✅ THIS is the missing piece: pass the profile to xcodebuild
+      # --------------------------------------------------
+      - name: Archive (xcodebuild) — with Team + Bundle + Profile (FIX)
         shell: bash
         run: |
           set -euo pipefail
           KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
           TEAM="${IOS_TEAM_ID}"
           BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
+          PROFILE_NAME="$(cat ci_profile_name.txt | tr -d '\r\n')"
+          PROFILE_UUID="$(cat ci_profile_uuid.txt | tr -d '\r\n')"
 
           security default-keychain -s "$KEYCHAIN_PATH"
           security unlock-keychain -p "" "$KEYCHAIN_PATH" || true
@@ -445,6 +392,8 @@ jobs:
             PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            PROVISIONING_PROFILE="$PROFILE_UUID" \
             archive
 
       - name: Export IPA (xcodebuild)
@@ -457,13 +406,6 @@ jobs:
             -archivePath ../build/ios/archive/Runner.xcarchive \
             -exportOptionsPlist ExportOptions.plist \
             -exportPath ../build/ios/ipa
-
-      - name: List outputs
-        shell: bash
-        run: |
-          set -euo pipefail
-          ls -la build/ios/ipa || true
-          find build/ios/ipa -maxdepth 2 -type f -name "*.ipa" -print || true
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
