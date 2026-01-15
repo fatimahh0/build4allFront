@@ -26,6 +26,7 @@ jobs:
 
       SPACESHIP_CONNECT_API_IN_HOUSE: "false"
       COCOAPODS_DISABLE_STATS: "true"
+      FASTLANE_OPT_OUT_USAGE: "true"
       LANG: en_US.UTF-8
       LC_ALL: en_US.UTF-8
 
@@ -206,7 +207,7 @@ jobs:
           pod install || (pod repo update && pod install)
 
       # --------------------------------------------------
-      # App Store Connect API key
+      # App Store Connect API key (for fastlane)
       # --------------------------------------------------
       - name: Create App Store Connect api_key.json
         shell: bash
@@ -228,25 +229,28 @@ jobs:
           PY
 
       # --------------------------------------------------
-      # Ensure App ID exists then get provisioning profile
+      # ✅ FIX: produce uses api_key (JSON), NOT api_key_path
       # --------------------------------------------------
-      - name: Ensure App ID exists on Apple Developer (produce)
+      - name: Ensure App ID exists on Apple Developer (produce) — API Key
         shell: bash
         run: |
           set -euo pipefail
           BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
+
           fastlane run produce \
             app_identifier:"$BUNDLE_ID" \
+            app_name:"Runner" \
             team_id:"${IOS_TEAM_ID}" \
-            api_key_path:"$GITHUB_WORKSPACE/.private/api_key.json" \
             skip_itc:true \
-            app_name:"Runner" || true
+            api_key:"$GITHUB_WORKSPACE/.private/api_key.json" \
+            platform:ios || true
 
-      - name: Get App Store provisioning profile
+      - name: Get App Store provisioning profile (sigh)
         shell: bash
         run: |
           set -euo pipefail
           BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
+
           fastlane run get_provisioning_profile \
             app_identifier:"$BUNDLE_ID" \
             team_id:"${IOS_TEAM_ID}" \
@@ -290,7 +294,7 @@ jobs:
           [ -n "$FOUND_UUID" ] || { echo "❌ Profile UUID not found"; exit 1; }
 
       # --------------------------------------------------
-      # Patch Runner signing (good to keep)
+      # Patch Runner only
       # --------------------------------------------------
       - name: Patch Runner bundle id + manual signing + profile (Runner only)
         shell: bash
@@ -369,7 +373,7 @@ jobs:
             --dart-define-from-file=lib/env/ci_env.json
 
       # --------------------------------------------------
-      # ✅ ARCHIVE: pass profile ONLY to Runner (needed)
+      # Archive: inject profile to Runner
       # --------------------------------------------------
       - name: Archive (xcodebuild) — Runner profile injected, Pods signing OFF
         shell: bash
