@@ -314,43 +314,6 @@ jobs:
             ls -la "$PROFILES_DIR" || true
             exit 1
           fi
-
-          - name: Patch Runner Release signing (team + manual + distribution + profile)
-            shell: bash
-            run: |
-              set -euo pipefail
-          
-              BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
-              TEAM="${IOS_TEAM_ID}"
-              PROFILE_NAME="$(cat ci_profile_name.txt | tr -d '\r\n')"
-              PBX="ios/Runner.xcodeproj/project.pbxproj"
-          
-
-              perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};/g" "$PBX"
-          
-              # 2) Force Release to Manual signing + Distribution
-              #    (We only touch Release blocks to avoid breaking Debug)
-              perl -0777 -pi -e "s/(\\/\\* Release \\*\\/ = \\{.*?buildSettings = \\{)(.*?)(\\};\\s*\\};)/\$1\$2\$3/sg" "$PBX"
-          
-              perl -0777 -pi -e '
-                s/(\/\* Release \*\/ = \{.*?buildSettings = \{)(.*?)(\};\s*\};)/
-                  my $a=$1; my $b=$2; my $c=$3;
-          
-                  $b =~ s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = '"$TEAM"';/g;
-                  $b .= "\nDEVELOPMENT_TEAM = '"$TEAM"';\n" if ($b !~ /DEVELOPMENT_TEAM\s*=/);
-          
-                  $b =~ s/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g;
-                  $b .= "\nCODE_SIGN_STYLE = Manual;\n" if ($b !~ /CODE_SIGN_STYLE\s*=/);
-          
-                  $b =~ s/CODE_SIGN_IDENTITY = \"[^\"]*\";/CODE_SIGN_IDENTITY = \"Apple Distribution\";/g;
-                  $b .= "\nCODE_SIGN_IDENTITY = \"Apple Distribution\";\n" if ($b !~ /CODE_SIGN_IDENTITY\s*=/);
-          
-                  $b =~ s/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = '"$PROFILE_NAME"';/g;
-                  $b .= "\nPROVISIONING_PROFILE_SPECIFIER = '"$PROFILE_NAME"';\n" if ($b !~ /PROVISIONING_PROFILE_SPECIFIER\s*=/);
-          
-                  "$a$b$c";
-                /sge
-              ' "$PBX"
       # --------------------------------------------------
       # ExportOptions.plist (bundle id -> profile name)
       # --------------------------------------------------
@@ -442,6 +405,10 @@ jobs:
             -destination 'generic/platform=iOS' \
             -archivePath ../build/ios/archive/Runner.xcarchive \
             OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            PROVISIONING_PROFILE="" \
             archive
 
       - name: Export IPA (xcodebuild)
