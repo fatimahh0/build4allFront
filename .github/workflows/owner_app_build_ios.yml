@@ -303,6 +303,7 @@ jobs:
           BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
           TEAM="${IOS_TEAM_ID}"
           PROFILE_NAME="$(cat ci_profile_name.txt | tr -d '\r\n')"
+          PROFILE_UUID="$(cat ci_profile_uuid.txt | tr -d '\r\n')"
           PBX="ios/Runner.xcodeproj/project.pbxproj"
 
           perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};/g" "$PBX"
