@@ -179,6 +179,7 @@ jobs:
             -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/xcodebuild
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PWD" "$KEYCHAIN_PATH"
 
+          echo "---- identities ----"
           security find-identity -v -p codesigning || true
 
       # --------------------------------------------------
@@ -289,7 +290,9 @@ jobs:
           [ -n "$FOUND_UUID" ] || { echo "❌ Profile UUID not found"; exit 1; }
 
       # --------------------------------------------------
-      # Patch Runner signing ONLY (no xcodebuild profile override!)
+      # ✅ OPTION A: Patch Runner ONLY (Manual signing + profile)
+      #    BUT do NOT pass provisioning/profile flags to xcodebuild,
+      #    and explicitly disable signing for Pods at the archive command.
       # --------------------------------------------------
       - name: Patch Runner bundle id + manual signing + profile (Runner only)
         shell: bash
@@ -303,24 +306,24 @@ jobs:
           # Bundle id
           perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};/g" "$PBX"
 
-          # Ensure team is set
+          # Team (ensure present everywhere it exists)
           perl -pi -e "s/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = ${TEAM};/g" "$PBX" || true
 
-          # Manual signing for Runner
+          # Manual signing (Runner)
           perl -pi -e 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PBX"
           perl -pi -e 's/Apple Development/Apple Distribution/g' "$PBX"
           perl -pi -e 's/iPhone Developer/Apple Distribution/g' "$PBX"
 
-          # Set the provisioning profile specifier in Runner build settings
+          # Provisioning profile specifier (Runner)
           perl -pi -e "s/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = ${PROFILE_NAME};/g" "$PBX" || true
           perl -pi -e "s/PROVISIONING_PROFILE_SPECIFIER\\[sdk=iphoneos\\*\\] = [^;]*;/PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*] = ${PROFILE_NAME};/g" "$PBX" || true
 
-          # Force distribution identity
+          # Identity (Runner)
           perl -pi -e 's/CODE_SIGN_IDENTITY = \"[^\"]*\";/CODE_SIGN_IDENTITY = \"Apple Distribution\";/g' "$PBX" || true
           perl -pi -e 's/\"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]\" = \"[^\"]*\";/\"CODE_SIGN_IDENTITY[sdk=iphoneos*]\" = \"Apple Distribution\";/g' "$PBX" || true
 
       # --------------------------------------------------
-      # ExportOptions.plist
+      # ExportOptions.plist (manual)
       # --------------------------------------------------
       - name: Create ExportOptions.plist
         shell: bash
@@ -366,26 +369,20 @@ jobs:
             --dart-define-from-file=lib/env/ci_env.json
 
       # --------------------------------------------------
-      # Pods: DO NOT SIGN (strongest fix)
+      # ✅ KEY FIX for your current error:
+      #    Do NOT inject provisioning profile into Pods project,
+      #    and do NOT archive with PROVISIONING_PROFILE* flags.
+      #
+      #    Instead:
+      #    - Runner signs normally (from pbxproj)
+      #    - All Pods targets are forced to NO SIGN during archive via
+      #      a per-target build setting override:
+      #        CODE_SIGNING_ALLOWED=NO
+      #
+      #    This avoids "Pods does not support provisioning profiles"
+      #    without editing Pods.xcodeproj.
       # --------------------------------------------------
-      - name: Force Pods signing OFF
-        shell: bash
-        run: |
-          set -euo pipefail
-          PODS_PBX="ios/Pods/Pods.xcodeproj/project.pbxproj"
-          if [ -f "$PODS_PBX" ]; then
-            echo "Disabling codesign for Pods targets..."
-            perl -pi -e 's/CODE_SIGNING_ALLOWED = YES;/CODE_SIGNING_ALLOWED = NO;/g' "$PODS_PBX"
-            perl -pi -e 's/CODE_SIGNING_REQUIRED = YES;/CODE_SIGNING_REQUIRED = NO;/g' "$PODS_PBX"
-            perl -pi -e 's/CODE_SIGN_STYLE = Manual;/CODE_SIGN_STYLE = Automatic;/g' "$PODS_PBX"
-            perl -pi -e 's/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = "";/g' "$PODS_PBX"
-            perl -pi -e 's/PROVISIONING_PROFILE = [^;]*;/PROVISIONING_PROFILE = "";/g' "$PODS_PBX"
-          fi
-
-      # --------------------------------------------------
-      # ARCHIVE: DO NOT pass PROVISIONING_PROFILE* here
-      # --------------------------------------------------
-      - name: Archive (xcodebuild) — Runner signs, Pods don't
+      - name: Archive (xcodebuild) — Runner signs, Pods do not
         shell: bash
         run: |
           set -euo pipefail
@@ -411,7 +408,16 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
             CODE_SIGNING_ALLOWED=YES \
-            archive
+            OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}" \
+            archive \
+            CODE_SIGNING_ALLOWED=YES \
+            "CODE_SIGNING_ALLOWED[sdk=iphoneos*]=YES" \
+            "CODE_SIGNING_ALLOWED[arch=*]=YES" \
+            "CODE_SIGNING_ALLOWED[variant=Release]=YES" \
+            "CODE_SIGNING_ALLOWED[variant=Release][sdk=iphoneos*]=YES" \
+            "CODE_SIGNING_ALLOWED[variant=Release][arch=*]=YES" \
+            "CODE_SIGNING_ALLOWED[variant=Release][arch=*][sdk=iphoneos*]=YES" \
+            "CODE_SIGNING_ALLOWED[project=Pods]=NO"
 
       - name: Export IPA (xcodebuild)
         shell: bash
