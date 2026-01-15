@@ -239,11 +239,9 @@ jobs:
 
           fastlane run produce \
             app_identifier:"$BUNDLE_ID" \
-            app_name:"Runner" \
             team_id:"${IOS_TEAM_ID}" \
             skip_itc:true \
-            api_key:"$GITHUB_WORKSPACE/.private/api_key.json" \
-            platform:ios || true
+            app_name:"Runner" || true
 
       - name: Get App Store provisioning profile (sigh)
         shell: bash
