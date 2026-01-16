@@ -391,8 +391,10 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -archivePath ../build/ios/archive/Runner.xcarchive \
-            DEVELOPMENT_TEAM="$TEAM" \
             OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}" \
+            GCC_PREPROCESSOR_DEFINITIONS='$(inherited)' \
+            -xcconfig ci_signing.xcconfig \
+            DEVELOPMENT_TEAM="$TEAM" \
             CODE_SIGNING_ALLOWED=NO \ 
             CODE_SIGNING_REQUIRED=NO \ 
             PROVISIONING_PROFILE_SPECIFIER="" \ 
