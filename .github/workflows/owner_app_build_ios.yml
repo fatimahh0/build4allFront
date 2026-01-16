@@ -367,39 +367,27 @@ jobs:
             perl -pi -e 's/\"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]\" = \"Apple Distribution\";/\"CODE_SIGN_IDENTITY[sdk=iphoneos*]\" = \"\";/g' "$PODS_PBX"
           fi
 
-      - name: Archive (xcodebuild) — Manual signing forced via xcconfig (stable)
-        shell: bash
-        run: |
-          set -euo pipefail
-          KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
-          KEYCHAIN_PWD="ci_keychain_pwd_123"
-
-          TEAM="${IOS_TEAM_ID}"
-          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
-          PROFILE_NAME="$(cat ci_profile_name.txt | tr -d '\r\n')"
-
-          security default-keychain -s "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN_PATH" || true
-
-          mkdir -p build/ios/archive
-          cd ios
-          
-          xcodebuild \
-            -workspace Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -sdk iphoneos \
-            -destination 'generic/platform=iOS' \
-            -archivePath ../build/ios/archive/Runner.xcarchive \
-            OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}" \
-            GCC_PREPROCESSOR_DEFINITIONS='$(inherited)' \
-            -xcconfig ci_signing.xcconfig \
-            DEVELOPMENT_TEAM="$TEAM" \
-            CODE_SIGNING_ALLOWED=NO \ 
-            CODE_SIGNING_REQUIRED=NO \ 
-            PROVISIONING_PROFILE_SPECIFIER="" \ 
-            PROVISIONING_PROFILE="" \
-            archive
+            - name: Archive (xcodebuild)
+              shell: bash
+              run: |
+                set -euo pipefail
+                KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
+            
+                security default-keychain -s "$KEYCHAIN_PATH"
+                security unlock-keychain -p "" "$KEYCHAIN_PATH" || true
+            
+                mkdir -p build/ios/archive
+                cd ios
+            
+                xcodebuild \
+                  -workspace Runner.xcworkspace \
+                  -scheme Runner \
+                  -configuration Release \
+                  -sdk iphoneos \
+                  -destination 'generic/platform=iOS' \
+                  -archivePath ../build/ios/archive/Runner.xcarchive \
+                  OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}" \
+                  archive
 
       - name: Export IPA (xcodebuild)
         shell: bash
