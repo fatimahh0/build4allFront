@@ -383,10 +383,6 @@ jobs:
 
           mkdir -p build/ios/archive
           cd ios
-
-          # Force signing ONLY for the app target at archive time
-          mkdir -p 
-          build/ios/archive cd ios
           
           xcodebuild \
             -workspace Runner.xcworkspace \
