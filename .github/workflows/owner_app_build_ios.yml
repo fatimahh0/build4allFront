@@ -410,19 +410,25 @@ jobs:
             PROVISIONING_PROFILE_SPECIFIER="" \
             PROVISIONING_PROFILE="" \
             archive
-
-      - name: Export IPA (xcodebuild)
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p build/ios/ipa
-          cd ios
-          xcodebuild -exportArchive \
-            -archivePath ../build/ios/archive/Runner.xcarchive \
-            -exportOptionsPlist ExportOptions.plist \
-            DEVELOPMENT_TEAM = ${{ secrets.IOS_TEAM_ID }}
-            PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID}
-            -exportPath ../build/ios/ipa
+          - name: Export IPA (xcodebuild)
+            shell: bash
+            run: |
+              set -euo pipefail
+              mkdir -p build/ios/ipa
+          
+              echo "PWD=$(pwd)"
+              ls -la build/ios/archive || true
+              ls -la ios || true
+          
+              cd ios
+          
+              # IMPORTANT: keep -exportPath on the same command (no missing backslashes)
+              xcodebuild -exportArchive \
+                -archivePath ../build/ios/archive/Runner.xcarchive \
+                -exportOptionsPlist ExportOptions.plist \
+                DEVELOPMENT_TEAM = ${{ secrets.IOS_TEAM_ID }}
+                PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID}
+                -exportPath ../build/ios/ipa
 
       - name: List outputs
         shell: bash
