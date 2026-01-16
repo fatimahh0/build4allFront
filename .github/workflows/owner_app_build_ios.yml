@@ -385,7 +385,6 @@ jobs:
           cd ios
 
           # Force signing ONLY for the app target at archive time
-          cat > ios/ci_signing.xcconfig <<EOF
           DEVELOPMENT_TEAM = ${TEAM}
           PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID} 
           CODE_SIGN_STYLE = Manual 
