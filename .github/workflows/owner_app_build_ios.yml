@@ -372,6 +372,29 @@ jobs:
               runner.save
               puts "✅ Runner Release signing set (Manual + Team + Profile + BundleId)"
               RUBY
+              - name: Force Pods signing OFF (scrub provisioning/profile completely)
+              shell: bash
+              run: |
+              set -euo pipefail
+              PODS_PBX="ios/Pods/Pods.xcodeproj/project.pbxproj"
+    
+              if [ -f "$PODS_PBX" ]; then
+                echo "Scrubbing Pods signing..."
+                # Remove ANY provisioning profile specifier / uuid / team in Pods
+                perl -pi -e 's/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = "";/g' "$PODS_PBX"
+                perl -pi -e 's/PROVISIONING_PROFILE = [^;]*;/PROVISIONING_PROFILE = "";/g' "$PODS_PBX"
+                perl -pi -e 's/"PROVISIONING_PROFILE_SPECIFIER\[sdk=iphoneos\*\]" = [^;]*;/"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "";/g' "$PODS_PBX"
+    
+                # Make Pods automatic/no-sign
+                perl -pi -e 's/CODE_SIGN_STYLE = Manual;/CODE_SIGN_STYLE = Automatic;/g' "$PODS_PBX"
+                perl -pi -e 's/CODE_SIGN_IDENTITY = "Apple Distribution";/CODE_SIGN_IDENTITY = "";/g' "$PODS_PBX"
+                perl -pi -e 's/"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]" = "Apple Distribution";/"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";/g' "$PODS_PBX"
+                perl -pi -e 's/CODE_SIGNING_ALLOWED = YES;/CODE_SIGNING_ALLOWED = NO;/g' "$PODS_PBX"
+                perl -pi -e 's/CODE_SIGNING_REQUIRED = YES;/CODE_SIGNING_REQUIRED = NO;/g' "$PODS_PBX"
+    
+                # Safety: remove any explicit DEVELOPMENT_TEAM set inside Pods
+                perl -pi -e 's/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = "";/g' "$PODS_PBX"
+              fi
 
 
  
