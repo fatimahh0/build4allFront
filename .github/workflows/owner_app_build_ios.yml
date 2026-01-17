@@ -395,12 +395,16 @@ jobs:
           flutter build ios --release --no-codesign \
             --dart-define-from-file=lib/env/ci_env.json
 
-      - name: Archive (xcodebuild)
+      - name: Archive (xcodebuild) — force team + profile for Runner
         shell: bash
         run: |
           set -euo pipefail
+
           KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
           KEYCHAIN_PWD="ci_keychain_pwd_123"
+
+          TEAM="${IOS_TEAM_ID}"
+          PROFILE_NAME="$(cat ci_profile_name.txt | tr -d '\r\n')"
 
           security default-keychain -s "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN_PATH" || true
@@ -416,6 +420,10 @@ jobs:
             -destination 'generic/platform=iOS' \
             -archivePath ../build/ios/archive/Runner.xcarchive \
             OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}" \
+            DEVELOPMENT_TEAM="${TEAM}" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="${PROFILE_NAME}" \
             archive
 
       - name: Export IPA (xcodebuild)
