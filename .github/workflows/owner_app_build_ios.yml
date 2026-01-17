@@ -290,44 +290,6 @@ jobs:
 
           [ -n "$FOUND_NAME" ] || { echo "❌ No profile matched $APP_ID"; exit 1; }
           [ -n "$FOUND_UUID" ] || { echo "❌ Profile UUID not found"; exit 1; }
-
-      # --------------------------------------------------
-      # Patch Runner only
-      # --------------------------------------------------
-      - name: Patch Runner bundle id + manual signing + profile (Runner only)
-        shell: bash
-        run: |
-          set -euo pipefail
-          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
-          TEAM="${IOS_TEAM_ID}"
-          PROFILE_NAME="$(cat ci_profile_name.txt | tr -d '\r\n')"
-          PBX="ios/Runner.xcodeproj/project.pbxproj"
-
-          perl -0777 -pi -e '
-            while ($ARGV[0] =~ /(Release \\*\\/ = \\*\\/ \\{[\\s\\S]*?\\};)/g) {}
-          ' "$PBX" >/dev/null 2>&1 || true
-
-
-
-          perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};/g" "$PBX"
-
-
-          perl -0777 -pi -e 's/(\/\* Release \*\/ = \{[\s\S]*?)CODE_SIGN_STYLE = Automatic;/$1CODE_SIGN_STYLE = Manual;/g' "$PBX"
-
-
-          perl -0777 -pi -e 's/(\/\* Release \*\/ = \{[\s\S]*?)CODE_SIGN_IDENTITY = "[^"]*";/$1CODE_SIGN_IDENTITY = "Apple Distribution";/g' "$PBX"
-          perl -0777 -pi -e 's/(\/\* Release \*\/ = \{[\s\S]*?)"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]" = "[^"]*";/$1"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";/g' "$PBX"
-
-
-          perl -0777 -pi -e 's/(\/\* Release \*\/ = \{[\s\S]*?)DEVELOPMENT_TEAM = [A-Z0-9]+;/$1DEVELOPMENT_TEAM = '"${TEAM}"';/g' "$PBX"
-          perl -0777 -pi -e 's/(\/\* Release \*\/ = \{[\s\S]*?)(\};)/$1DEVELOPMENT_TEAM = '"${TEAM}"';\n$2/ if $1 !~ /DEVELOPMENT_TEAM =/gex' "$PBX"
-
-
-          perl -0777 -pi -e 's/(\/\* Release \*\/ = \{[\s\S]*?)PROVISIONING_PROFILE_SPECIFIER = [^;]*;/$1PROVISIONING_PROFILE_SPECIFIER = '"${PROFILE_NAME}"';/g' "$PBX"
-          perl -0777 -pi -e 's/(\/\* Release \*\/ = \{[\s\S]*?)"PROVISIONING_PROFILE_SPECIFIER\[sdk=iphoneos\*\]" = [^;]*;/$1"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = '"${PROFILE_NAME}"';/g' "$PBX"
-
-          echo "✅ Runner Release signing patched (Manual + Distribution + Team + Profile)"
-
       # --------------------------------------------------
       # Pods: FORCE signing OFF
       # --------------------------------------------------
@@ -346,37 +308,36 @@ jobs:
             perl -pi -e 's/\"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]\" = \"Apple Distribution\";/\"CODE_SIGN_IDENTITY[sdk=iphoneos*]\" = \"\";/g' "$PODS_PBX"
           fi
 
-      # --------------------------------------------------
-      # ExportOptions.plist (NO provisioningProfiles)
-      # --------------------------------------------------
-      - name: Create ExportOptions.plist (NO provisioningProfiles)
-        shell: bash
-        run: |
-          set -euo pipefail
-          METHOD="${IOS_EXPORT_METHOD:-app-store}"
+          - name: Create ExportOptions.plist (NO provisioningProfiles)
+            shell: bash
+            run: |
+              set -euo pipefail
+              METHOD="${IOS_EXPORT_METHOD:-app-store}"
+          
+              cat > ios/ExportOptions.plist <<EOF
+              <?xml version="1.0" encoding="UTF-8"?>
+              <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+              <plist version="1.0">
+              <dict>
+                <key>method</key>
+                <string>${METHOD}</string>
+          
+                <key>signingStyle</key>
+                <string>manual</string>
+          
+                <key>teamID</key>
+                <string>${IOS_TEAM_ID}</string>
+          
+                <key>destination</key>
+                <string>export</string>
+          
+                <key>stripSwiftSymbols</key>
+                <true/>
+              </dict>
+              </plist>
+              EOF
 
-          cat > ios/ExportOptions.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>${METHOD}</string>
-      
-            <key>signingStyle</key>
-            <string>manual</string>
-      
-            <key>teamID</key>
-            <string>${IOS_TEAM_ID}</string>
-      
-            <key>provisioningProfiles</key>
-            <dict>
-              <key>${BUNDLE_ID}</key>
-              <string>${PROFILE_NAME}</string>
-            </dict>
-          </dict>
-          </plist>
-          EOF
+
 
       - name: Build iOS (flutter, no codesign)
         shell: bash
