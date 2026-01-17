@@ -1,3 +1,9 @@
+import 'package:build4front/features/ai_feature/data/repositories/ai_chat_repository_impl.dart';
+import 'package:build4front/features/ai_feature/data/services/ai_chat_remote_datasource.dart';
+import 'package:build4front/features/ai_feature/domain/usecases/chat_item_usecase.dart';
+import 'package:build4front/features/ai_feature/presentation/bloc/ai_chat_bloc.dart';
+import 'package:build4front/features/ai_feature/presentation/screens/ai_item_chat_sheet.dart';
+
 import 'package:build4front/features/items/data/repositories/items_repository_impl.dart';
 import 'package:build4front/features/items/data/services/items_api_service.dart';
 import 'package:build4front/features/items/domain/usecases/get_item_details.dart';
@@ -37,9 +43,8 @@ class ItemDetailsPage extends StatelessWidget {
     final token = net.readAuthToken();
 
     return BlocProvider(
-      create: (_) =>
-          ItemDetailsBloc(getItemDetails: usecase)
-            ..add(ItemDetailsStarted(itemId, token: token)),
+      create: (_) => ItemDetailsBloc(getItemDetails: usecase)
+        ..add(ItemDetailsStarted(itemId, token: token)),
       child: BlocBuilder<ItemDetailsBloc, ItemDetailsState>(
         builder: (context, state) {
           if (state.isLoading && state.details == null) {
@@ -87,7 +92,7 @@ class ItemDetailsPage extends StatelessWidget {
             final pct = ((1 - (curPrice / oldPrice)) * 100).round();
             if (pct > 0) tag = '-$pct%';
           }
-          tag ??= d.isSaleActiveNow ? 'SALE' : null;
+          tag ??= d.isSaleActiveNow ? l10n.common_sale_tag : null;
 
           return Scaffold(
             appBar: AppBar(title: Text(d.name)),
@@ -180,13 +185,70 @@ class ItemDetailsPage extends StatelessWidget {
                   ],
                 ),
 
+                SizedBox(height: spacing.md),
+
+                // ✅ ASK AI BUTTON (Details)
+                ValueListenableBuilder<bool>(
+                  valueListenable: net.aiEnabledNotifier,
+                  builder: (_, enabled, __) {
+                    if (!enabled) return const SizedBox.shrink();
+
+                    return Padding(
+                      padding: EdgeInsets.only(top: spacing.xs),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) {
+                                final remote = AiChatRemoteDataSource();
+                                final repo = AiChatRepositoryImpl(remote);
+                                final usecase = ChatItemUseCase(repo);
+
+                                return BlocProvider(
+                                  create: (_) => AiChatBloc(useCase: usecase),
+                                  child: AiItemChatSheet(
+                                    itemId: d.id,
+                                    title: d.name,
+                                    imageUrl: image, // resolved already
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: c.primary.withOpacity(0.35),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(card.radius / 1.5),
+                            ),
+                          ),
+                          icon: const Icon(Icons.auto_awesome, size: 18),
+                          label: Text(
+                            l10n.ai_ask_button, // ✅ l10n
+                            style: t.labelLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+
                 SizedBox(height: spacing.lg),
                 Divider(color: c.outline.withOpacity(0.2)),
                 SizedBox(height: spacing.md),
 
                 // DESCRIPTION
                 Text(
-                  'Description',
+                  l10n.common_description_title,
                   style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 SizedBox(height: spacing.xs),
@@ -200,23 +262,26 @@ class ItemDetailsPage extends StatelessWidget {
                 SizedBox(height: spacing.lg),
 
                 // QUICK INFO
-                _infoRow(context, label: 'SKU', value: d.sku ?? '-'),
+                _infoRow(context,
+                    label: l10n.common_sku_label, value: d.sku ?? '-'),
                 _infoRow(
                   context,
-                  label: 'Stock',
+                  label: l10n.common_stock_label_plain,
                   value: d.stock?.toString() ?? '-',
                 ),
                 _infoRow(
                   context,
-                  label: 'Tax',
-                  value: d.taxable ? (d.taxClass ?? 'Yes') : 'No',
+                  label: l10n.common_tax_label,
+                  value: d.taxable
+                      ? (d.taxClass ?? l10n.common_yes)
+                      : l10n.common_no,
                 ),
 
                 SizedBox(height: spacing.lg),
 
                 // ATTRIBUTES
                 Text(
-                  'Attributes',
+                  l10n.common_attributes_title,
                   style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 SizedBox(height: spacing.sm),
@@ -243,7 +308,7 @@ class ItemDetailsPage extends StatelessWidget {
 
                 SizedBox(height: spacing.xl),
 
-                // CTA
+                // CTA (Add to cart)
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -260,8 +325,8 @@ class ItemDetailsPage extends StatelessWidget {
                       }
 
                       context.read<CartBloc>().add(
-                        CartAddItemRequested(itemId: d.id, quantity: 1),
-                      );
+                            CartAddItemRequested(itemId: d.id, quantity: 1),
+                          );
 
                       AppToast.show(context, l10n.cart_item_added_snackbar);
                     },

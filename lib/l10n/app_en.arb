@@ -988,6 +988,23 @@
 
   "adminExcelProTipBody": " Always validate the Excel file before importing to avoid partial or invalid data.",
 
-  "loadingLabel": "Loading..."
+  "loadingLabel": "Loading...",
+   "ai_chat_hint": "Ask about this item…",
+  "ai_chat_suggested_question": "Give me a quick summary and key details about this item.",
+  "ai_chat_error_send_failed": "Couldn't send your message. Try again.",
+  "ai_ask_button": "Ask AI",
+  "common_sale_tag": "SALE",
+  "common_description_title": "Description",
+  "common_attributes_title": "Attributes",
+  "common_sku_label": "SKU",
+  "common_stock_label_plain": "Stock",
+  "common_tax_label": "Tax",
+  "common_yes": "Yes",
+  "common_no": "No",
+    "ai_chat_hint": "Ask about this item…",
+  "ai_chat_error_send_failed": "Failed to send message",
+  "ai_prompt_summary": "Summarize this item",
+  "ai_prompt_features": "What are the main features?",
+  "ai_prompt_best_use": "Is this good for me?"
   
 }

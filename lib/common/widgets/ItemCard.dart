@@ -1,3 +1,8 @@
+import 'package:build4front/features/ai_feature/data/repositories/ai_chat_repository_impl.dart';
+import 'package:build4front/features/ai_feature/data/services/ai_chat_remote_datasource.dart';
+import 'package:build4front/features/ai_feature/domain/usecases/chat_item_usecase.dart';
+import 'package:build4front/features/ai_feature/presentation/bloc/ai_chat_bloc.dart';
+import 'package:build4front/features/ai_feature/presentation/screens/ai_item_chat_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -5,6 +10,8 @@ import 'package:build4front/core/network/globals.dart' as net;
 import 'package:build4front/core/theme/theme_cubit.dart';
 
 class ItemCard extends StatelessWidget {
+  final int? itemId;
+
   final String title;
   final String? subtitle;
   final String? imageUrl;
@@ -25,6 +32,7 @@ class ItemCard extends StatelessWidget {
 
   const ItemCard({
     super.key,
+    this.itemId,
     required this.title,
     this.subtitle,
     this.imageUrl,
@@ -159,14 +167,12 @@ class ItemCard extends StatelessWidget {
                                 size: 30,
                               ),
                             ),
-
                           if ((tagLabel ?? '').trim().isNotEmpty)
                             Positioned(
                               top: spacing.xs,
                               left: spacing.xs,
                               child: _PillTag(text: tagLabel!.trim()),
                             ),
-
                           if ((badgeLabel ?? '').trim().isNotEmpty)
                             Positioned(
                               top: spacing.xs,
@@ -246,6 +252,69 @@ class ItemCard extends StatelessWidget {
                           ],
 
                           const Spacer(),
+
+                          /// ✅ Ask AI (only if enabled + itemId exists)
+                          ValueListenableBuilder<bool>(
+                            valueListenable: net.aiEnabledNotifier,
+                            builder: (_, enabled, __) {
+                              final canShow = enabled && itemId != null;
+                              if (!canShow) return const SizedBox.shrink();
+
+                              return Padding(
+                                padding:
+                                    EdgeInsets.only(bottom: hasCta ? gapXS : 0),
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  height:
+                                      veryCompact ? 34 : (compact ? 36 : 40),
+                                  child: OutlinedButton.icon(
+                                    onPressed: () {
+                                     showModalBottomSheet(
+                                        context: context,
+                                        isScrollControlled: true,
+                                        backgroundColor: Colors.transparent,
+                                        builder: (_) {
+                                          final remote =
+                                              AiChatRemoteDataSource();
+                                          final repo =
+                                              AiChatRepositoryImpl(remote);
+                                          final usecase = ChatItemUseCase(repo);
+
+                                          return BlocProvider(
+                                            create: (_) =>
+                                                AiChatBloc(useCase: usecase),
+                                            child: AiItemChatSheet(
+                                              itemId: itemId!,
+                                              title: title,
+                                              imageUrl: resolvedImageUrl,
+                                            ),
+                                          );
+                                        },
+                                      );
+
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      side: BorderSide(
+                                          color: c.primary.withOpacity(0.35)),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(
+                                            cardTokens.radius / 1.5),
+                                      ),
+                                    ),
+                                    icon: Icon(Icons.auto_awesome,
+                                        size: veryCompact ? 16 : 18),
+                                    label: Text(
+                                      "Ask AI",
+                                      style: t.labelLarge?.copyWith(
+                                          fontWeight: FontWeight.w800),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
 
                           if (hasCta)
                             SizedBox(

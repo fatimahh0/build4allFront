@@ -2071,7 +2071,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get adminExcelProTipTitle => 'Pro tip';
 
   @override
-  String get adminExcelProTipBody => 'Pro tip: Always validate the Excel file before importing to avoid partial or invalid data.';
+  String get adminExcelProTipBody => ' Always validate the Excel file before importing to avoid partial or invalid data.';
 
   @override
   String get loadingLabel => 'Loading...';
@@ -2114,4 +2114,49 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get adminExcelStep2Subtitle => 'Upload the filled Excel file and validate its content.';
+
+  @override
+  String get ai_chat_hint => 'Ask about this item…';
+
+  @override
+  String get ai_chat_suggested_question => 'Give me a quick summary and key details about this item.';
+
+  @override
+  String get ai_chat_error_send_failed => 'Failed to send message';
+
+  @override
+  String get ai_ask_button => 'Ask AI';
+
+  @override
+  String get common_sale_tag => 'SALE';
+
+  @override
+  String get common_description_title => 'Description';
+
+  @override
+  String get common_attributes_title => 'Attributes';
+
+  @override
+  String get common_sku_label => 'SKU';
+
+  @override
+  String get common_stock_label_plain => 'Stock';
+
+  @override
+  String get common_tax_label => 'Tax';
+
+  @override
+  String get common_yes => 'Yes';
+
+  @override
+  String get common_no => 'No';
+
+  @override
+  String get ai_prompt_summary => 'Summarize this item';
+
+  @override
+  String get ai_prompt_features => 'What are the main features?';
+
+  @override
+  String get ai_prompt_best_use => 'Is this good for me?';
 }

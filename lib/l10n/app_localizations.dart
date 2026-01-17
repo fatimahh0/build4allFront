@@ -4084,7 +4084,7 @@ abstract class AppLocalizations {
   /// No description provided for @adminExcelProTipBody.
   ///
   /// In en, this message translates to:
-  /// **'Pro tip: Always validate the Excel file before importing to avoid partial or invalid data.'**
+  /// **' Always validate the Excel file before importing to avoid partial or invalid data.'**
   String get adminExcelProTipBody;
 
   /// No description provided for @loadingLabel.
@@ -4170,6 +4170,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Upload the filled Excel file and validate its content.'**
   String get adminExcelStep2Subtitle;
+
+  /// No description provided for @ai_chat_hint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask about this item…'**
+  String get ai_chat_hint;
+
+  /// No description provided for @ai_chat_suggested_question.
+  ///
+  /// In en, this message translates to:
+  /// **'Give me a quick summary and key details about this item.'**
+  String get ai_chat_suggested_question;
+
+  /// No description provided for @ai_chat_error_send_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to send message'**
+  String get ai_chat_error_send_failed;
+
+  /// No description provided for @ai_ask_button.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask AI'**
+  String get ai_ask_button;
+
+  /// No description provided for @common_sale_tag.
+  ///
+  /// In en, this message translates to:
+  /// **'SALE'**
+  String get common_sale_tag;
+
+  /// No description provided for @common_description_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get common_description_title;
+
+  /// No description provided for @common_attributes_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Attributes'**
+  String get common_attributes_title;
+
+  /// No description provided for @common_sku_label.
+  ///
+  /// In en, this message translates to:
+  /// **'SKU'**
+  String get common_sku_label;
+
+  /// No description provided for @common_stock_label_plain.
+  ///
+  /// In en, this message translates to:
+  /// **'Stock'**
+  String get common_stock_label_plain;
+
+  /// No description provided for @common_tax_label.
+  ///
+  /// In en, this message translates to:
+  /// **'Tax'**
+  String get common_tax_label;
+
+  /// No description provided for @common_yes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get common_yes;
+
+  /// No description provided for @common_no.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get common_no;
+
+  /// No description provided for @ai_prompt_summary.
+  ///
+  /// In en, this message translates to:
+  /// **'Summarize this item'**
+  String get ai_prompt_summary;
+
+  /// No description provided for @ai_prompt_features.
+  ///
+  /// In en, this message translates to:
+  /// **'What are the main features?'**
+  String get ai_prompt_features;
+
+  /// No description provided for @ai_prompt_best_use.
+  ///
+  /// In en, this message translates to:
+  /// **'Is this good for me?'**
+  String get ai_prompt_best_use;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

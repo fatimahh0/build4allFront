@@ -119,8 +119,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             final filtered = _buildFilteredAndSortedItems(baseItems);
 
             // ✅ keep highlight even if we came by categoryId only
-            final effectiveSelectedLabel =
-                _selectedCategoryLabel ??
+            final effectiveSelectedLabel = _selectedCategoryLabel ??
                 _labelForCategoryId(homeState, _selectedCategoryId);
 
             final categories = homeState.categories;
@@ -128,9 +127,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
             // ✅ pagination math
             final totalItems = filtered.length;
-            final totalPages = totalItems == 0
-                ? 1
-                : ((totalItems / _itemsPerPage).ceil());
+            final totalPages =
+                totalItems == 0 ? 1 : ((totalItems / _itemsPerPage).ceil());
 
             // clamp page
             final safePage = _page.clamp(1, totalPages);
@@ -168,9 +166,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           // ✅ Search (typing)
                           AppSearchField(
                             hintText: l10n.explore_search_hint,
-                            initialValue: _searchQuery.isEmpty
-                                ? null
-                                : _searchQuery,
+                            initialValue:
+                                _searchQuery.isEmpty ? null : _searchQuery,
                             onChanged: _onSearchChangedDebounced,
                             onSubmitted: (value) {
                               setState(() {
@@ -433,8 +430,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
     if (item.kind == ItemKind.product) {
       context.read<CartBloc>().add(
-        CartAddItemRequested(itemId: item.id, quantity: 1),
-      );
+            CartAddItemRequested(itemId: item.id, quantity: 1),
+          );
       AppToast.show(context, l10n.cart_item_added_snackbar);
       return;
     }
@@ -470,9 +467,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final saleActive = item.onSale && _isSaleActiveNow(item);
     final current = _currentPrice(item);
 
-    final currentLabel = current != null
-        ? money(context, current.toDouble())
-        : null;
+    final currentLabel =
+        current != null ? money(context, current.toDouble()) : null;
 
     String? oldLabel;
     if (saleActive && item.price != null && current != null) {
@@ -545,7 +541,7 @@ class _ExploreCategoryChips extends StatelessWidget {
           final cat = allCats[index];
           final bool isSelected =
               (cat == null && selectedCategoryLabel == null) ||
-              (cat != null && cat == selectedCategoryLabel);
+                  (cat != null && cat == selectedCategoryLabel);
 
           final label =
               cat ?? AppLocalizations.of(context)!.explore_category_all;
@@ -703,6 +699,7 @@ class _ExploreItemsGrid extends StatelessWidget {
                     : BoxFit.cover;
 
                 return ItemCard(
+                  itemId: item.id,
                   width: double.infinity,
                   imageFit: BoxFit.cover,
                   title: item.title,
@@ -792,13 +789,11 @@ class _PaginationBar extends StatelessWidget {
       children: [
         IconButton(
           tooltip: 'Prev',
-          onPressed: currentPage > 1
-              ? () => onPageChanged(currentPage - 1)
-              : null,
+          onPressed:
+              currentPage > 1 ? () => onPageChanged(currentPage - 1) : null,
           icon: const Icon(Icons.chevron_left_rounded),
         ),
         SizedBox(width: spacing.xs),
-
         ..._withEllipsis(
           pages,
           (p) => Padding(
@@ -807,7 +802,6 @@ class _PaginationBar extends StatelessWidget {
           ),
           spacing: spacing,
         ),
-
         SizedBox(width: spacing.xs),
         IconButton(
           tooltip: 'Next',

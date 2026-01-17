@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:build4front/core/config/env.dart';
 import 'package:build4front/core/network/interceptors/auth_body_injector.dart';
 import 'package:build4front/core/network/connecting(wifiORserver)/connection_cubit.dart';
+import 'package:flutter/foundation.dart';
 
 Dio? appDio;
 
@@ -28,6 +29,11 @@ String? wsPath;
 // -------- Branding --------
 String appName = 'Build4All — Client';
 String appLogoUrl = '';
+
+final ValueNotifier<bool> aiEnabledNotifier = ValueNotifier<bool>(false);
+
+bool get aiEnabled => aiEnabledNotifier.value;
+set aiEnabled(bool v) => aiEnabledNotifier.value = v;
 
 // -------- Connection Cubit (for server / network status) --------
 ConnectionCubit? connectionCubit;

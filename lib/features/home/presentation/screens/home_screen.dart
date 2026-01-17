@@ -756,6 +756,7 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
                       : BoxFit.cover;
 
                   return ItemCard(
+                    itemId: item.id,
                     width: double.infinity,
                     imageFit: fit, // ✅ use it
                     title: item.title,

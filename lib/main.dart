@@ -1,4 +1,5 @@
 import 'package:build4front/debug/debug_config_banner.dart';
+import 'package:build4front/features/ai_feature/ai_feature_bootstrap.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 
@@ -11,6 +12,8 @@ void main() async {
 
   makeDefaultDio(Env.apiBaseUrl);
 
+  await AiFeatureBootstrap().init();
+
   try {
     if (Env.stripePublishableKey.isNotEmpty) {
       Stripe.publishableKey = Env.stripePublishableKey;
@@ -22,5 +25,5 @@ void main() async {
     debugPrint("Stripe init failed: $e");
   }
 
-  runApp(const Build4AllFrontApp()); 
+  runApp(const Build4AllFrontApp());
 }
