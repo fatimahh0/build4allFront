@@ -353,8 +353,6 @@ jobs:
           flutter build ios --release --no-codesign \
             --dart-define-from-file=lib/env/ci_env.json
 
-      # (Optional fallback) only keep this if you see Pods signing errors.
-      # If you remove it and everything works, that’s better.
       - name: Force Pods signing to Automatic (never provision Pods)
         shell: bash
         run: |
