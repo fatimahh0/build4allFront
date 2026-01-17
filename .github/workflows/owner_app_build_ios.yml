@@ -396,6 +396,33 @@ jobs:
                 perl -pi -e 's/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = "";/g' "$PODS_PBX"
               fi
 
+                    # --------------------------------------------------
+      # ExportOptions.plist (NO provisioningProfiles dict)
+      # --------------------------------------------------
+      - name: Create ExportOptions.plist
+        shell: bash
+        run: |
+          set -euo pipefail
+          METHOD="${IOS_EXPORT_METHOD:-app-store}"
+          TEAM="${IOS_TEAM_ID}"
+      
+          cat > ios/ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>${METHOD}</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>teamID</key>
+            <string>${TEAM}</string>
+            <key>destination</key>
+            <string>export</string>
+          </dict>
+          </plist>
+          EOF
+
 
  
 
