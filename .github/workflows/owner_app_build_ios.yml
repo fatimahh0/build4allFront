@@ -312,7 +312,7 @@ jobs:
 
           [ -n "$FOUND_NAME" ] || { echo "❌ No profile matched $APP_ID"; exit 1; }
 
-            - name: Patch Runner signing (Runner.xcodeproj only)
+      - name: Patch Runner signing (Runner.xcodeproj only)
         shell: bash
         run: |
           set -euo pipefail
