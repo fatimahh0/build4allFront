@@ -357,32 +357,5 @@ jobs:
               else
                 puts "⚠️ Pods project not found"
               end
-          
-              # -------------------------
-              # 2) RUNNER: set manual signing ONLY on Release
-              # -------------------------
-              runner_path = "ios/Runner.xcodeproj"
-              runner = Xcodeproj::Project.open(runner_path)
-          
-              runner.targets.each do |t|
-                next unless t.name == "Runner"
-                t.build_configurations.each do |c|
-                  next unless c.name == "Release"
-                  s = c.build_settings
-                  s["PRODUCT_BUNDLE_IDENTIFIER"] = bundle_id
-                  s["CODE_SIGN_STYLE"] = "Manual"
-                  s["DEVELOPMENT_TEAM"] = team_id
-                  s["CODE_SIGN_IDENTITY"] = "Apple Distribution"
-                  s["CODE_SIGN_IDENTITY[sdk=iphoneos*]"] = "Apple Distribution"
-                  s["PROVISIONING_PROFILE_SPECIFIER"] = profile
-                  s["PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]"] = profile
-                  # Make sure signing is enabled for the app itself
-                  s["CODE_SIGNING_ALLOWED"] = "YES"
-                  s["CODE_SIGNING_REQUIRED"] = "YES"
-                end
-              end
-          
-              runner.save
-              puts "✅ Runner Release signing set (Manual + Team + Profile + BundleId)"
-              RUBY
+ 
 
