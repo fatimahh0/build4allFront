@@ -253,3 +253,62 @@ jobs:
           }))
           PY
 
+            # --------------------------------------------------
+      # Provisioning: App ID + Profile
+      # --------------------------------------------------
+      - name: Ensure App ID exists on Apple Developer (produce)
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
+
+          fastlane run produce \
+            app_identifier:"$BUNDLE_ID" \
+            team_id:"${IOS_TEAM_ID}" \
+            api_key_path:"$GITHUB_WORKSPACE/.private/api_key.json" \
+            skip_itc:true \
+            language:en \
+            app_name:"Runner" || true
+
+      - name: Get App Store provisioning profile (sigh)
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
+
+          fastlane run get_provisioning_profile \
+            app_identifier:"$BUNDLE_ID" \
+            team_id:"${IOS_TEAM_ID}" \
+            api_key_path:"$GITHUB_WORKSPACE/.private/api_key.json" \
+            provisioning_name:"B4A_${BUNDLE_ID}_APPSTORE" \
+            readonly:false
+
+      - name: Detect installed provisioning profile (name)
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
+          APP_ID="${IOS_TEAM_ID}.${BUNDLE_ID}"
+
+          PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILES_DIR"
+
+          FOUND_NAME=""
+          for f in "$PROFILES_DIR"/*.mobileprovision; do
+            [ -f "$f" ] || continue
+            TMP_PLIST="$(mktemp /tmp/profile.XXXXXX.plist)"
+            /usr/bin/security cms -D -i "$f" > "$TMP_PLIST"
+
+            P_APPID=$("/usr/libexec/PlistBuddy" -c "Print :Entitlements:application-identifier" "$TMP_PLIST" 2>/dev/null || true)
+            if [ "$P_APPID" = "$APP_ID" ]; then
+              FOUND_NAME=$("/usr/libexec/PlistBuddy" -c "Print :Name" "$TMP_PLIST" 2>/dev/null || true)
+              echo "$FOUND_NAME" > ci_profile_name.txt
+              echo "✅ Profile matched: $FOUND_NAME ($P_APPID)"
+              rm -f "$TMP_PLIST"
+              break
+            fi
+            rm -f "$TMP_PLIST"
+          done
+
+          [ -n "$FOUND_NAME" ] || { echo "❌ No profile matched $APP_ID"; exit 1; }
+
