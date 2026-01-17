@@ -58,7 +58,7 @@ jobs:
           flutter --version
           flutter pub get
 
-      - name: Show dispatch payload (debug)
+      - name: Show dis payload (debug)
         shell: bash
         run: |
           set -euo pipefail
@@ -312,25 +312,79 @@ jobs:
 
           [ -n "$FOUND_NAME" ] || { echo "❌ No profile matched $APP_ID"; exit 1; }
 
-      - name: Patch Runner signing (Runner.xcodeproj only)
-        shell: bash
-        run: |
-          set -euo pipefail
-          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
-          TEAM="${IOS_TEAM_ID}"
-          PROFILE_NAME="$(cat ci_profile_name.txt | tr -d '\r\n')"
-          PBX="ios/Runner.xcodeproj/project.pbxproj"
-
-          # Bundle id
-          perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};/g" "$PBX"
-
-          # Release signing -> Manual + Distribution + Team + Profile
-          perl -0777 -pi -e 's/(\/\* Release \*\/ = \{[\s\S]*?)CODE_SIGN_STYLE = Automatic;/$1CODE_SIGN_STYLE = Manual;/g' "$PBX"
-          perl -0777 -pi -e 's/(\/\* Release \*\/ = \{[\s\S]*?)CODE_SIGN_IDENTITY = "[^"]*";/$1CODE_SIGN_IDENTITY = "Apple Distribution";/g' "$PBX"
-          perl -0777 -pi -e 's/(\/\* Release \*\/ = \{[\s\S]*?)DEVELOPMENT_TEAM = [A-Z0-9]+;/$1DEVELOPMENT_TEAM = "'"$TEAM"'";/g' "$PBX"
-          perl -0777 -pi -e 's/(\/\* Release \*\/ = \{[\s\S]*?)PROVISIONING_PROFILE_SPECIFIER = [^;]*;/$1PROVISIONING_PROFILE_SPECIFIER = "'"$PROFILE_NAME"'";/g' "$PBX"
-
-          echo "✅ Runner patched for manual signing"
+          - name: Patch signing (Pods = Automatic/no profile, Runner = Manual with profile)
+            shell: bash
+            run: |
+              set -euo pipefail
+          
+              gem install xcodeproj -N
+          
+              BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
+              TEAM_ID="${IOS_TEAM_ID}"
+              PROFILE_NAME="$(cat ci_profile_name.txt | tr -d '\r\n')"
+          
+              ruby <<'RUBY'
+              require "xcodeproj"
+          
+              bundle_id = ENV["BUNDLE_ID"]
+              team_id   = ENV["TEAM_ID"]
+              profile   = ENV["PROFILE_NAME"]
+          
+              # -------------------------
+              # 1) PODS: remove profile/manual signing everywhere
+              # -------------------------
+              pods_path = "ios/Pods/Pods.xcodeproj"
+              if File.exist?(pods_path)
+                pods = Xcodeproj::Project.open(pods_path)
+                pods.targets.each do |t|
+                  t.build_configurations.each do |c|
+                    s = c.build_settings
+                    s["CODE_SIGN_STYLE"] = "Automatic"
+                    s["DEVELOPMENT_TEAM"] = ""
+                    s["PROVISIONING_PROFILE_SPECIFIER"] = ""
+                    s["PROVISIONING_PROFILE"] = ""
+                    s["CODE_SIGN_IDENTITY"] = ""
+                    s["CODE_SIGN_IDENTITY[sdk=iphoneos*]"] = ""
+                    s["EXPANDED_CODE_SIGN_IDENTITY"] = ""
+                    s["EXPANDED_CODE_SIGN_IDENTITY[sdk=iphoneos*]"] = ""
+                    # Pods/frameworks do not need provisioning
+                    s["CODE_SIGNING_ALLOWED"] = "NO"
+                    s["CODE_SIGNING_REQUIRED"] = "NO"
+                  end
+                end
+                pods.save
+                puts "✅ Pods signing cleared"
+              else
+                puts "⚠️ Pods project not found"
+              end
+          
+              # -------------------------
+              # 2) RUNNER: set manual signing ONLY on Release
+              # -------------------------
+              runner_path = "ios/Runner.xcodeproj"
+              runner = Xcodeproj::Project.open(runner_path)
+          
+              runner.targets.each do |t|
+                next unless t.name == "Runner"
+                t.build_configurations.each do |c|
+                  next unless c.name == "Release"
+                  s = c.build_settings
+                  s["PRODUCT_BUNDLE_IDENTIFIER"] = bundle_id
+                  s["CODE_SIGN_STYLE"] = "Manual"
+                  s["DEVELOPMENT_TEAM"] = team_id
+                  s["CODE_SIGN_IDENTITY"] = "Apple Distribution"
+                  s["CODE_SIGN_IDENTITY[sdk=iphoneos*]"] = "Apple Distribution"
+                  s["PROVISIONING_PROFILE_SPECIFIER"] = profile
+                  s["PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]"] = profile
+                  # Make sure signing is enabled for the app itself
+                  s["CODE_SIGNING_ALLOWED"] = "YES"
+                  s["CODE_SIGNING_REQUIRED"] = "YES"
+                end
+              end
+          
+              runner.save
+              puts "✅ Runner Release signing set (Manual + Team + Profile + BundleId)"
+              RUBY
 
 
       - name: Force Pods signing OFF (scrub provisioning/profile completely)
@@ -360,12 +414,13 @@ jobs:
       # --------------------------------------------------
       # ExportOptions.plist (NO provisioningProfiles dict)
       # --------------------------------------------------
-      - name: Create ExportOptions.plist (NO provisioningProfiles)
+      - name: Create ExportOptions.plist
         shell: bash
         run: |
           set -euo pipefail
           METHOD="${IOS_EXPORT_METHOD:-app-store}"
-
+          TEAM="${IOS_TEAM_ID}"
+      
           cat > ios/ExportOptions.plist <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -376,11 +431,9 @@ jobs:
             <key>signingStyle</key>
             <string>manual</string>
             <key>teamID</key>
-            <string>${IOS_TEAM_ID}</string>
+            <string>${TEAM}</string>
             <key>destination</key>
             <string>export</string>
-            <key>stripSwiftSymbols</key>
-            <true/>
           </dict>
           </plist>
           EOF
