@@ -311,9 +311,9 @@ jobs:
           done
           [ -n "$FOUND_NAME" ] || { echo "❌ No profile matched $APP_ID"; exit 1; }
 
-          - name: Patch signing (Pods = Automatic/no profile, Runner = Manual with profile)
-            shell: bash
-            run: |
+      - name: Patch signing (Pods = Automatic/no profile, Runner = Manual with profile)
+        shell: bash
+        run: |
               set -euo pipefail
           
               gem install xcodeproj -N
