@@ -338,17 +338,18 @@ jobs:
           cat > ios/ci_signing.xcconfig <<EOF
           DEVELOPMENT_TEAM = ${TEAM_ID}
           PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID}
-      
+          
           CODE_SIGN_STYLE = Manual
           CODE_SIGN_IDENTITY = Apple Distribution
-          "CODE_SIGN_IDENTITY[sdk=iphoneos*]" = Apple Distribution
-      
+          CODE_SIGN_IDENTITY[sdk=iphoneos*] = Apple Distribution
+          
           PROVISIONING_PROFILE_SPECIFIER = ${PROFILE_NAME}
-          "PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = ${PROFILE_NAME}
-      
+          PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*] = ${PROFILE_NAME}
+          
           CODE_SIGNING_ALLOWED = YES
           CODE_SIGNING_REQUIRED = YES
           EOF
+
       
           echo "==== ci_signing.xcconfig ===="
           cat ios/ci_signing.xcconfig
@@ -396,6 +397,24 @@ jobs:
             -configuration Release \
             -xcconfig ci_signing.xcconfig \
             | egrep "CODE_SIGN|DEVELOPMENT_TEAM|PROVISIONING_PROFILE|PRODUCT_BUNDLE_IDENTIFIER" || true
+
+      - name: Force Pods = no signing, no profiles
+        shell: bash
+        run: |
+          set -euo pipefail
+          PODS_PBX="ios/Pods/Pods.xcodeproj/project.pbxproj"
+          test -f "$PODS_PBX"
+      
+          # Remove any provisioning/profile/team/identity entries in Pods
+          perl -pi -e 's/(PROVISIONING_PROFILE_SPECIFIER(\[sdk=iphoneos\*\])?) = [^;]*;/\1 = "";/g' "$PODS_PBX"
+          perl -pi -e 's/PROVISIONING_PROFILE = [^;]*;/PROVISIONING_PROFILE = "";/g' "$PODS_PBX"
+          perl -pi -e 's/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = "";/g' "$PODS_PBX"
+          perl -pi -e 's/(CODE_SIGN_IDENTITY(\[sdk=iphoneos\*\])?) = [^;]*;/\1 = "";/g' "$PODS_PBX"
+          perl -pi -e 's/CODE_SIGN_STYLE = Manual;/CODE_SIGN_STYLE = Automatic;/g' "$PODS_PBX"
+          perl -pi -e 's/CODE_SIGNING_ALLOWED = YES;/CODE_SIGNING_ALLOWED = NO;/g' "$PODS_PBX"
+          perl -pi -e 's/CODE_SIGNING_REQUIRED = YES;/CODE_SIGNING_REQUIRED = NO;/g' "$PODS_PBX"
+      
+          echo "✅ Pods patched (no signing)"
 
       # --------------------------------------------------
       # ARCHIVE (do NOT pass profile/team on CLI)
