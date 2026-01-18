@@ -37,12 +37,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode
+      - name: Select Xcode (prefer 15.3)
         shell: bash
         run: |
           set -euo pipefail
-          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer || true
+          ls -la /Applications | grep Xcode || true
+
+          if [ -d "/Applications/Xcode_15.3.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_15.3.app/Contents/Developer
+          else
+            sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          fi
+
           xcodebuild -version
+
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -318,6 +326,51 @@ jobs:
           done
           [ -n "$FOUND_NAME" ] || { echo "❌ No profile matched $APP_ID"; exit 1; }
 
+      - name: Create ExportOptions.plist (manual + provisioningProfiles)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          METHOD="${IOS_EXPORT_METHOD:-app-store}"
+          TEAM="${IOS_TEAM_ID}"
+          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
+          PROFILE_NAME="$(tr -d '\r\n' < ci_profile_name.txt)"
+
+          cat > ios/ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>${METHOD}</string>
+
+            <key>signingStyle</key>
+            <string>manual</string>
+
+            <key>teamID</key>
+            <string>${TEAM}</string>
+
+            <key>signingCertificate</key>
+            <string>Apple Distribution</string>
+
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>${BUNDLE_ID}</key>
+              <string>${PROFILE_NAME}</string>
+            </dict>
+
+            <key>destination</key>
+            <string>export</string>
+
+            <key>compileBitcode</key>
+            <false/>
+          </dict>
+          </plist>
+          EOF
+
+          /usr/bin/plutil -lint ios/ExportOptions.plist
+          echo "✅ ExportOptions.plist ready for ${BUNDLE_ID} using ${PROFILE_NAME}"
+
       - name: Patch Runner signing (Release only) + Bundle ID
         shell: bash
         run: |
@@ -408,36 +461,6 @@ jobs:
           echo "==== ci_signing.xcconfig ===="
           cat ios/ci_signing.xcconfig
 
-
-
-
-      # --------------------------------------------------
-      # ExportOptions.plist (NO provisioningProfiles dict)
-      # --------------------------------------------------
-      - name: Create ExportOptions.plist
-        shell: bash
-        run: |
-          set -euo pipefail
-          METHOD="${IOS_EXPORT_METHOD:-app-store}"
-          TEAM="${IOS_TEAM_ID}"
-
-          cat > ios/ExportOptions.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>${METHOD}</string>
-            <key>signingStyle</key>
-            <string>manual</string>
-            <key>teamID</key>
-            <string>${TEAM}</string>
-            <key>destination</key>
-            <string>export</string>
-          </dict>
-          </plist>
-          EOF
-
       - name: Debug signing settings (Runner Release, with xcconfig)
         shell: bash
         run: |
@@ -518,12 +541,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
+          KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
+          KEYCHAIN_PWD="ci_keychain_pwd_123"
+          security default-keychain -s "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN_PATH" || true
+
           mkdir -p build/ios/ipa
           cd ios
+
           xcodebuild -exportArchive \
             -archivePath ../build/ios/archive/Runner.xcarchive \
             -exportOptionsPlist ExportOptions.plist \
-            -exportPath ../build/ios/ipa
+            -exportPath ../build/ios/ipa \
+            OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}"
+
 
       - name: List outputs
         shell: bash
