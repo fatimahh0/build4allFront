@@ -164,6 +164,39 @@ jobs:
               json.dump(env, f, ensure_ascii=False, indent=2)
           PY
 
+      - name: Read App Store Connect app metadata (name/sku/locale) from payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
+          cfg = payload.get("CONFIG") or {}
+
+          def pick(*keys):
+            for k in keys:
+              if k in payload and payload[k]:
+                return payload[k]
+              if k in cfg and cfg[k]:
+                return cfg[k]
+            return ""
+
+          app_name = pick("APPLE_APP_NAME","appleAppName","appStoreAppName","ASC_APP_NAME")
+          sku      = pick("APPLE_SKU","appleSku","appStoreSku","ASC_SKU")
+          locale   = pick("APPLE_PRIMARY_LOCALE","applePrimaryLocale","primaryLocale","ASC_PRIMARY_LOCALE") or "en-US"
+
+          # Write to GITHUB_ENV so next steps see them
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as f:
+            f.write(f"APPLE_APP_NAME={app_name}\n")
+            f.write(f"APPLE_SKU={sku}\n")
+            f.write(f"APPLE_PRIMARY_LOCALE={locale}\n")
+
+          print("APPLE_APP_NAME=", app_name)
+          print("APPLE_SKU=", sku)
+          print("APPLE_PRIMARY_LOCALE=", locale)
+          PY
+
+
       # --------------------------------------------------
       # Ensure iOS folder exists
       # --------------------------------------------------
