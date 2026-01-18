@@ -318,6 +318,53 @@ jobs:
           done
           [ -n "$FOUND_NAME" ] || { echo "❌ No profile matched $APP_ID"; exit 1; }
 
+      - name: Patch Runner signing (Release only) + Bundle ID
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gem install xcodeproj -N
+
+          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
+          PROFILE_NAME="$(tr -d '\r\n' < ci_profile_name.txt)"
+          TEAM_ID="${IOS_TEAM_ID}"
+
+          cat > patch_runner_signing.rb <<'RUBY'
+          require "xcodeproj"
+
+          bundle_id = ENV.fetch("BUNDLE_ID")
+          profile   = ENV.fetch("PROFILE_NAME")
+          team_id   = ENV.fetch("TEAM_ID")
+
+          proj_path = "ios/Runner.xcodeproj"
+          project = Xcodeproj::Project.open(proj_path)
+
+          runner = project.targets.find { |t| t.name == "Runner" }
+          raise "Runner target not found" unless runner
+
+          runner.build_configurations.each do |cfg|
+            next unless cfg.name == "Release"
+            s = cfg.build_settings
+
+            s["PRODUCT_BUNDLE_IDENTIFIER"] = bundle_id
+            s["CODE_SIGN_STYLE"] = "Manual"
+            s["DEVELOPMENT_TEAM"] = team_id
+
+            # App Store signing
+            s["CODE_SIGN_IDENTITY"] = "Apple Distribution"
+            s["PROVISIONING_PROFILE_SPECIFIER"] = profile
+
+            # Ensure signing is ON for the app itself
+            s["CODE_SIGNING_ALLOWED"] = "YES"
+            s["CODE_SIGNING_REQUIRED"] = "YES"
+          end
+
+          project.save
+          puts "✅ Patched Runner Release signing: #{bundle_id} / #{team_id} / #{profile}"
+          RUBY
+
+          BUNDLE_ID="$BUNDLE_ID" PROFILE_NAME="$PROFILE_NAME" TEAM_ID="$TEAM_ID" ruby patch_runner_signing.rb
+
       # --------------------------------------------------
       # Build iOS (flutter, no codesign)
       # --------------------------------------------------
@@ -436,21 +483,19 @@ jobs:
       # --------------------------------------------------
       # ARCHIVE (do NOT pass profile/team on CLI)
       # --------------------------------------------------
-      - name: Archive (xcodebuild)
+      - name: Archive (xcodebuild) - Runner signs, Pods do not
         shell: bash
         run: |
           set -euo pipefail
-      
+
           KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
           KEYCHAIN_PWD="ci_keychain_pwd_123"
-      
           security default-keychain -s "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN_PATH" || true
-      
+
           mkdir -p build/ios/archive
           cd ios
-      
-          set +e
+
           xcodebuild \
             -workspace Runner.xcworkspace \
             -scheme Runner \
@@ -459,18 +504,8 @@ jobs:
             -destination 'generic/platform=iOS' \
             -archivePath ../build/ios/archive/Runner.xcarchive \
             OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}" \
-            archive \
-            | tee ../build/ios/archive/xcodebuild.log
-          STATUS=${PIPESTATUS[0]}
-          set -e
-      
-          if [ "$STATUS" -ne 0 ]; then
-            echo "❌ xcodebuild failed. Showing last 200 lines:"
-            tail -n 200 ../build/ios/archive/xcodebuild.log
-            echo "❌ Also showing errors only:"
-            grep -n "error:" -n ../build/ios/archive/xcodebuild.log | tail -n 50 || true
-            exit "$STATUS"
-          fi
+            archive
+
 
 
 
