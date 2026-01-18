@@ -570,3 +570,39 @@ jobs:
           name: ios-ipa
           path: build/ios/ipa/**/*.ipa
           if-no-files-found: error
+
+      # --------------------------------------------------
+      # UPLOAD TO TESTFLIGHT (fastlane pilot)
+      # --------------------------------------------------
+      - name: Upload to TestFlight (pilot)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
+          if [ ! -f "$API_KEY_JSON" ]; then
+            echo "❌ Missing api_key.json at $API_KEY_JSON"
+            exit 1
+          fi
+
+          # Find the IPA produced by your export step
+          IPA_PATH="$(find "$GITHUB_WORKSPACE/build/ios/ipa" -type f -name "*.ipa" | head -n 1)"
+          if [ -z "${IPA_PATH:-}" ] || [ ! -f "$IPA_PATH" ]; then
+            echo "❌ No IPA found under build/ios/ipa"
+            echo "📦 Listing build/ios/ipa:"
+            ls -la "$GITHUB_WORKSPACE/build/ios/ipa" || true
+            find "$GITHUB_WORKSPACE/build/ios/ipa" -maxdepth 3 -type f || true
+            exit 1
+          fi
+
+          echo "✅ IPA found: $IPA_PATH"
+          echo "✅ Uploading to TestFlight..."
+
+          # pilot uses the api_key.json you generated earlier
+          fastlane pilot upload \
+            --ipa "$IPA_PATH" \
+            --api_key_path "$API_KEY_JSON" \
+            --skip_waiting_for_build_processing true
+
+          echo "✅ Uploaded to TestFlight. Processing continues in App Store Connect."
+
