@@ -218,7 +218,14 @@ jobs:
           gem install fastlane -N
           pod --version
           fastlane --version
-
+          
+      - name: Clean Pods (force regen)
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf ios/Pods
+          rm -f ios/Podfile.lock
+    
       - name: Install iOS Pods
         shell: bash
         run: |
@@ -416,10 +423,20 @@ jobs:
       
           echo "✅ Pods patched (no signing)"
 
+      - name: Verify Pods have no provisioning profile
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd ios
+          xcodebuild -showBuildSettings \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release | grep -E "PROVISIONING_PROFILE|CODE_SIGN_STYLE|CODE_SIGNING_ALLOWED|DEVELOPMENT_TEAM" || true
+
       # --------------------------------------------------
       # ARCHIVE (do NOT pass profile/team on CLI)
       # --------------------------------------------------
-      - name: Archive (xcodebuild) - Runner signs (Distribution), Pods do not
+      - name: Archive (xcodebuild)
         shell: bash
         run: |
           set -euo pipefail
@@ -429,8 +446,8 @@ jobs:
           security default-keychain -s "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN_PATH" || true
       
+          mkdir -p build/ios/archive
           cd ios
-          test -f ci_signing.xcconfig || { echo "❌ ci_signing.xcconfig missing"; exit 1; }
       
           xcodebuild \
             -workspace Runner.xcworkspace \
@@ -439,9 +456,9 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -archivePath ../build/ios/archive/Runner.xcarchive \
-            -xcconfig ci_signing.xcconfig \
             OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}" \
             archive
+
 
 
 
