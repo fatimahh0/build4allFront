@@ -630,7 +630,7 @@ jobs:
           fastlane deliver create_app \
             --api_key_path "$API_KEY_JSON" \
             --app_identifier "$BUNDLE_ID" \
-            --app_name "$APPLE_APP_NAME" \
+            --app_name "$BUNDLE_ID" \
             --sku "$APPLE_SKU" \
             --primary_language "$APPLE_PRIMARY_LOCALE" \
             --force || true
