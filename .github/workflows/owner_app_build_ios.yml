@@ -327,56 +327,32 @@ jobs:
       # - Runner (Release): manual signing + team + profile + identity
       # IMPORTANT: Do NOT pass provisioning/profile on xcodebuild CLI
       # --------------------------------------------------
-      - name: Patch signing (Pods no profile, Runner Release manual)
+      - name: Create Runner signing xcconfig (Distribution)
         shell: bash
         run: |
           set -euo pipefail
-
+          TEAM_ID="${IOS_TEAM_ID}"
           BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
           PROFILE_NAME="$(cat ci_profile_name.txt | tr -d '\r\n')"
-          TEAM_ID="${IOS_TEAM_ID}"
 
-          PODS_PBX="ios/Pods/Pods.xcodeproj/project.pbxproj"
-          RUNNER_PBX="ios/Runner.xcodeproj/project.pbxproj"
+          cat > ios/ci_signing.xcconfig <<EOF
+          DEVELOPMENT_TEAM = ${TEAM_ID}
+          PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID}
 
-          test -f "$PODS_PBX"
-          test -f "$RUNNER_PBX"
+          CODE_SIGN_STYLE = Manual
+          CODE_SIGN_IDENTITY = Apple Distribution
+          "CODE_SIGN_IDENTITY[sdk=iphoneos*]" = Apple Distribution
 
-          # ----- PODS: remove provisioning profiles and disable signing -----
-          perl -pi -e 's/PROVISIONING_PROFILE_SPECIFIER = [^;]*;/PROVISIONING_PROFILE_SPECIFIER = "";/g' "$PODS_PBX"
-          perl -pi -e 's/"PROVISIONING_PROFILE_SPECIFIER\[sdk=iphoneos\*\]" = [^;]*;/"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "";/g' "$PODS_PBX"
-          perl -pi -e 's/PROVISIONING_PROFILE = [^;]*;/PROVISIONING_PROFILE = "";/g' "$PODS_PBX"
+          PROVISIONING_PROFILE_SPECIFIER = ${PROFILE_NAME}
+          "PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = ${PROFILE_NAME}
 
-          perl -pi -e 's/CODE_SIGN_STYLE = Manual;/CODE_SIGN_STYLE = Automatic;/g' "$PODS_PBX"
-          perl -pi -e 's/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = "";/g' "$PODS_PBX"
-          perl -pi -e 's/CODE_SIGN_IDENTITY = "[^"]*";/CODE_SIGN_IDENTITY = "";/g' "$PODS_PBX"
-          perl -pi -e 's/"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]" = "[^"]*";/"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";/g' "$PODS_PBX"
-          perl -pi -e 's/CODE_SIGNING_ALLOWED = YES;/CODE_SIGNING_ALLOWED = NO;/g' "$PODS_PBX"
-          perl -pi -e 's/CODE_SIGNING_REQUIRED = YES;/CODE_SIGNING_REQUIRED = NO;/g' "$PODS_PBX"
-          echo "✅ Pods signing cleared"
+          CODE_SIGNING_ALLOWED = YES
+          CODE_SIGNING_REQUIRED = YES
+          EOF
 
-          # ----- RUNNER: set Release signing to Manual + Team + Profile -----
-          # Update bundle id everywhere Runner uses it
-          perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};/g" "$RUNNER_PBX"
+          echo "✅ ci_signing.xcconfig created"
 
-          # Safely ensure Release block has the required keys (insert if missing)
-          # 1) CODE_SIGN_STYLE
-          perl -0777 -pi -e 's#(/\* Release \*/ = \{[\s\S]*?buildSettings = \{)#$1\n\t\t\t\tCODE_SIGN_STYLE = Manual;# if $1 !~ /CODE_SIGN_STYLE =/;' "$RUNNER_PBX"
-          perl -0777 -pi -e 's#(/\* Release \*/ = \{[\s\S]*?)CODE_SIGN_STYLE = [^;]*;#$1CODE_SIGN_STYLE = Manual;#g' "$RUNNER_PBX"
 
-          # 2) DEVELOPMENT_TEAM
-          perl -0777 -pi -e 's#(/\* Release \*/ = \{[\s\S]*?buildSettings = \{)#$1\n\t\t\t\tDEVELOPMENT_TEAM = '"${TEAM_ID}"';# if $1 !~ /DEVELOPMENT_TEAM =/;' "$RUNNER_PBX"
-          perl -0777 -pi -e 's#(/\* Release \*/ = \{[\s\S]*?)DEVELOPMENT_TEAM = [^;]*;#$1DEVELOPMENT_TEAM = '"${TEAM_ID}"';#g' "$RUNNER_PBX"
-
-          # 3) PROVISIONING_PROFILE_SPECIFIER
-          perl -0777 -pi -e 's#(/\* Release \*/ = \{[\s\S]*?buildSettings = \{)#$1\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = '"${PROFILE_NAME}"';# if $1 !~ /PROVISIONING_PROFILE_SPECIFIER =/;' "$RUNNER_PBX"
-          perl -0777 -pi -e 's#(/\* Release \*/ = \{[\s\S]*?)PROVISIONING_PROFILE_SPECIFIER = [^;]*;#$1PROVISIONING_PROFILE_SPECIFIER = '"${PROFILE_NAME}"';#g' "$RUNNER_PBX"
-
-          # 4) CODE_SIGN_IDENTITY
-          perl -0777 -pi -e 's#(/\* Release \*/ = \{[\s\S]*?buildSettings = \{)#$1\n\t\t\t\tCODE_SIGN_IDENTITY = "Apple Distribution";# if $1 !~ /CODE_SIGN_IDENTITY =/;' "$RUNNER_PBX"
-          perl -0777 -pi -e 's#(/\* Release \*/ = \{[\s\S]*?)CODE_SIGN_IDENTITY = "[^"]*";#$1CODE_SIGN_IDENTITY = "Apple Distribution";#g' "$RUNNER_PBX"
-
-          echo "✅ Runner Release signing set"
 
       # --------------------------------------------------
       # ExportOptions.plist (NO provisioningProfiles dict)
@@ -405,10 +381,20 @@ jobs:
           </plist>
           EOF
 
+      - name: Debug signing settings (Runner Release)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd ios
+          xcodebuild -showBuildSettings \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release | egrep "CODE_SIGN|DEVELOPMENT_TEAM|PROVISIONING_PROFILE|PRODUCT_BUNDLE_IDENTIFIER" || true
+
       # --------------------------------------------------
       # ARCHIVE (do NOT pass profile/team on CLI)
       # --------------------------------------------------
-      - name: Archive (xcodebuild) - Runner signs, Pods do not
+      - name: Archive (xcodebuild) - Runner signs (Distribution), Pods do not
         shell: bash
         run: |
           set -euo pipefail
@@ -428,8 +414,10 @@ jobs:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -archivePath ../build/ios/archive/Runner.xcarchive \
+            -xcconfig ci_signing.xcconfig \
             OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}" \
             archive
+
 
       # --------------------------------------------------
       # EXPORT IPA
