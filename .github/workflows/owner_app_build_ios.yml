@@ -616,9 +616,9 @@ jobs:
           # Example: APPLE_APP_NAME="Build4Front"
           #          APPLE_SKU="opl166"
           #          APPLE_PRIMARY_LOCALE="en-US"
-          : "${APPLE_APP_NAME:?❌ Missing APPLE_APP_NAME (e.g. Build4Front)}"
-          : "${APPLE_SKU:?❌ Missing APPLE_SKU (unique per app, e.g. opl166)}"
-          : "${APPLE_PRIMARY_LOCALE:=en-US}"
+          : "${BUNDLE_ID:?❌ Missing APPLE_APP_NAME (e.g. Build4Front)}"
+          #: "${APPLE_SKU:?❌ Missing APPLE_SKU (unique per app, e.g. opl166)}"
+          #: "${APPLE_PRIMARY_LOCALE:=en-US}"
           APPLE_APP_NAME="$BUNDLE_ID"
           echo "Ensuring ASC app exists for: $BUNDLE_ID"
           fastlane deliver init \
@@ -631,7 +631,7 @@ jobs:
             --api_key_path "$API_KEY_JSON" \
             --app_identifier "$BUNDLE_ID" \
             --app_name "$BUNDLE_ID" \
-            --sku "$APPLE_SKU" \
+            #--sku "$APPLE_SKU" \
             --primary_language "$APPLE_PRIMARY_LOCALE" \
             --force || true
 
