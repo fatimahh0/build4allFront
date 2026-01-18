@@ -37,23 +37,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode 16 (required)
+      - name: Select Xcode (prefer 15.3)
         shell: bash
         run: |
           set -euo pipefail
-          echo "Installed Xcodes:"
-          ls -1 /Applications | grep Xcode || true
-      
-          # Pick any Xcode 16.* available on the runner
-          XCODE_APP="$(ls -1d /Applications/Xcode_16*.app 2>/dev/null | sort -V | tail -n 1 || true)"
-          if [ -z "$XCODE_APP" ]; then
-            echo "❌ Xcode 16 not found on this runner. Cannot build for TestFlight."
-            exit 1
+          ls -la /Applications | grep Xcode || true
+
+          if [ -d "/Applications/Xcode_15.3.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_15.3.app/Contents/Developer
+          else
+            sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
           fi
-      
-          sudo xcode-select -s "$XCODE_APP/Contents/Developer"
+
           xcodebuild -version
-          echo "iOS SDK: $(xcrun --sdk iphoneos --show-sdk-version)"
 
 
 
@@ -647,7 +643,6 @@ jobs:
             --force \
             || true
 
-            
       - name: Verify iOS SDK version (must be 18+)
         shell: bash
         run: |
@@ -659,6 +654,7 @@ jobs:
             echo "❌ iOS SDK must be 17+. Current: $SDK"
             exit 1
           fi
+
       # --------------------------------------------------
       # UPLOAD TO TESTFLIGHT (fastlane pilot)
       # --------------------------------------------------
