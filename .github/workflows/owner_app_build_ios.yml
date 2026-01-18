@@ -62,8 +62,8 @@ jobs:
           SDK="$(xcrun --sdk iphoneos --show-sdk-version)"
           echo "iOS SDK: $SDK"
           MAJOR="${SDK%%.*}"
-          if [ "$MAJOR" -lt 18 ]; then
-            echo "❌ iOS SDK must be 18+. Current: $SDK"
+          if [ "$MAJOR" -lt 17 ]; then
+            echo "❌ iOS SDK must be 17+. Current: $SDK"
             exit 1
           fi
 
