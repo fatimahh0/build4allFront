@@ -571,6 +571,37 @@ jobs:
           path: build/ios/ipa/**/*.ipa
           if-no-files-found: error
 
+      - name: Ensure App exists on App Store Connect (deliver)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
+          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
+
+          # You MUST provide these in the dispatch payload OR secrets/env
+          # Example: APPLE_APP_NAME="Build4Front"
+          #          APPLE_SKU="opl166"
+          #          APPLE_PRIMARY_LOCALE="en-US"
+          : "${APPLE_APP_NAME:?❌ Missing APPLE_APP_NAME (e.g. Build4Front)}"
+          : "${APPLE_SKU:?❌ Missing APPLE_SKU (unique per app, e.g. opl166)}"
+          : "${APPLE_PRIMARY_LOCALE:=en-US}"
+
+          echo "Ensuring ASC app exists for: $BUNDLE_ID"
+          fastlane deliver init \
+            --api_key_path "$API_KEY_JSON" \
+            --app_identifier "$BUNDLE_ID" \
+            --force || true
+
+          # Create the app on App Store Connect (if it doesn't exist)
+          fastlane deliver create_app \
+            --api_key_path "$API_KEY_JSON" \
+            --app_identifier "$BUNDLE_ID" \
+            --app_name "$APPLE_APP_NAME" \
+            --sku "$APPLE_SKU" \
+            --primary_language "$APPLE_PRIMARY_LOCALE" \
+            --force || true
+
       # --------------------------------------------------
       # UPLOAD TO TESTFLIGHT (fastlane pilot)
       # --------------------------------------------------
@@ -580,29 +611,18 @@ jobs:
           set -euo pipefail
 
           API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
-          if [ ! -f "$API_KEY_JSON" ]; then
-            echo "❌ Missing api_key.json at $API_KEY_JSON"
-            exit 1
-          fi
+          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
 
-          # Find the IPA produced by your export step
           IPA_PATH="$(find "$GITHUB_WORKSPACE/build/ios/ipa" -type f -name "*.ipa" | head -n 1)"
-          if [ -z "${IPA_PATH:-}" ] || [ ! -f "$IPA_PATH" ]; then
-            echo "❌ No IPA found under build/ios/ipa"
-            echo "📦 Listing build/ios/ipa:"
-            ls -la "$GITHUB_WORKSPACE/build/ios/ipa" || true
-            find "$GITHUB_WORKSPACE/build/ios/ipa" -maxdepth 3 -type f || true
-            exit 1
-          fi
+          [ -f "$IPA_PATH" ] || { echo "❌ No IPA found"; exit 1; }
 
-          echo "✅ IPA found: $IPA_PATH"
-          echo "✅ Uploading to TestFlight..."
+          echo "✅ IPA: $IPA_PATH"
+          echo "✅ App: $BUNDLE_ID"
 
-          # pilot uses the api_key.json you generated earlier
           fastlane pilot upload \
             --ipa "$IPA_PATH" \
             --api_key_path "$API_KEY_JSON" \
+            --app_identifier "$BUNDLE_ID" \
             --skip_waiting_for_build_processing true
 
-          echo "✅ Uploaded to TestFlight. Processing continues in App Store Connect."
 
