@@ -619,7 +619,7 @@ jobs:
           : "${APPLE_APP_NAME:?❌ Missing APPLE_APP_NAME (e.g. Build4Front)}"
           : "${APPLE_SKU:?❌ Missing APPLE_SKU (unique per app, e.g. opl166)}"
           : "${APPLE_PRIMARY_LOCALE:=en-US}"
-
+          APPLE_APP_NAME=$BUNDLE_ID
           echo "Ensuring ASC app exists for: $BUNDLE_ID"
           fastlane deliver init \
             --api_key_path "$API_KEY_JSON" \
