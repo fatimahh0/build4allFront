@@ -440,6 +440,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+      
           KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
           KEYCHAIN_PWD="ci_keychain_pwd_123"
       
@@ -449,6 +450,7 @@ jobs:
           mkdir -p build/ios/archive
           cd ios
       
+          set +e
           xcodebuild \
             -workspace Runner.xcworkspace \
             -scheme Runner \
@@ -457,7 +459,19 @@ jobs:
             -destination 'generic/platform=iOS' \
             -archivePath ../build/ios/archive/Runner.xcarchive \
             OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}" \
-            archive
+            archive \
+            | tee ../build/ios/archive/xcodebuild.log
+          STATUS=${PIPESTATUS[0]}
+          set -e
+      
+          if [ "$STATUS" -ne 0 ]; then
+            echo "❌ xcodebuild failed. Showing last 200 lines:"
+            tail -n 200 ../build/ios/archive/xcodebuild.log
+            echo "❌ Also showing errors only:"
+            grep -n "error:" -n ../build/ios/archive/xcodebuild.log | tail -n 50 || true
+            exit "$STATUS"
+          fi
+
 
 
 
