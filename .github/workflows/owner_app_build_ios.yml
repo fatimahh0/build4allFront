@@ -604,36 +604,44 @@ jobs:
           path: build/ios/ipa/**/*.ipa
           if-no-files-found: error
 
-      - name: Ensure App exists on App Store Connect (deliver)
+      - name: Ensure App exists on App Store Connect (produce)
         shell: bash
         run: |
           set -euo pipefail
-
+      
           API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
           BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
-
-          # You MUST provide these in the dispatch payload OR secrets/env
-          # Example: APPLE_APP_NAME="Build4Front"
-          #          APPLE_SKU="opl166"
-          #          APPLE_PRIMARY_LOCALE="en-US"
-          : "${BUNDLE_ID:?❌ Missing APPLE_APP_NAME (e.g. Build4Front)}"
-          #: "${APPLE_SKU:?❌ Missing APPLE_SKU (unique per app, e.g. opl166)}"
-          #: "${APPLE_PRIMARY_LOCALE:=en-US}"
-          APPLE_APP_NAME="$BUNDLE_ID"
-          echo "Ensuring ASC app exists for: $BUNDLE_ID"
-          fastlane deliver init \
+      
+          # Prefer values from the step that writes to GITHUB_ENV:
+          APP_NAME="${APPLE_APP_NAME:-}"
+          SKU="${APPLE_SKU:-}"
+          LOCALE="${APPLE_PRIMARY_LOCALE:-en-US}"
+      
+          # If not provided, fallback safely (but SKU MUST be unique)
+          if [ -z "$APP_NAME" ]; then
+            APP_NAME="$BUNDLE_ID"
+          fi
+          if [ -z "$SKU" ]; then
+            # fallback SKU (change if you want): replace dots with underscores
+            SKU="${BUNDLE_ID//./_}"
+          fi
+      
+          echo "BUNDLE_ID=$BUNDLE_ID"
+          echo "APP_NAME=$APP_NAME"
+          echo "SKU=$SKU"
+          echo "LOCALE=$LOCALE"
+      
+          # Create app in App Store Connect (if already exists, it will fail -> ignore)
+          fastlane produce \
             --api_key_path "$API_KEY_JSON" \
             --app_identifier "$BUNDLE_ID" \
-            --force || true
+            --app_name "$APP_NAME" \
+            --sku "$SKU" \
+            --language "$LOCALE" \
+            --skip_devcenter \
+            --force \
+            || true
 
-          # Create the app on App Store Connect (if it doesn't exist)
-          fastlane deliver create_app \
-            --api_key_path "$API_KEY_JSON" \
-            --app_identifier "$BUNDLE_ID" \
-            --app_name "$BUNDLE_ID" \
-            #--sku "$APPLE_SKU" \
-            --primary_language "$APPLE_PRIMARY_LOCALE" \
-            --force || true
 
       # --------------------------------------------------
       # UPLOAD TO TESTFLIGHT (fastlane pilot)
