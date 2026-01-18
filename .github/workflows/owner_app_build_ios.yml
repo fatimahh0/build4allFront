@@ -55,18 +55,6 @@ jobs:
           xcodebuild -version
           echo "iOS SDK: $(xcrun --sdk iphoneos --show-sdk-version)"
 
-      - name: Verify iOS SDK version (must be 18+)
-        shell: bash
-        run: |
-          set -euo pipefail
-          SDK="$(xcrun --sdk iphoneos --show-sdk-version)"
-          echo "iOS SDK: $SDK"
-          MAJOR="${SDK%%.*}"
-          if [ "$MAJOR" -lt 17 ]; then
-            echo "❌ iOS SDK must be 17+. Current: $SDK"
-            exit 1
-          fi
-
 
 
       - name: Setup Flutter
@@ -659,6 +647,18 @@ jobs:
             --force \
             || true
 
+            
+      - name: Verify iOS SDK version (must be 18+)
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK="$(xcrun --sdk iphoneos --show-sdk-version)"
+          echo "iOS SDK: $SDK"
+          MAJOR="${SDK%%.*}"
+          if [ "$MAJOR" -lt 17 ]; then
+            echo "❌ iOS SDK must be 17+. Current: $SDK"
+            exit 1
+          fi
       # --------------------------------------------------
       # UPLOAD TO TESTFLIGHT (fastlane pilot)
       # --------------------------------------------------
