@@ -330,33 +330,40 @@ jobs:
             provisioning_name:"B4A_${BUNDLE_ID}_APPSTORE" \
             readonly:false
 
-      - name: Detect installed provisioning profile (name)
+      - name: Get & install iOS provisioning profile (stable)
         shell: bash
         run: |
           set -euo pipefail
+      
           BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
-          APP_ID="${IOS_TEAM_ID}.${BUNDLE_ID}"
-
           PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "$PROFILES_DIR"
-
-          FOUND_NAME=""
-          for f in "$PROFILES_DIR"/*.mobileprovision; do
-            [ -f "$f" ] || continue
-            TMP_PLIST="$(mktemp /tmp/profile.XXXXXX.plist)"
-            /usr/bin/security cms -D -i "$f" > "$TMP_PLIST"
-
-            P_APPID=$("/usr/libexec/PlistBuddy" -c "Print :Entitlements:application-identifier" "$TMP_PLIST" 2>/dev/null || true)
-            if [ "$P_APPID" = "$APP_ID" ]; then
-              FOUND_NAME=$("/usr/libexec/PlistBuddy" -c "Print :Name" "$TMP_PLIST" 2>/dev/null || true)
-              echo "$FOUND_NAME" > ci_profile_name.txt
-              echo "✅ Profile matched: $FOUND_NAME ($P_APPID)"
-              rm -f "$TMP_PLIST"
-              break
-            fi
-            rm -f "$TMP_PLIST"
-          done
-          [ -n "$FOUND_NAME" ] || { echo "❌ No profile matched $APP_ID"; exit 1; }
+      
+          echo "📥 Downloading provisioning profile for $BUNDLE_ID"
+      
+          fastlane run get_provisioning_profile \
+            app_identifier:"$BUNDLE_ID" \
+            team_id:"${IOS_TEAM_ID}" \
+            api_key_path:"$GITHUB_WORKSPACE/.private/api_key.json" \
+            provisioning_name:"B4A_${BUNDLE_ID}_APPSTORE" \
+            readonly:false \
+            output_path:"$GITHUB_WORKSPACE/ci_profile.mobileprovision"
+      
+          test -f "$GITHUB_WORKSPACE/ci_profile.mobileprovision" || { echo "❌ Profile not created"; exit 1; }
+      
+          UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" /dev/stdin <<< "$(/usr/bin/security cms -D -i "$GITHUB_WORKSPACE/ci_profile.mobileprovision")")
+          NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" /dev/stdin <<< "$(/usr/bin/security cms -D -i "$GITHUB_WORKSPACE/ci_profile.mobileprovision")")
+      
+          echo "$NAME" > ci_profile_name.txt
+          echo "$UUID" > ci_profile_uuid.txt
+      
+          cp "$GITHUB_WORKSPACE/ci_profile.mobileprovision" "$PROFILES_DIR/$UUID.mobileprovision"
+      
+          echo "✅ Installed provisioning profile:"
+          echo "   Name: $NAME"
+          echo "   UUID: $UUID"
+          echo "   Path: $PROFILES_DIR/$UUID.mobileprovision"
+      
 
       - name: Create ExportOptions.plist (manual + provisioningProfiles)
         shell: bash
