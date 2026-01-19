@@ -447,6 +447,29 @@ jobs:
 
           BUNDLE_ID="$BUNDLE_ID" PROFILE_NAME="$PROFILE_NAME" TEAM_ID="$TEAM_ID" ruby patch_runner_signing.rb
 
+      - name: Read iOS build number from dispatch payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
+          cfg = payload.get("CONFIG") or {}
+
+          bn = (payload.get("iosBuildNumber")
+                or cfg.get("iosBuildNumber")
+                or cfg.get("IOS_BUILD_NUMBER")
+                or payload.get("IOS_BUILD_NUMBER"))
+
+          if bn is None:
+            raise SystemExit("Missing iosBuildNumber / IOS_BUILD_NUMBER in payload")
+
+          bn = str(bn).strip()
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as f:
+            f.write(f"IOS_BUILD_NUMBER={bn}\n")
+          print("IOS_BUILD_NUMBER =", bn)
+          PY
+
       # --------------------------------------------------
       # Build iOS (flutter, no codesign)
       # --------------------------------------------------
@@ -455,7 +478,22 @@ jobs:
         run: |
           set -euo pipefail
           flutter build ios --release --no-codesign \
+            --build-number="${IOS_BUILD_NUMBER}" \
             --dart-define-from-file=lib/env/ci_env.json
+
+
+      - name: Print IPA version/build (sanity)
+        shell: bash
+        run: |
+          set -euo pipefail
+          IPA_PATH="$(find "$GITHUB_WORKSPACE/build/ios/ipa" -type f -name "*.ipa" | head -n 1)"
+          TMP_DIR="$(mktemp -d)"
+          unzip -q "$IPA_PATH" -d "$TMP_DIR"
+          APP_PATH="$(find "$TMP_DIR/Payload" -maxdepth 1 -type d -name "*.app" | head -n 1)"
+          echo "CFBundleShortVersionString:"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_PATH/Info.plist" || true
+          echo "CFBundleVersion:"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP_PATH/Info.plist" || true
 
       # --------------------------------------------------
       # PATCH SIGNING
@@ -748,22 +786,22 @@ jobs:
       # --------------------------------------------------
       # UPLOAD TO TESTFLIGHT (fastlane pilot)
       # --------------------------------------------------
-      #- name: Upload to TestFlight (pilot)
-      #  shell: bash
-      #  run: |
-      #    set -euo pipefail
-      #
-      #    API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
-      #    BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
-      #
-      #    IPA_PATH="$(find "$GITHUB_WORKSPACE/build/ios/ipa" -type f -name "*.ipa" | head -n 1)"
-      #    [ -f "$IPA_PATH" ] || { echo "❌ No IPA found"; exit 1; }
-      #
-      #    echo "✅ IPA: $IPA_PATH"
-      #    echo "✅ App: $BUNDLE_ID"
-      #
-      #    fastlane pilot upload \
-      #      --ipa "$IPA_PATH" \
-      #      --api_key_path "$API_KEY_JSON" \
-      #      --app_identifier "$BUNDLE_ID" \
-      #      --skip_waiting_for_build_processing true
+      - name: Upload to TestFlight (pilot)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
+          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
+
+          IPA_PATH="$(find "$GITHUB_WORKSPACE/build/ios/ipa" -type f -name "*.ipa" | head -n 1)"
+          [ -f "$IPA_PATH" ] || { echo "❌ No IPA found"; exit 1; }
+
+          echo "✅ IPA: $IPA_PATH"
+          echo "✅ App: $BUNDLE_ID"
+
+          fastlane pilot upload \
+            --ipa "$IPA_PATH" \
+            --api_key_path "$API_KEY_JSON" \
+            --app_identifier "$BUNDLE_ID" \
+            --skip_waiting_for_build_processing true
