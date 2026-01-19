@@ -4,8 +4,9 @@ on:
   repository_dispatch:
     types: [owner_app_build_ios]
 
+# ✅ FIX: need write to create GitHub Release + upload IPA asset (stable URL)
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-ios:
@@ -50,8 +51,6 @@ jobs:
           fi
 
           xcodebuild -version
-
-
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -186,7 +185,6 @@ jobs:
           sku      = pick("APPLE_SKU","appleSku","appStoreSku","ASC_SKU")
           locale   = pick("APPLE_PRIMARY_LOCALE","applePrimaryLocale","primaryLocale","ASC_PRIMARY_LOCALE") or "en-US"
 
-          # Write to GITHUB_ENV so next steps see them
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as f:
             f.write(f"APPLE_APP_NAME={app_name}\n")
             f.write(f"APPLE_SKU={sku}\n")
@@ -196,7 +194,6 @@ jobs:
           print("APPLE_SKU=", sku)
           print("APPLE_PRIMARY_LOCALE=", locale)
           PY
-
 
       # --------------------------------------------------
       # Ensure iOS folder exists
@@ -260,14 +257,14 @@ jobs:
           gem install fastlane -N
           pod --version
           fastlane --version
-          
+
       - name: Clean Pods (force regen)
         shell: bash
         run: |
           set -euo pipefail
           rm -rf ios/Pods
           rm -f ios/Podfile.lock
-    
+
       - name: Install iOS Pods
         shell: bash
         run: |
@@ -437,11 +434,9 @@ jobs:
             s["CODE_SIGN_STYLE"] = "Manual"
             s["DEVELOPMENT_TEAM"] = team_id
 
-            # App Store signing
             s["CODE_SIGN_IDENTITY"] = "Apple Distribution"
             s["PROVISIONING_PROFILE_SPECIFIER"] = profile
 
-            # Ensure signing is ON for the app itself
             s["CODE_SIGNING_ALLOWED"] = "YES"
             s["CODE_SIGNING_REQUIRED"] = "YES"
           end
@@ -463,10 +458,7 @@ jobs:
             --dart-define-from-file=lib/env/ci_env.json
 
       # --------------------------------------------------
-      # PATCH SIGNING:
-      # - Pods: remove profiles + disable signing
-      # - Runner (Release): manual signing + team + profile + identity
-      # IMPORTANT: Do NOT pass provisioning/profile on xcodebuild CLI
+      # PATCH SIGNING
       # --------------------------------------------------
       - name: Create Runner signing xcconfig (Distribution)
         shell: bash
@@ -475,23 +467,22 @@ jobs:
           TEAM_ID="${IOS_TEAM_ID}"
           BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
           PROFILE_NAME="$(cat ci_profile_name.txt | tr -d '\r\n')"
-      
+
           cat > ios/ci_signing.xcconfig <<EOF
           DEVELOPMENT_TEAM = ${TEAM_ID}
           PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID}
-          
+
           CODE_SIGN_STYLE = Manual
           CODE_SIGN_IDENTITY = Apple Distribution
           CODE_SIGN_IDENTITY[sdk=iphoneos*] = Apple Distribution
-          
+
           PROVISIONING_PROFILE_SPECIFIER = ${PROFILE_NAME}
           PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*] = ${PROFILE_NAME}
-          
+
           CODE_SIGNING_ALLOWED = YES
           CODE_SIGNING_REQUIRED = YES
           EOF
 
-      
           echo "==== ci_signing.xcconfig ===="
           cat ios/ci_signing.xcconfig
 
@@ -501,7 +492,7 @@ jobs:
           set -euo pipefail
           cd ios
           test -f ci_signing.xcconfig || { echo "❌ ci_signing.xcconfig missing"; ls -la; exit 1; }
-      
+
           xcodebuild -showBuildSettings \
             -workspace Runner.xcworkspace \
             -scheme Runner \
@@ -515,8 +506,7 @@ jobs:
           set -euo pipefail
           PODS_PBX="ios/Pods/Pods.xcodeproj/project.pbxproj"
           test -f "$PODS_PBX"
-      
-          # Remove any provisioning/profile/team/identity entries in Pods
+
           perl -pi -e 's/(PROVISIONING_PROFILE_SPECIFIER(\[sdk=iphoneos\*\])?) = [^;]*;/\1 = "";/g' "$PODS_PBX"
           perl -pi -e 's/PROVISIONING_PROFILE = [^;]*;/PROVISIONING_PROFILE = "";/g' "$PODS_PBX"
           perl -pi -e 's/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = "";/g' "$PODS_PBX"
@@ -524,7 +514,7 @@ jobs:
           perl -pi -e 's/CODE_SIGN_STYLE = Manual;/CODE_SIGN_STYLE = Automatic;/g' "$PODS_PBX"
           perl -pi -e 's/CODE_SIGNING_ALLOWED = YES;/CODE_SIGNING_ALLOWED = NO;/g' "$PODS_PBX"
           perl -pi -e 's/CODE_SIGNING_REQUIRED = YES;/CODE_SIGNING_REQUIRED = NO;/g' "$PODS_PBX"
-      
+
           echo "✅ Pods patched (no signing)"
 
       - name: Verify Pods have no provisioning profile
@@ -538,7 +528,7 @@ jobs:
             -configuration Release | grep -E "PROVISIONING_PROFILE|CODE_SIGN_STYLE|CODE_SIGNING_ALLOWED|DEVELOPMENT_TEAM" || true
 
       # --------------------------------------------------
-      # ARCHIVE (do NOT pass profile/team on CLI)
+      # ARCHIVE
       # --------------------------------------------------
       - name: Archive (xcodebuild) - Runner signs, Pods do not
         shell: bash
@@ -563,11 +553,6 @@ jobs:
             OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}" \
             archive
 
-
-
-
-
-
       # --------------------------------------------------
       # EXPORT IPA
       # --------------------------------------------------
@@ -590,6 +575,35 @@ jobs:
             -exportPath ../build/ios/ipa \
             OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}"
 
+      # ✅ FIX ADDITION 1: extract bundle id from the REAL ipa (source of truth)
+      - name: Extract bundle id from IPA (real)
+        shell: bash
+        run: |
+          set -euo pipefail
+          IPA_PATH="$(find "$GITHUB_WORKSPACE/build/ios/ipa" -type f -name "*.ipa" | head -n 1)"
+          [ -f "$IPA_PATH" ] || { echo "❌ IPA not found"; exit 1; }
+
+          TMP_DIR="$(mktemp -d)"
+          unzip -q "$IPA_PATH" -d "$TMP_DIR"
+
+          APP_PATH="$(find "$TMP_DIR/Payload" -maxdepth 1 -type d -name "*.app" | head -n 1)"
+          [ -d "$APP_PATH" ] || { echo "❌ .app not found inside IPA"; exit 1; }
+
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP_PATH/Info.plist")
+          echo "$BUNDLE_ID" | tr -d '\r\n' > ci_ipa_bundle_id.txt
+          echo "✅ IPA Bundle ID = $BUNDLE_ID"
+
+      # ✅ FIX ADDITION 2: verify runtime bundle == ipa bundle (safety)
+      - name: Verify runtime bundle id matches IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
+          ACTUAL="$(tr -d '\r\n' < ci_ipa_bundle_id.txt)"
+          echo "EXPECTED=$EXPECTED"
+          echo "ACTUAL=$ACTUAL"
+          [ "$EXPECTED" = "$ACTUAL" ] || { echo "❌ Bundle mismatch"; exit 1; }
+          echo "✅ Bundle id matches"
 
       - name: List outputs
         shell: bash
@@ -605,34 +619,110 @@ jobs:
           path: build/ios/ipa/**/*.ipa
           if-no-files-found: error
 
+      # ✅ FIX ADDITION 3: create GitHub Release asset (stable URL like Android)
+      - name: Create GitHub Release (IPA)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          LINK_ID="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['OWNER_PROJECT_LINK_ID'])")"
+          TAG="ios-build-${LINK_ID}-${{ github.run_number }}"
+
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --title "$TAG" --notes "iOS CI build"
+
+          IPA_PATH="$(find "$GITHUB_WORKSPACE/build/ios/ipa" -type f -name "*.ipa" | head -n 1)"
+          [ -f "$IPA_PATH" ] || { echo "❌ IPA not found"; exit 1; }
+
+          gh release upload "$TAG" "$IPA_PATH" --clobber
+
+          echo "IOS_RELEASE_TAG=$TAG" >> $GITHUB_ENV
+          echo "IOS_IPA_NAME=$(basename "$IPA_PATH")" >> $GITHUB_ENV
+
+      # ✅ FIX ADDITION 4: callback backend to save ipaUrl + iosBundleId (NON-BLOCKING)
+      - name: Callback backend (SAVE IPA URL + Bundle ID) (NON-BLOCKING)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          API_BASE="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['API_BASE_URL'])")"
+          LINK_ID="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['OWNER_PROJECT_LINK_ID'])")"
+
+          OWNER="${{ github.repository_owner }}"
+          REPO="${{ github.event.repository.name }}"
+          TAG="${IOS_RELEASE_TAG}"
+          IPA_NAME="${IOS_IPA_NAME}"
+
+          IPA_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/${IPA_NAME}"
+          BUNDLE_ID="$(tr -d '\r\n' < ci_ipa_bundle_id.txt)"
+
+          echo ""
+          echo "========================================"
+          echo "✅ iOS OUTPUT LINKS"
+          echo "TAG:     $TAG"
+          echo "IPA URL: $IPA_URL"
+          echo "BUNDLE:  $BUNDLE_ID"
+          echo "LINK_ID: $LINK_ID"
+          echo "API:     $API_BASE"
+          echo "========================================"
+          echo ""
+
+          IPA_HTTP=$(curl -sS -o ipa_resp.txt -w "%{http_code}" -X PUT \
+            "${API_BASE}/api/ci/owner-project-links/${LINK_ID}/ipa-url" \
+            -H "Content-Type: application/json" \
+            -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
+            -d "{\"ipaUrl\":\"${IPA_URL}\"}" || true)
+
+          echo "IPA HTTP_STATUS=$IPA_HTTP"
+          echo "RESPONSE:"
+          cat ipa_resp.txt || true
+          echo ""
+
+          BUNDLE_HTTP=$(curl -sS -o bundle_resp.txt -w "%{http_code}" -X PUT \
+            "${API_BASE}/api/ci/owner-project-links/${LINK_ID}/ios-bundle-id" \
+            -H "Content-Type: application/json" \
+            -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
+            -d "{\"iosBundleId\":\"${BUNDLE_ID}\"}" || true)
+
+          echo "BUNDLE HTTP_STATUS=$BUNDLE_HTTP"
+          echo "RESPONSE:"
+          cat bundle_resp.txt || true
+          echo ""
+
+          if [ "$IPA_HTTP" -ge 400 ] || [ "$BUNDLE_HTTP" -ge 400 ]; then
+            echo "⚠️ Callback failed (backend did not save iOS fields)."
+            echo "✅ BUT IPA link above is still valid, so we won’t fail the job."
+            exit 0
+          fi
+
+          echo "✅ Callback succeeded. Backend saved iOS URL + bundle id."
+
       - name: Ensure App exists on App Store Connect (produce)
         shell: bash
         run: |
           set -euo pipefail
-      
+
           API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
           BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
-      
-          # Prefer values from the step that writes to GITHUB_ENV:
+
           APP_NAME="${APPLE_APP_NAME:-}"
           SKU="${APPLE_SKU:-}"
           LOCALE="${APPLE_PRIMARY_LOCALE:-en-US}"
-      
-          # If not provided, fallback safely (but SKU MUST be unique)
+
           if [ -z "$APP_NAME" ]; then
             APP_NAME="$BUNDLE_ID"
           fi
           if [ -z "$SKU" ]; then
-            # fallback SKU (change if you want): replace dots with underscores
             SKU="${BUNDLE_ID//./_}"
           fi
-      
+
           echo "BUNDLE_ID=$BUNDLE_ID"
           echo "APP_NAME=$APP_NAME"
           echo "SKU=$SKU"
           echo "LOCALE=$LOCALE"
-      
-          # Create app in App Store Connect (if already exists, it will fail -> ignore)
+
           fastlane produce \
             --api_key_path "$API_KEY_JSON" \
             --app_identifier "$BUNDLE_ID" \
@@ -662,20 +752,18 @@ jobs:
       #  shell: bash
       #  run: |
       #    set -euo pipefail
-
+      #
       #    API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
       #    BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
-
+      #
       #    IPA_PATH="$(find "$GITHUB_WORKSPACE/build/ios/ipa" -type f -name "*.ipa" | head -n 1)"
       #    [ -f "$IPA_PATH" ] || { echo "❌ No IPA found"; exit 1; }
-
+      #
       #    echo "✅ IPA: $IPA_PATH"
       #    echo "✅ App: $BUNDLE_ID"
-
+      #
       #    fastlane pilot upload \
       #      --ipa "$IPA_PATH" \
       #      --api_key_path "$API_KEY_JSON" \
       #      --app_identifier "$BUNDLE_ID" \
       #      --skip_waiting_for_build_processing true
-
-
