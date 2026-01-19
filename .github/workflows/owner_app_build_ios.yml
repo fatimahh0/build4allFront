@@ -4,7 +4,6 @@ on:
   repository_dispatch:
     types: [owner_app_build_ios]
 
-# ✅ FIX: need write to create GitHub Release + upload IPA asset (stable URL)
 permissions:
   contents: write
 
@@ -196,6 +195,32 @@ jobs:
           PY
 
       # --------------------------------------------------
+      # Read iOS build number from dispatch payload
+      # --------------------------------------------------
+      - name: Read iOS build number from dispatch payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
+          cfg = payload.get("CONFIG") or {}
+
+          bn = (payload.get("iosBuildNumber")
+                or cfg.get("iosBuildNumber")
+                or cfg.get("IOS_BUILD_NUMBER")
+                or payload.get("IOS_BUILD_NUMBER"))
+
+          if bn is None:
+            raise SystemExit("Missing iosBuildNumber / IOS_BUILD_NUMBER in payload")
+
+          bn = str(bn).strip()
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as f:
+            f.write(f"IOS_BUILD_NUMBER={bn}\n")
+          print("IOS_BUILD_NUMBER =", bn)
+          PY
+
+      # --------------------------------------------------
       # Ensure iOS folder exists
       # --------------------------------------------------
       - name: Ensure iOS Podfile exists
@@ -298,6 +323,43 @@ jobs:
             "in_house": False
           }))
           PY
+
+      # --------------------------------------------------
+      # Ensure App exists on App Store Connect (produce) - BEFORE provisioning + pilot
+      # --------------------------------------------------
+      - name: Ensure App exists on App Store Connect (produce)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
+          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
+
+          APP_NAME="${APPLE_APP_NAME:-}"
+          SKU="${APPLE_SKU:-}"
+          LOCALE="${APPLE_PRIMARY_LOCALE:-en-US}"
+
+          if [ -z "$APP_NAME" ]; then
+            APP_NAME="$BUNDLE_ID"
+          fi
+          if [ -z "$SKU" ]; then
+            SKU="${BUNDLE_ID//./_}"
+          fi
+
+          echo "BUNDLE_ID=$BUNDLE_ID"
+          echo "APP_NAME=$APP_NAME"
+          echo "SKU=$SKU"
+          echo "LOCALE=$LOCALE"
+
+          fastlane produce \
+            --api_key_path "$API_KEY_JSON" \
+            --app_identifier "$BUNDLE_ID" \
+            --app_name "$APP_NAME" \
+            --sku "$SKU" \
+            --language "$LOCALE" \
+            --skip_devcenter \
+            --force \
+            || true
 
       # --------------------------------------------------
       # Provisioning: App ID + Profile
@@ -447,29 +509,6 @@ jobs:
 
           BUNDLE_ID="$BUNDLE_ID" PROFILE_NAME="$PROFILE_NAME" TEAM_ID="$TEAM_ID" ruby patch_runner_signing.rb
 
-      - name: Read iOS build number from dispatch payload
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import json, os
-          payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
-          cfg = payload.get("CONFIG") or {}
-
-          bn = (payload.get("iosBuildNumber")
-                or cfg.get("iosBuildNumber")
-                or cfg.get("IOS_BUILD_NUMBER")
-                or payload.get("IOS_BUILD_NUMBER"))
-
-          if bn is None:
-            raise SystemExit("Missing iosBuildNumber / IOS_BUILD_NUMBER in payload")
-
-          bn = str(bn).strip()
-          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as f:
-            f.write(f"IOS_BUILD_NUMBER={bn}\n")
-          print("IOS_BUILD_NUMBER =", bn)
-          PY
-
       # --------------------------------------------------
       # Build iOS (flutter, no codesign)
       # --------------------------------------------------
@@ -480,20 +519,6 @@ jobs:
           flutter build ios --release --no-codesign \
             --build-number="${IOS_BUILD_NUMBER}" \
             --dart-define-from-file=lib/env/ci_env.json
-
-
-      - name: Print IPA version/build (sanity)
-        shell: bash
-        run: |
-          set -euo pipefail
-          IPA_PATH="$(find "$GITHUB_WORKSPACE/build/ios/ipa" -type f -name "*.ipa" | head -n 1)"
-          TMP_DIR="$(mktemp -d)"
-          unzip -q "$IPA_PATH" -d "$TMP_DIR"
-          APP_PATH="$(find "$TMP_DIR/Payload" -maxdepth 1 -type d -name "*.app" | head -n 1)"
-          echo "CFBundleShortVersionString:"
-          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_PATH/Info.plist" || true
-          echo "CFBundleVersion:"
-          /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP_PATH/Info.plist" || true
 
       # --------------------------------------------------
       # PATCH SIGNING
@@ -613,7 +638,30 @@ jobs:
             -exportPath ../build/ios/ipa \
             OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}"
 
-      # ✅ FIX ADDITION 1: extract bundle id from the REAL ipa (source of truth)
+      - name: Verify IPA exists after export
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -la build/ios/ipa || true
+          find "$GITHUB_WORKSPACE/build/ios/ipa" -type f -name "*.ipa" -print
+          IPA_PATH="$(find "$GITHUB_WORKSPACE/build/ios/ipa" -type f -name "*.ipa" | head -n 1)"
+          [ -f "$IPA_PATH" ] || { echo "❌ IPA not generated. Export step failed."; exit 1; }
+          echo "✅ IPA found: $IPA_PATH"
+
+      - name: Print IPA version/build (sanity)
+        shell: bash
+        run: |
+          set -euo pipefail
+          IPA_PATH="$(find "$GITHUB_WORKSPACE/build/ios/ipa" -type f -name "*.ipa" | head -n 1)"
+          TMP_DIR="$(mktemp -d)"
+          unzip -q "$IPA_PATH" -d "$TMP_DIR"
+          APP_PATH="$(find "$TMP_DIR/Payload" -maxdepth 1 -type d -name "*.app" | head -n 1)"
+          echo "CFBundleShortVersionString:"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_PATH/Info.plist" || true
+          echo "CFBundleVersion:"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP_PATH/Info.plist" || true
+
+      # ✅ extract bundle id from the REAL ipa (source of truth)
       - name: Extract bundle id from IPA (real)
         shell: bash
         run: |
@@ -631,7 +679,6 @@ jobs:
           echo "$BUNDLE_ID" | tr -d '\r\n' > ci_ipa_bundle_id.txt
           echo "✅ IPA Bundle ID = $BUNDLE_ID"
 
-      # ✅ FIX ADDITION 2: verify runtime bundle == ipa bundle (safety)
       - name: Verify runtime bundle id matches IPA
         shell: bash
         run: |
@@ -657,7 +704,6 @@ jobs:
           path: build/ios/ipa/**/*.ipa
           if-no-files-found: error
 
-      # ✅ FIX ADDITION 3: create GitHub Release asset (stable URL like Android)
       - name: Create GitHub Release (IPA)
         env:
           GH_TOKEN: ${{ github.token }}
@@ -679,7 +725,6 @@ jobs:
           echo "IOS_RELEASE_TAG=$TAG" >> $GITHUB_ENV
           echo "IOS_IPA_NAME=$(basename "$IPA_PATH")" >> $GITHUB_ENV
 
-      # ✅ FIX ADDITION 4: callback backend to save ipaUrl + iosBundleId (NON-BLOCKING)
       - name: Callback backend (SAVE IPA URL + Bundle ID) (NON-BLOCKING)
         shell: bash
         run: |
@@ -737,41 +782,7 @@ jobs:
 
           echo "✅ Callback succeeded. Backend saved iOS URL + bundle id."
 
-      - name: Ensure App exists on App Store Connect (produce)
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
-          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
-
-          APP_NAME="${APPLE_APP_NAME:-}"
-          SKU="${APPLE_SKU:-}"
-          LOCALE="${APPLE_PRIMARY_LOCALE:-en-US}"
-
-          if [ -z "$APP_NAME" ]; then
-            APP_NAME="$BUNDLE_ID"
-          fi
-          if [ -z "$SKU" ]; then
-            SKU="${BUNDLE_ID//./_}"
-          fi
-
-          echo "BUNDLE_ID=$BUNDLE_ID"
-          echo "APP_NAME=$APP_NAME"
-          echo "SKU=$SKU"
-          echo "LOCALE=$LOCALE"
-
-          fastlane produce \
-            --api_key_path "$API_KEY_JSON" \
-            --app_identifier "$BUNDLE_ID" \
-            --app_name "$APP_NAME" \
-            --sku "$SKU" \
-            --language "$LOCALE" \
-            --skip_devcenter \
-            --force \
-            || true
-
-      - name: Verify iOS SDK version (must be 18+)
+      - name: Verify iOS SDK version (must be 17+)
         shell: bash
         run: |
           set -euo pipefail
