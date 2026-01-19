@@ -341,23 +341,36 @@ jobs:
       
           echo "📥 Downloading provisioning profile for $BUNDLE_ID"
       
+          # NOTE: output_path sometimes becomes a folder, so we handle both cases
+          OUT_PATH="$GITHUB_WORKSPACE/ci_profile.mobileprovision"
+      
           fastlane run get_provisioning_profile \
             app_identifier:"$BUNDLE_ID" \
             team_id:"${IOS_TEAM_ID}" \
             api_key_path:"$GITHUB_WORKSPACE/.private/api_key.json" \
             provisioning_name:"B4A_${BUNDLE_ID}_APPSTORE" \
             readonly:false \
-            output_path:"$GITHUB_WORKSPACE/ci_profile.mobileprovision"
+            output_path:"$OUT_PATH"
       
-          test -f "$GITHUB_WORKSPACE/ci_profile.mobileprovision" || { echo "❌ Profile not created"; exit 1; }
+          # ✅ Find the real .mobileprovision file (whether OUT_PATH is file or folder)
+          PROFILE_FILE=""
+          if [ -f "$OUT_PATH" ]; then
+            PROFILE_FILE="$OUT_PATH"
+          else
+            PROFILE_FILE="$(find "$OUT_PATH" -type f -name "*.mobileprovision" | head -n 1 || true)"
+          fi
       
-          UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" /dev/stdin <<< "$(/usr/bin/security cms -D -i "$GITHUB_WORKSPACE/ci_profile.mobileprovision")")
-          NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" /dev/stdin <<< "$(/usr/bin/security cms -D -i "$GITHUB_WORKSPACE/ci_profile.mobileprovision")")
+          [ -f "$PROFILE_FILE" ] || { echo "❌ Profile file not found"; echo "OUT_PATH=$OUT_PATH"; ls -la "$OUT_PATH" || true; exit 1; }
+      
+          echo "✅ Profile file: $PROFILE_FILE"
+      
+          UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" /dev/stdin <<< "$(/usr/bin/security cms -D -i "$PROFILE_FILE")")
+          NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" /dev/stdin <<< "$(/usr/bin/security cms -D -i "$PROFILE_FILE")")
       
           echo "$NAME" > ci_profile_name.txt
           echo "$UUID" > ci_profile_uuid.txt
       
-          cp "$GITHUB_WORKSPACE/ci_profile.mobileprovision" "$PROFILES_DIR/$UUID.mobileprovision"
+          cp "$PROFILE_FILE" "$PROFILES_DIR/$UUID.mobileprovision"
       
           echo "✅ Installed provisioning profile:"
           echo "   Name: $NAME"
