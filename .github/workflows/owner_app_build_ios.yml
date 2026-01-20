@@ -332,16 +332,22 @@ jobs:
           PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "$PROFILE_DIR"
 
-          # Download profile (sigh) and print the path
+          # Download profile (sigh) and capture the output path
+          echo "Downloading provisioning profile for $BUNDLE_ID..."
+          
           fastlane run sigh \
             app_identifier:"$BUNDLE_ID" \
             team_id:"${IOS_TEAM_ID}" \
             api_key_path:"$GITHUB_WORKSPACE/.private/api_key.json" \
             provisioning_name:"B4A_${BUNDLE_ID}_APPSTORE" \
-            readonly:false
+            readonly:false \
+            output_path:"$PROFILE_DIR"
 
           echo "📦 Profiles in $PROFILE_DIR:"
           ls -la "$PROFILE_DIR" || true
+          
+          # Give it a moment to settle
+          sleep 2
 
 
       - name: Detect installed provisioning profile (name)
@@ -354,23 +360,79 @@ jobs:
           PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "$PROFILES_DIR"
 
+          echo "Looking for profile matching App ID: $APP_ID"
+          echo "Bundle ID: $BUNDLE_ID"
+          echo "Team ID: ${IOS_TEAM_ID}"
+          echo ""
+
           FOUND_NAME=""
+          FOUND_FILE=""
+          
+          # Check all profiles
           for f in "$PROFILES_DIR"/*.mobileprovision; do
             [ -f "$f" ] || continue
+            
+            echo "Checking profile: $(basename "$f")"
             TMP_PLIST="$(mktemp /tmp/profile.XXXXXX.plist)"
-            /usr/bin/security cms -D -i "$f" > "$TMP_PLIST"
+            /usr/bin/security cms -D -i "$f" > "$TMP_PLIST" 2>/dev/null || {
+              echo "  ⚠️ Could not decode profile"
+              rm -f "$TMP_PLIST"
+              continue
+            }
 
-            P_APPID=$("/usr/libexec/PlistBuddy" -c "Print :Entitlements:application-identifier" "$TMP_PLIST" 2>/dev/null || true)
-            if [ "$P_APPID" = "$APP_ID" ]; then
-              FOUND_NAME=$("/usr/libexec/PlistBuddy" -c "Print :Name" "$TMP_PLIST" 2>/dev/null || true)
+            # Get profile details
+            P_NAME=$("/usr/libexec/PlistBuddy" -c "Print :Name" "$TMP_PLIST" 2>/dev/null || echo "Unknown")
+            P_APPID=$("/usr/libexec/PlistBuddy" -c "Print :Entitlements:application-identifier" "$TMP_PLIST" 2>/dev/null || echo "")
+            P_TEAM=$("/usr/libexec/PlistBuddy" -c "Print :TeamIdentifier:0" "$TMP_PLIST" 2>/dev/null || echo "")
+            
+            echo "  Name: $P_NAME"
+            echo "  App ID: $P_APPID"
+            echo "  Team: $P_TEAM"
+            
+            # Match by App ID OR by bundle ID + team
+            if [ "$P_APPID" = "$APP_ID" ] || [ "$P_APPID" = "${IOS_TEAM_ID}.*" ]; then
+              FOUND_NAME="$P_NAME"
+              FOUND_FILE="$f"
+              echo "  ✅ MATCHED!"
               echo "$FOUND_NAME" > ci_profile_name.txt
-              echo "✅ Profile matched: $FOUND_NAME ($P_APPID)"
+              echo "$FOUND_FILE" > ci_profile_path.txt
               rm -f "$TMP_PLIST"
               break
             fi
+            
+            # Also try matching just by bundle ID in the App ID
+            if echo "$P_APPID" | grep -q "$BUNDLE_ID"; then
+              FOUND_NAME="$P_NAME"
+              FOUND_FILE="$f"
+              echo "  ✅ MATCHED by bundle ID!"
+              echo "$FOUND_NAME" > ci_profile_name.txt
+              echo "$FOUND_FILE" > ci_profile_path.txt
+              rm -f "$TMP_PLIST"
+              break
+            fi
+            
             rm -f "$TMP_PLIST"
+            echo ""
           done
-          [ -n "$FOUND_NAME" ] || { echo "❌ No profile matched $APP_ID"; exit 1; }
+
+          if [ -z "$FOUND_NAME" ]; then
+            echo ""
+            echo "❌ No provisioning profile matched!"
+            echo "Expected App ID: $APP_ID"
+            echo ""
+            echo "This usually means:"
+            echo "1. The profile wasn't downloaded correctly"
+            echo "2. The bundle ID doesn't match what's in the profile"
+            echo "3. The team ID is incorrect"
+            echo ""
+            echo "Available profiles:"
+            ls -la "$PROFILES_DIR"/*.mobileprovision 2>/dev/null || echo "None found"
+            exit 1
+          fi
+
+          echo ""
+          echo "✅ Profile matched: $FOUND_NAME"
+          echo "✅ File: $FOUND_FILE"
 
       - name: Create ExportOptions.plist (manual + provisioningProfiles)
         shell: bash
