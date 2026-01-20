@@ -860,20 +860,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
+          
           API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
           BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
-
+          
           IPA_PATH="$(find "$GITHUB_WORKSPACE/build/ios/ipa" -type f -name "*.ipa" | head -n 1)"
           [ -f "$IPA_PATH" ] || { echo "❌ No IPA found"; exit 1; }
-
+          
           echo "✅ IPA: $IPA_PATH"
           echo "✅ App: $BUNDLE_ID"
-
+          
           fastlane pilot upload \
             --ipa "$IPA_PATH" \
             --api_key_path "$API_KEY_JSON" \
             --app_identifier "$BUNDLE_ID" \
-            --skip_waiting_for_build_processing true \
-            --changelog "CI build $GITHUB_RUN_NUMBER"
+            --skip_waiting_for_build_processing true
 
