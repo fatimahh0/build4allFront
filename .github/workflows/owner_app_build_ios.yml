@@ -323,18 +323,26 @@ jobs:
             language:en \
             app_name:"Runner" || true
 
-      - name: Get App Store provisioning profile (sigh)
+      - name: Get App Store provisioning profile (sigh) + install
         shell: bash
         run: |
           set -euo pipefail
-          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
+          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
 
-          fastlane run get_provisioning_profile \
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILE_DIR"
+
+          # Download profile (sigh) and print the path
+          fastlane run sigh \
             app_identifier:"$BUNDLE_ID" \
             team_id:"${IOS_TEAM_ID}" \
             api_key_path:"$GITHUB_WORKSPACE/.private/api_key.json" \
             provisioning_name:"B4A_${BUNDLE_ID}_APPSTORE" \
             readonly:false
+
+          echo "📦 Profiles in $PROFILE_DIR:"
+          ls -la "$PROFILE_DIR" || true
+
 
       - name: Detect installed provisioning profile (name)
         shell: bash
