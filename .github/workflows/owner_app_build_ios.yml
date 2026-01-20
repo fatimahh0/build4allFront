@@ -870,11 +870,14 @@ jobs:
           echo "✅ IPA: $IPA_PATH"
           echo "✅ App: $BUNDLE_ID"
           
-          # Wait for processing to complete (can take 15-60 minutes)
+          # Don't wait - upload and exit
           fastlane pilot upload \
             --ipa "$IPA_PATH" \
             --api_key_path "$API_KEY_JSON" \
             --app_identifier "$BUNDLE_ID" \
-            --skip_waiting_for_build_processing false \
-            --skip_submission true
+            --skip_waiting_for_build_processing true
+      
+          echo ""
+          echo "✅ Upload complete! Build will appear in TestFlight in 15-60 minutes."
+          echo "   Check App Store Connect: https://appstoreconnect.apple.com"
 
