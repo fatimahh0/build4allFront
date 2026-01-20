@@ -214,6 +214,40 @@ jobs:
           fi
           test -f ios/Podfile
 
+      # ✅ NEW: Add required privacy strings to Info.plist
+      - name: Add privacy strings to Info.plist
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          INFO_PLIST="ios/Runner/Info.plist"
+          
+          if [ ! -f "$INFO_PLIST" ]; then
+            echo "❌ Info.plist not found at $INFO_PLIST"
+            exit 1
+          fi
+          
+          echo "✅ Adding privacy usage descriptions to Info.plist..."
+          
+          # Add NSPhotoLibraryUsageDescription
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'This app needs access to your photo library to allow you to select and upload images.'" "$INFO_PLIST" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'This app needs access to your photo library to allow you to select and upload images.'" "$INFO_PLIST"
+          
+          # Add NSCameraUsageDescription
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'This app needs access to your camera to allow you to take and upload photos.'" "$INFO_PLIST" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'This app needs access to your camera to allow you to take and upload photos.'" "$INFO_PLIST"
+          
+          # Optional but recommended: Add other common privacy strings
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryAddUsageDescription string 'This app needs permission to save images to your photo library.'" "$INFO_PLIST" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryAddUsageDescription 'This app needs permission to save images to your photo library.'" "$INFO_PLIST"
+          
+          echo "✅ Privacy strings added successfully!"
+          echo ""
+          echo "Verifying additions:"
+          /usr/libexec/PlistBuddy -c "Print :NSPhotoLibraryUsageDescription" "$INFO_PLIST" || true
+          /usr/libexec/PlistBuddy -c "Print :NSCameraUsageDescription" "$INFO_PLIST" || true
+          /usr/libexec/PlistBuddy -c "Print :NSPhotoLibraryAddUsageDescription" "$INFO_PLIST" || true
+
       # --------------------------------------------------
       # CERTIFICATE IMPORT (P12) in isolated keychain
       # --------------------------------------------------
@@ -770,7 +804,7 @@ jobs:
 
           if [ "$IPA_HTTP" -ge 400 ] || [ "$BUNDLE_HTTP" -ge 400 ]; then
             echo "⚠️ Callback failed (backend did not save iOS fields)."
-            echo "✅ BUT IPA link above is still valid, so we won’t fail the job."
+            echo "✅ BUT IPA link above is still valid, so we won't fail the job."
             exit 0
           fi
 
@@ -822,37 +856,6 @@ jobs:
             exit 1
           fi
 
-
-           # --------------------------------------------------
-      # Ensure App exists on App Store Connect (itc)
-      # --------------------------------------------------
-      - name: Ensure App exists on App Store Connect (produce)
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
-          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
-
-          APP_NAME="${APPLE_APP_NAME:-$BUNDLE_ID}"
-          SKU="${APPLE_SKU:-${BUNDLE_ID//./_}}"
-          LOCALE="${APPLE_PRIMARY_LOCALE:-en-US}"
-
-          echo "BUNDLE_ID=$BUNDLE_ID"
-          echo "APP_NAME=$APP_NAME"
-          echo "SKU=$SKU"
-          echo "LOCALE=$LOCALE"
-
-          fastlane produce \
-            --api_key_path "$API_KEY_JSON" \
-            --app_identifier "$BUNDLE_ID" \
-            --app_name "$APP_NAME" \
-            --sku "$SKU" \
-            --language "$LOCALE" \
-            --skip_devcenter \
-            --force \
-            || true
-
       # --------------------------------------------------
       # UPLOAD TO TESTFLIGHT (fastlane pilot)
       # --------------------------------------------------
@@ -880,4 +883,3 @@ jobs:
           echo ""
           echo "✅ Upload complete! Build will appear in TestFlight in 15-60 minutes."
           echo "   Check App Store Connect: https://appstoreconnect.apple.com"
-
