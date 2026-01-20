@@ -870,9 +870,11 @@ jobs:
           echo "✅ IPA: $IPA_PATH"
           echo "✅ App: $BUNDLE_ID"
           
+          # Wait for processing to complete (can take 15-60 minutes)
           fastlane pilot upload \
             --ipa "$IPA_PATH" \
             --api_key_path "$API_KEY_JSON" \
             --app_identifier "$BUNDLE_ID" \
-            --skip_waiting_for_build_processing true
+            --skip_waiting_for_build_processing false \
+            --skip_submission true
 
