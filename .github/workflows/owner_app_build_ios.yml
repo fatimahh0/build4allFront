@@ -745,25 +745,57 @@ jobs:
             exit 1
           fi
 
+           # --------------------------------------------------
+      # Ensure App exists on App Store Connect (itc)
+      # --------------------------------------------------
+      - name: Ensure App exists on App Store Connect (produce)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
+          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
+
+          APP_NAME="${APPLE_APP_NAME:-$BUNDLE_ID}"
+          SKU="${APPLE_SKU:-${BUNDLE_ID//./_}}"
+          LOCALE="${APPLE_PRIMARY_LOCALE:-en-US}"
+
+          echo "BUNDLE_ID=$BUNDLE_ID"
+          echo "APP_NAME=$APP_NAME"
+          echo "SKU=$SKU"
+          echo "LOCALE=$LOCALE"
+
+          fastlane produce \
+            --api_key_path "$API_KEY_JSON" \
+            --app_identifier "$BUNDLE_ID" \
+            --app_name "$APP_NAME" \
+            --sku "$SKU" \
+            --language "$LOCALE" \
+            --skip_devcenter \
+            --force \
+            || true
+
       # --------------------------------------------------
       # UPLOAD TO TESTFLIGHT (fastlane pilot)
       # --------------------------------------------------
-      #- name: Upload to TestFlight (pilot)
-      #  shell: bash
-      #  run: |
-      #    set -euo pipefail
-      #
-      #    API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
-      #    BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
-      #
-      #    IPA_PATH="$(find "$GITHUB_WORKSPACE/build/ios/ipa" -type f -name "*.ipa" | head -n 1)"
-      #    [ -f "$IPA_PATH" ] || { echo "❌ No IPA found"; exit 1; }
-      #
-      #    echo "✅ IPA: $IPA_PATH"
-      #    echo "✅ App: $BUNDLE_ID"
-      #
-      #    fastlane pilot upload \
-      #      --ipa "$IPA_PATH" \
-      #      --api_key_path "$API_KEY_JSON" \
-      #      --app_identifier "$BUNDLE_ID" \
-      #      --skip_waiting_for_build_processing true
+      - name: Upload to TestFlight (pilot)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
+          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
+
+          IPA_PATH="$(find "$GITHUB_WORKSPACE/build/ios/ipa" -type f -name "*.ipa" | head -n 1)"
+          [ -f "$IPA_PATH" ] || { echo "❌ No IPA found"; exit 1; }
+
+          echo "✅ IPA: $IPA_PATH"
+          echo "✅ App: $BUNDLE_ID"
+
+          fastlane pilot upload \
+            --ipa "$IPA_PATH" \
+            --api_key_path "$API_KEY_JSON" \
+            --app_identifier "$BUNDLE_ID" \
+            --skip_waiting_for_build_processing true \
+            --changelog "CI build $GITHUB_RUN_NUMBER"
+
