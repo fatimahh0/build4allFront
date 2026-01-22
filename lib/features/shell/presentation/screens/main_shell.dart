@@ -152,17 +152,17 @@ class _MainShellState extends State<MainShell> {
     final c = Theme.of(context).colorScheme;
     final body = IndexedStack(index: _currentIndex, children: _pages);
 
-    //  FINAL: now AppConfig has menuType, so use it directly.
-  final themeMenuType =
+    // ✅ Use ThemeCubit menuType if available, otherwise AppConfig menuType
+    final themeMenuType =
         context.watch<ThemeCubit>().state.menuType.trim().toLowerCase();
-
     final appMenuType = widget.appConfig.menuType.trim().toLowerCase();
-
     final effectiveMenuType =
         themeMenuType.isNotEmpty ? themeMenuType : appMenuType;
-
     final isBottom = effectiveMenuType == 'bottom';
 
+    // ✅ Hide AppBar on HOME only (but keep it in drawer mode so hamburger stays)
+    final currentTabId = _tabs[_currentIndex].id.trim().toLowerCase();
+    final hideAppBar = isBottom && currentTabId == 'home';
 
     return RepositoryProvider<UserProfileService>(
       create: (_) => UserProfileService(),
@@ -194,26 +194,28 @@ class _MainShellState extends State<MainShell> {
           },
           listener: (ctx, st) => _maybeLoadProfileFromAuth(st),
           child: Scaffold(
-            appBar: AppBar(
-              backgroundColor: c.surface,
-              title: Text(
-                _tabs[_currentIndex].label,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(color: c.onSurface),
-              ),
-
-              // ✅ Show hamburger ONLY in drawer mode
-              leading: isBottom
-                  ? null
-                  : Builder(
-                      builder: (ctx) => IconButton(
-                        icon: const Icon(Icons.menu),
-                        onPressed: () => Scaffold.of(ctx).openDrawer(),
-                      ),
+            appBar: hideAppBar
+                ? null
+                : AppBar(
+                    backgroundColor: c.surface,
+                    title: Text(
+                      _tabs[_currentIndex].label,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(color: c.onSurface),
                     ),
-            ),
+
+                    // ✅ Show hamburger ONLY in drawer mode
+                    leading: isBottom
+                        ? null
+                        : Builder(
+                            builder: (ctx) => IconButton(
+                              icon: const Icon(Icons.menu),
+                              onPressed: () => Scaffold.of(ctx).openDrawer(),
+                            ),
+                          ),
+                  ),
 
             // ✅ Drawer ONLY in drawer mode
             drawer: isBottom
@@ -262,17 +264,17 @@ class _MainShellState extends State<MainShell> {
             body: body,
 
             // ✅ Bottom nav ONLY in bottom mode
-          bottomNavigationBar: isBottom
+            bottomNavigationBar: isBottom
                 ? BottomNavigationBar(
                     currentIndex: _currentIndex,
                     onTap: (i) => setState(() => _currentIndex = i),
 
-                    // ✅ FIX: force colors from current theme
+                    // ✅ force colors from current theme
                     backgroundColor: c.surface,
                     selectedItemColor: c.primary,
                     unselectedItemColor: c.onSurface.withOpacity(0.65),
 
-                    // ✅ important so it doesn't shift style between modes
+                    // ✅ stable style
                     type: BottomNavigationBarType.fixed,
                     elevation: 0,
 
@@ -286,7 +288,6 @@ class _MainShellState extends State<MainShell> {
                         .toList(),
                   )
                 : null,
-
           ),
         ),
       ),
@@ -412,8 +413,6 @@ class _ProfileTabShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
-
-    
 
     final token = ((authState.token ?? '').trim().isNotEmpty)
         ? authState.token!.trim()
