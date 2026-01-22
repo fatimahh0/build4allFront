@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:build4front/core/config/env.dart';
 import 'package:build4front/core/l10n/locale_cubit.dart';
+import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -151,9 +152,17 @@ class _MainShellState extends State<MainShell> {
     final c = Theme.of(context).colorScheme;
     final body = IndexedStack(index: _currentIndex, children: _pages);
 
-    // ✅ FINAL: now AppConfig has menuType, so use it directly.
-    // (No more guessing / dynamic hacks)
-    final isBottom = widget.appConfig.menuType.trim().toLowerCase() == 'bottom';
+    //  FINAL: now AppConfig has menuType, so use it directly.
+  final themeMenuType =
+        context.watch<ThemeCubit>().state.menuType.trim().toLowerCase();
+
+    final appMenuType = widget.appConfig.menuType.trim().toLowerCase();
+
+    final effectiveMenuType =
+        themeMenuType.isNotEmpty ? themeMenuType : appMenuType;
+
+    final isBottom = effectiveMenuType == 'bottom';
+
 
     return RepositoryProvider<UserProfileService>(
       create: (_) => UserProfileService(),
@@ -253,10 +262,20 @@ class _MainShellState extends State<MainShell> {
             body: body,
 
             // ✅ Bottom nav ONLY in bottom mode
-            bottomNavigationBar: isBottom
+          bottomNavigationBar: isBottom
                 ? BottomNavigationBar(
                     currentIndex: _currentIndex,
                     onTap: (i) => setState(() => _currentIndex = i),
+
+                    // ✅ FIX: force colors from current theme
+                    backgroundColor: c.surface,
+                    selectedItemColor: c.primary,
+                    unselectedItemColor: c.onSurface.withOpacity(0.65),
+
+                    // ✅ important so it doesn't shift style between modes
+                    type: BottomNavigationBarType.fixed,
+                    elevation: 0,
+
                     items: _tabs
                         .map(
                           (t) => BottomNavigationBarItem(
@@ -267,6 +286,7 @@ class _MainShellState extends State<MainShell> {
                         .toList(),
                   )
                 : null,
+
           ),
         ),
       ),
@@ -392,6 +412,8 @@ class _ProfileTabShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authState = context.watch<AuthBloc>().state;
+
+    
 
     final token = ((authState.token ?? '').trim().isNotEmpty)
         ? authState.token!.trim()
