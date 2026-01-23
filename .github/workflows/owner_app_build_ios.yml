@@ -1,10 +1,8 @@
-name: Owner App Build (iOS IPA) — Option A (Clean & Stable)
-
+name: Owner App Build (iOS IPA) 
 on:
   repository_dispatch:
     types: [owner_app_build_ios]
 
-# ✅ FIX: need write to create GitHub Release + upload IPA asset (stable URL)
 permissions:
   contents: write
 
@@ -19,7 +17,7 @@ jobs:
       IOS_P12_B64: ${{ secrets.IOS_P12_B64 }}
       IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
       IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
-      IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }} # app-store
+      IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }}
 
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
@@ -32,26 +30,21 @@ jobs:
       LC_ALL: en_US.UTF-8
 
     steps:
-      # --------------------------------------------------
-      # CHECKOUT + TOOLCHAIN
-      # --------------------------------------------------
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode 16 (required for iOS 18 SDK)
+      - name: Select Xcode 16
         shell: bash
         run: |
           set -euo pipefail
           ls -la /Applications | grep Xcode || true
 
-          # Prefer Xcode 16 if available
           if [ -d "/Applications/Xcode_16.1.app" ]; then
             sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
           elif [ -d "/Applications/Xcode_16.0.app" ]; then
             sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer
           else
-            echo "❌ Xcode 16 not found on runner."
-            echo "Available Xcodes:"
+            echo "❌ Xcode 16 not found"
             ls -1 /Applications | grep Xcode || true
             exit 1
           fi
@@ -79,26 +72,20 @@ jobs:
           set -euo pipefail
           echo '${{ toJson(github.event.client_payload) }}'
 
-      # --------------------------------------------------
-      # Build ci_env.json & read iosBundleId (stable)
-      # --------------------------------------------------
-      - name: Build ci_env.json & read bundle id
+      # ✅✅✅ FIXED: Build ci_env.json with FULL runtime-config fetch (like Android)
+      - name: Build ci_env.json (BY_LINK runtime-config + fallback + B64)
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p lib/env
 
           python3 - <<'PY'
-          import json, os, urllib.request
-          from urllib.parse import urljoin
+          import json, os, urllib.request, urllib.error, socket, re
 
           payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
           cfg = payload.get("CONFIG") or {}
 
           api_base = (cfg.get("API_BASE_URL") or payload.get("API_BASE_URL") or "").rstrip("/")
-          if not api_base:
-              raise SystemExit("Missing API_BASE_URL")
-
           link_id = str(
               cfg.get("OWNER_PROJECT_LINK_ID")
               or payload.get("OWNER_PROJECT_LINK_ID")
@@ -106,72 +93,169 @@ jobs:
               or cfg.get("ownerProjectLinkId")
               or ""
           ).strip()
-          if not link_id:
-              raise SystemExit("Missing OWNER_PROJECT_LINK_ID / ownerProjectLinkId")
 
-          def pick(d, *keys):
-              if not isinstance(d, dict):
-                  return None
-              for k in keys:
-                  v = d.get(k)
-                  if v not in (None, "", [], {}):
-                      return v
-              return None
+          if not api_base:
+              raise SystemExit("Missing API_BASE_URL")
+          if not link_id:
+              raise SystemExit("Missing OWNER_PROJECT_LINK_ID")
+
+          # ✅ FETCH RUNTIME CONFIG (like Android)
+          url = f"{api_base}/api/public/runtime-config/by-link?linkId={link_id}"
+          runtime = {}
+          source = "FALLBACK (payload/defaults)"
 
           token = (os.getenv("CI_RUNTIME_TOKEN") or "").strip()
           headers = {"Accept": "application/json"}
           if token:
               headers["X-Auth-Token"] = token
 
-          def http_get_json(url: str):
+          try:
+              print("Fetching runtime config:", url)
+              print("Auth header present =", "YES" if token else "NO")
               req = urllib.request.Request(url, headers=headers)
-              with urllib.request.urlopen(req, timeout=25) as r:
-                  return json.loads(r.read().decode("utf-8"))
-
-          ios_bundle = pick(payload, "iosBundleId", "IOS_BUNDLE_ID") or pick(cfg, "iosBundleId", "IOS_BUNDLE_ID")
-          source = "PAYLOAD"
-
-          runtime_url = pick(payload, "runtimeConfigUrl") or pick(cfg, "runtimeConfigUrl")
-          if not ios_bundle and runtime_url:
-              full_url = runtime_url
-              if runtime_url.startswith("/"):
-                  full_url = urljoin(api_base + "/", runtime_url.lstrip("/"))
-              elif not runtime_url.startswith("http"):
-                  full_url = urljoin(api_base + "/", runtime_url)
-              runtime = http_get_json(full_url)
-              ios_bundle = pick(runtime, "iosBundleId", "IOS_BUNDLE_ID")
-              source = "RUNTIME_CONFIG_URL"
-
-          if not ios_bundle:
-              by_link = f"{api_base}/api/public/runtime-config/by-link?linkId={link_id}"
-              runtime = http_get_json(by_link)
-              ios_bundle = pick(runtime, "iosBundleId", "IOS_BUNDLE_ID")
+              with urllib.request.urlopen(req, timeout=12) as r:
+                  raw = r.read().decode("utf-8")
+                  runtime = json.loads(raw)
               source = "BY_LINK"
+          except (urllib.error.HTTPError, urllib.error.URLError, socket.timeout, json.JSONDecodeError) as e:
+              print("⚠️ runtime-config fetch failed, using fallback:", repr(e))
+
+          print("CONFIG SOURCE =", source)
+
+          def pick(key, default=None):
+              v = runtime.get(key)
+              if v not in (None, "", []):
+                  return v
+              v = cfg.get(key)
+              if v not in (None, "", []):
+                  return v
+              v = payload.get(key)
+              if v not in (None, "", []):
+                  return v
+              return default
+
+          # ✅ Basic fields
+          app_name = pick("APP_NAME", "My App")
+          app_type = pick("APP_TYPE", "ECOMMERCE")
+          project_id = str(pick("PROJECT_ID", "")).strip()
+
+          # ✅ iOS Bundle ID (multiple fallbacks)
+          ios_bundle = (
+              pick("iosBundleId") or 
+              pick("IOS_BUNDLE_ID") or 
+              pick("PACKAGE_NAME") or 
+              pick("APPLICATION_ID") or 
+              ""
+          ).strip()
 
           if not ios_bundle:
-              raise SystemExit("Missing iosBundleId from payload/runtimeConfigUrl/by-link")
+              ios_bundle = f"com.build4all.app{link_id}"
+          
+          ios_bundle = ios_bundle.lower()
+          ios_bundle = re.sub(r"[^a-z0-9._]", "", ios_bundle)
+          ios_bundle = re.sub(r"\.+", ".", ios_bundle).strip(".")
+          
+          if not ios_bundle or ios_bundle.count(".") < 1:
+              ios_bundle = f"com.build4all.app{link_id}"
 
-          ios_bundle = str(ios_bundle).strip()
-          open("ci_ios_bundle_id.txt", "w", encoding="utf-8").write(ios_bundle)
-          print(f"IOS_BUNDLE_ID = {ios_bundle} (source={source})")
+          # ✅ Version info (iOS-specific + Android fallback)
+          vc = pick("IOS_BUILD_NUMBER") or pick("iosBuildNumber") or pick("ANDROID_VERSION_CODE")
+          vn = pick("IOS_VERSION_NAME") or pick("iosVersionName") or pick("ANDROID_VERSION_NAME")
+
+          try:
+              vc_int = int(vc) if vc not in (None,"",[]) else None
+          except Exception:
+              vc_int = None
+
+          vn_str = (str(vn).strip() if vn not in (None,"",[]) else "")
 
           env = {
               "API_BASE_URL": api_base,
-              "APP_NAME": pick(payload, "appName") or pick(cfg, "APP_NAME") or "My App",
+              "APP_NAME": app_name,
+              "APP_TYPE": app_type,
               "OWNER_PROJECT_LINK_ID": link_id,
+              "PROJECT_ID": project_id,
+              "IOS_BUNDLE_ID": ios_bundle,
+              "IOS_BUILD_NUMBER": vc_int if vc_int is not None else 1,
+              "IOS_VERSION_NAME": vn_str if vn_str else "1.0.0",
               "CONFIG_SOURCE": source,
           }
 
-          for key in ["THEME_JSON_B64","NAV_JSON_B64","HOME_JSON_B64","ENABLED_FEATURES_JSON_B64","BRANDING_JSON_B64"]:
-              v = pick(payload, key) or pick(cfg, key)
+          # ✅ Currency (support both snake_case and camelCase)
+          currency_id = pick("CURRENCY_ID")
+          if currency_id in (None, "", []):
+              currency_id = (
+                  runtime.get("currencyId")
+                  or cfg.get("currencyId")
+                  or payload.get("currencyId")
+              )
+          if currency_id not in (None, "", []):
+              env["CURRENCY_ID"] = str(currency_id).strip()
+
+          # ✅✅✅ CRITICAL: B64 JSON FIELDS (was missing in original iOS workflow)
+          for key in [
+              "THEME_JSON_B64",
+              "NAV_JSON_B64",
+              "HOME_JSON_B64",
+              "ENABLED_FEATURES_JSON_B64",
+              "BRANDING_JSON_B64",
+          ]:
+              v = pick(key)
               if v:
                   env[key] = v
 
+          # ✅ Logo URL
+          logo_url = (pick("LOGO_URL") or pick("LOGO_PATH") or "").strip()
+          if not logo_url:
+              logo_url = (runtime.get("logoUrl") or cfg.get("logoUrl") or payload.get("logoUrl") or "").strip()
+          if logo_url:
+              env["LOGO_URL"] = logo_url
+
+          # Write files
+          open("ci_api_base.txt", "w", encoding="utf-8").write(api_base)
+          open("ci_link_id.txt", "w", encoding="utf-8").write(link_id)
+          open("ci_ios_bundle_id.txt", "w", encoding="utf-8").write(ios_bundle)
+
           with open("lib/env/ci_env.json", "w", encoding="utf-8") as f:
               json.dump(env, f, ensure_ascii=False, indent=2)
+
+          print("✅ ci_env.json written")
+          print("API_BASE_URL =", api_base)
+          print("OWNER_PROJECT_LINK_ID =", link_id)
+          print("PROJECT_ID =", project_id)
+          print("IOS_BUNDLE_ID =", ios_bundle)
+          print("IOS_BUILD_NUMBER =", env["IOS_BUILD_NUMBER"])
+          print("IOS_VERSION_NAME =", env["IOS_VERSION_NAME"])
+          print("CURRENCY_ID =", env.get("CURRENCY_ID"))
+          print("CONFIG_SOURCE =", source)
+          print("LOGO_URL =", env.get("LOGO_URL"))
+
+          for k in ["THEME_JSON_B64","NAV_JSON_B64","HOME_JSON_B64","ENABLED_FEATURES_JSON_B64","BRANDING_JSON_B64"]:
+              print(k, "=", "YES" if env.get(k) else "NO")
           PY
 
-      - name: Read App Store Connect app metadata (name/sku/locale) from payload
+      - name: Debug env (check config source + B64 fields)
+        shell: bash
+        run: |
+          echo "----- ci_env.json -----"
+          cat lib/env/ci_env.json
+          echo ""
+          python3 - <<'PY'
+          import json
+          cfg=json.load(open("lib/env/ci_env.json"))
+          print("OWNER_PROJECT_LINK_ID =", cfg.get("OWNER_PROJECT_LINK_ID"))
+          print("PROJECT_ID =", cfg.get("PROJECT_ID"))
+          print("IOS_BUNDLE_ID =", cfg.get("IOS_BUNDLE_ID"))
+          print("IOS_BUILD_NUMBER =", cfg.get("IOS_BUILD_NUMBER"))
+          print("IOS_VERSION_NAME =", cfg.get("IOS_VERSION_NAME"))
+          print("CURRENCY_ID =", cfg.get("CURRENCY_ID"))
+          print("CONFIG_SOURCE =", cfg.get("CONFIG_SOURCE"))
+          print("LOGO_URL =", cfg.get("LOGO_URL"))
+          for k in ["THEME_JSON_B64","NAV_JSON_B64","HOME_JSON_B64"]:
+              print(k, "=", "PRESENT" if cfg.get(k) else "MISSING")
+          PY
+
+      - name: Read App Store Connect metadata from payload
         shell: bash
         run: |
           set -euo pipefail
@@ -202,9 +286,6 @@ jobs:
           print("APPLE_PRIMARY_LOCALE=", locale)
           PY
 
-      # --------------------------------------------------
-      # Ensure iOS folder exists
-      # --------------------------------------------------
       - name: Ensure iOS Podfile exists
         shell: bash
         run: |
@@ -213,45 +294,19 @@ jobs:
             flutter create .
           fi
           test -f ios/Podfile
-          
-# : Set iOS version & build number from payload
+
       - name: Set iOS version & build number from payload
         shell: bash
         run: |
           set -euo pipefail
           
           python3 - <<'PY'
-          import json, os, re
+          import json, re
           
-          payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
-          cfg = payload.get("CONFIG") or {}
+          cfg = json.load(open("lib/env/ci_env.json"))
           
-          def pick(d, *keys):
-              if not isinstance(d, dict):
-                  return None
-              for k in keys:
-                  v = d.get(k)
-                  if v not in (None, "", [], {}):
-                      return v
-              return None
-          
-          # Get version name (e.g., "1.0.2")
-          version_name = (
-              pick(payload, "iosVersionName", "IOS_VERSION_NAME") or
-              pick(cfg, "iosVersionName", "IOS_VERSION_NAME") or
-              pick(payload, "androidVersionName", "ANDROID_VERSION_NAME") or
-              pick(cfg, "androidVersionName", "ANDROID_VERSION_NAME") or
-              "1.0.0"
-          )
-          
-          # Get build number (e.g., 3)
-          build_number = (
-              pick(payload, "iosBuildNumber", "IOS_BUILD_NUMBER") or
-              pick(cfg, "iosBuildNumber", "IOS_BUILD_NUMBER") or
-              pick(payload, "androidVersionCode", "ANDROID_VERSION_CODE") or
-              pick(cfg, "androidVersionCode", "ANDROID_VERSION_CODE") or
-              1
-          )
+          version_name = cfg.get("IOS_VERSION_NAME", "1.0.0")
+          build_number = cfg.get("IOS_BUILD_NUMBER", 1)
           
           version_name = str(version_name).strip()
           build_number = str(build_number).strip()
@@ -282,17 +337,12 @@ jobs:
               f.write(content)
           
           print(f"✅ Updated {info_plist}")
-          print(f"   CFBundleShortVersionString = {version_name}")
-          print(f"   CFBundleVersion = {build_number}")
           PY
           
-          # Verify the changes
-          echo ""
-          echo "Verifying Info.plist updates:"
+          echo "Verifying Info.plist:"
           /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" ios/Runner/Info.plist
           /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" ios/Runner/Info.plist
-          
-      #  Add required privacy strings to Info.plist
+
       - name: Add privacy strings to Info.plist
         shell: bash
         run: |
@@ -300,35 +350,65 @@ jobs:
           
           INFO_PLIST="ios/Runner/Info.plist"
           
-          if [ ! -f "$INFO_PLIST" ]; then
-            echo "❌ Info.plist not found at $INFO_PLIST"
-            exit 1
-          fi
-          
-          echo "✅ Adding privacy usage descriptions to Info.plist..."
-          
-          # Add NSPhotoLibraryUsageDescription
           /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'This app needs access to your photo library to allow you to select and upload images.'" "$INFO_PLIST" 2>/dev/null || \
           /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'This app needs access to your photo library to allow you to select and upload images.'" "$INFO_PLIST"
           
-          # Add NSCameraUsageDescription
           /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'This app needs access to your camera to allow you to take and upload photos.'" "$INFO_PLIST" 2>/dev/null || \
           /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'This app needs access to your camera to allow you to take and upload photos.'" "$INFO_PLIST"
           
-          # Optional but recommended: Add other common privacy strings
           /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryAddUsageDescription string 'This app needs permission to save images to your photo library.'" "$INFO_PLIST" 2>/dev/null || \
           /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryAddUsageDescription 'This app needs permission to save images to your photo library.'" "$INFO_PLIST"
           
-          echo "✅ Privacy strings added successfully!"
-          echo ""
-          echo "Verifying additions:"
-          /usr/libexec/PlistBuddy -c "Print :NSPhotoLibraryUsageDescription" "$INFO_PLIST" || true
-          /usr/libexec/PlistBuddy -c "Print :NSCameraUsageDescription" "$INFO_PLIST" || true
-          /usr/libexec/PlistBuddy -c "Print :NSPhotoLibraryAddUsageDescription" "$INFO_PLIST" || true
+          echo "✅ Privacy strings added"
 
-      # --------------------------------------------------
-      # CERTIFICATE IMPORT (P12) in isolated keychain
-      # --------------------------------------------------
+      # ✅✅✅ FIXED: Apply branding (logo + app name) like Android does
+      - name: Apply branding (logo + app name)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          import json, urllib.request, pathlib, shutil
+
+          cfg = json.load(open("lib/env/ci_env.json","r",encoding="utf-8"))
+
+          app_name_raw = cfg.get("APP_NAME","My App")
+          api_base = (cfg.get("API_BASE_URL") or "").rstrip("/")
+          logo_url = (cfg.get("LOGO_URL") or "").strip()
+
+          print("APP_NAME:", app_name_raw)
+          print("LOGO_URL (raw):", logo_url)
+          print("API_BASE_URL:", api_base)
+
+          pathlib.Path("assets/branding").mkdir(parents=True, exist_ok=True)
+
+          if logo_url and logo_url.startswith("/") and api_base:
+              logo_url = api_base + logo_url
+              print("Resolved absolute LOGO_URL:", logo_url)
+
+          if logo_url:
+              try:
+                  print("Downloading logo from:", logo_url)
+                  urllib.request.urlretrieve(logo_url, "assets/branding/logo.png")
+                  shutil.copyfile("assets/branding/logo.png","assets/branding/launcher.png")
+                  shutil.copyfile("assets/branding/logo.png","assets/branding/splash.png")
+                  print("✅ Logo downloaded successfully")
+              except Exception as e:
+                  print("⚠️ Failed to download logo:", e)
+                  print("Continuing without custom logo...")
+          else:
+              print("⚠️ No LOGO_URL provided, skipping logo download")
+          PY
+
+          # Ensure dependencies are fresh
+          flutter pub get
+          
+          # Apply launcher icons (iOS)
+          flutter pub run flutter_launcher_icons || echo "⚠️ flutter_launcher_icons failed"
+          
+          # Apply splash screen (iOS)
+          flutter pub run flutter_native_splash:create || echo "⚠️ flutter_native_splash failed"
+
       - name: Setup iOS signing certificate (keychain)
         shell: bash
         run: |
@@ -357,13 +437,10 @@ jobs:
 
           CNT=$(security find-identity -v -p codesigning | grep -c "Apple Distribution" || true)
           if [ "$CNT" -lt 1 ]; then
-            echo "❌ Apple Distribution identity not found."
+            echo "❌ Apple Distribution identity not found"
             exit 1
           fi
 
-      # --------------------------------------------------
-      # RUBY + COCOAPODS + FASTLANE
-      # --------------------------------------------------
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.2"
@@ -377,7 +454,7 @@ jobs:
           pod --version
           fastlane --version
 
-      - name: Clean Pods (force regen)
+      - name: Clean Pods
         shell: bash
         run: |
           set -euo pipefail
@@ -391,9 +468,6 @@ jobs:
           cd ios
           pod install || { pod repo update; pod install; }
 
-      # --------------------------------------------------
-      # APP STORE CONNECT API KEY (fastlane)
-      # --------------------------------------------------
       - name: Create App Store Connect api_key.json
         shell: bash
         run: |
@@ -418,10 +492,7 @@ jobs:
           }))
           PY
 
-      # --------------------------------------------------
-      # Provisioning: App ID + Profile
-      # --------------------------------------------------
-      - name: Ensure App ID exists on Apple Developer (produce)
+      - name: Ensure App ID exists (produce)
         shell: bash
         run: |
           set -euo pipefail
@@ -435,7 +506,7 @@ jobs:
             language:en \
             app_name:"Runner" || true
 
-      - name: Get App Store provisioning profile (sigh) + install
+      - name: Get provisioning profile (sigh)
         shell: bash
         run: |
           set -euo pipefail
@@ -444,9 +515,6 @@ jobs:
           PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "$PROFILE_DIR"
 
-          # Download profile (sigh) and capture the output path
-          echo "Downloading provisioning profile for $BUNDLE_ID..."
-          
           fastlane run sigh \
             app_identifier:"$BUNDLE_ID" \
             team_id:"${IOS_TEAM_ID}" \
@@ -455,14 +523,9 @@ jobs:
             readonly:false \
             output_path:"$PROFILE_DIR"
 
-          echo "📦 Profiles in $PROFILE_DIR:"
-          ls -la "$PROFILE_DIR" || true
-          
-          # Give it a moment to settle
           sleep 2
 
-
-      - name: Detect installed provisioning profile (name)
+      - name: Detect provisioning profile name
         shell: bash
         run: |
           set -euo pipefail
@@ -470,53 +533,25 @@ jobs:
           APP_ID="${IOS_TEAM_ID}.${BUNDLE_ID}"
 
           PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
-          mkdir -p "$PROFILES_DIR"
-
-          echo "Looking for profile matching App ID: $APP_ID"
-          echo "Bundle ID: $BUNDLE_ID"
-          echo "Team ID: ${IOS_TEAM_ID}"
-          echo ""
 
           FOUND_NAME=""
           FOUND_FILE=""
           
-          # Check all profiles
           for f in "$PROFILES_DIR"/*.mobileprovision; do
             [ -f "$f" ] || continue
             
-            echo "Checking profile: $(basename "$f")"
             TMP_PLIST="$(mktemp /tmp/profile.XXXXXX.plist)"
             /usr/bin/security cms -D -i "$f" > "$TMP_PLIST" 2>/dev/null || {
-              echo "  ⚠️ Could not decode profile"
               rm -f "$TMP_PLIST"
               continue
             }
 
-            # Get profile details
             P_NAME=$("/usr/libexec/PlistBuddy" -c "Print :Name" "$TMP_PLIST" 2>/dev/null || echo "Unknown")
             P_APPID=$("/usr/libexec/PlistBuddy" -c "Print :Entitlements:application-identifier" "$TMP_PLIST" 2>/dev/null || echo "")
-            P_TEAM=$("/usr/libexec/PlistBuddy" -c "Print :TeamIdentifier:0" "$TMP_PLIST" 2>/dev/null || echo "")
             
-            echo "  Name: $P_NAME"
-            echo "  App ID: $P_APPID"
-            echo "  Team: $P_TEAM"
-            
-            # Match by App ID OR by bundle ID + team
-            if [ "$P_APPID" = "$APP_ID" ] || [ "$P_APPID" = "${IOS_TEAM_ID}.*" ]; then
+            if [ "$P_APPID" = "$APP_ID" ] || [ "$P_APPID" = "${IOS_TEAM_ID}.*" ] || echo "$P_APPID" | grep -q "$BUNDLE_ID"; then
               FOUND_NAME="$P_NAME"
               FOUND_FILE="$f"
-              echo "  ✅ MATCHED!"
-              echo "$FOUND_NAME" > ci_profile_name.txt
-              echo "$FOUND_FILE" > ci_profile_path.txt
-              rm -f "$TMP_PLIST"
-              break
-            fi
-            
-            # Also try matching just by bundle ID in the App ID
-            if echo "$P_APPID" | grep -q "$BUNDLE_ID"; then
-              FOUND_NAME="$P_NAME"
-              FOUND_FILE="$f"
-              echo "  ✅ MATCHED by bundle ID!"
               echo "$FOUND_NAME" > ci_profile_name.txt
               echo "$FOUND_FILE" > ci_profile_path.txt
               rm -f "$TMP_PLIST"
@@ -524,29 +559,16 @@ jobs:
             fi
             
             rm -f "$TMP_PLIST"
-            echo ""
           done
 
           if [ -z "$FOUND_NAME" ]; then
-            echo ""
-            echo "❌ No provisioning profile matched!"
-            echo "Expected App ID: $APP_ID"
-            echo ""
-            echo "This usually means:"
-            echo "1. The profile wasn't downloaded correctly"
-            echo "2. The bundle ID doesn't match what's in the profile"
-            echo "3. The team ID is incorrect"
-            echo ""
-            echo "Available profiles:"
-            ls -la "$PROFILES_DIR"/*.mobileprovision 2>/dev/null || echo "None found"
+            echo "❌ No provisioning profile matched"
             exit 1
           fi
 
-          echo ""
-          echo "✅ Profile matched: $FOUND_NAME"
-          echo "✅ File: $FOUND_FILE"
+          echo "✅ Profile: $FOUND_NAME"
 
-      - name: Create ExportOptions.plist (manual + provisioningProfiles)
+      - name: Create ExportOptions.plist
         shell: bash
         run: |
           set -euo pipefail
@@ -563,25 +585,19 @@ jobs:
           <dict>
             <key>method</key>
             <string>${METHOD}</string>
-
             <key>signingStyle</key>
             <string>manual</string>
-
             <key>teamID</key>
             <string>${TEAM}</string>
-
             <key>signingCertificate</key>
             <string>Apple Distribution</string>
-
             <key>provisioningProfiles</key>
             <dict>
               <key>${BUNDLE_ID}</key>
               <string>${PROFILE_NAME}</string>
             </dict>
-
             <key>destination</key>
             <string>export</string>
-
             <key>compileBitcode</key>
             <false/>
           </dict>
@@ -589,9 +605,8 @@ jobs:
           EOF
 
           /usr/bin/plutil -lint ios/ExportOptions.plist
-          echo "✅ ExportOptions.plist ready for ${BUNDLE_ID} using ${PROFILE_NAME}"
 
-      - name: Patch Runner signing (Release only) + Bundle ID
+      - name: Patch Runner signing
         shell: bash
         run: |
           set -euo pipefail
@@ -622,23 +637,18 @@ jobs:
             s["PRODUCT_BUNDLE_IDENTIFIER"] = bundle_id
             s["CODE_SIGN_STYLE"] = "Manual"
             s["DEVELOPMENT_TEAM"] = team_id
-
             s["CODE_SIGN_IDENTITY"] = "Apple Distribution"
             s["PROVISIONING_PROFILE_SPECIFIER"] = profile
-
             s["CODE_SIGNING_ALLOWED"] = "YES"
             s["CODE_SIGNING_REQUIRED"] = "YES"
           end
 
           project.save
-          puts "✅ Patched Runner Release signing: #{bundle_id} / #{team_id} / #{profile}"
+          puts "✅ Patched Runner"
           RUBY
 
           BUNDLE_ID="$BUNDLE_ID" PROFILE_NAME="$PROFILE_NAME" TEAM_ID="$TEAM_ID" ruby patch_runner_signing.rb
 
-      # --------------------------------------------------
-      # Build iOS (flutter, no codesign)
-      # --------------------------------------------------
       - name: Build iOS (flutter, no codesign)
         shell: bash
         run: |
@@ -646,10 +656,7 @@ jobs:
           flutter build ios --release --no-codesign \
             --dart-define-from-file=lib/env/ci_env.json
 
-      # --------------------------------------------------
-      # PATCH SIGNING
-      # --------------------------------------------------
-      - name: Create Runner signing xcconfig (Distribution)
+      - name: Create signing xcconfig
         shell: bash
         run: |
           set -euo pipefail
@@ -660,42 +667,21 @@ jobs:
           cat > ios/ci_signing.xcconfig <<EOF
           DEVELOPMENT_TEAM = ${TEAM_ID}
           PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID}
-
           CODE_SIGN_STYLE = Manual
           CODE_SIGN_IDENTITY = Apple Distribution
           CODE_SIGN_IDENTITY[sdk=iphoneos*] = Apple Distribution
-
           PROVISIONING_PROFILE_SPECIFIER = ${PROFILE_NAME}
           PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*] = ${PROFILE_NAME}
-
           CODE_SIGNING_ALLOWED = YES
           CODE_SIGNING_REQUIRED = YES
           EOF
 
-          echo "==== ci_signing.xcconfig ===="
-          cat ios/ci_signing.xcconfig
-
-      - name: Debug signing settings (Runner Release, with xcconfig)
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd ios
-          test -f ci_signing.xcconfig || { echo "❌ ci_signing.xcconfig missing"; ls -la; exit 1; }
-
-          xcodebuild -showBuildSettings \
-            -workspace Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -xcconfig ci_signing.xcconfig \
-            | egrep "CODE_SIGN|DEVELOPMENT_TEAM|PROVISIONING_PROFILE|PRODUCT_BUNDLE_IDENTIFIER" || true
-
-      - name: Force Pods = no signing, no profiles
+      - name: Force Pods = no signing
         shell: bash
         run: |
           set -euo pipefail
           PODS_PBX="ios/Pods/Pods.xcodeproj/project.pbxproj"
-          test -f "$PODS_PBX"
-
+          
           perl -pi -e 's/(PROVISIONING_PROFILE_SPECIFIER(\[sdk=iphoneos\*\])?) = [^;]*;/\1 = "";/g' "$PODS_PBX"
           perl -pi -e 's/PROVISIONING_PROFILE = [^;]*;/PROVISIONING_PROFILE = "";/g' "$PODS_PBX"
           perl -pi -e 's/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = "";/g' "$PODS_PBX"
@@ -704,22 +690,7 @@ jobs:
           perl -pi -e 's/CODE_SIGNING_ALLOWED = YES;/CODE_SIGNING_ALLOWED = NO;/g' "$PODS_PBX"
           perl -pi -e 's/CODE_SIGNING_REQUIRED = YES;/CODE_SIGNING_REQUIRED = NO;/g' "$PODS_PBX"
 
-          echo "✅ Pods patched (no signing)"
-
-      - name: Verify Pods have no provisioning profile
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd ios
-          xcodebuild -showBuildSettings \
-            -workspace Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release | grep -E "PROVISIONING_PROFILE|CODE_SIGN_STYLE|CODE_SIGNING_ALLOWED|DEVELOPMENT_TEAM" || true
-
-      # --------------------------------------------------
-      # ARCHIVE
-      # --------------------------------------------------
-      - name: Archive (xcodebuild) - Runner signs, Pods do not
+      - name: Archive
         shell: bash
         run: |
           set -euo pipefail
@@ -742,10 +713,7 @@ jobs:
             OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}" \
             archive
 
-      # --------------------------------------------------
-      # EXPORT IPA
-      # --------------------------------------------------
-      - name: Export IPA (xcodebuild)
+      - name: Export IPA
         shell: bash
         run: |
           set -euo pipefail
@@ -764,42 +732,19 @@ jobs:
             -exportPath ../build/ios/ipa \
             OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}"
 
-      # ✅ FIX ADDITION 1: extract bundle id from the REAL ipa (source of truth)
-      - name: Extract bundle id from IPA (real)
+      - name: Extract bundle id from IPA
         shell: bash
         run: |
           set -euo pipefail
           IPA_PATH="$(find "$GITHUB_WORKSPACE/build/ios/ipa" -type f -name "*.ipa" | head -n 1)"
-          [ -f "$IPA_PATH" ] || { echo "❌ IPA not found"; exit 1; }
-
+          
           TMP_DIR="$(mktemp -d)"
           unzip -q "$IPA_PATH" -d "$TMP_DIR"
 
           APP_PATH="$(find "$TMP_DIR/Payload" -maxdepth 1 -type d -name "*.app" | head -n 1)"
-          [ -d "$APP_PATH" ] || { echo "❌ .app not found inside IPA"; exit 1; }
-
           BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP_PATH/Info.plist")
           echo "$BUNDLE_ID" | tr -d '\r\n' > ci_ipa_bundle_id.txt
           echo "✅ IPA Bundle ID = $BUNDLE_ID"
-
-      # ✅ FIX ADDITION 2: verify runtime bundle == ipa bundle (safety)
-      - name: Verify runtime bundle id matches IPA
-        shell: bash
-        run: |
-          set -euo pipefail
-          EXPECTED="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
-          ACTUAL="$(tr -d '\r\n' < ci_ipa_bundle_id.txt)"
-          echo "EXPECTED=$EXPECTED"
-          echo "ACTUAL=$ACTUAL"
-          [ "$EXPECTED" = "$ACTUAL" ] || { echo "❌ Bundle mismatch"; exit 1; }
-          echo "✅ Bundle id matches"
-
-      - name: List outputs
-        shell: bash
-        run: |
-          set -euo pipefail
-          ls -la build/ios/ipa || true
-          find build/ios/ipa -maxdepth 2 -type f -name "*.ipa" -print || true
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
@@ -808,7 +753,6 @@ jobs:
           path: build/ios/ipa/**/*.ipa
           if-no-files-found: error
 
-      # ✅ FIX ADDITION 3: create GitHub Release asset (stable URL like Android)
       - name: Create GitHub Release (IPA)
         env:
           GH_TOKEN: ${{ github.token }}
@@ -816,28 +760,25 @@ jobs:
         run: |
           set -euo pipefail
 
-          LINK_ID="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['OWNER_PROJECT_LINK_ID'])")"
+          LINK_ID="$(cat ci_link_id.txt | tr -d '\r\n')"
           TAG="ios-build-${LINK_ID}-${{ github.run_number }}"
 
           gh release view "$TAG" >/dev/null 2>&1 || \
             gh release create "$TAG" --title "$TAG" --notes "iOS CI build"
 
           IPA_PATH="$(find "$GITHUB_WORKSPACE/build/ios/ipa" -type f -name "*.ipa" | head -n 1)"
-          [ -f "$IPA_PATH" ] || { echo "❌ IPA not found"; exit 1; }
-
           gh release upload "$TAG" "$IPA_PATH" --clobber
 
           echo "IOS_RELEASE_TAG=$TAG" >> $GITHUB_ENV
           echo "IOS_IPA_NAME=$(basename "$IPA_PATH")" >> $GITHUB_ENV
 
-      # ✅ FIX ADDITION 4: callback backend to save ipaUrl + iosBundleId (NON-BLOCKING)
-      - name: Callback backend (SAVE IPA URL + Bundle ID) (NON-BLOCKING)
+      - name: Callback backend (NON-BLOCKING)
         shell: bash
         run: |
           set -euo pipefail
 
-          API_BASE="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['API_BASE_URL'])")"
-          LINK_ID="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['OWNER_PROJECT_LINK_ID'])")"
+          API_BASE="$(cat ci_api_base.txt | tr -d '\r\n')"
+          LINK_ID="$(cat ci_link_id.txt | tr -d '\r\n')"
 
           OWNER="${{ github.repository_owner }}"
           REPO="${{ github.event.repository.name }}"
@@ -849,14 +790,11 @@ jobs:
 
           echo ""
           echo "========================================"
-          echo "✅ iOS OUTPUT LINKS"
+          echo "✅ iOS BUILD OUTPUT"
           echo "TAG:     $TAG"
           echo "IPA URL: $IPA_URL"
           echo "BUNDLE:  $BUNDLE_ID"
-          echo "LINK_ID: $LINK_ID"
-          echo "API:     $API_BASE"
           echo "========================================"
-          echo ""
 
           IPA_HTTP=$(curl -sS -o ipa_resp.txt -w "%{http_code}" -X PUT \
             "${API_BASE}/api/ci/owner-project-links/${LINK_ID}/ipa-url" \
@@ -864,31 +802,20 @@ jobs:
             -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
             -d "{\"ipaUrl\":\"${IPA_URL}\"}" || true)
 
-          echo "IPA HTTP_STATUS=$IPA_HTTP"
-          echo "RESPONSE:"
-          cat ipa_resp.txt || true
-          echo ""
-
           BUNDLE_HTTP=$(curl -sS -o bundle_resp.txt -w "%{http_code}" -X PUT \
             "${API_BASE}/api/ci/owner-project-links/${LINK_ID}/ios-bundle-id" \
             -H "Content-Type: application/json" \
             -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
             -d "{\"iosBundleId\":\"${BUNDLE_ID}\"}" || true)
 
-          echo "BUNDLE HTTP_STATUS=$BUNDLE_HTTP"
-          echo "RESPONSE:"
-          cat bundle_resp.txt || true
-          echo ""
-
           if [ "$IPA_HTTP" -ge 400 ] || [ "$BUNDLE_HTTP" -ge 400 ]; then
-            echo "⚠️ Callback failed (backend did not save iOS fields)."
-            echo "✅ BUT IPA link above is still valid, so we won't fail the job."
+            echo "⚠️ Callback failed but IPA is still valid"
             exit 0
           fi
 
-          echo "✅ Callback succeeded. Backend saved iOS URL + bundle id."
+          echo "✅ Callback succeeded"
 
-      - name: Ensure App exists on App Store Connect (produce)
+      - name: Ensure App exists on App Store Connect
         shell: bash
         run: |
           set -euo pipefail
@@ -896,21 +823,9 @@ jobs:
           API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
           BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
 
-          APP_NAME="${APPLE_APP_NAME:-}"
-          SKU="${APPLE_SKU:-}"
+          APP_NAME="${APPLE_APP_NAME:-$BUNDLE_ID}"
+          SKU="${APPLE_SKU:-${BUNDLE_ID//./_}}"
           LOCALE="${APPLE_PRIMARY_LOCALE:-en-US}"
-
-          if [ -z "$APP_NAME" ]; then
-            APP_NAME="$BUNDLE_ID"
-          fi
-          if [ -z "$SKU" ]; then
-            SKU="${BUNDLE_ID//./_}"
-          fi
-
-          echo "BUNDLE_ID=$BUNDLE_ID"
-          echo "APP_NAME=$APP_NAME"
-          echo "SKU=$SKU"
-          echo "LOCALE=$LOCALE"
 
           fastlane produce \
             --api_key_path "$API_KEY_JSON" \
@@ -922,22 +837,7 @@ jobs:
             --force \
             || true
 
-      - name: Verify iOS SDK version (must be 18+)
-        shell: bash
-        run: |
-          set -euo pipefail
-          SDK="$(xcrun --sdk iphoneos --show-sdk-version)"
-          echo "iOS SDK: $SDK"
-          MAJOR="${SDK%%.*}"
-          if [ "$MAJOR" -lt 18 ]; then
-            echo "❌ iOS SDK must be 18+. Current: $SDK"
-            exit 1
-          fi
-
-      # --------------------------------------------------
-      # UPLOAD TO TESTFLIGHT (fastlane pilot)
-      # --------------------------------------------------
-      - name: Upload to TestFlight (pilot)
+      - name: Upload to TestFlight
         shell: bash
         run: |
           set -euo pipefail
@@ -946,18 +846,11 @@ jobs:
           BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
           
           IPA_PATH="$(find "$GITHUB_WORKSPACE/build/ios/ipa" -type f -name "*.ipa" | head -n 1)"
-          [ -f "$IPA_PATH" ] || { echo "❌ No IPA found"; exit 1; }
           
-          echo "✅ IPA: $IPA_PATH"
-          echo "✅ App: $BUNDLE_ID"
-          
-          # Don't wait - upload and exit
           fastlane pilot upload \
             --ipa "$IPA_PATH" \
             --api_key_path "$API_KEY_JSON" \
             --app_identifier "$BUNDLE_ID" \
             --skip_waiting_for_build_processing true
       
-          echo ""
-          echo "✅ Upload complete! Build will appear in TestFlight in 15-60 minutes."
-          echo "   Check App Store Connect: https://appstoreconnect.apple.com"
+          echo "✅ Upload complete!"
