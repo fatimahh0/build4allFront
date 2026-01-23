@@ -732,7 +732,7 @@ jobs:
           BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
           APP_NAME=$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['APP_NAME'])")
           
-          python3 - <<'PYEOF'
+          python3 - "$API_KEY_JSON" "$BUNDLE_ID" "$APP_NAME" <<'PYEOF'
           import json, jwt, time, requests, sys
 
           # Load API key
@@ -991,8 +991,7 @@ jobs:
           # Save to file for next step
           with open("testflight_link.txt", "w") as f:
               f.write(public_link)
-          
-          PYEOF "$API_KEY_JSON" "$BUNDLE_ID" "$APP_NAME"
+          PYEOF
 
       - name: Save TestFlight link to backend
         shell: bash
