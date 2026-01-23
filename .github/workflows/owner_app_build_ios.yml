@@ -693,7 +693,7 @@ jobs:
           path: build/ios/ipa/**/*.ipa
           if-no-files-found: error
 
-      # ✅✅✅ UPLOAD TO TESTFLIGHT
+      # ✅✅✅ UPLOAD TO TESTFLIGHT (without distribution first)
       - name: Upload to TestFlight
         shell: bash
         run: |
@@ -706,24 +706,24 @@ jobs:
           
           echo "📤 Uploading to TestFlight..."
           
+          # Upload WITHOUT distributing (to avoid Beta App Description error)
           fastlane pilot upload \
             --ipa "$IPA_PATH" \
             --api_key_path "$API_KEY_JSON" \
             --app_identifier "$BUNDLE_ID" \
             --skip_waiting_for_build_processing false \
-            --distribute_external true \
-            --notify_external_testers false \
-            --changelog "New build from CI"
+            --distribute_external false \
+            --skip_submission true
       
-          echo "✅ Upload complete & distributed to external testing!"
+          echo "✅ Upload complete! (Distribution will happen in next step)"
 
-      # ✅✅✅ AUTO PUBLIC LINK + BETA GROUP
+      # ✅✅✅ AUTO PUBLIC LINK + BETA GROUP + BETA APP DESCRIPTION
       - name: Install required Python packages
         shell: bash
         run: |
           pip3 install PyJWT cryptography requests --break-system-packages
 
-      - name: Create/Update Beta Group & Enable Public Link
+      - name: Setup Beta App Localization & Create/Update Beta Group
         shell: bash
         run: |
           set -euo pipefail
@@ -776,11 +776,51 @@ jobs:
           app_id = apps[0]['id']
           print(f"✅ App ID: {app_id}")
           
-          # Wait a bit for TestFlight processing
-          print("⏳ Waiting 90s for TestFlight processing...")
-          time.sleep(90)
+          # ✅✅✅ CRITICAL: Check/Create Beta App Localization (fixes "Beta App Description missing" error)
+          print("📝 Checking Beta App Localization...")
+          headers["Authorization"] = f"Bearer {create_token()}"
+          r = requests.get(
+              f"https://api.appstoreconnect.apple.com/v1/betaAppLocalizations?filter[app]={app_id}",
+              headers=headers
+          )
+          r.raise_for_status()
+          
+          localizations = r.json()['data']
+          
+          if not localizations:
+              print("📝 Creating Beta App Localization (required for external testing)...")
+              headers["Authorization"] = f"Bearer {create_token()}"
+              r = requests.post(
+                  "https://api.appstoreconnect.apple.com/v1/betaAppLocalizations",
+                  headers=headers,
+                  json={
+                      "data": {
+                          "type": "betaAppLocalizations",
+                          "attributes": {
+                              "locale": "en-US",
+                              "feedbackEmail": "support@example.com",
+                              "description": f"{app_name} - Beta Testing"
+                          },
+                          "relationships": {
+                              "app": {
+                                  "data": {
+                                      "type": "apps",
+                                      "id": app_id
+                                  }
+                              }
+                          }
+                      }
+                  }
+              )
+              if r.status_code == 201:
+                  print("✅ Beta App Localization created!")
+              else:
+                  print(f"⚠️ Failed to create localization: {r.status_code} - {r.text}")
+          else:
+              print(f"✅ Beta App Localization already exists (locale: {localizations[0]['attributes']['locale']})")
           
           # Get latest build
+          print("🔍 Finding latest build...")
           headers["Authorization"] = f"Bearer {create_token()}"
           r = requests.get(
               f"https://api.appstoreconnect.apple.com/v1/builds?filter[app]={app_id}&sort=-uploadedDate&limit=1",
@@ -906,6 +946,34 @@ jobs:
               print("✅ Build added to beta group")
           except Exception as e:
               print(f"⚠️ Build might already be in group: {e}")
+          
+          # ✅ Submit for Beta App Review (external testing)
+          print("📤 Submitting for external testing...")
+          headers["Authorization"] = f"Bearer {create_token()}"
+          try:
+              r = requests.post(
+                  "https://api.appstoreconnect.apple.com/v1/betaAppReviewSubmissions",
+                  headers=headers,
+                  json={
+                      "data": {
+                          "type": "betaAppReviewSubmissions",
+                          "relationships": {
+                              "build": {
+                                  "data": {
+                                      "type": "builds",
+                                      "id": build_id
+                                  }
+                              }
+                          }
+                      }
+                  }
+              )
+              if r.status_code == 201:
+                  print("✅ Submitted for beta review!")
+              else:
+                  print(f"⚠️ Beta review submission: {r.status_code} - might already be submitted")
+          except Exception as e:
+              print(f"⚠️ Beta review submission error (might be ok): {e}")
           
           # Get public link
           public_link = f"https://testflight.apple.com/join/{beta_group_id}"
