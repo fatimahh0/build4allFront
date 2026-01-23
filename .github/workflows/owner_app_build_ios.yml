@@ -213,8 +213,86 @@ jobs:
             flutter create .
           fi
           test -f ios/Podfile
-
-      # ✅ NEW: Add required privacy strings to Info.plist
+          
+# : Set iOS version & build number from payload
+      - name: Set iOS version & build number from payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          python3 - <<'PY'
+          import json, os, re
+          
+          payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
+          cfg = payload.get("CONFIG") or {}
+          
+          def pick(d, *keys):
+              if not isinstance(d, dict):
+                  return None
+              for k in keys:
+                  v = d.get(k)
+                  if v not in (None, "", [], {}):
+                      return v
+              return None
+          
+          # Get version name (e.g., "1.0.2")
+          version_name = (
+              pick(payload, "iosVersionName", "IOS_VERSION_NAME") or
+              pick(cfg, "iosVersionName", "IOS_VERSION_NAME") or
+              pick(payload, "androidVersionName", "ANDROID_VERSION_NAME") or
+              pick(cfg, "androidVersionName", "ANDROID_VERSION_NAME") or
+              "1.0.0"
+          )
+          
+          # Get build number (e.g., 3)
+          build_number = (
+              pick(payload, "iosBuildNumber", "IOS_BUILD_NUMBER") or
+              pick(cfg, "iosBuildNumber", "IOS_BUILD_NUMBER") or
+              pick(payload, "androidVersionCode", "ANDROID_VERSION_CODE") or
+              pick(cfg, "androidVersionCode", "ANDROID_VERSION_CODE") or
+              1
+          )
+          
+          version_name = str(version_name).strip()
+          build_number = str(build_number).strip()
+          
+          print(f"iOS Version: {version_name}")
+          print(f"iOS Build Number: {build_number}")
+          
+          # Update Info.plist
+          info_plist = "ios/Runner/Info.plist"
+          with open(info_plist, "r", encoding="utf-8") as f:
+              content = f.read()
+          
+          # Replace CFBundleShortVersionString
+          content = re.sub(
+              r"(<key>CFBundleShortVersionString</key>\s*<string>)[^<]*(</string>)",
+              rf"\g<1>{version_name}\g<2>",
+              content
+          )
+          
+          # Replace CFBundleVersion
+          content = re.sub(
+              r"(<key>CFBundleVersion</key>\s*<string>)[^<]*(</string>)",
+              rf"\g<1>{build_number}\g<2>",
+              content
+          )
+          
+          with open(info_plist, "w", encoding="utf-8") as f:
+              f.write(content)
+          
+          print(f"✅ Updated {info_plist}")
+          print(f"   CFBundleShortVersionString = {version_name}")
+          print(f"   CFBundleVersion = {build_number}")
+          PY
+          
+          # Verify the changes
+          echo ""
+          echo "Verifying Info.plist updates:"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" ios/Runner/Info.plist
+          
+      #  Add required privacy strings to Info.plist
       - name: Add privacy strings to Info.plist
         shell: bash
         run: |
