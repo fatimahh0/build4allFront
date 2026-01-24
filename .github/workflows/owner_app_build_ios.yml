@@ -686,13 +686,7 @@ jobs:
             -exportPath ../build/ios/ipa \
             OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}"
 
-      - name: Upload IPA artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-ipa
-          path: build/ios/ipa/**/*.ipa
-          if-no-files-found: error
-
+     
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
