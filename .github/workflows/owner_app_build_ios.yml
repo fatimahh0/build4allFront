@@ -776,7 +776,7 @@ jobs:
           app_id = apps[0]['id']
           print(f"✅ App ID: {app_id}")
           
-          # ✅✅✅ CRITICAL: Check/Create Beta App Localization (fixes "Beta App Description missing" error)
+          # Check/Create Beta App Localization
           print("📝 Checking Beta App Localization...")
           headers["Authorization"] = f"Bearer {create_token()}"
           r = requests.get(
@@ -788,7 +788,7 @@ jobs:
           localizations = r.json()['data']
           
           if not localizations:
-              print("📝 Creating Beta App Localization (required for external testing)...")
+              print("📝 Creating Beta App Localization...")
               headers["Authorization"] = f"Bearer {create_token()}"
               r = requests.post(
                   "https://api.appstoreconnect.apple.com/v1/betaAppLocalizations",
@@ -815,9 +815,9 @@ jobs:
               if r.status_code == 201:
                   print("✅ Beta App Localization created!")
               else:
-                  print(f"⚠️ Failed to create localization: {r.status_code} - {r.text}")
+                  print(f"⚠️ Failed to create localization: {r.status_code}")
           else:
-              print(f"✅ Beta App Localization already exists (locale: {localizations[0]['attributes']['locale']})")
+              print(f"✅ Beta App Localization exists")
           
           # Get latest build
           print("🔍 Finding latest build...")
@@ -947,7 +947,7 @@ jobs:
           except Exception as e:
               print(f"⚠️ Build might already be in group: {e}")
           
-          # ✅ Submit for Beta App Review (external testing)
+          # Submit for Beta App Review
           print("📤 Submitting for external testing...")
           headers["Authorization"] = f"Bearer {create_token()}"
           try:
@@ -971,12 +971,30 @@ jobs:
               if r.status_code == 201:
                   print("✅ Submitted for beta review!")
               else:
-                  print(f"⚠️ Beta review submission: {r.status_code} - might already be submitted")
+                  print(f"⚠️ Beta review: {r.status_code} - might already be submitted")
           except Exception as e:
-              print(f"⚠️ Beta review submission error (might be ok): {e}")
+              print(f"⚠️ Beta review error: {e}")
           
-          # Get public link
-          public_link = f"https://testflight.apple.com/join/{beta_group_id}"
+          # ✅✅✅ FIX: Get the CORRECT public link
+          print("🔗 Fetching public link details...")
+          headers["Authorization"] = f"Bearer {create_token()}"
+          r = requests.get(
+              f"https://api.appstoreconnect.apple.com/v1/betaGroups/{beta_group_id}",
+              headers=headers
+          )
+          r.raise_for_status()
+          
+          group_details = r.json()['data']['attributes']
+          public_link_id = group_details.get('publicLinkId')
+          
+          if not public_link_id:
+              print("⚠️ Public link ID not available yet")
+              print("⏳ Apple might need a few minutes to generate it")
+              print("📍 Check App Store Connect → TestFlight → Beta Groups")
+              sys.exit(1)
+          
+          # ✅ Correct public link using publicLinkId
+          public_link = f"https://testflight.apple.com/join/{public_link_id}"
           
           print("")
           print("=" * 60)
@@ -988,7 +1006,7 @@ jobs:
           print("=" * 60)
           print("")
           
-          # Save to file for next step
+          # Save to file
           with open("testflight_link.txt", "w") as f:
               f.write(public_link)
           PYEOF
