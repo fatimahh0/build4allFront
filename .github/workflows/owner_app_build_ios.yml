@@ -39,7 +39,7 @@ jobs:
         run: |
           set -euo pipefail
           ls -la /Applications | grep Xcode || true
-      
+
           if [ -d "/Applications/Xcode_16.1.app" ]; then
             sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
           elif [ -d "/Applications/Xcode_16.0.app" ]; then
@@ -49,16 +49,16 @@ jobs:
             ls -1 /Applications | grep Xcode || true
             exit 1
           fi
-      
+
           xcodebuild -version
           echo "iOS SDK: $(xcrun --sdk iphoneos --show-sdk-version)"
-            
-                  - name: Setup Flutter
-                    uses: subosito/flutter-action@v2
-                    with:
-                      flutter-version: "3.32.0"
-                      channel: stable
-                      cache: true
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.32.0"
+          channel: stable
+          cache: true
 
       - name: Flutter pub get
         shell: bash
