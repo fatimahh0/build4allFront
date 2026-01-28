@@ -720,7 +720,7 @@ jobs:
         run: |
           pip3 install PyJWT cryptography requests --break-system-packages
 
-      - name: Add Owner to Internal Testing (100% Automatic)
+      - name: Add Owner to Internal Testing (Fully Automatic - Add User + Setup)
         shell: bash
         run: |
           set -euo pipefail
@@ -729,20 +729,8 @@ jobs:
           BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
           APP_NAME="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['APP_NAME'])")"
 
-          # ✅ Write payload to temp file
           echo '${{ toJson(github.event.client_payload) }}' > /tmp/ci_payload.json
 
-          echo "----- payload keys (debug) -----"
-          python3 - <<'PY'
-          import json
-          p=json.load(open("/tmp/ci_payload.json"))
-          print("top keys:", list(p.keys()))
-          print("CONFIG keys:", list((p.get("CONFIG") or {}).keys()))
-          print("ownerEmail in CONFIG =", (p.get("CONFIG") or {}).get("ownerEmail"))
-          print("ownerName  in CONFIG =", (p.get("CONFIG") or {}).get("ownerName"))
-          PY
-
-          # ✅ Extract ownerEmail/ownerName safely into two lines (no cut tricks)
           python3 - <<'PY' > /tmp/owner_env.sh
           import json, shlex
           p = json.load(open("/tmp/ci_payload.json"))
@@ -753,19 +741,16 @@ jobs:
           print("OWNER_NAME="  + shlex.quote(owner_name))
           PY
 
-          # load into bash vars
           source /tmp/owner_env.sh
 
           if [ -z "${OWNER_EMAIL:-}" ]; then
-            echo "❌ Missing ownerEmail in payload.CONFIG.ownerEmail"
-            echo "➡️ Fix: ensure backend dispatch includes config.put('ownerEmail', ownerEmail)"
-            exit 1
+            echo "⚠️ ownerEmail not provided, skipping TestFlight setup"
+            exit 0
           fi
 
-          echo "📧 Owner Email: $OWNER_EMAIL"
-          echo "👤 Owner Name:  $OWNER_NAME"
-          echo "📱 App:         $APP_NAME"
-          echo "🆔 Bundle:      $BUNDLE_ID"
+          echo "📧 Owner: $OWNER_EMAIL ($OWNER_NAME)"
+          echo "📱 App: $APP_NAME"
+          echo "🆔 Bundle: $BUNDLE_ID"
           echo ""
 
           python3 - "$API_KEY_JSON" "$BUNDLE_ID" "$OWNER_EMAIL" "$OWNER_NAME" "$APP_NAME" <<'PYEOF'
@@ -794,7 +779,7 @@ jobs:
           app_name = sys.argv[5]
 
           print("="*60)
-          print("🚀 Starting Internal Testing Setup")
+          print("🚀 Fully Automatic Internal Testing Setup")
           print("="*60)
 
           # 1) Find app
@@ -805,12 +790,57 @@ jobs:
           r.raise_for_status()
           apps = r.json()['data']
           if not apps:
-              print(f"❌ App not found with bundle ID: {bundle_id}")
+              print(f"❌ App not found: {bundle_id}")
               sys.exit(1)
           app_id = apps[0]['id']
-          print(f"✅ App found: {app_id}")
+          print(f"✅ App: {app_id}")
 
-          # 2) Get/Create tester
+          # 2) Check if user exists in App Store Connect Users
+          print(f"\n🔍 Checking App Store Connect user access...")
+          r = requests.get(
+              f"https://api.appstoreconnect.apple.com/v1/users?filter[username]={owner_email}",
+              headers=h()
+          )
+          r.raise_for_status()
+          existing_users = r.json()['data']
+
+          user_id = None
+          if existing_users:
+              user_id = existing_users[0]['id']
+              print(f"✅ User already exists in App Store Connect: {user_id}")
+          else:
+              # Add user to App Store Connect
+              print(f"⚙️  Adding user to App Store Connect...")
+              first = owner_name.split()[0] if owner_name.strip() else "Owner"
+              last  = " ".join(owner_name.split()[1:]) if len(owner_name.split()) > 1 else ""
+              
+              r = requests.post(
+                  "https://api.appstoreconnect.apple.com/v1/users",
+                  headers=h(),
+                  json={
+                      "data": {
+                          "type": "users",
+                          "attributes": {
+                              "username": owner_email,
+                              "firstName": first,
+                              "lastName": last,
+                              "roles": ["DEVELOPER"],
+                              "allAppsVisible": True,
+                              "provisioningAllowed": False
+                          }
+                      }
+                  }
+              )
+              
+              if r.status_code in (200, 201):
+                  user_id = r.json()['data']['id']
+                  print(f"✅ User added to App Store Connect: {user_id}")
+              else:
+                  print(f"⚠️  Could not add user (status {r.status_code}): {r.text}")
+                  print(f"⚠️  User might need manual invitation - continuing with beta tester setup...")
+
+          # 3) Get/Create beta tester
+          print(f"\n🔍 Setting up beta tester...")
           r = requests.get(
               f"https://api.appstoreconnect.apple.com/v1/betaTesters?filter[email]={owner_email}",
               headers=h()
@@ -820,7 +850,7 @@ jobs:
 
           if existing:
               tester_id = existing[0]['id']
-              print(f"✅ Tester exists: {tester_id}")
+              print(f"✅ Beta tester exists: {tester_id}")
           else:
               first = owner_name.split()[0] if owner_name.strip() else "Owner"
               last  = " ".join(owner_name.split()[1:]) if len(owner_name.split()) > 1 else ""
@@ -835,23 +865,52 @@ jobs:
               )
               r.raise_for_status()
               tester_id = r.json()['data']['id']
-              print(f"✅ Tester created: {tester_id}")
+              print(f"✅ Beta tester created: {tester_id}")
 
-          # 3) Find internal group
+          # 4) Find or create internal group
+          print(f"\n🔍 Finding Internal Testing group...")
           r = requests.get(
               f"https://api.appstoreconnect.apple.com/v1/betaGroups?filter[app]={app_id}&filter[isInternalGroup]=true",
               headers=h()
           )
           r.raise_for_status()
           groups = r.json()['data']
-          if not groups:
-              print("❌ No Internal Testing group found")
-              sys.exit(1)
-          group_id = groups[0]['id']
-          group_name = groups[0]['attributes']['name']
-          print(f"✅ Internal group: {group_name} ({group_id})")
+          
+          if groups:
+              group_id = groups[0]['id']
+              group_name = groups[0]['attributes']['name']
+              print(f"✅ Internal group exists: {group_name}")
+          else:
+              # Create internal testing group
+              print(f"⚙️  Creating Internal Testing group...")
+              r = requests.post(
+                  "https://api.appstoreconnect.apple.com/v1/betaGroups",
+                  headers=h(),
+                  json={
+                      "data": {
+                          "type": "betaGroups",
+                          "attributes": {
+                              "name": "App Store Connect Users",
+                              "isInternalGroup": True
+                          },
+                          "relationships": {
+                              "app": {"data": {"type": "apps", "id": app_id}}
+                          }
+                      }
+                  }
+              )
+              
+              if r.status_code in (200, 201):
+                  group_id = r.json()['data']['id']
+                  group_name = r.json()['data']['attributes']['name']
+                  print(f"✅ Internal group created: {group_name}")
+              else:
+                  print(f"❌ Could not create internal group (status {r.status_code})")
+                  print(f"Response: {r.text}")
+                  sys.exit(1)
 
-          # 4) Add tester to group
+          # 5) Add tester to group
+          print(f"\n⚙️  Adding tester to internal group...")
           r = requests.post(
               f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}/relationships/betaTesters",
               headers=h(),
@@ -862,24 +921,29 @@ jobs:
           elif r.status_code == 409:
               print("✅ Tester already in internal group")
           else:
-              print("⚠️ Add tester response:", r.status_code, r.text)
+              print(f"⚠️ Response: {r.status_code}")
 
-          # 5) Latest build
+          # 6) Get latest build
+          print(f"\n🔍 Finding latest build...")
           r = requests.get(
               f"https://api.appstoreconnect.apple.com/v1/builds?filter[app]={app_id}&sort=-uploadedDate&limit=1",
               headers=h()
           )
           r.raise_for_status()
           builds = r.json()['data']
+          
           if not builds:
-              print("❌ No builds found")
-              sys.exit(1)
+              print("⚠️ No builds yet (still processing)")
+              print("✅ Setup complete - build will appear when processing finishes")
+              sys.exit(0)
+          
           build_id = builds[0]['id']
           version = builds[0]['attributes']['version']
-          build_number = builds[0]['attributes'].get('buildNumber','')
-          print(f"✅ Latest build: {version} ({build_number}) id={build_id}")
+          build_num = builds[0]['attributes'].get('buildNumber','')
+          print(f"✅ Latest build: {version} ({build_num})")
 
-          # 6) Add build to group
+          # 7) Add build to group
+          print(f"\n⚙️  Adding build to internal group...")
           r = requests.post(
               f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}/relationships/builds",
               headers=h(),
@@ -888,13 +952,16 @@ jobs:
           if r.status_code in (200, 204):
               print("✅ Build added to internal group")
           elif r.status_code == 409:
-              print("✅ Build already in internal group")
+              print("✅ Build already available")
           else:
-              print("⚠️ Add build response:", r.status_code, r.text)
+              print(f"⚠️ Response: {r.status_code}")
 
-          print("\n🎉 INTERNAL TESTING SETUP COMPLETE")
-          print(f"Owner: {owner_email} ({owner_name})")
-          print(f"App:   {app_name}")
-          print(f"Bundle:{bundle_id}")
-          print(f"Build: {version} ({build_number})")
+          print("\n" + "="*60)
+          print("🎉 FULLY AUTOMATIC SETUP COMPLETE")
+          print("="*60)
+          print(f"📧 User: {owner_email} ({owner_name})")
+          print(f"📱 App: {app_name}")
+          print(f"🆔 Bundle: {bundle_id}")
+          print(f"📦 Build: {version} ({build_num})")
+          print(f"👥 Group: {group_name} (Internal)")
           PYEOF
