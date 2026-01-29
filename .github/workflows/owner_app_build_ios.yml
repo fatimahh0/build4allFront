@@ -720,7 +720,7 @@ jobs:
         run: |
           pip3 install PyJWT cryptography requests --break-system-packages
 
-      - name: Add Owner to Internal Testing (WITH RETRY LOGIC - FIXED)
+      - name: Add Owner to Internal Testing (FULLY AUTOMATIC - FIXED)
         shell: bash
         run: |
           set -euo pipefail
@@ -779,7 +779,7 @@ jobs:
           app_name = sys.argv[5]
 
           print("="*60)
-          print("🚀 Fully Automatic Internal Testing Setup (WITH RETRY)")
+          print("🚀 Fully Automatic Internal Testing Setup")
           print("="*60)
 
           # 1) Find app
@@ -809,7 +809,6 @@ jobs:
               user_id = existing_users[0]['id']
               print(f"✅ User already exists in App Store Connect: {user_id}")
           else:
-              # Add user to App Store Connect
               print(f"⚙️  Adding user to App Store Connect...")
               first = owner_name.split()[0] if owner_name.strip() else "Owner"
               last  = " ".join(owner_name.split()[1:]) if len(owner_name.split()) > 1 else ""
@@ -836,8 +835,8 @@ jobs:
                   user_id = r.json()['data']['id']
                   print(f"✅ User added to App Store Connect: {user_id}")
               else:
-                  print(f"⚠️  Could not add user (status {r.status_code}): {r.text}")
-                  print(f"⚠️  User might need manual invitation - continuing with beta tester setup...")
+                  print(f"⚠️  Could not add user (status {r.status_code})")
+                  print(f"⚠️  User might need manual invitation - continuing...")
 
           # 3) Get/Create beta tester
           print(f"\n🔍 Setting up beta tester...")
@@ -881,7 +880,6 @@ jobs:
               group_name = groups[0]['attributes']['name']
               print(f"✅ Internal group exists: {group_name}")
           else:
-              # Create internal testing group
               print(f"⚙️  Creating Internal Testing group...")
               r = requests.post(
                   "https://api.appstoreconnect.apple.com/v1/betaGroups",
@@ -923,12 +921,12 @@ jobs:
           else:
               print(f"⚠️ Response: {r.status_code}")
 
-          # 6) Get latest build with retry - FIXED WITH PROPER WAIT LOGIC
+          # 6) Get latest build with retry
           print(f"\n🔍 Finding latest build (with retry logic)...")
           build_id = None
           version = None
           build_num = None
-          max_retries = 12  # 12 attempts = ~6 minutes total
+          max_retries = 12
           
           for attempt in range(max_retries):
               r = requests.get(
@@ -950,7 +948,7 @@ jobs:
                   else:
                       print(f"⏳ Build {version} still processing ({processing_state})... (attempt {attempt+1}/{max_retries})")
                       if attempt < max_retries - 1:
-                          time.sleep(30)  # Wait 30 seconds before retry
+                          time.sleep(30)
               else:
                   print(f"⏳ No builds yet... (attempt {attempt+1}/{max_retries})")
                   if attempt < max_retries - 1:
@@ -965,11 +963,44 @@ jobs:
               print("="*60)
               sys.exit(0)
 
-          # 7) Add build to group with retry - FIXED TO HANDLE 422 PROPERLY
-          print(f"\n⚙️  Adding build to internal group (with retry)...")
+          # 6b) ✅ SET EXPORT COMPLIANCE - THIS IS THE FIX!
+          print(f"\n⚙️  Setting export compliance...")
+          try:
+              r = requests.patch(
+                  f"https://api.appstoreconnect.apple.com/v1/builds/{build_id}",
+                  headers=h(),
+                  json={
+                      "data": {
+                          "type": "builds",
+                          "id": build_id,
+                          "attributes": {
+                              "usesNonExemptEncryption": False
+                          }
+                      }
+                  }
+              )
+              if r.status_code == 200:
+                  print("✅ Export compliance set (non-exempt encryption)")
+                  time.sleep(15)
+              else:
+                  print(f"⚠️  Export compliance response: {r.status_code}")
+                  if r.status_code == 409:
+                      print("✅ Export compliance already set")
+                  else:
+                      try:
+                          print(f"Response: {r.text}")
+                      except:
+                          pass
+          except Exception as e:
+              print(f"⚠️  Could not set export compliance: {e}")
+              print("💡 Will try to add build anyway...")
+
+          # 7) Add build to group with extended retry
+          print(f"\n⚙️  Adding build to internal group...")
           added = False
+          max_build_retries = 8
           
-          for attempt in range(5):  # Try 5 times
+          for attempt in range(max_build_retries):
               r = requests.post(
                   f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}/relationships/builds",
                   headers=h(),
@@ -985,21 +1016,37 @@ jobs:
                   added = True
                   break
               elif r.status_code == 422:
-                  print(f"⏳ Build not ready yet (422 error, attempt {attempt+1}/5)...")
-                  if attempt < 4:
-                      time.sleep(20)  # Wait 20 seconds before retry
+                  error_detail = ""
+                  try:
+                      error_json = r.json()
+                      if 'errors' in error_json and len(error_json['errors']) > 0:
+                          error_detail = error_json['errors'][0].get('detail', '')
+                  except:
+                      pass
+                  
+                  print(f"⏳ Build not ready yet (422 error, attempt {attempt+1}/{max_build_retries})...")
+                  if error_detail:
+                      print(f"   Details: {error_detail}")
+                  
+                  if attempt < max_build_retries - 1:
+                      wait_time = 30 if attempt < 3 else 45
+                      print(f"   Waiting {wait_time} seconds...")
+                      time.sleep(wait_time)
               else:
                   print(f"⚠️ Unexpected response: {r.status_code}")
                   try:
                       print(f"Response: {r.text}")
                   except:
                       pass
-                  break
+                  if attempt < max_build_retries - 1:
+                      time.sleep(30)
+                  else:
+                      break
           
           if not added:
               print("\n⚠️ Could not add build automatically after retries")
               print("💡 This is usually temporary - build will appear once Apple finishes processing")
-              print("💡 Tester can check TestFlight in 5-10 minutes")
+              print("💡 Tester can check TestFlight in 10-15 minutes")
 
           print("\n" + "="*60)
           print("🎉 SETUP COMPLETE")
@@ -1010,5 +1057,10 @@ jobs:
           if build_id:
               print(f"📦 Build: {version} ({build_num})")
           print(f"👥 Group: {group_name} (Internal)")
-          print("\n💡 Owner should open TestFlight app and check for the app!")
+          if added:
+              print("\n✅ Build is now available in TestFlight!")
+              print("💡 Owner should open TestFlight app to install the app")
+          else:
+              print("\n⏳ Build will appear automatically when ready")
+              print("💡 Check TestFlight app in 10-15 minutes")
           PYEOF
