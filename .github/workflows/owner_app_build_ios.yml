@@ -720,7 +720,7 @@ jobs:
         run: |
           pip3 install PyJWT cryptography requests --break-system-packages
 
-      - name: Add Owner to Internal Testing (Fully Automatic - Add User + Setup)
+      - name: Add Owner to Internal Testing (WITH RETRY LOGIC - FIXED)
         shell: bash
         run: |
           set -euo pipefail
@@ -779,7 +779,7 @@ jobs:
           app_name = sys.argv[5]
 
           print("="*60)
-          print("🚀 Fully Automatic Internal Testing Setup")
+          print("🚀 Fully Automatic Internal Testing Setup (WITH RETRY)")
           print("="*60)
 
           # 1) Find app
@@ -923,45 +923,92 @@ jobs:
           else:
               print(f"⚠️ Response: {r.status_code}")
 
-          # 6) Get latest build
-          print(f"\n🔍 Finding latest build...")
-          r = requests.get(
-              f"https://api.appstoreconnect.apple.com/v1/builds?filter[app]={app_id}&sort=-uploadedDate&limit=1",
-              headers=h()
-          )
-          r.raise_for_status()
-          builds = r.json()['data']
+          # 6) Get latest build with retry - FIXED WITH PROPER WAIT LOGIC
+          print(f"\n🔍 Finding latest build (with retry logic)...")
+          build_id = None
+          version = None
+          build_num = None
+          max_retries = 12  # 12 attempts = ~6 minutes total
           
-          if not builds:
-              print("⚠️ No builds yet (still processing)")
-              print("✅ Setup complete - build will appear when processing finishes")
+          for attempt in range(max_retries):
+              r = requests.get(
+                  f"https://api.appstoreconnect.apple.com/v1/builds?filter[app]={app_id}&sort=-uploadedDate&limit=1",
+                  headers=h()
+              )
+              r.raise_for_status()
+              builds = r.json()['data']
+              
+              if builds:
+                  build_id = builds[0]['id']
+                  version = builds[0]['attributes']['version']
+                  build_num = builds[0]['attributes'].get('buildNumber','')
+                  processing_state = builds[0]['attributes'].get('processingState', 'PROCESSING')
+                  
+                  if processing_state == 'VALID':
+                      print(f"✅ Build ready: {version} ({build_num})")
+                      break
+                  else:
+                      print(f"⏳ Build {version} still processing ({processing_state})... (attempt {attempt+1}/{max_retries})")
+                      if attempt < max_retries - 1:
+                          time.sleep(30)  # Wait 30 seconds before retry
+              else:
+                  print(f"⏳ No builds yet... (attempt {attempt+1}/{max_retries})")
+                  if attempt < max_retries - 1:
+                      time.sleep(30)
+          
+          if not build_id:
+              print("\n⚠️ Build not ready after waiting ~6 minutes")
+              print("💡 Tester has been added successfully")
+              print("💡 Build will appear in TestFlight automatically when processing finishes")
+              print("\n" + "="*60)
+              print("🎉 SETUP COMPLETE (Build pending)")
+              print("="*60)
               sys.exit(0)
-          
-          build_id = builds[0]['id']
-          version = builds[0]['attributes']['version']
-          build_num = builds[0]['attributes'].get('buildNumber','')
-          print(f"✅ Latest build: {version} ({build_num})")
 
-          # 7) Add build to group
-          print(f"\n⚙️  Adding build to internal group...")
-          r = requests.post(
-              f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}/relationships/builds",
-              headers=h(),
-              json={"data":[{"type":"builds","id":build_id}]}
-          )
-          if r.status_code in (200, 204):
-              print("✅ Build added to internal group")
-          elif r.status_code == 409:
-              print("✅ Build already available")
-          else:
-              print(f"⚠️ Response: {r.status_code}")
+          # 7) Add build to group with retry - FIXED TO HANDLE 422 PROPERLY
+          print(f"\n⚙️  Adding build to internal group (with retry)...")
+          added = False
+          
+          for attempt in range(5):  # Try 5 times
+              r = requests.post(
+                  f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}/relationships/builds",
+                  headers=h(),
+                  json={"data":[{"type":"builds","id":build_id}]}
+              )
+              
+              if r.status_code in (200, 204):
+                  print("✅ Build successfully added to internal group")
+                  added = True
+                  break
+              elif r.status_code == 409:
+                  print("✅ Build already available in group")
+                  added = True
+                  break
+              elif r.status_code == 422:
+                  print(f"⏳ Build not ready yet (422 error, attempt {attempt+1}/5)...")
+                  if attempt < 4:
+                      time.sleep(20)  # Wait 20 seconds before retry
+              else:
+                  print(f"⚠️ Unexpected response: {r.status_code}")
+                  try:
+                      print(f"Response: {r.text}")
+                  except:
+                      pass
+                  break
+          
+          if not added:
+              print("\n⚠️ Could not add build automatically after retries")
+              print("💡 This is usually temporary - build will appear once Apple finishes processing")
+              print("💡 Tester can check TestFlight in 5-10 minutes")
 
           print("\n" + "="*60)
-          print("🎉 FULLY AUTOMATIC SETUP COMPLETE")
+          print("🎉 SETUP COMPLETE")
           print("="*60)
           print(f"📧 User: {owner_email} ({owner_name})")
           print(f"📱 App: {app_name}")
           print(f"🆔 Bundle: {bundle_id}")
-          print(f"📦 Build: {version} ({build_num})")
+          if build_id:
+              print(f"📦 Build: {version} ({build_num})")
           print(f"👥 Group: {group_name} (Internal)")
+          print("\n💡 Owner should open TestFlight app and check for the app!")
           PYEOF
