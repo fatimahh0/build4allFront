@@ -720,7 +720,7 @@ jobs:
         run: |
           pip3 install PyJWT cryptography requests --break-system-packages
 
-      - name: Add Owner to Internal Testing (FULLY AUTOMATIC - FIXED)
+      - name: 🚀 FULLY AUTOMATIC TestFlight Setup (Zero Manual Steps)
         shell: bash
         run: |
           set -euo pipefail
@@ -778,11 +778,15 @@ jobs:
           owner_name = sys.argv[4]
           app_name = sys.argv[5]
 
-          print("="*60)
-          print("🚀 Fully Automatic Internal Testing Setup")
-          print("="*60)
+          print("="*70)
+          print("🚀 FULLY AUTOMATIC TESTFLIGHT SETUP - ZERO MANUAL STEPS")
+          print("="*70)
+          print()
 
-          # 1) Find app
+          # ============================================================
+          # STEP 1: Find the app
+          # ============================================================
+          print("📱 Step 1: Finding app in App Store Connect...")
           r = requests.get(
               f"https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]={bundle_id}",
               headers=h()
@@ -793,10 +797,13 @@ jobs:
               print(f"❌ App not found: {bundle_id}")
               sys.exit(1)
           app_id = apps[0]['id']
-          print(f"✅ App: {app_id}")
+          print(f"   ✅ App found: {app_id}")
+          print()
 
-          # 2) Check if user exists in App Store Connect Users
-          print(f"\n🔍 Checking App Store Connect user access...")
+          # ============================================================
+          # STEP 2: Ensure owner exists as App Store Connect User
+          # ============================================================
+          print("👤 Step 2: Checking App Store Connect user account...")
           r = requests.get(
               f"https://api.appstoreconnect.apple.com/v1/users?filter[username]={owner_email}",
               headers=h()
@@ -807,9 +814,10 @@ jobs:
           user_id = None
           if existing_users:
               user_id = existing_users[0]['id']
-              print(f"✅ User already exists in App Store Connect: {user_id}")
+              user_role = existing_users[0]['attributes'].get('roles', ['UNKNOWN'])[0]
+              print(f"   ✅ User exists: {user_id} (Role: {user_role})")
           else:
-              print(f"⚙️  Adding user to App Store Connect...")
+              print(f"   ⚙️  Creating App Store Connect user...")
               first = owner_name.split()[0] if owner_name.strip() else "Owner"
               last  = " ".join(owner_name.split()[1:]) if len(owner_name.split()) > 1 else ""
               
@@ -833,13 +841,16 @@ jobs:
               
               if r.status_code in (200, 201):
                   user_id = r.json()['data']['id']
-                  print(f"✅ User added to App Store Connect: {user_id}")
+                  print(f"   ✅ User created: {user_id}")
               else:
-                  print(f"⚠️  Could not add user (status {r.status_code})")
-                  print(f"⚠️  User might need manual invitation - continuing...")
+                  print(f"   ⚠️  Could not auto-create user (status {r.status_code})")
+                  print(f"   💡 User might need Apple ID invitation to team")
+          print()
 
-          # 3) Get/Create beta tester
-          print(f"\n🔍 Setting up beta tester...")
+          # ============================================================
+          # STEP 3: Create/Find Beta Tester
+          # ============================================================
+          print("🧪 Step 3: Setting up beta tester account...")
           r = requests.get(
               f"https://api.appstoreconnect.apple.com/v1/betaTesters?filter[email]={owner_email}",
               headers=h()
@@ -849,8 +860,9 @@ jobs:
 
           if existing:
               tester_id = existing[0]['id']
-              print(f"✅ Beta tester exists: {tester_id}")
+              print(f"   ✅ Beta tester exists: {tester_id}")
           else:
+              print(f"   ⚙️  Creating beta tester...")
               first = owner_name.split()[0] if owner_name.strip() else "Owner"
               last  = " ".join(owner_name.split()[1:]) if len(owner_name.split()) > 1 else ""
               r = requests.post(
@@ -864,10 +876,13 @@ jobs:
               )
               r.raise_for_status()
               tester_id = r.json()['data']['id']
-              print(f"✅ Beta tester created: {tester_id}")
+              print(f"   ✅ Beta tester created: {tester_id}")
+          print()
 
-          # 4) Find or create internal group
-          print(f"\n🔍 Finding Internal Testing group...")
+          # ============================================================
+          # STEP 4: Find or Create Internal Testing Group
+          # ============================================================
+          print("👥 Step 4: Setting up internal testing group...")
           r = requests.get(
               f"https://api.appstoreconnect.apple.com/v1/betaGroups?filter[app]={app_id}&filter[isInternalGroup]=true",
               headers=h()
@@ -878,9 +893,9 @@ jobs:
           if groups:
               group_id = groups[0]['id']
               group_name = groups[0]['attributes']['name']
-              print(f"✅ Internal group exists: {group_name}")
+              print(f"   ✅ Internal group exists: '{group_name}'")
           else:
-              print(f"⚙️  Creating Internal Testing group...")
+              print(f"   ⚙️  Creating internal testing group...")
               r = requests.post(
                   "https://api.appstoreconnect.apple.com/v1/betaGroups",
                   headers=h(),
@@ -901,32 +916,41 @@ jobs:
               if r.status_code in (200, 201):
                   group_id = r.json()['data']['id']
                   group_name = r.json()['data']['attributes']['name']
-                  print(f"✅ Internal group created: {group_name}")
+                  print(f"   ✅ Internal group created: '{group_name}'")
               else:
-                  print(f"❌ Could not create internal group (status {r.status_code})")
-                  print(f"Response: {r.text}")
+                  print(f"   ❌ Could not create internal group (status {r.status_code})")
+                  try:
+                      print(f"   Response: {r.text}")
+                  except:
+                      pass
                   sys.exit(1)
+          print()
 
-          # 5) Add tester to group
-          print(f"\n⚙️  Adding tester to internal group...")
+          # ============================================================
+          # STEP 5: Add Tester to Internal Group
+          # ============================================================
+          print("🔗 Step 5: Adding tester to internal group...")
           r = requests.post(
               f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}/relationships/betaTesters",
               headers=h(),
               json={"data":[{"type":"betaTesters","id":tester_id}]}
           )
           if r.status_code in (200, 204):
-              print("✅ Tester added to internal group")
+              print("   ✅ Tester added to group")
           elif r.status_code == 409:
-              print("✅ Tester already in internal group")
+              print("   ✅ Tester already in group")
           else:
-              print(f"⚠️ Response: {r.status_code}")
+              print(f"   ⚠️  Response: {r.status_code}")
+          print()
 
-          # 6) Get latest build with retry
-          print(f"\n🔍 Finding latest build (with retry logic)...")
+          # ============================================================
+          # STEP 6: Wait for Build Processing (with extended retry)
+          # ============================================================
+          print("⏳ Step 6: Waiting for build to finish processing...")
           build_id = None
           version = None
           build_num = None
-          max_retries = 12
+          max_retries = 15  # Increased from 12
           
           for attempt in range(max_retries):
               r = requests.get(
@@ -943,28 +967,37 @@ jobs:
                   processing_state = builds[0]['attributes'].get('processingState', 'PROCESSING')
                   
                   if processing_state == 'VALID':
-                      print(f"✅ Build ready: {version} ({build_num})")
+                      print(f"   ✅ Build ready: {version} ({build_num})")
                       break
+                  elif processing_state in ['PROCESSING', 'PROCESSING_UPLOAD']:
+                      print(f"   ⏳ Build {version} processing... ({processing_state}) - attempt {attempt+1}/{max_retries}")
                   else:
-                      print(f"⏳ Build {version} still processing ({processing_state})... (attempt {attempt+1}/{max_retries})")
-                      if attempt < max_retries - 1:
-                          time.sleep(30)
+                      print(f"   ℹ️  Build state: {processing_state} - attempt {attempt+1}/{max_retries}")
+                  
+                  if attempt < max_retries - 1:
+                      wait_time = 30
+                      time.sleep(wait_time)
               else:
-                  print(f"⏳ No builds yet... (attempt {attempt+1}/{max_retries})")
+                  print(f"   ⏳ No builds found yet - attempt {attempt+1}/{max_retries}")
                   if attempt < max_retries - 1:
                       time.sleep(30)
           
           if not build_id:
-              print("\n⚠️ Build not ready after waiting ~6 minutes")
-              print("💡 Tester has been added successfully")
-              print("💡 Build will appear in TestFlight automatically when processing finishes")
-              print("\n" + "="*60)
-              print("🎉 SETUP COMPLETE (Build pending)")
-              print("="*60)
+              print()
+              print("   ⚠️  Build not ready after ~7.5 minutes of waiting")
+              print("   💡 Tester has been added successfully")
+              print("   💡 Build will appear in TestFlight automatically when processing finishes")
+              print()
+              print("="*70)
+              print("✅ SETUP COMPLETE (Build pending)")
+              print("="*70)
               sys.exit(0)
+          print()
 
-          # 6b) ✅ SET EXPORT COMPLIANCE - THIS IS THE FIX!
-          print(f"\n⚙️  Setting export compliance...")
+          # ============================================================
+          # STEP 7: Set Export Compliance (CRITICAL)
+          # ============================================================
+          print("🔒 Step 7: Setting export compliance...")
           try:
               r = requests.patch(
                   f"https://api.appstoreconnect.apple.com/v1/builds/{build_id}",
@@ -980,25 +1013,28 @@ jobs:
                   }
               )
               if r.status_code == 200:
-                  print("✅ Export compliance set (non-exempt encryption)")
-                  time.sleep(15)
+                  print("   ✅ Export compliance set (non-exempt encryption)")
+                  time.sleep(20)  # Increased wait time
+              elif r.status_code == 409:
+                  print("   ✅ Export compliance already set")
               else:
-                  print(f"⚠️  Export compliance response: {r.status_code}")
-                  if r.status_code == 409:
-                      print("✅ Export compliance already set")
-                  else:
+                  print(f"   ⚠️  Export compliance response: {r.status_code}")
+                  if r.text:
                       try:
-                          print(f"Response: {r.text}")
+                          print(f"   Response: {r.text[:200]}")
                       except:
                           pass
           except Exception as e:
-              print(f"⚠️  Could not set export compliance: {e}")
-              print("💡 Will try to add build anyway...")
+              print(f"   ⚠️  Could not set export compliance: {e}")
+              print("   💡 Will try to add build anyway...")
+          print()
 
-          # 7) Add build to group with extended retry
-          print(f"\n⚙️  Adding build to internal group...")
+          # ============================================================
+          # STEP 8: Add Build to Internal Group (FINAL STEP)
+          # ============================================================
+          print("📦 Step 8: Adding build to internal testing group...")
           added = False
-          max_build_retries = 8
+          max_build_retries = 10  # Increased from 8
           
           for attempt in range(max_build_retries):
               r = requests.post(
@@ -1008,11 +1044,11 @@ jobs:
               )
               
               if r.status_code in (200, 204):
-                  print("✅ Build successfully added to internal group")
+                  print("   ✅ Build successfully added to internal group!")
                   added = True
                   break
               elif r.status_code == 409:
-                  print("✅ Build already available in group")
+                  print("   ✅ Build already available in group!")
                   added = True
                   break
               elif r.status_code == 422:
@@ -1024,43 +1060,57 @@ jobs:
                   except:
                       pass
                   
-                  print(f"⏳ Build not ready yet (422 error, attempt {attempt+1}/{max_build_retries})...")
+                  print(f"   ⏳ Build not ready yet - attempt {attempt+1}/{max_build_retries}")
                   if error_detail:
-                      print(f"   Details: {error_detail}")
+                      print(f"      Detail: {error_detail[:100]}")
                   
                   if attempt < max_build_retries - 1:
-                      wait_time = 30 if attempt < 3 else 45
-                      print(f"   Waiting {wait_time} seconds...")
+                      wait_time = 40 if attempt < 4 else 60  # Longer waits
+                      print(f"      Waiting {wait_time} seconds...")
                       time.sleep(wait_time)
               else:
-                  print(f"⚠️ Unexpected response: {r.status_code}")
+                  print(f"   ⚠️  Unexpected response: {r.status_code}")
                   try:
-                      print(f"Response: {r.text}")
+                      print(f"   Response: {r.text[:200]}")
                   except:
                       pass
                   if attempt < max_build_retries - 1:
-                      time.sleep(30)
+                      time.sleep(40)
                   else:
                       break
           
-          if not added:
-              print("\n⚠️ Could not add build automatically after retries")
-              print("💡 This is usually temporary - build will appear once Apple finishes processing")
-              print("💡 Tester can check TestFlight in 10-15 minutes")
-
-          print("\n" + "="*60)
-          print("🎉 SETUP COMPLETE")
-          print("="*60)
-          print(f"📧 User: {owner_email} ({owner_name})")
-          print(f"📱 App: {app_name}")
-          print(f"🆔 Bundle: {bundle_id}")
-          if build_id:
-              print(f"📦 Build: {version} ({build_num})")
-          print(f"👥 Group: {group_name} (Internal)")
+          print()
+          print("="*70)
+          
           if added:
-              print("\n✅ Build is now available in TestFlight!")
-              print("💡 Owner should open TestFlight app to install the app")
+              print("🎉 ✅ FULLY AUTOMATIC SETUP COMPLETE - SUCCESS!")
+              print("="*70)
+              print(f"📧 User: {owner_email} ({owner_name})")
+              print(f"📱 App: {app_name}")
+              print(f"🆔 Bundle: {bundle_id}")
+              print(f"📦 Build: {version} ({build_num})")
+              print(f"👥 Group: {group_name} (Internal)")
+              print()
+              print("✅ Build is NOW available in TestFlight!")
+              print("📲 Owner should:")
+              print("   1. Open TestFlight app on iOS device")
+              print("   2. Find the app and tap 'Install'")
+              print("   3. Start testing immediately!")
+              print()
+              print("⚡ NO MANUAL STEPS REQUIRED - FULLY AUTOMATED!")
           else:
-              print("\n⏳ Build will appear automatically when ready")
-              print("💡 Check TestFlight app in 10-15 minutes")
+              print("⚠️  SETUP PARTIALLY COMPLETE")
+              print("="*70)
+              print(f"📧 User: {owner_email} ({owner_name})")
+              print(f"📱 App: {app_name}")
+              print(f"🆔 Bundle: {bundle_id}")
+              print(f"📦 Build: {version} ({build_num})")
+              print(f"👥 Group: {group_name} (Internal)")
+              print()
+              print("⚠️  Build not automatically added after retries")
+              print("💡 This is usually temporary - Apple is still processing")
+              print("💡 Owner should check TestFlight in 10-15 minutes")
+              print("💡 No manual steps needed - will appear automatically")
+          
+          print("="*70)
           PYEOF
