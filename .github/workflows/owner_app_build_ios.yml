@@ -754,7 +754,7 @@ jobs:
         run: |
           pip3 install PyJWT cryptography requests --break-system-packages
 
-      - name: 🚀 FULLY AUTOMATIC TestFlight Setup (Zero Manual Steps)
+      - name: 🚀 Dynamic TestFlight Setup (Handles All Permission Scenarios)
         shell: bash
         run: |
           set -euo pipefail
@@ -813,7 +813,7 @@ jobs:
           app_name = sys.argv[5]
 
           print("="*70)
-          print("🚀 FULLY AUTOMATIC TESTFLIGHT SETUP - ZERO MANUAL STEPS")
+          print("🚀 DYNAMIC TESTFLIGHT SETUP - ADAPTS TO PERMISSIONS")
           print("="*70)
           print()
 
@@ -835,140 +835,175 @@ jobs:
           print()
 
           # ============================================================
-          # STEP 2: Ensure owner exists as App Store Connect User
+          # STEP 2: Check owner (DYNAMIC - doesn't fail on 403)
           # ============================================================
           print("👤 Step 2: Checking App Store Connect user account...")
-          r = requests.get(
-              f"https://api.appstoreconnect.apple.com/v1/users?filter[username]={owner_email}",
-              headers=h()
-          )
-          r.raise_for_status()
-          existing_users = r.json()['data']
-
-          user_id = None
-          if existing_users:
-              user_id = existing_users[0]['id']
-              user_role = existing_users[0]['attributes'].get('roles', ['UNKNOWN'])[0]
-              print(f"   ✅ User exists: {user_id} (Role: {user_role})")
-          else:
-              print(f"   ⚙️  Creating App Store Connect user...")
-              first = owner_name.split()[0] if owner_name.strip() else "Owner"
-              last  = " ".join(owner_name.split()[1:]) if len(owner_name.split()) > 1 else ""
-              
-              r = requests.post(
-                  "https://api.appstoreconnect.apple.com/v1/users",
-                  headers=h(),
-                  json={
-                      "data": {
-                          "type": "users",
-                          "attributes": {
-                              "username": owner_email,
-                              "firstName": first,
-                              "lastName": last,
-                              "roles": ["DEVELOPER"],
-                              "allAppsVisible": True,
-                              "provisioningAllowed": False
-                          }
-                      }
-                  }
+          user_exists_in_team = False
+          
+          try:
+              r = requests.get(
+                  f"https://api.appstoreconnect.apple.com/v1/users?filter[username]={owner_email}",
+                  headers=h()
               )
-              
-              if r.status_code in (200, 201):
-                  user_id = r.json()['data']['id']
-                  print(f"   ✅ User created: {user_id}")
-              else:
-                  print(f"   ⚠️  Could not auto-create user (status {r.status_code})")
-                  print(f"   💡 User might need Apple ID invitation to team")
-          print()
-
-          # ============================================================
-          # STEP 3: Create/Find Beta Tester (FIXED - app-specific)
-          # ============================================================
-          print("🧪 Step 3: Setting up beta tester account...")
+              if r.status_code == 200:
+                  existing_users = r.json()['data']
+                  if existing_users:
+                      user_id = existing_users[0]['id']
+                      user_role = existing_users[0]['attributes'].get('roles', ['UNKNOWN'])[0]
+                      print(f"   ✅ User exists in team: {user_id} (Role: {user_role})")
+                      user_exists_in_team = True
+                  else:
+                      print(f"   ℹ️  User not in team yet")
+              elif r.status_code == 403:
+                  print(f"   ℹ️  No permission to check team users (403)")
+                  print(f"   💡 Continuing with beta tester setup...")
+          except Exception as e:
+              print(f"   ℹ️  User check skipped: {str(e)[:80]}")
           
-          # First check if tester already exists for THIS specific app
-          r = requests.get(
-              f"https://api.appstoreconnect.apple.com/v1/apps/{app_id}/betaTesters?filter[email]={owner_email}",
-              headers=h()
-          )
-          r.raise_for_status()
-          app_specific_testers = r.json()['data']
-          
-          if app_specific_testers:
-              tester_id = app_specific_testers[0]['id']
-              print(f"   ✅ Beta tester exists for this app: {tester_id}")
-          else:
-              print(f"   ⚙️  Creating beta tester for app...")
-              first = owner_name.split()[0] if owner_name.strip() else "Owner"
-              last  = " ".join(owner_name.split()[1:]) if len(owner_name.split()) > 1 else ""
-              
-              r = requests.post(
-                  "https://api.appstoreconnect.apple.com/v1/betaTesters",
-                  headers=h(),
-                  json={
-                      "data": {
-                          "type": "betaTesters",
-                          "attributes": {
-                              "email": owner_email,
-                              "firstName": first,
-                              "lastName": last
-                          },
-                          "relationships": {
-                              "apps": {
-                                  "data": [{"type": "apps", "id": app_id}]
+          # Try to create user only if needed and we have permission
+          if not user_exists_in_team:
+              try:
+                  print(f"   ⚙️  Attempting to invite user to team...")
+                  first = owner_name.split()[0] if owner_name.strip() else "Owner"
+                  last  = " ".join(owner_name.split()[1:]) if len(owner_name.split()) > 1 else ""
+                  
+                  r = requests.post(
+                      "https://api.appstoreconnect.apple.com/v1/users",
+                      headers=h(),
+                      json={
+                          "data": {
+                              "type": "users",
+                              "attributes": {
+                                  "username": owner_email,
+                                  "firstName": first,
+                                  "lastName": last,
+                                  "roles": ["DEVELOPER"],
+                                  "allAppsVisible": True,
+                                  "provisioningAllowed": False
                               }
                           }
                       }
-                  }
-              )
-              
-              if r.status_code in (200, 201):
-                  tester_id = r.json()['data']['id']
-                  print(f"   ✅ Beta tester created: {tester_id}")
-              elif r.status_code == 409:
-                  # Tester exists globally but not linked to app
-                  print(f"   ℹ️  Tester exists globally, searching...")
-                  r2 = requests.get(
-                      f"https://api.appstoreconnect.apple.com/v1/betaTesters?filter[email]={owner_email}",
-                      headers=h()
                   )
-                  r2.raise_for_status()
-                  global_testers = r2.json()['data']
                   
-                  if global_testers:
-                      tester_id = global_testers[0]['id']
-                      print(f"   ✅ Found global tester: {tester_id}")
-                      
-                      # Add app relationship
-                      print(f"   ⚙️  Linking tester to app...")
-                      r3 = requests.post(
-                          f"https://api.appstoreconnect.apple.com/v1/betaTesters/{tester_id}/relationships/apps",
-                          headers=h(),
-                          json={"data": [{"type": "apps", "id": app_id}]}
-                      )
-                      
-                      if r3.status_code in (200, 204):
-                          print(f"   ✅ Tester linked to app")
-                      elif r3.status_code == 409:
-                          print(f"   ✅ Tester already linked to app")
-                      elif r3.status_code == 403:
-                          print(f"   ⚠️  Permission denied to link tester")
-                          print(f"   💡 Will try alternative method...")
-                      else:
-                          print(f"   ℹ️  Link response: {r3.status_code}")
-                  else:
-                      raise Exception("Could not find or create beta tester")
-              else:
-                  print(f"   ⚠️  Create tester failed: {r.status_code}")
-                  try:
-                      print(f"   Response: {r.text[:200]}")
-                  except:
-                      pass
-                  raise Exception("Could not create beta tester")
+                  if r.status_code in (200, 201):
+                      print(f"   ✅ User invitation sent")
+                      user_exists_in_team = True
+                  elif r.status_code == 403:
+                      print(f"   ℹ️  No permission to invite users (403)")
+                      print(f"   💡 Admin needs to manually invite: {owner_email}")
+                  elif r.status_code == 409:
+                      print(f"   ✅ User already invited or exists")
+              except Exception as e:
+                  print(f"   ℹ️  User invitation skipped: {str(e)[:80]}")
+          
           print()
 
           # ============================================================
-          # STEP 4: Find or Create Internal Testing Group
+          # STEP 3: Create/Find Beta Tester (MAIN PATH)
+          # ============================================================
+          print("🧪 Step 3: Setting up beta tester account...")
+          tester_id = None
+          
+          # First check if tester already exists for this app
+          try:
+              r = requests.get(
+                  f"https://api.appstoreconnect.apple.com/v1/apps/{app_id}/betaTesters?filter[email]={owner_email}",
+                  headers=h()
+              )
+              
+              if r.status_code == 200:
+                  app_testers = r.json()['data']
+                  if app_testers:
+                      tester_id = app_testers[0]['id']
+                      print(f"   ✅ Beta tester exists for this app: {tester_id}")
+              elif r.status_code == 403:
+                  print(f"   ⚠️  403 error checking beta testers")
+                  print(f"   💡 This usually means:")
+                  print(f"      1. Email {owner_email} needs to be invited to Apple Developer team first")
+                  print(f"      2. Or API key needs broader permissions")
+                  print()
+                  print(f"   📋 MANUAL STEPS NEEDED:")
+                  print(f"      1. Go to appstoreconnect.apple.com")
+                  print(f"      2. Users and Access → Click '+' ")
+                  print(f"      3. Invite: {owner_email}")
+                  print(f"      4. Role: Developer or App Manager")
+                  print(f"      5. User must accept invitation email")
+                  print(f"      6. Wait 15 minutes, then re-run workflow")
+                  print()
+                  print(f"   ⏭️  Skipping automatic setup...")
+                  sys.exit(0)
+          except Exception as e:
+              print(f"   ⚠️  Error checking testers: {str(e)[:100]}")
+              sys.exit(0)
+          
+          # Create tester if doesn't exist
+          if not tester_id:
+              try:
+                  print(f"   ⚙️  Creating beta tester...")
+                  first = owner_name.split()[0] if owner_name.strip() else "Owner"
+                  last  = " ".join(owner_name.split()[1:]) if len(owner_name.split()) > 1 else ""
+                  
+                  r = requests.post(
+                      "https://api.appstoreconnect.apple.com/v1/betaTesters",
+                      headers=h(),
+                      json={
+                          "data": {
+                              "type": "betaTesters",
+                              "attributes": {
+                                  "email": owner_email,
+                                  "firstName": first,
+                                  "lastName": last
+                              },
+                              "relationships": {
+                                  "apps": {
+                                      "data": [{"type": "apps", "id": app_id}]
+                                  }
+                              }
+                          }
+                      }
+                  )
+                  
+                  if r.status_code in (200, 201):
+                      tester_id = r.json()['data']['id']
+                      print(f"   ✅ Beta tester created: {tester_id}")
+                  elif r.status_code == 409:
+                      # Tester exists globally, try to find and link
+                      print(f"   ℹ️  Tester exists globally, linking to app...")
+                      r2 = requests.get(
+                          f"https://api.appstoreconnect.apple.com/v1/betaTesters?filter[email]={owner_email}",
+                          headers=h()
+                      )
+                      if r2.status_code == 200:
+                          global_testers = r2.json()['data']
+                          if global_testers:
+                              tester_id = global_testers[0]['id']
+                              print(f"   ✅ Found tester: {tester_id}")
+                              
+                              # Link to app
+                              r3 = requests.post(
+                                  f"https://api.appstoreconnect.apple.com/v1/betaTesters/{tester_id}/relationships/apps",
+                                  headers=h(),
+                                  json={"data": [{"type": "apps", "id": app_id}]}
+                              )
+                              if r3.status_code in (200, 204, 409):
+                                  print(f"   ✅ Tester linked to app")
+                  else:
+                      print(f"   ⚠️  Beta tester creation returned: {r.status_code}")
+                      if r.status_code == 403:
+                          print(f"   💡 User {owner_email} must be in Apple Developer team first")
+                      sys.exit(0)
+              except Exception as e:
+                  print(f"   ⚠️  Error creating tester: {str(e)[:100]}")
+                  sys.exit(0)
+          
+          if not tester_id:
+              print(f"   ❌ Could not create or find beta tester")
+              sys.exit(0)
+          
+          print()
+
+          # ============================================================
+          # STEP 4: Find or Create Internal Group
           # ============================================================
           print("👥 Step 4: Setting up internal testing group...")
           r = requests.get(
@@ -1007,15 +1042,11 @@ jobs:
                   print(f"   ✅ Internal group created: '{group_name}'")
               else:
                   print(f"   ❌ Could not create internal group (status {r.status_code})")
-                  try:
-                      print(f"   Response: {r.text}")
-                  except:
-                      pass
                   sys.exit(1)
           print()
 
           # ============================================================
-          # STEP 5: Add Tester to Internal Group
+          # STEP 5: Add Tester to Group
           # ============================================================
           print("🔗 Step 5: Adding tester to internal group...")
           r = requests.post(
@@ -1029,14 +1060,10 @@ jobs:
               print("   ✅ Tester already in group")
           else:
               print(f"   ⚠️  Response: {r.status_code}")
-              try:
-                  print(f"   Details: {r.text[:200]}")
-              except:
-                  pass
           print()
 
           # ============================================================
-          # STEP 6: Wait for Build Processing (with extended retry)
+          # STEP 6: Wait for Build
           # ============================================================
           print("⏳ Step 6: Waiting for build to finish processing...")
           build_id = None
@@ -1061,14 +1088,11 @@ jobs:
                   if processing_state == 'VALID':
                       print(f"   ✅ Build ready: {version} ({build_num})")
                       break
-                  elif processing_state in ['PROCESSING', 'PROCESSING_UPLOAD']:
-                      print(f"   ⏳ Build {version} processing... ({processing_state}) - attempt {attempt+1}/{max_retries}")
                   else:
-                      print(f"   ℹ️  Build state: {processing_state} - attempt {attempt+1}/{max_retries}")
+                      print(f"   ⏳ Build {version} {processing_state} - attempt {attempt+1}/{max_retries}")
                   
                   if attempt < max_retries - 1:
-                      wait_time = 30
-                      time.sleep(wait_time)
+                      time.sleep(30)
               else:
                   print(f"   ⏳ No builds found yet - attempt {attempt+1}/{max_retries}")
                   if attempt < max_retries - 1:
@@ -1076,18 +1100,15 @@ jobs:
           
           if not build_id:
               print()
-              print("   ⚠️  Build not ready after ~7.5 minutes of waiting")
-              print("   💡 Tester has been added successfully")
-              print("   💡 Build will appear in TestFlight automatically when processing finishes")
+              print("   ⚠️  Build not ready yet")
+              print("   💡 Tester added - build will appear when processing finishes")
               print()
-              print("="*70)
               print("✅ SETUP COMPLETE (Build pending)")
-              print("="*70)
               sys.exit(0)
           print()
 
           # ============================================================
-          # STEP 7: Set Export Compliance (CRITICAL)
+          # STEP 7: Set Export Compliance
           # ============================================================
           print("🔒 Step 7: Setting export compliance...")
           try:
@@ -1105,19 +1126,18 @@ jobs:
                   }
               )
               if r.status_code == 200:
-                  print("   ✅ Export compliance set (non-exempt encryption)")
+                  print("   ✅ Export compliance set")
                   time.sleep(20)
               elif r.status_code == 409:
                   print("   ✅ Export compliance already set")
               else:
-                  print(f"   ⚠️  Export compliance response: {r.status_code}")
+                  print(f"   ℹ️  Export compliance: {r.status_code}")
           except Exception as e:
-              print(f"   ⚠️  Could not set export compliance: {e}")
-              print("   💡 Will try to add build anyway...")
+              print(f"   ⚠️  {str(e)[:80]}")
           print()
 
           # ============================================================
-          # STEP 8: Add Build to Internal Group (FINAL STEP)
+          # STEP 8: Add Build to Group
           # ============================================================
           print("📦 Step 8: Adding build to internal testing group...")
           added = False
@@ -1131,51 +1151,31 @@ jobs:
               )
               
               if r.status_code in (200, 204):
-                  print("   ✅ Build successfully added to internal group!")
+                  print("   ✅ Build added to internal group!")
                   added = True
                   break
               elif r.status_code == 409:
-                  print("   ✅ Build already available in group!")
+                  print("   ✅ Build already in group!")
                   added = True
                   break
               elif r.status_code == 422:
-                  error_detail = ""
-                  try:
-                      error_json = r.json()
-                      if 'errors' in error_json and len(error_json['errors']) > 0:
-                          error_detail = error_json['errors'][0].get('detail', '')
-                  except:
-                      pass
-                  
-                  print(f"   ⏳ Build not ready yet - attempt {attempt+1}/{max_build_retries}")
-                  if error_detail:
-                      print(f"      Detail: {error_detail[:100]}")
-                  
-                  if attempt < max_build_retries - 1:
-                      wait_time = 40 if attempt < 4 else 60
-                      print(f"      Waiting {wait_time} seconds...")
-                      time.sleep(wait_time)
-              else:
-                  print(f"   ⚠️  Unexpected response: {r.status_code}")
-                  try:
-                      print(f"   Response: {r.text[:200]}")
-                  except:
-                      pass
+                  print(f"   ⏳ Build not ready - attempt {attempt+1}/{max_build_retries}")
                   if attempt < max_build_retries - 1:
                       time.sleep(40)
-                  else:
-                      break
+              else:
+                  print(f"   ⚠️  Response: {r.status_code}")
+                  if attempt < max_build_retries - 1:
+                      time.sleep(40)
           
           # ============================================================
-          # STEP 9: Send Automatic TestFlight Invitation Email (FIXED)
+          # STEP 9: Send Invitation
           # ============================================================
           if added:
               print()
-              print("📧 Step 9: Sending automatic TestFlight invitation...")
+              print("📧 Step 9: Sending TestFlight invitation...")
               
               try:
-                  # Re-fetch the app-specific tester ID (most reliable method)
-                  print(f"   🔍 Getting app-specific beta tester ID...")
+                  # Get fresh tester ID
                   r = requests.get(
                       f"https://api.appstoreconnect.apple.com/v1/apps/{app_id}/betaTesters",
                       headers=h()
@@ -1183,18 +1183,17 @@ jobs:
                   
                   if r.status_code == 200:
                       app_testers = r.json()['data']
-                      app_tester = None
+                      verified_tester = None
                       
                       for tester in app_testers:
                           if tester['attributes']['email'].lower() == owner_email.lower():
-                              app_tester = tester
+                              verified_tester = tester
                               break
                       
-                      if app_tester:
-                          verified_tester_id = app_tester['id']
-                          print(f"   ✅ Found app-specific tester: {verified_tester_id}")
+                      if verified_tester:
+                          verified_tester_id = verified_tester['id']
                           
-                          # Ensure build has localization
+                          # Ensure localization
                           try:
                               r = requests.post(
                                   "https://api.appstoreconnect.apple.com/v1/betaBuildLocalizations",
@@ -1204,31 +1203,22 @@ jobs:
                                           "type": "betaBuildLocalizations",
                                           "attributes": {
                                               "locale": "en-US",
-                                              "whatsNew": f"Welcome to {app_name}! This build is ready for testing."
+                                              "whatsNew": f"Welcome to {app_name}!"
                                           },
                                           "relationships": {
-                                              "build": {
-                                                  "data": {
-                                                      "type": "builds",
-                                                      "id": build_id
-                                                  }
-                                              }
+                                              "build": {"data": {"type": "builds", "id": build_id}}
                                           }
                                       }
                                   }
                               )
-                              if r.status_code in (200, 201):
-                                  print("   ✅ Build localization created")
-                              elif r.status_code == 409:
-                                  print("   ✅ Build localization already exists")
-                          except Exception as e:
-                              print(f"   ℹ️  Build localization: {str(e)[:100]}")
+                              if r.status_code in (200, 201, 409):
+                                  print("   ✅ Build localization ready")
+                          except:
+                              pass
                           
-                          # Wait for everything to settle
                           time.sleep(10)
                           
-                          # Send invitation with verified app-specific tester ID
-                          print(f"   ⚙️  Sending invitation to {owner_email}...")
+                          # Send invitation
                           r = requests.post(
                               "https://api.appstoreconnect.apple.com/v1/betaTesterInvitations",
                               headers=h(),
@@ -1236,83 +1226,43 @@ jobs:
                                   "data": {
                                       "type": "betaTesterInvitations",
                                       "relationships": {
-                                          "betaTester": {
-                                              "data": {
-                                                  "type": "betaTesters",
-                                                  "id": verified_tester_id
-                                              }
-                                          },
-                                          "app": {
-                                              "data": {
-                                                  "type": "apps",
-                                                  "id": app_id
-                                              }
-                                          }
+                                          "betaTester": {"data": {"type": "betaTesters", "id": verified_tester_id}},
+                                          "app": {"data": {"type": "apps", "id": app_id}}
                                       }
                                   }
                               }
                           )
                           
                           if r.status_code in (200, 201):
-                              print(f"   ✅ INVITATION EMAIL SENT to {owner_email}!")
-                              print(f"   📬 Check inbox for TestFlight invitation from Apple")
+                              print(f"   ✅ INVITATION SENT to {owner_email}!")
                           elif r.status_code == 409:
                               print(f"   ✅ Invitation already sent to {owner_email}")
-                              print(f"   📬 Check inbox for TestFlight invitation from Apple")
                           else:
-                              print(f"   ⚠️  Invitation response: {r.status_code}")
-                              try:
-                                  error_msg = r.json()
-                                  if 'errors' in error_msg:
-                                      print(f"   Error: {error_msg['errors'][0].get('detail', 'Unknown')[:150]}")
-                              except:
-                                  pass
-                              print(f"   💡 Build is already available in TestFlight")
-                              print(f"   💡 User can open TestFlight app and install directly")
-                      else:
-                          print(f"   ⚠️  Tester not found in app's beta testers list")
-                          print(f"   💡 Build is available - user can open TestFlight app")
-                  else:
-                      print(f"   ⚠️  Could not get app testers (status {r.status_code})")
-                      print(f"   💡 Build is available - user can open TestFlight app")
-                      
+                              print(f"   ℹ️  Invitation: {r.status_code}")
+                              print(f"   💡 Build available in TestFlight app")
               except Exception as e:
-                  print(f"   ⚠️  Invitation error: {str(e)[:150]}")
-                  print(f"   💡 Build is available - user can open TestFlight app directly")
+                  print(f"   ℹ️  {str(e)[:100]}")
+                  print(f"   💡 Build available in TestFlight app")
           
           print()
           print("="*70)
           
           if added:
-              print("🎉 ✅ FULLY AUTOMATIC SETUP COMPLETE - SUCCESS!")
+              print("🎉 ✅ SETUP COMPLETE - SUCCESS!")
               print("="*70)
-              print(f"📧 User: {owner_email} ({owner_name})")
+              print(f"📧 Owner: {owner_email}")
               print(f"📱 App: {app_name}")
-              print(f"🆔 Bundle: {bundle_id}")
               print(f"📦 Build: {version} ({build_num})")
-              print(f"👥 Group: {group_name} (Internal)")
               print()
-              print("✅ Build is NOW available in TestFlight!")
-              print("📲 Owner can now:")
-              print("   1. Open TestFlight app on iOS device")
-              print("   2. Find the app and tap 'Install'")
-              print("   3. Start testing immediately!")
-              print()
-              print("📬 An invitation email may also be sent automatically")
-              print("⚡ NO MANUAL STEPS REQUIRED - FULLY AUTOMATED!")
+              print("✅ Build NOW available in TestFlight!")
+              print("📲 Owner can open TestFlight app and install")
           else:
               print("⚠️  SETUP PARTIALLY COMPLETE")
               print("="*70)
-              print(f"📧 User: {owner_email} ({owner_name})")
+              print(f"📧 Owner: {owner_email}")
               print(f"📱 App: {app_name}")
-              print(f"🆔 Bundle: {bundle_id}")
-              print(f"📦 Build: {version} ({build_num})")
-              print(f"👥 Group: {group_name} (Internal)")
               print()
-              print("⚠️  Build not automatically added after retries")
-              print("💡 This is usually temporary - Apple is still processing")
-              print("💡 Owner should check TestFlight in 10-15 minutes")
-              print("💡 No manual steps needed - will appear automatically")
+              print("💡 Check TestFlight in 10-15 minutes")
           
           print("="*70)
           PYEOF
