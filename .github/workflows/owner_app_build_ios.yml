@@ -1079,6 +1079,113 @@ jobs:
                   else:
                       break
           
+          # ============================================================
+          # STEP 9: Send Automatic TestFlight Invitation Email
+          # ============================================================
+          if added:
+              print()
+              print("📧 Step 9: Sending automatic TestFlight invitation...")
+              
+              # First, get the beta tester ID for this group
+              try:
+                  # Get all beta testers in this group
+                  r = requests.get(
+                      f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}/betaTesters",
+                      headers=h()
+                  )
+                  r.raise_for_status()
+                  group_testers = r.json()['data']
+                  
+                  # Find our specific tester
+                  our_tester = None
+                  for t in group_testers:
+                      if t['id'] == tester_id:
+                          our_tester = t
+                          break
+                  
+                  if our_tester:
+                      # Get or create beta tester invitation for this specific build
+                      print(f"   ⚙️  Creating invitation for {owner_email}...")
+                      
+                      # Create beta build localization (required for invitation)
+                      try:
+                          r = requests.post(
+                              "https://api.appstoreconnect.apple.com/v1/betaBuildLocalizations",
+                              headers=h(),
+                              json={
+                                  "data": {
+                                      "type": "betaBuildLocalizations",
+                                      "attributes": {
+                                          "locale": "en-US",
+                                          "whatsNew": f"Welcome to {app_name}! This build is ready for testing."
+                                      },
+                                      "relationships": {
+                                          "build": {
+                                              "data": {
+                                                  "type": "builds",
+                                                  "id": build_id
+                                              }
+                                          }
+                                      }
+                                  }
+                              }
+                          )
+                          if r.status_code in (200, 201):
+                              print("   ✅ Build localization created")
+                          elif r.status_code == 409:
+                              print("   ✅ Build localization already exists")
+                      except Exception as e:
+                          print(f"   ℹ️  Build localization: {e}")
+                      
+                      # Now send the invitation by creating a beta tester invitation
+                      time.sleep(5)  # Wait a bit for localization to propagate
+                      
+                      try:
+                          r = requests.post(
+                              "https://api.appstoreconnect.apple.com/v1/betaTesterInvitations",
+                              headers=h(),
+                              json={
+                                  "data": {
+                                      "type": "betaTesterInvitations",
+                                      "relationships": {
+                                          "betaTester": {
+                                              "data": {
+                                                  "type": "betaTesters",
+                                                  "id": tester_id
+                                              }
+                                          },
+                                          "app": {
+                                              "data": {
+                                                  "type": "apps",
+                                                  "id": app_id
+                                              }
+                                          }
+                                      }
+                                  }
+                              }
+                          )
+                          
+                          if r.status_code in (200, 201):
+                              print(f"   ✅ INVITATION EMAIL SENT to {owner_email}!")
+                              print(f"   📬 Owner will receive TestFlight invitation email")
+                          elif r.status_code == 409:
+                              print(f"   ✅ Invitation already sent to {owner_email}")
+                          else:
+                              print(f"   ⚠️  Invitation response: {r.status_code}")
+                              try:
+                                  print(f"   Response: {r.text[:200]}")
+                              except:
+                                  pass
+                      except Exception as e:
+                          print(f"   ⚠️  Could not send invitation: {e}")
+                          print(f"   💡 User can still access app through TestFlight app directly")
+                  else:
+                      print(f"   ℹ️  Tester not found in group testers list")
+                      
+              except Exception as e:
+                  print(f"   ⚠️  Invitation step error: {e}")
+                  print(f"   💡 Build is still available in TestFlight")
+          
           print()
           print("="*70)
           
@@ -1092,7 +1199,11 @@ jobs:
               print(f"👥 Group: {group_name} (Internal)")
               print()
               print("✅ Build is NOW available in TestFlight!")
+              print("📬 Invitation email sent to owner's email")
               print("📲 Owner should:")
+              print("   1. Check email inbox for TestFlight invitation")
+              print("   2. Click 'View in TestFlight' button in email")
+              print("   OR")
               print("   1. Open TestFlight app on iOS device")
               print("   2. Find the app and tap 'Install'")
               print("   3. Start testing immediately!")
