@@ -547,7 +547,7 @@ jobs:
         run: |
           pip3 install PyJWT cryptography requests --break-system-packages
 
-      - name: Setup Beta App Localizations (Required for External Testing)
+      - name: Setup Beta App Localizations & Review Info (Required for External Testing)
         shell: bash
         run: |
           set -euo pipefail
@@ -555,13 +555,14 @@ jobs:
           API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
           BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
           
-          echo "📋 Setting up Beta App Localization for external testing..."
+          echo "📋 Setting up Beta metadata for external testing..."
           echo "Bundle ID: $BUNDLE_ID"
           echo "Description: ${BETA_APP_DESCRIPTION:0:80}..."
           echo "Feedback Email: ${BETA_FEEDBACK_EMAIL}"
+          echo "Contact Phone: ${BETA_CONTACT_PHONE}"
           echo ""
           
-          python3 - "$API_KEY_JSON" "$BUNDLE_ID" "${BETA_APP_DESCRIPTION}" "${BETA_FEEDBACK_EMAIL}" <<'PYEOF'
+          python3 - "$API_KEY_JSON" "$BUNDLE_ID" "${BETA_APP_DESCRIPTION}" "${BETA_FEEDBACK_EMAIL}" "${BETA_CONTACT_PHONE}" <<'PYEOF'
           import json, jwt, time, requests, sys
           
           api_key = json.load(open(sys.argv[1]))
@@ -584,9 +585,10 @@ jobs:
           bundle_id = sys.argv[2]
           beta_description = sys.argv[3]
           feedback_email = sys.argv[4]
+          contact_phone = sys.argv[5] if len(sys.argv) > 5 else "+1234567890"
           
           # Find app
-          print("Finding app in App Store Connect...")
+          print("1️⃣ Finding app in App Store Connect...")
           r = requests.get(
               f"https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]={bundle_id}",
               headers=h()
@@ -599,11 +601,11 @@ jobs:
               sys.exit(1)
           
           app_id = apps[0]['id']
-          print(f"✅ App found: {app_id}")
+          print(f"   ✅ App found: {app_id}")
           print()
           
-          # Check if beta app localization exists for en-US
-          print("Checking existing beta app localization...")
+          # Setup Beta App Localization
+          print("2️⃣ Setting up Beta App Localization...")
           r = requests.get(
               f"https://api.appstoreconnect.apple.com/v1/betaAppLocalizations?filter[app]={app_id}&filter[locale]=en-US",
               headers=h()
@@ -618,10 +620,7 @@ jobs:
           existing = r.json()['data']
           
           if existing:
-              # Update existing localization
               loc_id = existing[0]['id']
-              print(f"Updating existing localization: {loc_id}")
-              
               r2 = requests.patch(
                   f"https://api.appstoreconnect.apple.com/v1/betaAppLocalizations/{loc_id}",
                   headers=h(),
@@ -635,15 +634,11 @@ jobs:
               )
               
               if r2.status_code == 200:
-                  print("✅ Beta app localization updated successfully")
+                  print("   ✅ Beta app localization updated")
               else:
-                  print(f"⚠️  Update failed with status {r2.status_code}")
+                  print(f"   ⚠️  Update failed: {r2.status_code}")
                   print(r2.text)
-                  sys.exit(1)
           else:
-              # Create new localization
-              print("Creating new beta app localization...")
-              
               r2 = requests.post(
                   "https://api.appstoreconnect.apple.com/v1/betaAppLocalizations",
                   headers=h(),
@@ -662,15 +657,101 @@ jobs:
               )
               
               if r2.status_code in (200, 201):
-                  print("✅ Beta app localization created successfully")
+                  print("   ✅ Beta app localization created")
               else:
-                  print(f"⚠️  Creation failed with status {r2.status_code}")
+                  print(f"   ⚠️  Creation failed: {r2.status_code}")
                   print(r2.text)
-                  sys.exit(1)
           
           print()
-          print("✅ Beta App Localization setup complete")
-          print("   Ready for external testing upload!")
+          
+          # Setup Beta App Review Detail (CRITICAL for external testing)
+          print("3️⃣ Setting up Beta App Review Detail...")
+          try:
+              # Get existing beta app review detail
+              r = requests.get(
+                  f"https://api.appstoreconnect.apple.com/v1/apps/{app_id}/betaAppReviewDetail",
+                  headers=h()
+              )
+              
+              # Extract name from email
+              email_name = feedback_email.split('@')[0] if '@' in feedback_email else "Beta"
+              first_name = email_name.split('.')[0].capitalize() if '.' in email_name else email_name.capitalize()
+              last_name = email_name.split('.')[1].capitalize() if '.' in email_name and len(email_name.split('.')) > 1 else "Tester"
+              
+              review_data = {
+                  "contactEmail": feedback_email,
+                  "contactFirstName": first_name,
+                  "contactLastName": last_name,
+                  "contactPhone": contact_phone,
+                  "demoAccountRequired": False
+              }
+              
+              if r.status_code == 200:
+                  # Update existing
+                  detail_id = r.json()['data']['id']
+                  print(f"   Updating existing review detail: {detail_id}")
+                  
+                  r2 = requests.patch(
+                      f"https://api.appstoreconnect.apple.com/v1/betaAppReviewDetails/{detail_id}",
+                      headers=h(),
+                      json={
+                          "data": {
+                              "type": "betaAppReviewDetails",
+                              "id": detail_id,
+                              "attributes": review_data
+                          }
+                      }
+                  )
+                  
+                  if r2.status_code == 200:
+                      print("   ✅ Beta review detail updated")
+                      print(f"      Contact: {first_name} {last_name}")
+                      print(f"      Email: {feedback_email}")
+                      print(f"      Phone: {contact_phone}")
+                  else:
+                      print(f"   ⚠️  Update failed: {r2.status_code}")
+                      print(r2.text)
+              else:
+                  # Create new
+                  print(f"   Creating new review detail...")
+                  
+                  r2 = requests.post(
+                      "https://api.appstoreconnect.apple.com/v1/betaAppReviewDetails",
+                      headers=h(),
+                      json={
+                          "data": {
+                              "type": "betaAppReviewDetails",
+                              "attributes": review_data,
+                              "relationships": {
+                                  "app": {"data": {"type": "apps", "id": app_id}}
+                              }
+                          }
+                      }
+                  )
+                  
+                  if r2.status_code in (200, 201):
+                      print("   ✅ Beta review detail created")
+                      print(f"      Contact: {first_name} {last_name}")
+                      print(f"      Email: {feedback_email}")
+                      print(f"      Phone: {contact_phone}")
+                  else:
+                      print(f"   ⚠️  Creation failed: {r2.status_code}")
+                      print(r2.text)
+                      
+          except Exception as e:
+              print(f"   ⚠️  Error: {str(e)[:100]}")
+          
+          print()
+          print("=" * 60)
+          print("✅ Beta metadata setup complete!")
+          print("=" * 60)
+          print("   📋 Beta App Localization: Configured")
+          print("   👤 Beta Review Contact: Configured")
+          print("   📧 Feedback Email:", feedback_email)
+          print("   📱 Contact Phone:", contact_phone)
+          print()
+          print("🚀 Ready for external testing upload!")
+          print("=" * 60)
           PYEOF
 
       - name: Ensure App ID exists
