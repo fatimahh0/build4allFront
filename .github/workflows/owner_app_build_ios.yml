@@ -542,6 +542,137 @@ jobs:
             head -n 1 .private/AuthKey_${ASC_KEY_ID}.p8
           fi
 
+      - name: Install required Python packages
+        shell: bash
+        run: |
+          pip3 install PyJWT cryptography requests --break-system-packages
+
+      - name: Setup Beta App Localizations (Required for External Testing)
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
+          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
+          
+          echo "📋 Setting up Beta App Localization for external testing..."
+          echo "Bundle ID: $BUNDLE_ID"
+          echo "Description: ${BETA_APP_DESCRIPTION:0:80}..."
+          echo "Feedback Email: ${BETA_FEEDBACK_EMAIL}"
+          echo ""
+          
+          python3 - "$API_KEY_JSON" "$BUNDLE_ID" "${BETA_APP_DESCRIPTION}" "${BETA_FEEDBACK_EMAIL}" <<'PYEOF'
+          import json, jwt, time, requests, sys
+          
+          api_key = json.load(open(sys.argv[1]))
+          
+          def create_token():
+              return jwt.encode({
+                  'iss': api_key['issuer_id'],
+                  'iat': int(time.time()),
+                  'exp': int(time.time()) + 1200,
+                  'aud': 'appstoreconnect-v1'
+              }, api_key['key'], algorithm='ES256',
+              headers={'kid': api_key['key_id'], 'typ': 'JWT'})
+          
+          def h():
+              return {
+                  "Authorization": f"Bearer {create_token()}",
+                  "Content-Type": "application/json"
+              }
+          
+          bundle_id = sys.argv[2]
+          beta_description = sys.argv[3]
+          feedback_email = sys.argv[4]
+          
+          # Find app
+          print("Finding app in App Store Connect...")
+          r = requests.get(
+              f"https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]={bundle_id}",
+              headers=h()
+          )
+          r.raise_for_status()
+          apps = r.json()['data']
+          
+          if not apps:
+              print(f"❌ App not found: {bundle_id}")
+              sys.exit(1)
+          
+          app_id = apps[0]['id']
+          print(f"✅ App found: {app_id}")
+          print()
+          
+          # Check if beta app localization exists for en-US
+          print("Checking existing beta app localization...")
+          r = requests.get(
+              f"https://api.appstoreconnect.apple.com/v1/betaAppLocalizations?filter[app]={app_id}&filter[locale]=en-US",
+              headers=h()
+          )
+          r.raise_for_status()
+          
+          localization_data = {
+              "feedbackEmail": feedback_email,
+              "description": beta_description
+          }
+          
+          existing = r.json()['data']
+          
+          if existing:
+              # Update existing localization
+              loc_id = existing[0]['id']
+              print(f"Updating existing localization: {loc_id}")
+              
+              r2 = requests.patch(
+                  f"https://api.appstoreconnect.apple.com/v1/betaAppLocalizations/{loc_id}",
+                  headers=h(),
+                  json={
+                      "data": {
+                          "type": "betaAppLocalizations",
+                          "id": loc_id,
+                          "attributes": localization_data
+                      }
+                  }
+              )
+              
+              if r2.status_code == 200:
+                  print("✅ Beta app localization updated successfully")
+              else:
+                  print(f"⚠️  Update failed with status {r2.status_code}")
+                  print(r2.text)
+                  sys.exit(1)
+          else:
+              # Create new localization
+              print("Creating new beta app localization...")
+              
+              r2 = requests.post(
+                  "https://api.appstoreconnect.apple.com/v1/betaAppLocalizations",
+                  headers=h(),
+                  json={
+                      "data": {
+                          "type": "betaAppLocalizations",
+                          "attributes": {
+                              "locale": "en-US",
+                              **localization_data
+                          },
+                          "relationships": {
+                              "app": {"data": {"type": "apps", "id": app_id}}
+                          }
+                      }
+                  }
+              )
+              
+              if r2.status_code in (200, 201):
+                  print("✅ Beta app localization created successfully")
+              else:
+                  print(f"⚠️  Creation failed with status {r2.status_code}")
+                  print(r2.text)
+                  sys.exit(1)
+          
+          print()
+          print("✅ Beta App Localization setup complete")
+          print("   Ready for external testing upload!")
+          PYEOF
+
       - name: Ensure App ID exists
         shell: bash
         run: |
@@ -789,11 +920,6 @@ jobs:
       
           echo "✅ Upload complete!"
           echo "⏳ Build submitted for external beta review"
-
-      - name: Install required Python packages
-        shell: bash
-        run: |
-          pip3 install PyJWT cryptography requests --break-system-packages
 
       - name: 🚀 Dynamic TestFlight Setup (External Testing)
         shell: bash
