@@ -995,7 +995,7 @@ jobs:
             --api_key_path "$API_KEY_JSON" \
             --app_identifier "$BUNDLE_ID" \
             --skip_waiting_for_build_processing false \
-            --distribute_external true \
+            --distribute_external false \
             --skip_submission false \
             --changelog "Initial beta release for testing"
       
