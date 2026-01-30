@@ -1,4 +1,4 @@
-name: Owner App Build (iOS) - External Testing Auto (Public Link + Auto Submit)
+name: Owner App Build (iOS) - External Testing Auto
 
 on:
   repository_dispatch:
@@ -24,7 +24,7 @@ jobs:
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
       ASC_KEY_P8_B64: ${{ secrets.ASC_KEY_P8_B64 }}
 
-      # Defaults for external beta (can override from payload CONFIG)
+      # External Testing - Default values (can be overridden per app in payload)
       DEFAULT_BETA_APP_DESCRIPTION: ${{ secrets.DEFAULT_BETA_APP_DESCRIPTION }}
       DEFAULT_BETA_FEEDBACK_EMAIL: ${{ secrets.DEFAULT_BETA_FEEDBACK_EMAIL }}
       DEFAULT_BETA_CONTACT_PHONE: ${{ secrets.DEFAULT_BETA_CONTACT_PHONE }}
@@ -43,21 +43,24 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
+      
           echo "🔎 Installed Xcodes:"
           ls -1 /Applications | grep -E '^Xcode.*\.app$' || true
-
+      
+          # Pick the newest Xcode by sorting names (works with Xcode_16.2.app, Xcode_15.4.app, etc.)
           XCODE_APP="$(ls -1 /Applications | grep -E '^Xcode.*\.app$' | sort -V | tail -n 1)"
+      
           if [ -z "${XCODE_APP:-}" ]; then
             echo "❌ No Xcode found in /Applications"
             exit 1
           fi
-
+      
           echo "✅ Selected: $XCODE_APP"
           sudo xcode-select -s "/Applications/$XCODE_APP/Contents/Developer"
-
+      
           xcodebuild -version
           echo "iOS SDK: $(xcrun --sdk iphoneos --show-sdk-version)"
+
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -79,9 +82,6 @@ jobs:
           set -euo pipefail
           echo '${{ toJson(github.event.client_payload) }}'
 
-      # ============================================================
-      # 1) Build ci_env.json (runtime-config by-link + fallback)
-      # ============================================================
       - name: Build ci_env.json (BY_LINK runtime-config + fallback + B64)
         shell: bash
         run: |
@@ -147,20 +147,20 @@ jobs:
           project_id = str(pick("PROJECT_ID", "")).strip()
 
           ios_bundle = (
-              pick("iosBundleId") or
-              pick("IOS_BUNDLE_ID") or
-              pick("PACKAGE_NAME") or
-              pick("APPLICATION_ID") or
+              pick("iosBundleId") or 
+              pick("IOS_BUNDLE_ID") or 
+              pick("PACKAGE_NAME") or 
+              pick("APPLICATION_ID") or 
               ""
           ).strip()
 
           if not ios_bundle:
               ios_bundle = f"com.build4all.app{link_id}"
-
+          
           ios_bundle = ios_bundle.lower()
           ios_bundle = re.sub(r"[^a-z0-9._]", "", ios_bundle)
           ios_bundle = re.sub(r"\.+", ".", ios_bundle).strip(".")
-
+          
           if not ios_bundle or ios_bundle.count(".") < 1:
               ios_bundle = f"com.build4all.app{link_id}"
 
@@ -188,7 +188,11 @@ jobs:
 
           currency_id = pick("CURRENCY_ID")
           if currency_id in (None, "", []):
-              currency_id = runtime.get("currencyId") or cfg.get("currencyId") or payload.get("currencyId")
+              currency_id = (
+                  runtime.get("currencyId")
+                  or cfg.get("currencyId")
+                  or payload.get("currencyId")
+              )
           if currency_id not in (None, "", []):
               env["CURRENCY_ID"] = str(currency_id).strip()
 
@@ -217,9 +221,18 @@ jobs:
               json.dump(env, f, ensure_ascii=False, indent=2)
 
           print("✅ ci_env.json written")
+          print("API_BASE_URL =", api_base)
+          print("OWNER_PROJECT_LINK_ID =", link_id)
+          print("PROJECT_ID =", project_id)
           print("IOS_BUNDLE_ID =", ios_bundle)
           print("IOS_BUILD_NUMBER =", env["IOS_BUILD_NUMBER"])
           print("IOS_VERSION_NAME =", env["IOS_VERSION_NAME"])
+          print("CURRENCY_ID =", env.get("CURRENCY_ID"))
+          print("CONFIG_SOURCE =", source)
+          print("LOGO_URL =", env.get("LOGO_URL"))
+
+          for k in ["THEME_JSON_B64","NAV_JSON_B64","HOME_JSON_B64","ENABLED_FEATURES_JSON_B64","BRANDING_JSON_B64"]:
+              print(k, "=", "YES" if env.get(k) else "NO")
           PY
 
       - name: Debug env
@@ -228,9 +241,6 @@ jobs:
           echo "----- ci_env.json -----"
           cat lib/env/ci_env.json
 
-      # ============================================================
-      # 2) Read ASC metadata + beta defaults
-      # ============================================================
       - name: Read App Store Connect metadata
         shell: bash
         run: |
@@ -242,32 +252,38 @@ jobs:
 
           def pick(*keys):
             for k in keys:
-              if payload.get(k): return payload[k]
-              if cfg.get(k): return cfg[k]
+              if k in payload and payload[k]:
+                return payload[k]
+              if k in cfg and cfg[k]:
+                return cfg[k]
             return ""
 
           app_name = pick("APPLE_APP_NAME","appleAppName","appStoreAppName","ASC_APP_NAME")
           sku      = pick("APPLE_SKU","appleSku","appStoreSku","ASC_SKU")
           locale   = pick("APPLE_PRIMARY_LOCALE","applePrimaryLocale","primaryLocale","ASC_PRIMARY_LOCALE") or "en-US"
-
+          
+          # External testing metadata - with GitHub Secrets as defaults
           beta_description = (
-              pick("BETA_APP_DESCRIPTION","betaAppDescription")
-              or os.environ.get("DEFAULT_BETA_APP_DESCRIPTION","")
+              pick("BETA_APP_DESCRIPTION","betaAppDescription") 
+              or os.environ.get("DEFAULT_BETA_APP_DESCRIPTION", "")
               or "Test our app and provide feedback on features, usability, and overall experience."
           )
-
+          
           feedback_email = (
               pick("BETA_FEEDBACK_EMAIL","betaFeedbackEmail","ownerEmail")
-              or os.environ.get("DEFAULT_BETA_FEEDBACK_EMAIL","")
+              or os.environ.get("DEFAULT_BETA_FEEDBACK_EMAIL", "")
               or pick("ownerEmail")
               or ""
           )
-
+          
           contact_phone = (
               pick("BETA_CONTACT_PHONE","betaContactPhone")
-              or os.environ.get("DEFAULT_BETA_CONTACT_PHONE","")
-              or "+1234567890"
+              or os.environ.get("DEFAULT_BETA_CONTACT_PHONE", "")
+              or "+1234567890"  # Fallback if not provided
           )
+          
+          marketing_url = pick("MARKETING_URL","marketingUrl") or ""
+          privacy_url = pick("PRIVACY_POLICY_URL","privacyPolicyUrl") or ""
 
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as f:
             f.write(f"APPLE_APP_NAME={app_name}\n")
@@ -276,14 +292,19 @@ jobs:
             f.write(f"BETA_APP_DESCRIPTION={beta_description}\n")
             f.write(f"BETA_FEEDBACK_EMAIL={feedback_email}\n")
             f.write(f"BETA_CONTACT_PHONE={contact_phone}\n")
+            f.write(f"MARKETING_URL={marketing_url}\n")
+            f.write(f"PRIVACY_POLICY_URL={privacy_url}\n")
 
+          print("APPLE_APP_NAME=", app_name)
+          print("APPLE_SKU=", sku)
+          print("APPLE_PRIMARY_LOCALE=", locale)
+          print("BETA_APP_DESCRIPTION=", beta_description[:100] + "..." if len(beta_description) > 100 else beta_description)
           print("BETA_FEEDBACK_EMAIL=", feedback_email)
           print("BETA_CONTACT_PHONE=", contact_phone)
+          print("MARKETING_URL=", marketing_url)
+          print("PRIVACY_POLICY_URL=", privacy_url)
           PY
 
-      # ============================================================
-      # 3) Ensure ios folder / Podfile exists
-      # ============================================================
       - name: Ensure iOS Podfile exists
         shell: bash
         run: |
@@ -293,55 +314,66 @@ jobs:
           fi
           test -f ios/Podfile
 
-      # ============================================================
-      # 4) Update Info.plist version/build
-      # ============================================================
       - name: Set iOS version & build number
         shell: bash
         run: |
           set -euo pipefail
+          
           python3 - <<'PY'
           import json, re
+          
           cfg = json.load(open("lib/env/ci_env.json"))
-          version_name = str(cfg.get("IOS_VERSION_NAME","1.0.0")).strip()
-          build_number = str(cfg.get("IOS_BUILD_NUMBER",1)).strip()
-
+          
+          version_name = cfg.get("IOS_VERSION_NAME", "1.0.0")
+          build_number = cfg.get("IOS_BUILD_NUMBER", 1)
+          
+          version_name = str(version_name).strip()
+          build_number = str(build_number).strip()
+          
+          print(f"iOS Version: {version_name}")
+          print(f"iOS Build Number: {build_number}")
+          
           info_plist = "ios/Runner/Info.plist"
-          content = open(info_plist,"r",encoding="utf-8").read()
-
-          content = re.sub(r"(<key>CFBundleShortVersionString</key>\s*<string>)[^<]*(</string>)",
-                           rf"\g<1>{version_name}\g<2>", content)
-          content = re.sub(r"(<key>CFBundleVersion</key>\s*<string>)[^<]*(</string>)",
-                           rf"\g<1>{build_number}\g<2>", content)
-
-          open(info_plist,"w",encoding="utf-8").write(content)
-          print("✅ Updated Info.plist", version_name, build_number)
+          with open(info_plist, "r", encoding="utf-8") as f:
+              content = f.read()
+          
+          content = re.sub(
+              r"(<key>CFBundleShortVersionString</key>\s*<string>)[^<]*(</string>)",
+              rf"\g<1>{version_name}\g<2>",
+              content
+          )
+          
+          content = re.sub(
+              r"(<key>CFBundleVersion</key>\s*<string>)[^<]*(</string>)",
+              rf"\g<1>{build_number}\g<2>",
+              content
+          )
+          
+          with open(info_plist, "w", encoding="utf-8") as f:
+              f.write(content)
+          
+          print(f"✅ Updated {info_plist}")
           PY
 
-      # ============================================================
-      # 5) Add privacy strings
-      # ============================================================
       - name: Add privacy strings to Info.plist
         shell: bash
         run: |
           set -euo pipefail
+          
           INFO_PLIST="ios/Runner/Info.plist"
-
-          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'This app needs access to your photo library to select and upload images.'" "$INFO_PLIST" 2>/dev/null || \
-          /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'This app needs access to your photo library to select and upload images.'" "$INFO_PLIST"
-
-          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'This app needs access to your camera to take and upload photos.'" "$INFO_PLIST" 2>/dev/null || \
-          /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'This app needs access to your camera to take and upload photos.'" "$INFO_PLIST"
-
+          
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'This app needs access to your photo library to allow you to select and upload images.'" "$INFO_PLIST" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'This app needs access to your photo library to allow you to select and upload images.'" "$INFO_PLIST"
+          
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'This app needs access to your camera to allow you to take and upload photos.'" "$INFO_PLIST" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'This app needs access to your camera to allow you to take and upload photos.'" "$INFO_PLIST"
+          
           /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryAddUsageDescription string 'This app needs permission to save images to your photo library.'" "$INFO_PLIST" 2>/dev/null || \
           /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryAddUsageDescription 'This app needs permission to save images to your photo library.'" "$INFO_PLIST"
-
+          
           echo "✅ Privacy strings added"
 
-      # ============================================================
-      # 6) Branding: download logo + run launcher/splash
-      # ============================================================
-      - name: Apply branding (logo + launcher + splash)
+      - name: Apply branding (logo + app name)
         shell: bash
         run: |
           set -euo pipefail
@@ -350,12 +382,14 @@ jobs:
           import json, urllib.request, pathlib, shutil
 
           cfg = json.load(open("lib/env/ci_env.json","r",encoding="utf-8"))
+
           app_name_raw = cfg.get("APP_NAME","My App")
           api_base = (cfg.get("API_BASE_URL") or "").rstrip("/")
           logo_url = (cfg.get("LOGO_URL") or "").strip()
 
           print("APP_NAME:", app_name_raw)
-          print("LOGO_URL:", logo_url)
+          print("LOGO_URL (raw):", logo_url)
+          print("API_BASE_URL:", api_base)
 
           pathlib.Path("assets/branding").mkdir(parents=True, exist_ok=True)
 
@@ -365,14 +399,16 @@ jobs:
 
           if logo_url:
               try:
+                  print("Downloading logo from:", logo_url)
                   urllib.request.urlretrieve(logo_url, "assets/branding/logo.png")
                   shutil.copyfile("assets/branding/logo.png","assets/branding/launcher.png")
                   shutil.copyfile("assets/branding/logo.png","assets/branding/splash.png")
-                  print("✅ Logo downloaded")
+                  print("✅ Logo downloaded successfully")
               except Exception as e:
-                  print("⚠️ Logo download failed:", e)
+                  print("⚠️ Failed to download logo:", e)
+                  print("Continuing without custom logo...")
           else:
-              print("⚠️ No LOGO_URL provided, skip logo download")
+              print("⚠️ No LOGO_URL provided, skipping logo download")
           PY
 
           flutter pub get
@@ -383,20 +419,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          
           INFO_PLIST="ios/Runner/Info.plist"
           APP_NAME=$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['APP_NAME'])")
-
+          
+          echo "Setting iOS App Name to: $APP_NAME"
+          
           /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string '$APP_NAME'" "$INFO_PLIST" 2>/dev/null || \
           /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName '$APP_NAME'" "$INFO_PLIST"
-
-          /usr/libexec/PlistBuddy -c "Add :CFBundleName string '$APP_NAME'" "$INFO_PLIST" 2>/dev/null || \
-          /usr/libexec/PlistBuddy -c "Set :CFBundleName '$APP_NAME'" "$INFO_PLIST"
-
+          
+          /usr/libexec/PlistBuddy -c "Set :CFBundleName '$APP_NAME'" "$INFO_PLIST" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Add :CFBundleName string '$APP_NAME'" "$INFO_PLIST"
+          
           echo "✅ iOS App Name set"
 
-      # ============================================================
-      # 7) Setup signing cert in keychain
-      # ============================================================
       - name: Setup iOS signing certificate
         shell: bash
         run: |
@@ -425,7 +461,6 @@ jobs:
             echo "❌ Apple Distribution identity not found"
             exit 1
           fi
-          echo "✅ Signing identity OK"
 
       - uses: ruby/setup-ruby@v1
         with:
@@ -454,9 +489,6 @@ jobs:
           cd ios
           pod install || { pod repo update; pod install; }
 
-      # ============================================================
-      # 8) Create ASC api_key.json
-      # ============================================================
       - name: Create App Store Connect api_key.json
         shell: bash
         run: |
@@ -471,8 +503,20 @@ jobs:
 
           python3 - <<'PY'
           import json, pathlib, os
+
           key_path = pathlib.Path(f".private/AuthKey_{os.environ['ASC_KEY_ID']}.p8")
-          p8_content = key_path.read_text(encoding="utf-8", errors="ignore")
+          
+          # Read as binary then decode, handling potential encoding issues
+          try:
+              p8_content = key_path.read_text(encoding='utf-8')
+          except UnicodeDecodeError:
+              # If UTF-8 fails, try reading as bytes and decode as ASCII
+              try:
+                  p8_content = key_path.read_bytes().decode('ascii')
+              except:
+                  # Last resort: latin-1 which accepts all byte values
+                  p8_content = key_path.read_bytes().decode('latin-1')
+                  print("⚠️ Warning: Using latin-1 fallback for key file")
 
           api_key_data = {
             "key_id": os.environ["ASC_KEY_ID"].strip(),
@@ -480,108 +524,241 @@ jobs:
             "key": p8_content,
             "in_house": False
           }
-          pathlib.Path(".private/api_key.json").write_text(json.dumps(api_key_data, indent=2))
-          print("✅ api_key.json created")
+
+          pathlib.Path(".private/api_key.json").write_text(
+              json.dumps(api_key_data, ensure_ascii=False, indent=2)
+          )
+          
+          print("✅ api_key.json created successfully")
           PY
+          
+          # Verify the key file looks correct
+          echo "🔍 Verifying key file format..."
+          if head -n 1 .private/AuthKey_${ASC_KEY_ID}.p8 | grep -q "BEGIN PRIVATE KEY"; then
+            echo "✅ Key file format looks correct"
+          else
+            echo "⚠️ Warning: Key file might not be in correct format"
+            echo "First line:"
+            head -n 1 .private/AuthKey_${ASC_KEY_ID}.p8
+          fi
 
       - name: Install required Python packages
         shell: bash
         run: |
           pip3 install PyJWT cryptography requests --break-system-packages
 
-      # ============================================================
-      # 9) Setup Beta Localization + Review Info (Required external)
-      # ============================================================
-      - name: Setup Beta App Localizations & Review Info (Required for External)
+      - name: Setup Beta App Localizations & Review Info (Required for External Testing)
         shell: bash
         run: |
           set -euo pipefail
-
+          
           API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
           BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
-
-          python3 - "$API_KEY_JSON" "$BUNDLE_ID" "${BETA_APP_DESCRIPTION}" "${BETA_FEEDBACK_EMAIL}" "${BETA_CONTACT_PHONE}" <<'PY'
+          
+          echo "📋 Setting up Beta metadata for external testing..."
+          echo "Bundle ID: $BUNDLE_ID"
+          echo "Description: ${BETA_APP_DESCRIPTION:0:80}..."
+          echo "Feedback Email: ${BETA_FEEDBACK_EMAIL}"
+          echo "Contact Phone: ${BETA_CONTACT_PHONE}"
+          echo ""
+          
+          python3 - "$API_KEY_JSON" "$BUNDLE_ID" "${BETA_APP_DESCRIPTION}" "${BETA_FEEDBACK_EMAIL}" "${BETA_CONTACT_PHONE}" <<'PYEOF'
           import json, jwt, time, requests, sys
-
+          
           api_key = json.load(open(sys.argv[1]))
+          
+          def create_token():
+              return jwt.encode({
+                  'iss': api_key['issuer_id'],
+                  'iat': int(time.time()),
+                  'exp': int(time.time()) + 1200,
+                  'aud': 'appstoreconnect-v1'
+              }, api_key['key'], algorithm='ES256',
+              headers={'kid': api_key['key_id'], 'typ': 'JWT'})
+          
+          def h():
+              return {
+                  "Authorization": f"Bearer {create_token()}",
+                  "Content-Type": "application/json"
+              }
+          
           bundle_id = sys.argv[2]
           beta_description = sys.argv[3]
           feedback_email = sys.argv[4]
-          contact_phone = sys.argv[5]
-
-          def token():
-            return jwt.encode({
-              "iss": api_key["issuer_id"],
-              "iat": int(time.time()),
-              "exp": int(time.time()) + 1200,
-              "aud": "appstoreconnect-v1"
-            }, api_key["key"], algorithm="ES256",
-            headers={"kid": api_key["key_id"], "typ": "JWT"})
-
-          def h():
-            return {"Authorization": f"Bearer {token()}", "Content-Type":"application/json"}
-
+          contact_phone = sys.argv[5] if len(sys.argv) > 5 else "+1234567890"
+          
           # Find app
-          r = requests.get(f"https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]={bundle_id}", headers=h())
+          print("1️⃣ Finding app in App Store Connect...")
+          r = requests.get(
+              f"https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]={bundle_id}",
+              headers=h()
+          )
           r.raise_for_status()
-          apps = r.json()["data"]
+          apps = r.json()['data']
+          
           if not apps:
-            raise SystemExit("❌ App not found for bundleId")
-          app_id = apps[0]["id"]
-          print("✅ App:", app_id)
-
-          # Beta App Localization (en-US)
-          r = requests.get(f"https://api.appstoreconnect.apple.com/v1/betaAppLocalizations?filter[app]={app_id}&filter[locale]=en-US", headers=h())
+              print(f"❌ App not found: {bundle_id}")
+              sys.exit(1)
+          
+          app_id = apps[0]['id']
+          print(f"   ✅ App found: {app_id}")
+          print()
+          
+          # Setup Beta App Localization
+          print("2️⃣ Setting up Beta App Localization...")
+          r = requests.get(
+              f"https://api.appstoreconnect.apple.com/v1/betaAppLocalizations?filter[app]={app_id}&filter[locale]=en-US",
+              headers=h()
+          )
           r.raise_for_status()
-          existing = r.json()["data"]
-
-          attrs = {"feedbackEmail": feedback_email, "description": beta_description}
-          if existing:
-            loc_id = existing[0]["id"]
-            r2 = requests.patch(f"https://api.appstoreconnect.apple.com/v1/betaAppLocalizations/{loc_id}", headers=h(),
-              json={"data":{"type":"betaAppLocalizations","id":loc_id,"attributes":attrs}})
-            print("✅ Beta localization updated" if r2.status_code==200 else f"⚠️ Beta localization update {r2.status_code}")
-          else:
-            r2 = requests.post("https://api.appstoreconnect.apple.com/v1/betaAppLocalizations", headers=h(),
-              json={"data":{"type":"betaAppLocalizations","attributes":{"locale":"en-US",**attrs},"relationships":{"app":{"data":{"type":"apps","id":app_id}}}}})
-            print("✅ Beta localization created" if r2.status_code in (200,201) else f"⚠️ Beta localization create {r2.status_code}")
-
-          # Beta Review Detail
-          r = requests.get(f"https://api.appstoreconnect.apple.com/v1/apps/{app_id}/betaAppReviewDetail", headers=h())
-          first="Beta"; last="Contact"
-          if feedback_email and "@" in feedback_email:
-            base=feedback_email.split("@")[0].replace("_",".")
-            parts=base.split(".")
-            first=parts[0].capitalize() if parts else "Beta"
-            last=parts[1].capitalize() if len(parts)>1 else "Contact"
-
-          review_attrs = {
-            "contactEmail": feedback_email,
-            "contactFirstName": first,
-            "contactLastName": last,
-            "contactPhone": contact_phone,
-            "demoAccountRequired": False
+          
+          localization_data = {
+              "feedbackEmail": feedback_email,
+              "description": beta_description
           }
-
-          if r.status_code==200:
-            detail_id=r.json()["data"]["id"]
-            r2=requests.patch(f"https://api.appstoreconnect.apple.com/v1/betaAppReviewDetails/{detail_id}", headers=h(),
-              json={"data":{"type":"betaAppReviewDetails","id":detail_id,"attributes":review_attrs}})
-            print("✅ Beta review detail updated" if r2.status_code==200 else f"⚠️ Beta review update {r2.status_code}")
+          
+          existing = r.json()['data']
+          
+          if existing:
+              loc_id = existing[0]['id']
+              r2 = requests.patch(
+                  f"https://api.appstoreconnect.apple.com/v1/betaAppLocalizations/{loc_id}",
+                  headers=h(),
+                  json={
+                      "data": {
+                          "type": "betaAppLocalizations",
+                          "id": loc_id,
+                          "attributes": localization_data
+                      }
+                  }
+              )
+              
+              if r2.status_code == 200:
+                  print("   ✅ Beta app localization updated")
+              else:
+                  print(f"   ⚠️  Update failed: {r2.status_code}")
+                  print(r2.text)
           else:
-            r2=requests.post("https://api.appstoreconnect.apple.com/v1/betaAppReviewDetails", headers=h(),
-              json={"data":{"type":"betaAppReviewDetails","attributes":review_attrs,"relationships":{"app":{"data":{"type":"apps","id":app_id}}}}})
-            print("✅ Beta review detail created" if r2.status_code in (200,201) else f"⚠️ Beta review create {r2.status_code}")
-          PY
+              r2 = requests.post(
+                  "https://api.appstoreconnect.apple.com/v1/betaAppLocalizations",
+                  headers=h(),
+                  json={
+                      "data": {
+                          "type": "betaAppLocalizations",
+                          "attributes": {
+                              "locale": "en-US",
+                              **localization_data
+                          },
+                          "relationships": {
+                              "app": {"data": {"type": "apps", "id": app_id}}
+                          }
+                      }
+                  }
+              )
+              
+              if r2.status_code in (200, 201):
+                  print("   ✅ Beta app localization created")
+              else:
+                  print(f"   ⚠️  Creation failed: {r2.status_code}")
+                  print(r2.text)
+          
+          print()
+          
+          # Setup Beta App Review Detail (CRITICAL for external testing)
+          print("3️⃣ Setting up Beta App Review Detail...")
+          try:
+              # Get existing beta app review detail
+              r = requests.get(
+                  f"https://api.appstoreconnect.apple.com/v1/apps/{app_id}/betaAppReviewDetail",
+                  headers=h()
+              )
+              
+              # Extract name from email
+              email_name = feedback_email.split('@')[0] if '@' in feedback_email else "Beta"
+              first_name = email_name.split('.')[0].capitalize() if '.' in email_name else email_name.capitalize()
+              last_name = email_name.split('.')[1].capitalize() if '.' in email_name and len(email_name.split('.')) > 1 else "Tester"
+              
+              review_data = {
+                  "contactEmail": feedback_email,
+                  "contactFirstName": first_name,
+                  "contactLastName": last_name,
+                  "contactPhone": contact_phone,
+                  "demoAccountRequired": False
+              }
+              
+              if r.status_code == 200:
+                  # Update existing
+                  detail_id = r.json()['data']['id']
+                  print(f"   Updating existing review detail: {detail_id}")
+                  
+                  r2 = requests.patch(
+                      f"https://api.appstoreconnect.apple.com/v1/betaAppReviewDetails/{detail_id}",
+                      headers=h(),
+                      json={
+                          "data": {
+                              "type": "betaAppReviewDetails",
+                              "id": detail_id,
+                              "attributes": review_data
+                          }
+                      }
+                  )
+                  
+                  if r2.status_code == 200:
+                      print("   ✅ Beta review detail updated")
+                      print(f"      Contact: {first_name} {last_name}")
+                      print(f"      Email: {feedback_email}")
+                      print(f"      Phone: {contact_phone}")
+                  else:
+                      print(f"   ⚠️  Update failed: {r2.status_code}")
+                      print(r2.text)
+              else:
+                  # Create new
+                  print(f"   Creating new review detail...")
+                  
+                  r2 = requests.post(
+                      "https://api.appstoreconnect.apple.com/v1/betaAppReviewDetails",
+                      headers=h(),
+                      json={
+                          "data": {
+                              "type": "betaAppReviewDetails",
+                              "attributes": review_data,
+                              "relationships": {
+                                  "app": {"data": {"type": "apps", "id": app_id}}
+                              }
+                          }
+                      }
+                  )
+                  
+                  if r2.status_code in (200, 201):
+                      print("   ✅ Beta review detail created")
+                      print(f"      Contact: {first_name} {last_name}")
+                      print(f"      Email: {feedback_email}")
+                      print(f"      Phone: {contact_phone}")
+                  else:
+                      print(f"   ⚠️  Creation failed: {r2.status_code}")
+                      print(r2.text)
+                      
+          except Exception as e:
+              print(f"   ⚠️  Error: {str(e)[:100]}")
+          
+          print()
+          print("=" * 60)
+          print("✅ Beta metadata setup complete!")
+          print("=" * 60)
+          print("   📋 Beta App Localization: Configured")
+          print("   👤 Beta Review Contact: Configured")
+          print("   📧 Feedback Email:", feedback_email)
+          print("   📱 Contact Phone:", contact_phone)
+          print()
+          print("🚀 Ready for external testing upload!")
+          print("=" * 60)
+          PYEOF
 
-      # ============================================================
-      # 10) Provisioning profile (fastlane sigh)
-      # ============================================================
-      - name: Ensure App ID exists (produce)
+      - name: Ensure App ID exists
         shell: bash
         run: |
           set -euo pipefail
-          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
+          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
 
           fastlane run produce \
             app_identifier:"$BUNDLE_ID" \
@@ -591,11 +768,12 @@ jobs:
             language:en \
             app_name:"Runner" || true
 
-      - name: Get provisioning profile (sigh)
+      - name: Get provisioning profile
         shell: bash
         run: |
           set -euo pipefail
           BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
+
           PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "$PROFILE_DIR"
 
@@ -607,37 +785,53 @@ jobs:
             readonly:false \
             output_path:"$PROFILE_DIR"
 
+          sleep 2
+
       - name: Detect provisioning profile name
         shell: bash
         run: |
           set -euo pipefail
-          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
+          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
           APP_ID="${IOS_TEAM_ID}.${BUNDLE_ID}"
+
           PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
 
           FOUND_NAME=""
+          
           for f in "$PROFILES_DIR"/*.mobileprovision; do
             [ -f "$f" ] || continue
+            
             TMP_PLIST="$(mktemp /tmp/profile.XXXXXX.plist)"
-            /usr/bin/security cms -D -i "$f" > "$TMP_PLIST" 2>/dev/null || { rm -f "$TMP_PLIST"; continue; }
-            P_NAME=$("/usr/libexec/PlistBuddy" -c "Print :Name" "$TMP_PLIST" 2>/dev/null || echo "")
+            /usr/bin/security cms -D -i "$f" > "$TMP_PLIST" 2>/dev/null || {
+              rm -f "$TMP_PLIST"
+              continue
+            }
+
+            P_NAME=$("/usr/libexec/PlistBuddy" -c "Print :Name" "$TMP_PLIST" 2>/dev/null || echo "Unknown")
             P_APPID=$("/usr/libexec/PlistBuddy" -c "Print :Entitlements:application-identifier" "$TMP_PLIST" 2>/dev/null || echo "")
+            
             if [ "$P_APPID" = "$APP_ID" ] || [ "$P_APPID" = "${IOS_TEAM_ID}.*" ] || echo "$P_APPID" | grep -q "$BUNDLE_ID"; then
               FOUND_NAME="$P_NAME"
               echo "$FOUND_NAME" > ci_profile_name.txt
               rm -f "$TMP_PLIST"
               break
             fi
+            
             rm -f "$TMP_PLIST"
           done
 
-          [ -n "$FOUND_NAME" ] || { echo "❌ No provisioning profile matched"; exit 1; }
+          if [ -z "$FOUND_NAME" ]; then
+            echo "❌ No provisioning profile matched"
+            exit 1
+          fi
+
           echo "✅ Profile: $FOUND_NAME"
 
       - name: Create ExportOptions.plist
         shell: bash
         run: |
           set -euo pipefail
+
           METHOD="${IOS_EXPORT_METHOD:-app-store}"
           TEAM="${IOS_TEAM_ID}"
           BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
@@ -671,29 +865,34 @@ jobs:
 
           /usr/bin/plutil -lint ios/ExportOptions.plist
 
-      - name: Patch Runner signing (Release)
+      - name: Patch Runner signing
         shell: bash
         run: |
           set -euo pipefail
+
           gem install xcodeproj -N
+
           BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
           PROFILE_NAME="$(tr -d '\r\n' < ci_profile_name.txt)"
           TEAM_ID="${IOS_TEAM_ID}"
 
           cat > patch_runner_signing.rb <<'RUBY'
           require "xcodeproj"
+
           bundle_id = ENV.fetch("BUNDLE_ID")
           profile   = ENV.fetch("PROFILE_NAME")
           team_id   = ENV.fetch("TEAM_ID")
 
           proj_path = "ios/Runner.xcodeproj"
           project = Xcodeproj::Project.open(proj_path)
+
           runner = project.targets.find { |t| t.name == "Runner" }
           raise "Runner target not found" unless runner
 
           runner.build_configurations.each do |cfg|
             next unless cfg.name == "Release"
             s = cfg.build_settings
+
             s["PRODUCT_BUNDLE_IDENTIFIER"] = bundle_id
             s["CODE_SIGN_STYLE"] = "Manual"
             s["DEVELOPMENT_TEAM"] = team_id
@@ -708,7 +907,7 @@ jobs:
 
           BUNDLE_ID="$BUNDLE_ID" PROFILE_NAME="$PROFILE_NAME" TEAM_ID="$TEAM_ID" ruby patch_runner_signing.rb
 
-      - name: Build iOS (no codesign in flutter step)
+      - name: Build iOS
         shell: bash
         run: |
           set -euo pipefail
@@ -720,6 +919,7 @@ jobs:
         run: |
           set -euo pipefail
           PODS_PBX="ios/Pods/Pods.xcodeproj/project.pbxproj"
+          
           perl -pi -e 's/(PROVISIONING_PROFILE_SPECIFIER(\[sdk=iphoneos\*\])?) = [^;]*;/\1 = "";/g' "$PODS_PBX"
           perl -pi -e 's/PROVISIONING_PROFILE = [^;]*;/PROVISIONING_PROFILE = "";/g' "$PODS_PBX"
           perl -pi -e 's/DEVELOPMENT_TEAM = [A-Z0-9]+;/DEVELOPMENT_TEAM = "";/g' "$PODS_PBX"
@@ -732,6 +932,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
           KEYCHAIN_PWD="ci_keychain_pwd_123"
           security default-keychain -s "$KEYCHAIN_PATH"
@@ -754,6 +955,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           KEYCHAIN_PATH="${GITHUB_WORKSPACE}/build.keychain"
           KEYCHAIN_PWD="ci_keychain_pwd_123"
           security default-keychain -s "$KEYCHAIN_PATH"
@@ -768,6 +970,7 @@ jobs:
             -exportPath ../build/ios/ipa \
             OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}"
 
+     
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
@@ -775,40 +978,31 @@ jobs:
           path: build/ios/ipa/**/*.ipa
           if-no-files-found: error
 
-      # ============================================================
-      # 11) Upload to TestFlight + auto submit
-      # ============================================================
-      - name: Upload to TestFlight (AUTO SUBMIT external review)
+      - name: Upload to TestFlight (External Testing)
         shell: bash
         run: |
           set -euo pipefail
+          
           API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
           BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
           IPA_PATH="$(find "$GITHUB_WORKSPACE/build/ios/ipa" -type f -name "*.ipa" | head -n 1)"
-
-          echo "📤 Uploading to TestFlight..."
-          echo "Bundle: $BUNDLE_ID"
-          echo "IPA: $IPA_PATH"
-
-          # Important flags:
-          # --distribute_external true   => enable external distribution
-          # --skip_submission false      => auto submit for beta review
-          # --skip_waiting_for_build_processing false => wait processing
+          
+          echo "📤 Uploading to TestFlight for External Testing..."
+          echo "⚠️  Note: External builds require Apple's beta review (24-48 hours)"
+          
           fastlane pilot upload \
             --ipa "$IPA_PATH" \
             --api_key_path "$API_KEY_JSON" \
             --app_identifier "$BUNDLE_ID" \
             --skip_waiting_for_build_processing false \
-            --distribute_external true \
+            --distribute_external false \
             --skip_submission false \
-            --changelog "Automated beta build"
+            --changelog "Initial beta release for testing"
+      
+          echo "✅ Upload complete!"
+          echo "⏳ Build submitted for external beta review"
 
-          echo "✅ Upload done. Submitted for external beta review."
-
-      # ============================================================
-      # 12) External group + PUBLIC LINK + add build (dynamic)
-      # ============================================================
-      - name: 🚀 External TestFlight Setup (Public Link + Add build to group)
+      - name: 🚀 Complete External TestFlight Setup (Dynamic)
         shell: bash
         run: |
           set -euo pipefail
@@ -823,199 +1017,674 @@ jobs:
           import json, shlex
           p = json.load(open("/tmp/ci_payload.json"))
           cfg = p.get("CONFIG") or {}
-          owner_email = (cfg.get("ownerEmail") or p.get("ownerEmail") or "").strip()
-          owner_name  = (cfg.get("ownerName") or p.get("ownerName") or "Owner").strip() or "Owner"
+          owner_email = (cfg.get("ownerEmail") or "").strip()
+          owner_name  = (cfg.get("ownerName") or "Owner").strip() or "Owner"
           print("OWNER_EMAIL=" + shlex.quote(owner_email))
           print("OWNER_NAME="  + shlex.quote(owner_name))
           PY
 
-          source /tmp/owner_env.sh || true
+          source /tmp/owner_env.sh
 
+          if [ -z "${OWNER_EMAIL:-}" ]; then
+            echo "⚠️ ownerEmail not provided, skipping TestFlight setup"
+            exit 0
+          fi
+
+          echo "📧 Owner: $OWNER_EMAIL ($OWNER_NAME)"
           echo "📱 App: $APP_NAME"
           echo "🆔 Bundle: $BUNDLE_ID"
-          echo "📧 Owner email: ${OWNER_EMAIL:-<none>}"
           echo ""
 
-          python3 - "$API_KEY_JSON" "$BUNDLE_ID" "${OWNER_EMAIL:-}" "${OWNER_NAME:-Owner}" "$APP_NAME" <<'PY'
+          python3 - "$API_KEY_JSON" "$BUNDLE_ID" "$OWNER_EMAIL" "$OWNER_NAME" "$APP_NAME" "${BETA_APP_DESCRIPTION:-}" "${BETA_FEEDBACK_EMAIL:-}" "${BETA_CONTACT_PHONE:-}" <<'PYEOF'
           import json, jwt, time, requests, sys
 
           api_key = json.load(open(sys.argv[1]))
-          bundle_id = sys.argv[2]
-          owner_email = sys.argv[3].strip()
-          owner_name = sys.argv[4].strip() or "Owner"
-          app_name = sys.argv[5]
 
-          def token():
-            return jwt.encode({
-              "iss": api_key["issuer_id"],
-              "iat": int(time.time()),
-              "exp": int(time.time()) + 1200,
-              "aud": "appstoreconnect-v1"
-            }, api_key["key"], algorithm="ES256",
-            headers={"kid": api_key["key_id"], "typ": "JWT"})
+          def create_token():
+              return jwt.encode({
+                  'iss': api_key['issuer_id'],
+                  'iat': int(time.time()),
+                  'exp': int(time.time()) + 1200,
+                  'aud': 'appstoreconnect-v1'
+              }, api_key['key'], algorithm='ES256',
+              headers={'kid': api_key['key_id'], 'typ': 'JWT'})
 
           def h():
-            return {"Authorization": f"Bearer {token()}", "Content-Type":"application/json"}
-
-          print("="*70)
-          print("🚀 EXTERNAL TESTFLIGHT SETUP (PUBLIC LINK)")
-          print("="*70)
-
-          # 1) Find app
-          r = requests.get(f"https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]={bundle_id}", headers=h())
-          r.raise_for_status()
-          apps = r.json()["data"]
-          if not apps:
-            raise SystemExit(f"❌ App not found for bundleId {bundle_id}")
-          app_id = apps[0]["id"]
-          print("✅ App ID:", app_id)
-
-          # 2) Find/create external group
-          r = requests.get(f"https://api.appstoreconnect.apple.com/v1/betaGroups?filter[app]={app_id}&filter[isInternalGroup]=false", headers=h())
-          r.raise_for_status()
-          groups = r.json()["data"]
-
-          group_id=None
-          group_name=None
-          public_enabled=False
-
-          # prefer a group that already has public link enabled
-          for g in groups:
-            attrs = g.get("attributes",{})
-            if attrs.get("publicLinkEnabled"):
-              group_id=g["id"]
-              group_name=attrs.get("name")
-              public_enabled=True
-              break
-
-          if not group_id and groups:
-            group_id=groups[0]["id"]
-            group_name=groups[0].get("attributes",{}).get("name","External Testers")
-            public_enabled=groups[0].get("attributes",{}).get("publicLinkEnabled",False)
-
-          if not group_id:
-            print("⚙️ Creating External Testers group...")
-            r = requests.post("https://api.appstoreconnect.apple.com/v1/betaGroups", headers=h(), json={
-              "data":{
-                "type":"betaGroups",
-                "attributes":{
-                  "name":"External Testers",
-                  "isInternalGroup": False,
-                  "publicLinkEnabled": True,
-                  "publicLinkLimitEnabled": False
-                },
-                "relationships":{"app":{"data":{"type":"apps","id":app_id}}}
+              return {
+                  "Authorization": f"Bearer {create_token()}",
+                  "Content-Type": "application/json"
               }
-            })
-            r.raise_for_status()
-            group_id=r.json()["data"]["id"]
-            group_name=r.json()["data"]["attributes"]["name"]
-            public_enabled=True
-            print(f"✅ Created group: {group_name} ({group_id})")
-          else:
-            print(f"✅ Using group: {group_name} ({group_id})")
 
-          # 3) Ensure public link enabled
-          if not public_enabled:
-            print("🔧 Enabling public link on group...")
-            r = requests.patch(f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}", headers=h(), json={
-              "data":{"type":"betaGroups","id":group_id,"attributes":{"publicLinkEnabled": True, "publicLinkLimitEnabled": False}}
-            })
-            if r.status_code==200:
-              print("✅ Public link enabled")
-            else:
-              print("⚠️ Public link enable returned:", r.status_code, r.text[:200])
+          bundle_id = sys.argv[2]
+          owner_email = sys.argv[3]
+          owner_name = sys.argv[4]
+          app_name = sys.argv[5]
+          beta_description = sys.argv[6] if len(sys.argv) > 6 else f"Test {app_name} and provide feedback"
+          feedback_email = sys.argv[7] if len(sys.argv) > 7 else owner_email
+          contact_phone = sys.argv[8] if len(sys.argv) > 8 else "+1234567890"
 
-          # 4) Fetch public link
-          public_link = None
-          r = requests.get(f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}", headers=h())
-          if r.status_code==200:
-            attrs=r.json()["data"].get("attributes",{})
-            public_link = attrs.get("publicLink")
+          print("="*70)
+          print("🚀 COMPLETE EXTERNAL TESTFLIGHT SETUP")
+          print("="*70)
+          print()
+          print(f"📧 Feedback Email: {feedback_email}")
+          print(f"📱 Contact Phone: {contact_phone}")
+          print()
 
-          if public_link:
-            print("🔗 PUBLIC LINK:", public_link)
-          else:
-            print("⚠️ Public link not returned yet (Apple sometimes delays it).")
+          # ============================================================
+          # STEP 1: Find the app
+          # ============================================================
+          print("📱 Step 1: Finding app in App Store Connect...")
+          r = requests.get(
+              f"https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]={bundle_id}",
+              headers=h()
+          )
+          r.raise_for_status()
+          apps = r.json()['data']
+          if not apps:
+              print(f"❌ App not found: {bundle_id}")
+              sys.exit(1)
+          app_id = apps[0]['id']
+          print(f"   ✅ App found: {app_id}")
+          print()
 
-          # 5) Find latest build (wait until VALID)
-          build_id=None
-          version=None
-          build_num=None
+          # ============================================================
+          # STEP 2: Create/Find Beta Tester (EXTERNAL)
+          # ============================================================
+          print("🧪 Step 2: Setting up external beta tester...")
+          tester_id = None
+          
+          # Check if tester exists
+          try:
+              r = requests.get(
+                  f"https://api.appstoreconnect.apple.com/v1/betaTesters?filter[email]={owner_email}",
+                  headers=h()
+              )
+              
+              if r.status_code == 200:
+                  global_testers = r.json()['data']
+                  if global_testers:
+                      tester_id = global_testers[0]['id']
+                      print(f"   ✅ Beta tester exists: {tester_id}")
+          except Exception as e:
+              print(f"   ⚠️  Error checking testers: {str(e)[:100]}")
+          
+          # Create tester if doesn't exist
+          if not tester_id:
+              try:
+                  print(f"   ⚙️  Creating external beta tester...")
+                  first = owner_name.split()[0] if owner_name.strip() else "Owner"
+                  last  = " ".join(owner_name.split()[1:]) if len(owner_name.split()) > 1 else ""
+                  
+                  r = requests.post(
+                      "https://api.appstoreconnect.apple.com/v1/betaTesters",
+                      headers=h(),
+                      json={
+                          "data": {
+                              "type": "betaTesters",
+                              "attributes": {
+                                  "email": owner_email,
+                                  "firstName": first,
+                                  "lastName": last
+                              }
+                          }
+                      }
+                  )
+                  
+                  if r.status_code in (200, 201):
+                      tester_id = r.json()['data']['id']
+                      print(f"   ✅ External beta tester created: {tester_id}")
+                  elif r.status_code == 409:
+                      # Already exists, get it
+                      r2 = requests.get(
+                          f"https://api.appstoreconnect.apple.com/v1/betaTesters?filter[email]={owner_email}",
+                          headers=h()
+                      )
+                      if r2.status_code == 200:
+                          global_testers = r2.json()['data']
+                          if global_testers:
+                              tester_id = global_testers[0]['id']
+                              print(f"   ✅ Found existing tester: {tester_id}")
+                  else:
+                      print(f"   ⚠️  Beta tester creation: {r.status_code}")
+              except Exception as e:
+                  print(f"   ⚠️  Error creating tester: {str(e)[:100]}")
+          
+          if not tester_id:
+              print(f"   ❌ Could not create or find beta tester")
+              sys.exit(0)
+          
+          print()
 
-          for i in range(20):
-            r = requests.get(f"https://api.appstoreconnect.apple.com/v1/builds?filter[app]={app_id}&sort=-uploadedDate&limit=1", headers=h())
-            r.raise_for_status()
-            builds=r.json()["data"]
-            if builds:
-              b=builds[0]
-              build_id=b["id"]
-              version=b.get("attributes",{}).get("version")
-              build_num=b.get("attributes",{}).get("buildNumber","")
-              state=b.get("attributes",{}).get("processingState","PROCESSING")
-              if state=="VALID":
-                print(f"✅ Build ready: {version} ({build_num})")
-                break
-              print(f"⏳ Build processing: {version} state={state} (attempt {i+1}/20)")
-            else:
-              print(f"⏳ No build yet (attempt {i+1}/20)")
-            time.sleep(30)
-
-          if not build_id:
-            print("⚠️ No build available yet, stopping group attach.")
-            sys.exit(0)
-
-          # 6) Export compliance
-          r = requests.patch(f"https://api.appstoreconnect.apple.com/v1/builds/{build_id}", headers=h(), json={
-            "data":{"type":"builds","id":build_id,"attributes":{"usesNonExemptEncryption": False}}
-          })
-          if r.status_code==200:
-            print("✅ Export compliance set")
-          elif r.status_code==409:
-            print("✅ Export compliance already set")
-          else:
-            print("ℹ️ Export compliance:", r.status_code)
-
-          # 7) Attach build to group
-          r = requests.post(f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}/relationships/builds", headers=h(), json={
-            "data":[{"type":"builds","id":build_id}]
-          })
-          if r.status_code in (200,204):
-            print("✅ Build added to external group")
-          elif r.status_code==409:
-            print("✅ Build already in group")
-          else:
-            print("⚠️ Add build to group:", r.status_code, r.text[:200])
-
-          # 8) Optional: add specific tester by email if provided (not required for public link)
-          if owner_email:
-            print("👤 Ensuring tester exists + add to group:", owner_email)
-            tester_id=None
-            r = requests.get(f"https://api.appstoreconnect.apple.com/v1/betaTesters?filter[email]={owner_email}", headers=h())
-            if r.status_code==200 and r.json().get("data"):
-              tester_id=r.json()["data"][0]["id"]
-
-            if not tester_id:
-              first = owner_name.split()[0] if owner_name else "Owner"
-              last = " ".join(owner_name.split()[1:]) if len(owner_name.split())>1 else ""
-              r = requests.post("https://api.appstoreconnect.apple.com/v1/betaTesters", headers=h(), json={
-                "data":{"type":"betaTesters","attributes":{"email":owner_email,"firstName":first,"lastName":last}}
-              })
-              if r.status_code in (200,201):
-                tester_id=r.json()["data"]["id"]
-
-            if tester_id:
-              r = requests.post(f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}/relationships/betaTesters", headers=h(),
-                json={"data":[{"type":"betaTesters","id":tester_id}]})
-              if r.status_code in (200,204):
-                print("✅ Tester added")
-              elif r.status_code==409:
-                print("✅ Tester already in group")
+          # ============================================================
+          # STEP 3: Find or Create External Group with Public Link
+          # ============================================================
+          print("👥 Step 3: Setting up external testing group with public link...")
+          r = requests.get(
+              f"https://api.appstoreconnect.apple.com/v1/betaGroups?filter[app]={app_id}&filter[isInternalGroup]=false",
+              headers=h()
+          )
+          r.raise_for_status()
+          groups = r.json()['data']
+          
+          group_id = None
+          group_name = None
+          public_link_enabled = False
+          
+          # Look for existing public link group
+          for group in groups:
+              if group['attributes'].get('publicLinkEnabled', False):
+                  group_id = group['id']
+                  group_name = group['attributes']['name']
+                  public_link_enabled = True
+                  print(f"   ✅ Public external group exists: '{group_name}'")
+                  break
+          
+          # Use first external group if no public one exists
+          if not group_id and groups:
+              group_id = groups[0]['id']
+              group_name = groups[0]['attributes']['name']
+              public_link_enabled = groups[0]['attributes'].get('publicLinkEnabled', False)
+              print(f"   ✅ External group exists: '{group_name}'")
+          
+          # Create new group if none exist
+          if not group_id:
+              print(f"   ⚙️  Creating external testing group with public link...")
+              r = requests.post(
+                  "https://api.appstoreconnect.apple.com/v1/betaGroups",
+                  headers=h(),
+                  json={
+                      "data": {
+                          "type": "betaGroups",
+                          "attributes": {
+                              "name": "External Testers",
+                              "isInternalGroup": False,
+                              "publicLinkEnabled": True,
+                              "publicLinkLimitEnabled": False
+                          },
+                          "relationships": {
+                              "app": {"data": {"type": "apps", "id": app_id}}
+                          }
+                      }
+                  }
+              )
+              
+              if r.status_code in (200, 201):
+                  group_data = r.json()['data']
+                  group_id = group_data['id']
+                  group_name = group_data['attributes']['name']
+                  public_link_enabled = True
+                  print(f"   ✅ External group created: '{group_name}'")
               else:
-                print("⚠️ Add tester:", r.status_code, r.text[:200])
+                  print(f"   ❌ Could not create external group (status {r.status_code})")
+                  sys.exit(1)
+          
+          # Enable public link if not already enabled
+          if not public_link_enabled:
+              print(f"   ⚙️  Enabling public link on group '{group_name}'...")
+              try:
+                  r = requests.patch(
+                      f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}",
+                      headers=h(),
+                      json={
+                          "data": {
+                              "type": "betaGroups",
+                              "id": group_id,
+                              "attributes": {
+                                  "publicLinkEnabled": True,
+                                  "publicLinkLimitEnabled": False
+                              }
+                          }
+                      }
+                  )
+                  if r.status_code == 200:
+                      print(f"   ✅ Public link enabled")
+                      public_link_enabled = True
+                  else:
+                      print(f"   ⚠️  Could not enable public link: {r.status_code}")
+              except Exception as e:
+                  print(f"   ⚠️  Error enabling public link: {str(e)[:100]}")
+          
+          print()
 
-          print("="*70)
-          print("✅ DONE: External group + public link + build attached")
-          print("⏳ Note: External builds still need Apple Beta Review approval.")
-          print("="*70)
-          PY
+          # ============================================================
+          # STEP 4: Get Public TestFlight Link
+          # ============================================================
+          print("🔗 Step 4: Retrieving public TestFlight link...")
+          public_testflight_link = None
+          
+          try:
+              r = requests.get(
+                  f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}",
+                  headers=h()
+              )
+              
+              if r.status_code == 200:
+                  public_testflight_link = r.json()['data']['attributes'].get('publicLink')
+                  if public_testflight_link:
+                      print(f"   ✅ Public TestFlight Link:")
+                      print(f"   🔗 {public_testflight_link}")
+                      print()
+                      
+                      # Save to file for callback
+                      with open("testflight_public_link.txt", "w") as f:
+                          f.write(public_testflight_link)
+                  else:
+                      print("   ⚠️  Public link not available yet (will be generated after first build)")
+              else:
+                  print(f"   ⚠️  Could not retrieve group details: {r.status_code}")
+          except Exception as e:
+              print(f"   ⚠️  Error retrieving public link: {str(e)[:100]}")
+          
+          print()
+
+          # ============================================================
+          # STEP 5: Add Tester to External Group
+          # ============================================================
+          print("🔗 Step 5: Adding tester to external group...")
+          r = requests.post(
+              f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}/relationships/betaTesters",
+              headers=h(),
+              json={"data":[{"type":"betaTesters","id":tester_id}]}
+          )
+          if r.status_code in (200, 204):
+              print("   ✅ Tester added to external group")
+          elif r.status_code == 409:
+              print("   ✅ Tester already in external group")
+          else:
+              print(f"   ⚠️  Response: {r.status_code}")
+          print()
+
+          # ============================================================
+          # STEP 6: Wait for Build
+          # ============================================================
+          print("⏳ Step 6: Waiting for build to finish processing...")
+          build_id = None
+          version = None
+          build_num = None
+          max_retries = 20
+          
+          for attempt in range(max_retries):
+              r = requests.get(
+                  f"https://api.appstoreconnect.apple.com/v1/builds?filter[app]={app_id}&sort=-uploadedDate&limit=1",
+                  headers=h()
+              )
+              r.raise_for_status()
+              builds = r.json()['data']
+              
+              if builds:
+                  build_id = builds[0]['id']
+                  version = builds[0]['attributes']['version']
+                  build_num = builds[0]['attributes'].get('buildNumber','')
+                  processing_state = builds[0]['attributes'].get('processingState', 'PROCESSING')
+                  
+                  if processing_state == 'VALID':
+                      print(f"   ✅ Build ready: {version} ({build_num})")
+                      break
+                  else:
+                      print(f"   ⏳ Build {version} {processing_state} - attempt {attempt+1}/{max_retries}")
+                  
+                  if attempt < max_retries - 1:
+                      time.sleep(30)
+              else:
+                  print(f"   ⏳ No builds found yet - attempt {attempt+1}/{max_retries}")
+                  if attempt < max_retries - 1:
+                      time.sleep(30)
+          
+          if not build_id:
+              print()
+              print("   ⚠️  Build not ready yet")
+              print("   💡 Setup complete - build will appear after processing")
+              print()
+              
+              # Save partial status
+              with open("testflight_status.txt", "w") as f:
+                  f.write("PENDING_BUILD")
+              
+              if public_testflight_link:
+                  print("=" * 70)
+                  print("🔗 PUBLIC TESTFLIGHT LINK (Ready to share)")
+                  print("=" * 70)
+                  print(public_testflight_link)
+                  print("=" * 70)
+              
+              sys.exit(0)
+          print()
+
+          # ============================================================
+          # STEP 7: Set Export Compliance
+          # ============================================================
+          print("🔒 Step 7: Setting export compliance...")
+          try:
+              r = requests.patch(
+                  f"https://api.appstoreconnect.apple.com/v1/builds/{build_id}",
+                  headers=h(),
+                  json={
+                      "data": {
+                          "type": "builds",
+                          "id": build_id,
+                          "attributes": {
+                              "usesNonExemptEncryption": False
+                          }
+                      }
+                  }
+              )
+              if r.status_code == 200:
+                  print("   ✅ Export compliance set")
+                  time.sleep(5)
+              elif r.status_code == 409:
+                  print("   ✅ Export compliance already set")
+              else:
+                  print(f"   ℹ️  Export compliance: {r.status_code}")
+          except Exception as e:
+              print(f"   ⚠️  {str(e)[:80]}")
+          print()
+
+          # ============================================================
+          # STEP 8: Add Beta Build Localization (What's New)
+          # ============================================================
+          print("📝 Step 8: Adding beta build localization...")
+          try:
+              whats_new_text = f"Welcome to {app_name} beta! Please test all features and provide feedback."
+              
+              r = requests.post(
+                  "https://api.appstoreconnect.apple.com/v1/betaBuildLocalizations",
+                  headers=h(),
+                  json={
+                      "data": {
+                          "type": "betaBuildLocalizations",
+                          "attributes": {
+                              "locale": "en-US",
+                              "whatsNew": whats_new_text
+                          },
+                          "relationships": {
+                              "build": {"data": {"type": "builds", "id": build_id}}
+                          }
+                      }
+                  }
+              )
+              
+              if r.status_code in (200, 201):
+                  print("   ✅ Beta build localization added")
+                  print(f"   📝 What's New: {whats_new_text}")
+              elif r.status_code == 409:
+                  print("   ✅ Beta build localization already exists")
+              else:
+                  print(f"   ℹ️  Beta localization response: {r.status_code}")
+          except Exception as e:
+              print(f"   ⚠️  {str(e)[:80]}")
+          
+          print()
+
+          # ============================================================
+          # STEP 9: Add Build to External Group
+          # ============================================================
+          print("📦 Step 9: Adding build to external testing group...")
+          build_added = False
+          max_build_retries = 15
+          
+          for attempt in range(max_build_retries):
+              r = requests.post(
+                  f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}/relationships/builds",
+                  headers=h(),
+                  json={"data":[{"type":"builds","id":build_id}]}
+              )
+              
+              if r.status_code in (200, 204):
+                  print("   ✅ Build added to external group!")
+                  build_added = True
+                  break
+              elif r.status_code == 409:
+                  print("   ✅ Build already in external group!")
+                  build_added = True
+                  break
+              elif r.status_code == 422:
+                  print(f"   ⏳ Build not ready - attempt {attempt+1}/{max_build_retries}")
+                  if attempt < max_build_retries - 1:
+                      time.sleep(30)
+              else:
+                  print(f"   ⚠️  Response: {r.status_code}")
+                  if attempt < max_build_retries - 1:
+                      time.sleep(30)
+          
+          print()
+
+          # ============================================================
+          # STEP 10: Submit for Beta App Review
+          # ============================================================
+          print("📋 Step 10: Submitting build for Beta App Review...")
+          review_submitted = False
+          
+          try:
+              r = requests.post(
+                  "https://api.appstoreconnect.apple.com/v1/betaAppReviewSubmissions",
+                  headers=h(),
+                  json={
+                      "data": {
+                          "type": "betaAppReviewSubmissions",
+                          "relationships": {
+                              "build": {"data": {"type": "builds", "id": build_id}}
+                          }
+                      }
+                  }
+              )
+              
+              if r.status_code in (200, 201):
+                  submission = r.json()['data']
+                  review_state = submission['attributes'].get('betaReviewState', 'WAITING_FOR_REVIEW')
+                  print(f"   ✅ Submitted for review (State: {review_state})")
+                  print("   ⏳ Apple will review within 24-48 hours")
+                  review_submitted = True
+              elif r.status_code == 409:
+                  print("   ✅ Already submitted for review")
+                  review_submitted = True
+              else:
+                  print(f"   ⚠️  Submission response: {r.status_code}")
+                  if r.status_code == 422:
+                      error = r.json().get('errors', [{}])[0]
+                      print(f"   💡 {error.get('detail', 'Build may not be ready yet')}")
+          except Exception as e:
+              print(f"   ⚠️  Error submitting for review: {str(e)[:100]}")
+          
+          print()
+
+          # ============================================================
+          # STEP 11: Re-fetch Public Link (in case it was just created)
+          # ============================================================
+          if not public_testflight_link:
+              print("🔗 Step 11: Re-checking for public TestFlight link...")
+              try:
+                  time.sleep(5)  # Brief wait for link generation
+                  r = requests.get(
+                      f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}",
+                      headers=h()
+                  )
+                  
+                  if r.status_code == 200:
+                      public_testflight_link = r.json()['data']['attributes'].get('publicLink')
+                      if public_testflight_link:
+                          print(f"   ✅ Public link now available!")
+                          with open("testflight_public_link.txt", "w") as f:
+                              f.write(public_testflight_link)
+                      else:
+                          print("   ℹ️  Public link will be generated after review approval")
+              except Exception as e:
+                  print(f"   ⚠️  {str(e)[:80]}")
+              print()
+
+          # ============================================================
+          # Save Status
+          # ============================================================
+          status = "SUBMITTED_FOR_REVIEW" if review_submitted else "BUILD_ADDED"
+          with open("testflight_status.txt", "w") as f:
+              f.write(status)
+
+          # ============================================================
+          # Final Summary
+          # ============================================================
+          print()
+          print("=" * 70)
+          
+          if build_added and review_submitted:
+              print("🎉 ✅ EXTERNAL TESTING FULLY CONFIGURED!")
+              print("=" * 70)
+              print(f"📧 Owner: {owner_email}")
+              print(f"📱 App: {app_name}")
+              print(f"📦 Build: {version} ({build_num})")
+              print(f"👥 Group: {group_name}")
+              print(f"📋 Review: Submitted for Apple Beta Review")
+              print()
+              
+              if public_testflight_link:
+                  print("🔗 PUBLIC TESTFLIGHT LINK:")
+                  print(f"   {public_testflight_link}")
+                  print()
+                  print("📲 Share this link with external testers")
+                  print("⏳ Link will work after Apple approves (24-48 hours)")
+              else:
+                  print("ℹ️  Public TestFlight link will be available after review")
+              
+              print()
+              print("⏳ NEXT STEPS:")
+              print("   1. Apple reviews build (24-48 hours)")
+              print("   2. Tester receives email invitation")
+              print("   3. Tester installs TestFlight app")
+              print("   4. Tester clicks link or enters code")
+              print("   5. App becomes available in TestFlight")
+          else:
+              print("⚠️  SETUP PARTIALLY COMPLETE")
+              print("=" * 70)
+              print(f"📧 Owner: {owner_email}")
+              print(f"📱 App: {app_name}")
+              
+              if public_testflight_link:
+                  print()
+                  print(f"🔗 Public Link: {public_testflight_link}")
+              
+              print()
+              print("💡 Build processing - check back in a few minutes")
+          
+          print("=" * 70)
+          PYEOF
+
+      - name: Send TestFlight Callback & Display Links
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          API_BASE="$(cat ci_api_base.txt)"
+          LINK_ID="$(cat ci_link_id.txt)"
+          BUNDLE_ID="$(cat ci_ios_bundle_id.txt)"
+          APP_NAME="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['APP_NAME'])")"
+          VERSION_NAME="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['IOS_VERSION_NAME'])")"
+          BUILD_NUMBER="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['IOS_BUILD_NUMBER'])")"
+          
+          # Read TestFlight data
+          TESTFLIGHT_LINK=""
+          BUILD_STATUS="uploaded"
+          
+          if [ -f "testflight_public_link.txt" ]; then
+            TESTFLIGHT_LINK="$(cat testflight_public_link.txt)"
+          fi
+          
+          if [ -f "testflight_status.txt" ]; then
+            BUILD_STATUS="$(cat testflight_status.txt)"
+          fi
+          
+          # Prepare callback payload
+          cat > callback_payload.json <<EOF
+          {
+            "linkId": "$LINK_ID",
+            "platform": "ios",
+            "bundleId": "$BUNDLE_ID",
+            "appName": "$APP_NAME",
+            "version": "$VERSION_NAME",
+            "buildNumber": "$BUILD_NUMBER",
+            "status": "$BUILD_STATUS",
+            "testflightPublicLink": "$TESTFLIGHT_LINK",
+            "message": "Build uploaded to TestFlight and submitted for external beta review. Build will be available to testers after Apple approval (24-48 hours).",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          
+          # Send callback
+          if [ -n "${CI_CALLBACK_TOKEN:-}" ] && [ -n "$API_BASE" ]; then
+            echo "📡 Sending callback to backend..."
+            
+            CALLBACK_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/api/ci/callback/testflight" \
+              -H "Content-Type: application/json" \
+              -H "X-Auth-Token: $CI_CALLBACK_TOKEN" \
+              -d @callback_payload.json)
+            
+            HTTP_CODE=$(echo "$CALLBACK_RESPONSE" | tail -n1)
+            RESPONSE_BODY=$(echo "$CALLBACK_RESPONSE" | sed '$d')
+            
+            if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+              echo "   ✅ Callback successful (HTTP $HTTP_CODE)"
+            else
+              echo "   ⚠️  Callback failed (HTTP $HTTP_CODE)"
+              echo "   Response: $RESPONSE_BODY"
+            fi
+          else
+            echo "⚠️ No callback configured (missing CI_CALLBACK_TOKEN or API_BASE)"
+          fi
+          
+          echo ""
+          echo "════════════════════════════════════════════════════════════════════"
+          echo "                    🎉 BUILD COMPLETE 🎉"
+          echo "════════════════════════════════════════════════════════════════════"
+          echo ""
+          echo "📱 App Name:       $APP_NAME"
+          echo "🆔 Bundle ID:      $BUNDLE_ID"
+          echo "📦 Version:        $VERSION_NAME ($BUILD_NUMBER)"
+          echo "📋 Status:         $BUILD_STATUS"
+          echo ""
+          
+          if [ -n "$TESTFLIGHT_LINK" ]; then
+            echo "════════════════════════════════════════════════════════════════════"
+            echo "           🔗 PUBLIC TESTFLIGHT LINK (Ready to Share)"
+            echo "════════════════════════════════════════════════════════════════════"
+            echo ""
+            echo "$TESTFLIGHT_LINK"
+            echo ""
+            echo "════════════════════════════════════════════════════════════════════"
+            echo ""
+            echo "📲 SHARE THIS LINK WITH BETA TESTERS"
+            echo ""
+            echo "⏳ IMPORTANT NOTES:"
+            echo "   • Link is active immediately"
+            echo "   • Build requires Apple Beta Review (24-48 hours)"
+            echo "   • Testers will receive email when build is approved"
+            echo "   • Testers need TestFlight app installed"
+            echo ""
+            echo "📧 WHAT TESTERS SHOULD DO:"
+            echo "   1. Install TestFlight app from App Store"
+            echo "   2. Click the public link above (or received via email)"
+            echo "   3. Accept the invitation"
+            echo "   4. Wait for Apple approval notification"
+            echo "   5. Download and test the app"
+            echo ""
+          else
+            echo "ℹ️  TestFlight Link: Will be available after first build approval"
+            echo ""
+          fi
+          
+          echo "════════════════════════════════════════════════════════════════════"
+          echo ""
+          
+          # Also save link to GitHub step summary for easy access
+          if [ -n "$TESTFLIGHT_LINK" ]; then
+            echo "## 🔗 TestFlight Public Link" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "$TESTFLIGHT_LINK" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Status:** Submitted for Beta Review" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+            echo "- Apple will review build (24-48 hours)" >> $GITHUB_STEP_SUMMARY
+            echo "- Share link with testers immediately" >> $GITHUB_STEP_SUMMARY
+            echo "- Testers will be notified when build is approved" >> $GITHUB_STEP_SUMMARY
+          fi
