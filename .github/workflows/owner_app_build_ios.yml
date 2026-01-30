@@ -24,6 +24,11 @@ jobs:
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
       ASC_KEY_P8_B64: ${{ secrets.ASC_KEY_P8_B64 }}
 
+      # External Testing - Default values (can be overridden per app in payload)
+      DEFAULT_BETA_APP_DESCRIPTION: ${{ secrets.DEFAULT_BETA_APP_DESCRIPTION }}
+      DEFAULT_BETA_FEEDBACK_EMAIL: ${{ secrets.DEFAULT_BETA_FEEDBACK_EMAIL }}
+      DEFAULT_BETA_CONTACT_PHONE: ${{ secrets.DEFAULT_BETA_CONTACT_PHONE }}
+
       SPACESHIP_CONNECT_API_IN_HOUSE: "false"
       COCOAPODS_DISABLE_STATS: "true"
       FASTLANE_OPT_OUT_USAGE: "true"
@@ -257,9 +262,26 @@ jobs:
           sku      = pick("APPLE_SKU","appleSku","appStoreSku","ASC_SKU")
           locale   = pick("APPLE_PRIMARY_LOCALE","applePrimaryLocale","primaryLocale","ASC_PRIMARY_LOCALE") or "en-US"
           
-          # External testing metadata
-          beta_description = pick("BETA_APP_DESCRIPTION","betaAppDescription") or "Test our new app and provide feedback"
-          feedback_email = pick("BETA_FEEDBACK_EMAIL","betaFeedbackEmail","ownerEmail") or ""
+          # External testing metadata - with GitHub Secrets as defaults
+          beta_description = (
+              pick("BETA_APP_DESCRIPTION","betaAppDescription") 
+              or os.environ.get("DEFAULT_BETA_APP_DESCRIPTION", "")
+              or "Test our app and provide feedback on features, usability, and overall experience."
+          )
+          
+          feedback_email = (
+              pick("BETA_FEEDBACK_EMAIL","betaFeedbackEmail","ownerEmail")
+              or os.environ.get("DEFAULT_BETA_FEEDBACK_EMAIL", "")
+              or pick("ownerEmail")
+              or ""
+          )
+          
+          contact_phone = (
+              pick("BETA_CONTACT_PHONE","betaContactPhone")
+              or os.environ.get("DEFAULT_BETA_CONTACT_PHONE", "")
+              or "+1234567890"  # Fallback if not provided
+          )
+          
           marketing_url = pick("MARKETING_URL","marketingUrl") or ""
           privacy_url = pick("PRIVACY_POLICY_URL","privacyPolicyUrl") or ""
 
@@ -269,14 +291,16 @@ jobs:
             f.write(f"APPLE_PRIMARY_LOCALE={locale}\n")
             f.write(f"BETA_APP_DESCRIPTION={beta_description}\n")
             f.write(f"BETA_FEEDBACK_EMAIL={feedback_email}\n")
+            f.write(f"BETA_CONTACT_PHONE={contact_phone}\n")
             f.write(f"MARKETING_URL={marketing_url}\n")
             f.write(f"PRIVACY_POLICY_URL={privacy_url}\n")
 
           print("APPLE_APP_NAME=", app_name)
           print("APPLE_SKU=", sku)
           print("APPLE_PRIMARY_LOCALE=", locale)
-          print("BETA_APP_DESCRIPTION=", beta_description)
+          print("BETA_APP_DESCRIPTION=", beta_description[:100] + "..." if len(beta_description) > 100 else beta_description)
           print("BETA_FEEDBACK_EMAIL=", feedback_email)
+          print("BETA_CONTACT_PHONE=", contact_phone)
           print("MARKETING_URL=", marketing_url)
           print("PRIVACY_POLICY_URL=", privacy_url)
           PY
@@ -804,7 +828,7 @@ jobs:
           echo "🆔 Bundle: $BUNDLE_ID"
           echo ""
 
-          python3 - "$API_KEY_JSON" "$BUNDLE_ID" "$OWNER_EMAIL" "$OWNER_NAME" "$APP_NAME" "${BETA_APP_DESCRIPTION:-}" "${BETA_FEEDBACK_EMAIL:-}" <<'PYEOF'
+          python3 - "$API_KEY_JSON" "$BUNDLE_ID" "$OWNER_EMAIL" "$OWNER_NAME" "$APP_NAME" "${BETA_APP_DESCRIPTION:-}" "${BETA_FEEDBACK_EMAIL:-}" "${BETA_CONTACT_PHONE:-}" <<'PYEOF'
           import json, jwt, time, requests, sys
 
           api_key = json.load(open(sys.argv[1]))
@@ -830,10 +854,14 @@ jobs:
           app_name = sys.argv[5]
           beta_description = sys.argv[6] if len(sys.argv) > 6 else f"Test {app_name} and provide feedback"
           feedback_email = sys.argv[7] if len(sys.argv) > 7 else owner_email
+          contact_phone = sys.argv[8] if len(sys.argv) > 8 else "+1234567890"
 
           print("="*70)
           print("🚀 EXTERNAL TESTFLIGHT SETUP")
           print("="*70)
+          print()
+          print(f"📧 Feedback Email: {feedback_email}")
+          print(f"📱 Contact Phone: {contact_phone}")
           print()
 
           # ============================================================
@@ -868,7 +896,7 @@ jobs:
                   "contactEmail": feedback_email,
                   "contactFirstName": owner_name.split()[0] if owner_name else "Contact",
                   "contactLastName": " ".join(owner_name.split()[1:]) if len(owner_name.split()) > 1 else "Person",
-                  "contactPhone": "+1234567890",  # Required field
+                  "contactPhone": contact_phone,
                   "demoAccountRequired": False
               }
               
