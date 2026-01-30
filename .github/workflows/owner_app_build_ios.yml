@@ -1571,7 +1571,8 @@ jobs:
         if: always()
         shell: bash
         run: |
-          set -euo pipefail
+          # Don't exit on error for this step - we want to display links even if callback fails
+          set -uo pipefail
           
           API_BASE="$(cat ci_api_base.txt)"
           LINK_ID="$(cat ci_link_id.txt)"
@@ -1608,23 +1609,38 @@ jobs:
           }
           EOF
           
-          # Send callback
+          # Send callback (with error handling - don't fail the step)
           if [ -n "${CI_CALLBACK_TOKEN:-}" ] && [ -n "$API_BASE" ]; then
             echo "📡 Sending callback to backend..."
+            echo "   URL: $API_BASE/api/ci/callback/testflight"
             
-            CALLBACK_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_BASE/api/ci/callback/testflight" \
+            # Use curl with proper error handling
+            if CALLBACK_RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST "$API_BASE/api/ci/callback/testflight" \
               -H "Content-Type: application/json" \
               -H "X-Auth-Token: $CI_CALLBACK_TOKEN" \
-              -d @callback_payload.json)
-            
-            HTTP_CODE=$(echo "$CALLBACK_RESPONSE" | tail -n1)
-            RESPONSE_BODY=$(echo "$CALLBACK_RESPONSE" | sed '$d')
-            
-            if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
-              echo "   ✅ Callback successful (HTTP $HTTP_CODE)"
+              -d @callback_payload.json 2>&1); then
+              
+              HTTP_CODE=$(echo "$CALLBACK_RESPONSE" | tail -n1)
+              RESPONSE_BODY=$(echo "$CALLBACK_RESPONSE" | sed '$d')
+              
+              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+                echo "   ✅ Callback successful (HTTP $HTTP_CODE)"
+              else
+                echo "   ⚠️  Callback returned HTTP $HTTP_CODE"
+                echo "   Response: $RESPONSE_BODY"
+              fi
             else
-              echo "   ⚠️  Callback failed (HTTP $HTTP_CODE)"
-              echo "   Response: $RESPONSE_BODY"
+              # Curl command failed
+              CURL_EXIT=$?
+              echo "   ⚠️  Callback failed (curl exit code: $CURL_EXIT)"
+              echo "   Error: $CALLBACK_RESPONSE"
+              
+              case $CURL_EXIT in
+                6) echo "   💡 Could not resolve host - check network configuration" ;;
+                7) echo "   💡 Failed to connect to host" ;;
+                28) echo "   💡 Timeout connecting to server" ;;
+                *) echo "   💡 Check API endpoint and network settings" ;;
+              esac
             fi
           else
             echo "⚠️ No callback configured (missing CI_CALLBACK_TOKEN or API_BASE)"
@@ -1675,16 +1691,21 @@ jobs:
           
           # Also save link to GitHub step summary for easy access
           if [ -n "$TESTFLIGHT_LINK" ]; then
-            echo "## 🔗 TestFlight Public Link" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            echo "$TESTFLIGHT_LINK" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Status:** Submitted for Beta Review" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
-            echo "- Apple will review build (24-48 hours)" >> $GITHUB_STEP_SUMMARY
-            echo "- Share link with testers immediately" >> $GITHUB_STEP_SUMMARY
-            echo "- Testers will be notified when build is approved" >> $GITHUB_STEP_SUMMARY
+            {
+              echo "## 🔗 TestFlight Public Link"
+              echo ""
+              echo "\`\`\`"
+              echo "$TESTFLIGHT_LINK"
+              echo "\`\`\`"
+              echo ""
+              echo "**Status:** Submitted for Beta Review"
+              echo ""
+              echo "**Next Steps:**"
+              echo "- Apple will review build (24-48 hours)"
+              echo "- Share link with testers immediately"
+              echo "- Testers will be notified when build is approved"
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
+          
+          # Exit successfully regardless of callback status
+          exit 0
