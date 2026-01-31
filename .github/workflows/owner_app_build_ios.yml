@@ -1002,7 +1002,7 @@ jobs:
           echo "✅ Upload complete!"
           echo "⏳ Build submitted for external beta review"
 
-      - name: 🚀 Complete External TestFlight Setup (Dynamic)
+      - name: 🚀 Complete External TestFlight Setup with PUBLIC LINK (FIXED)
         shell: bash
         run: |
           set -euo pipefail
@@ -1064,7 +1064,7 @@ jobs:
           contact_phone = sys.argv[8] if len(sys.argv) > 8 else "+1234567890"
 
           print("="*70)
-          print("🚀 COMPLETE EXTERNAL TESTFLIGHT SETUP")
+          print("🚀 COMPLETE EXTERNAL TESTFLIGHT SETUP WITH PUBLIC LINK")
           print("="*70)
           print()
           print(f"📧 Feedback Email: {feedback_email}")
@@ -1157,7 +1157,7 @@ jobs:
           print()
 
           # ============================================================
-          # STEP 3: Find or Create External Group with Public Link
+          # STEP 3: Find or Create External Group with Public Link (FIXED)
           # ============================================================
           print("👥 Step 3: Setting up external testing group with public link...")
           r = requests.get(
@@ -1217,64 +1217,99 @@ jobs:
                   print(f"   ✅ External group created: '{group_name}'")
               else:
                   print(f"   ❌ Could not create external group (status {r.status_code})")
+                  print(f"   Response: {r.text[:200]}")
                   sys.exit(1)
           
-          # Enable public link if not already enabled
+          # Enable public link if not already enabled (WITH RETRY LOGIC - CRITICAL FIX)
           if not public_link_enabled:
               print(f"   ⚙️  Enabling public link on group '{group_name}'...")
-              try:
-                  r = requests.patch(
-                      f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}",
-                      headers=h(),
-                      json={
-                          "data": {
-                              "type": "betaGroups",
-                              "id": group_id,
-                              "attributes": {
-                                  "publicLinkEnabled": True,
-                                  "publicLinkLimitEnabled": False
+              
+              max_retries = 5
+              retry_delay = 5
+              
+              for attempt in range(max_retries):
+                  try:
+                      r = requests.patch(
+                          f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}",
+                          headers=h(),
+                          json={
+                              "data": {
+                                  "type": "betaGroups",
+                                  "id": group_id,
+                                  "attributes": {
+                                      "publicLinkEnabled": True,
+                                      "publicLinkLimitEnabled": False
+                                  }
                               }
                           }
-                      }
-                  )
-                  if r.status_code == 200:
-                      print(f"   ✅ Public link enabled")
-                      public_link_enabled = True
-                  else:
-                      print(f"   ⚠️  Could not enable public link: {r.status_code}")
-              except Exception as e:
-                  print(f"   ⚠️  Error enabling public link: {str(e)[:100]}")
+                      )
+                      
+                      if r.status_code == 200:
+                          print(f"   ✅ Public link enabled (attempt {attempt + 1})")
+                          public_link_enabled = True
+                          time.sleep(3)  # Wait for link generation
+                          break
+                      else:
+                          print(f"   ⚠️  Attempt {attempt + 1}/{max_retries} failed: {r.status_code}")
+                          if attempt < max_retries - 1:
+                              print(f"      Retrying in {retry_delay} seconds...")
+                              time.sleep(retry_delay)
+                          else:
+                              print(f"   ⚠️  All retries exhausted. Response: {r.text[:200]}")
+                              
+                  except Exception as e:
+                      print(f"   ⚠️  Retry {attempt + 1} error: {str(e)[:100]}")
+                      if attempt < max_retries - 1:
+                          print(f"      Retrying in {retry_delay} seconds...")
+                          time.sleep(retry_delay)
           
           print()
 
           # ============================================================
-          # STEP 4: Get Public TestFlight Link
+          # STEP 4: Get Public TestFlight Link (WITH RETRY - CRITICAL)
           # ============================================================
           print("🔗 Step 4: Retrieving public TestFlight link...")
           public_testflight_link = None
           
-          try:
-              r = requests.get(
-                  f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}",
-                  headers=h()
-              )
-              
-              if r.status_code == 200:
-                  public_testflight_link = r.json()['data']['attributes'].get('publicLink')
-                  if public_testflight_link:
-                      print(f"   ✅ Public TestFlight Link:")
-                      print(f"   🔗 {public_testflight_link}")
-                      print()
+          max_link_retries = 10
+          link_retry_delay = 5
+          
+          for link_attempt in range(max_link_retries):
+              try:
+                  r = requests.get(
+                      f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}",
+                      headers=h()
+                  )
+                  
+                  if r.status_code == 200:
+                      public_testflight_link = r.json()['data']['attributes'].get('publicLink')
                       
-                      # Save to file for callback
-                      with open("testflight_public_link.txt", "w") as f:
-                          f.write(public_testflight_link)
+                      if public_testflight_link:
+                          print(f"   ✅ Public TestFlight Link retrieved (attempt {link_attempt + 1}):")
+                          print(f"   🔗 {public_testflight_link}")
+                          print()
+                          
+                          # Save to file for callback
+                          with open("testflight_public_link.txt", "w") as f:
+                              f.write(public_testflight_link)
+                          break
+                      else:
+                          if link_attempt < max_link_retries - 1:
+                              print(f"   ⏳ Link not generated yet (attempt {link_attempt + 1}/{max_link_retries})")
+                              print(f"      Waiting {link_retry_delay} seconds...")
+                              time.sleep(link_retry_delay)
+                          else:
+                              print(f"   ⚠️  Public link not available after {max_link_retries} attempts")
+                              print(f"      Link will be generated after first build is added to group")
                   else:
-                      print("   ⚠️  Public link not available yet (will be generated after first build)")
-              else:
-                  print(f"   ⚠️  Could not retrieve group details: {r.status_code}")
-          except Exception as e:
-              print(f"   ⚠️  Error retrieving public link: {str(e)[:100]}")
+                      print(f"   ⚠️  Could not retrieve group details: {r.status_code}")
+                      if link_attempt < max_link_retries - 1:
+                          time.sleep(link_retry_delay)
+                          
+              except Exception as e:
+                  print(f"   ⚠️  Error retrieving public link (attempt {link_attempt + 1}): {str(e)[:100]}")
+                  if link_attempt < max_link_retries - 1:
+                      time.sleep(link_retry_delay)
           
           print()
 
@@ -1489,27 +1524,43 @@ jobs:
           print()
 
           # ============================================================
-          # STEP 11: Re-fetch Public Link (in case it was just created)
+          # STEP 11: Re-fetch Public Link AFTER adding build (CRITICAL)
           # ============================================================
-          if not public_testflight_link:
-              print("🔗 Step 11: Re-checking for public TestFlight link...")
-              try:
-                  time.sleep(5)  # Brief wait for link generation
-                  r = requests.get(
-                      f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}",
-                      headers=h()
-                  )
-                  
-                  if r.status_code == 200:
-                      public_testflight_link = r.json()['data']['attributes'].get('publicLink')
-                      if public_testflight_link:
-                          print(f"   ✅ Public link now available!")
-                          with open("testflight_public_link.txt", "w") as f:
-                              f.write(public_testflight_link)
-                      else:
-                          print("   ℹ️  Public link will be generated after review approval")
-              except Exception as e:
-                  print(f"   ⚠️  {str(e)[:80]}")
+          if not public_testflight_link and build_added:
+              print("🔗 Step 11: Re-checking for public TestFlight link after build...")
+              
+              # Wait a bit longer since build was just added
+              print("   ⏳ Waiting 10 seconds for link generation...")
+              time.sleep(10)
+              
+              max_final_retries = 5
+              for final_attempt in range(max_final_retries):
+                  try:
+                      r = requests.get(
+                          f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}",
+                          headers=h()
+                      )
+                      
+                      if r.status_code == 200:
+                          public_testflight_link = r.json()['data']['attributes'].get('publicLink')
+                          
+                          if public_testflight_link:
+                              print(f"   ✅ Public link now available!")
+                              with open("testflight_public_link.txt", "w") as f:
+                                  f.write(public_testflight_link)
+                              break
+                          else:
+                              if final_attempt < max_final_retries - 1:
+                                  print(f"   ⏳ Still generating... (attempt {final_attempt + 1}/{max_final_retries})")
+                                  time.sleep(10)
+                              else:
+                                  print("   ℹ️  Public link will be generated shortly")
+                                  print("   💡 Check App Store Connect in a few minutes")
+                  except Exception as e:
+                      print(f"   ⚠️  {str(e)[:80]}")
+                      if final_attempt < max_final_retries - 1:
+                          time.sleep(10)
+              
               print()
 
           # ============================================================
@@ -1536,21 +1587,36 @@ jobs:
               print()
               
               if public_testflight_link:
-                  print("🔗 PUBLIC TESTFLIGHT LINK:")
-                  print(f"   {public_testflight_link}")
+                  print("╔" + "=" * 68 + "╗")
+                  print("║" + " " * 15 + "🔗 PUBLIC TESTFLIGHT LINK" + " " * 28 + "║")
+                  print("╠" + "=" * 68 + "╣")
+                  print(f"║  {public_testflight_link:<65} ║")
+                  print("╚" + "=" * 68 + "╝")
                   print()
-                  print("📲 Share this link with external testers")
-                  print("⏳ Link will work after Apple approves (24-48 hours)")
+                  print("✅ READY TO SHARE:")
+                  print("   • Link is ACTIVE immediately")
+                  print("   • Anyone with the link can join")
+                  print("   • No manual approval needed")
+                  print("   • Testers will get app after Apple review (24-48h)")
+                  print()
+                  print("📲 HOW TO USE:")
+                  print("   1. Share the link above with testers")
+                  print("   2. Testers install TestFlight app")
+                  print("   3. Testers tap your link")
+                  print("   4. Testers accept invitation")
+                  print("   5. App appears after Apple approval")
               else:
-                  print("ℹ️  Public TestFlight link will be available after review")
+                  print("ℹ️  Public TestFlight link:")
+                  print("   • Will be available within 5-10 minutes")
+                  print("   • Check App Store Connect → TestFlight → External Testing")
+                  print("   • Or check GitHub Actions logs in next run")
               
               print()
               print("⏳ NEXT STEPS:")
               print("   1. Apple reviews build (24-48 hours)")
-              print("   2. Tester receives email invitation")
-              print("   3. Tester installs TestFlight app")
-              print("   4. Tester clicks link or enters code")
-              print("   5. App becomes available in TestFlight")
+              print("   2. Build becomes available to all testers")
+              print("   3. Testers receive email notifications")
+              print("   4. Anyone with link can join anytime")
           else:
               print("⚠️  SETUP PARTIALLY COMPLETE")
               print("=" * 70)
@@ -1604,7 +1670,7 @@ jobs:
             "buildNumber": "$BUILD_NUMBER",
             "status": "$BUILD_STATUS",
             "testflightPublicLink": "$TESTFLIGHT_LINK",
-            "message": "Build uploaded to TestFlight and submitted for external beta review. Build will be available to testers after Apple approval (24-48 hours).",
+            "message": "Build uploaded to TestFlight with PUBLIC LINK enabled. Anyone with the link can join external testing. Build will be available after Apple approval (24-48 hours).",
             "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           }
           EOF
@@ -1659,30 +1725,36 @@ jobs:
           
           if [ -n "$TESTFLIGHT_LINK" ]; then
             echo "════════════════════════════════════════════════════════════════════"
-            echo "           🔗 PUBLIC TESTFLIGHT LINK (Ready to Share)"
+            echo "           🔗 PUBLIC TESTFLIGHT LINK (READY TO SHARE)"
             echo "════════════════════════════════════════════════════════════════════"
             echo ""
             echo "$TESTFLIGHT_LINK"
             echo ""
             echo "════════════════════════════════════════════════════════════════════"
             echo ""
-            echo "📲 SHARE THIS LINK WITH BETA TESTERS"
+            echo "✅ LINK IS ACTIVE - ANYONE CAN JOIN!"
             echo ""
-            echo "⏳ IMPORTANT NOTES:"
-            echo "   • Link is active immediately"
-            echo "   • Build requires Apple Beta Review (24-48 hours)"
-            echo "   • Testers will receive email when build is approved"
-            echo "   • Testers need TestFlight app installed"
+            echo "📲 SHARE THIS LINK WITH TESTERS:"
+            echo "   • Link works immediately"
+            echo "   • No approval needed to join"
+            echo "   • Unlimited testers can use it"
+            echo "   • App becomes available after Apple review (24-48h)"
             echo ""
-            echo "📧 WHAT TESTERS SHOULD DO:"
-            echo "   1. Install TestFlight app from App Store"
-            echo "   2. Click the public link above (or received via email)"
+            echo "👥 WHAT TESTERS DO:"
+            echo "   1. Install TestFlight from App Store"
+            echo "   2. Click the public link"
             echo "   3. Accept the invitation"
             echo "   4. Wait for Apple approval notification"
             echo "   5. Download and test the app"
             echo ""
+            echo "⏳ TIMELINE:"
+            echo "   • Link active: NOW ✅"
+            echo "   • Apple review: 24-48 hours ⏳"
+            echo "   • App available: After approval ✅"
+            echo ""
           else
-            echo "ℹ️  TestFlight Link: Will be available after first build approval"
+            echo "ℹ️  TestFlight Link: Generating (check back in 5-10 minutes)"
+            echo "   💡 Link will appear in App Store Connect → TestFlight"
             echo ""
           fi
           
@@ -1692,18 +1764,34 @@ jobs:
           # Also save link to GitHub step summary for easy access
           if [ -n "$TESTFLIGHT_LINK" ]; then
             {
-              echo "## 🔗 TestFlight Public Link"
+              echo "## 🔗 Public TestFlight Link (READY)"
               echo ""
               echo "\`\`\`"
               echo "$TESTFLIGHT_LINK"
               echo "\`\`\`"
               echo ""
-              echo "**Status:** Submitted for Beta Review"
+              echo "### ✅ Link Status: ACTIVE"
               echo ""
-              echo "**Next Steps:**"
-              echo "- Apple will review build (24-48 hours)"
-              echo "- Share link with testers immediately"
-              echo "- Testers will be notified when build is approved"
+              echo "- **Anyone with this link can join**"
+              echo "- **No manual approval required**"
+              echo "- **Unlimited testers**"
+              echo "- **App available after Apple review (24-48 hours)**"
+              echo ""
+              echo "### 📲 Share Instructions"
+              echo ""
+              echo "1. Copy the link above"
+              echo "2. Send to testers via email, chat, etc."
+              echo "3. Testers install TestFlight app"
+              echo "4. Testers tap the link"
+              echo "5. Testers get app after Apple approval"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "## ⏳ TestFlight Link Generating"
+              echo ""
+              echo "Public link will be available in 5-10 minutes."
+              echo ""
+              echo "Check: App Store Connect → TestFlight → External Testing"
             } >> "$GITHUB_STEP_SUMMARY"
           fi
           
