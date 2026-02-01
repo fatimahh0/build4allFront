@@ -1012,13 +1012,6 @@ jobs:
             -exportPath ../build/ios/ipa \
             OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}"
 
-      - name: Upload IPA artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-ipa
-          path: build/ios/ipa/**/*.ipa
-          if-no-files-found: error
-
       - name: Upload to TestFlight (External Testing)
         shell: bash
         run: |
@@ -1560,145 +1553,176 @@ jobs:
           print("=" * 70)
           PYEOF
 
-      - name: Send TestFlight Callback & Display Links
+      # ───────────────────────────────────────────────────────────────────────
+      # ✅ CALLBACK: Save TestFlight public link to DB (with retry)
+      # ───────────────────────────────────────────────────────────────────────
+      - name: Save TestFlight Public Link to DB via Callback
         if: always()
         shell: bash
         run: |
           set -uo pipefail
-          
+
           API_BASE="$(cat ci_api_base.txt)"
           LINK_ID="$(cat ci_link_id.txt)"
-          BUNDLE_ID="$(cat ci_ios_bundle_id.txt)"
+          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
           APP_NAME="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['APP_NAME'])")"
           VERSION_NAME="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['IOS_VERSION_NAME'])")"
           BUILD_NUMBER="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['IOS_BUILD_NUMBER'])")"
-          
+
+          # ─── Read TestFlight public link ───
           TESTFLIGHT_LINK=""
-          BUILD_STATUS="uploaded"
-          
           if [ -f "testflight_public_link.txt" ]; then
-            TESTFLIGHT_LINK="$(cat testflight_public_link.txt)"
+            TESTFLIGHT_LINK="$(cat testflight_public_link.txt | tr -d '\r\n')"
           fi
-          
+
+          # ─── Read build status ───
+          BUILD_STATUS="uploaded"
           if [ -f "testflight_status.txt" ]; then
-            BUILD_STATUS="$(cat testflight_status.txt)"
+            BUILD_STATUS="$(cat testflight_status.txt | tr -d '\r\n')"
           fi
-          
-          cat > callback_payload.json <<EOF
-          {
-            "linkId": "$LINK_ID",
-            "platform": "ios",
-            "bundleId": "$BUNDLE_ID",
-            "appName": "$APP_NAME",
-            "version": "$VERSION_NAME",
-            "buildNumber": "$BUILD_NUMBER",
-            "status": "$BUILD_STATUS",
-            "testflightPublicLink": "$TESTFLIGHT_LINK",
-            "message": "Build uploaded to TestFlight and submitted for external beta review. Build will be available to testers after Apple approval (24-48 hours).",
-            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          echo "════════════════════════════════════════════════════════════════════"
+          echo "          📡 SAVING TESTFLIGHT PUBLIC LINK TO DB"
+          echo "════════════════════════════════════════════════════════════════════"
+          echo ""
+          echo "📱 App Name:          $APP_NAME"
+          echo "🆔 Bundle ID:         $BUNDLE_ID"
+          echo "📦 Version:           $VERSION_NAME ($BUILD_NUMBER)"
+          echo "📋 Status:            $BUILD_STATUS"
+          echo "🔗 TestFlight Link:   ${TESTFLIGHT_LINK:-⚠️  NOT AVAILABLE}"
+          echo ""
+
+          # ─── Build the callback payload ───
+          python3 - <<PY
+          import json
+
+          payload = {
+              "linkId": "$LINK_ID",
+              "platform": "ios",
+              "bundleId": "$BUNDLE_ID",
+              "appName": "$APP_NAME",
+              "version": "$VERSION_NAME",
+              "buildNumber": "$BUILD_NUMBER",
+              "status": "$BUILD_STATUS",
+              "testflightPublicLink": "$TESTFLIGHT_LINK",
+              "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           }
-          EOF
-          
-          if [ -n "${CI_CALLBACK_TOKEN:-}" ] && [ -n "$API_BASE" ]; then
-            echo "📡 Sending callback to backend..."
-            echo "   URL: $API_BASE/api/ci/callback/testflight"
-            
-            if CALLBACK_RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST "$API_BASE/api/ci/callback/testflight" \
+
+          with open("callback_payload.json", "w") as f:
+              json.dump(payload, f, indent=2)
+
+          print("📄 Payload:")
+          print(json.dumps(payload, indent=2))
+          PY
+
+          echo ""
+
+          # ─── Guard: need token + api base ───
+          if [ -z "${CI_CALLBACK_TOKEN:-}" ] || [ -z "$API_BASE" ]; then
+            echo "⚠️ Missing CI_CALLBACK_TOKEN or API_BASE — cannot save to DB"
+            exit 0
+          fi
+
+          # ─── POST callback with retry (3 attempts) ───
+          CALLBACK_URL="$API_BASE/api/ci/callback/testflight"
+          echo "📡 Posting to: $CALLBACK_URL"
+          echo ""
+
+          MAX_ATTEMPTS=3
+          ATTEMPT=0
+          SUCCESS=false
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "🔄 Attempt $ATTEMPT / $MAX_ATTEMPTS ..."
+
+            CALLBACK_RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST "$CALLBACK_URL" \
               -H "Content-Type: application/json" \
               -H "X-Auth-Token: $CI_CALLBACK_TOKEN" \
-              -d @callback_payload.json 2>&1); then
-              
-              HTTP_CODE=$(echo "$CALLBACK_RESPONSE" | tail -n1)
-              RESPONSE_BODY=$(echo "$CALLBACK_RESPONSE" | sed '$d')
-              
-              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
-                echo "   ✅ Callback successful (HTTP $HTTP_CODE)"
-              else
-                echo "   ⚠️  Callback returned HTTP $HTTP_CODE"
-                echo "   Response: $RESPONSE_BODY"
-              fi
+              -d @callback_payload.json 2>&1)
+
+            HTTP_CODE=$(echo "$CALLBACK_RESPONSE" | tail -n1)
+            RESPONSE_BODY=$(echo "$CALLBACK_RESPONSE" | sed '$d')
+
+            if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+              echo "✅ Callback successful (HTTP $HTTP_CODE) — TestFlight link saved to DB"
+              echo "   Response: $RESPONSE_BODY"
+              SUCCESS=true
+              break
             else
-              CURL_EXIT=$?
-              echo "   ⚠️  Callback failed (curl exit code: $CURL_EXIT)"
-              echo "   Error: $CALLBACK_RESPONSE"
-              
-              case $CURL_EXIT in
-                6) echo "   💡 Could not resolve host - check network configuration" ;;
-                7) echo "   💡 Failed to connect to host" ;;
-                28) echo "   💡 Timeout connecting to server" ;;
-                *) echo "   💡 Check API endpoint and network settings" ;;
-              esac
+              echo "⚠️  Callback failed (HTTP $HTTP_CODE)"
+              echo "   Response: $RESPONSE_BODY"
+
+              if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+                echo "   ⏳ Retrying in 5 seconds..."
+                sleep 5
+              fi
             fi
-          else
-            echo "⚠️ No callback configured (missing CI_CALLBACK_TOKEN or API_BASE)"
+          done
+
+          echo ""
+
+          if [ "$SUCCESS" = "false" ]; then
+            echo "❌ All $MAX_ATTEMPTS callback attempts failed"
+            echo "   💡 The TestFlight link was NOT saved to DB"
+            echo "   💡 Link value: ${TESTFLIGHT_LINK:-EMPTY}"
+            echo "   💡 Check your backend endpoint and CI_CALLBACK_TOKEN secret"
           fi
-          
+
           echo ""
           echo "════════════════════════════════════════════════════════════════════"
-          echo "                    🎉 BUILD COMPLETE 🎉"
-          echo "════════════════════════════════════════════════════════════════════"
-          echo ""
-          echo "📱 App Name:       $APP_NAME"
-          echo "🆔 Bundle ID:      $BUNDLE_ID"
-          echo "📦 Version:        $VERSION_NAME ($BUILD_NUMBER)"
-          echo "📋 Status:         $BUILD_STATUS"
-          echo ""
-          
+
           if [ -n "$TESTFLIGHT_LINK" ]; then
-            echo "════════════════════════════════════════════════════════════════════"
-            echo "           🔗 PUBLIC TESTFLIGHT LINK (Ready to Share)"
-            echo "════════════════════════════════════════════════════════════════════"
             echo ""
-            echo "$TESTFLIGHT_LINK"
+            echo "🔗 PUBLIC TESTFLIGHT LINK:"
+            echo "   $TESTFLIGHT_LINK"
             echo ""
-            echo "════════════════════════════════════════════════════════════════════"
+            echo "📲 Share this link with external beta testers"
+            echo "⏳ Build requires Apple Beta Review (24-48 hours)"
             echo ""
-            echo "📲 SHARE THIS LINK WITH BETA TESTERS"
-            echo ""
-            echo "⏳ IMPORTANT NOTES:"
-            echo "   • Link is active immediately"
-            echo "   • Build requires Apple Beta Review (24-48 hours)"
-            echo "   • Testers will receive email when build is approved"
-            echo "   • Testers need TestFlight app installed"
-            echo ""
-            echo "🔐 DEMO CREDENTIALS (Already configured in App Store Connect):"
+            echo "🔐 DEMO CREDENTIALS (configured in App Store Connect):"
             echo "   📧 Email:    demo@applereview.com"
             echo "   🔑 Password: AppleReview2026!"
-            echo ""
-            echo "📧 WHAT TESTERS SHOULD DO:"
-            echo "   1. Install TestFlight app from App Store"
-            echo "   2. Click the public link above (or received via email)"
-            echo "   3. Accept the invitation"
-            echo "   4. Wait for Apple approval notification"
-            echo "   5. Download and test the app"
-            echo ""
           else
-            echo "ℹ️  TestFlight Link: Will be available after first build approval"
             echo ""
+            echo "ℹ️  TestFlight public link not available yet"
+            echo "   💡 It will be generated after Apple approves the first build"
           fi
-          
-          echo "════════════════════════════════════════════════════════════════════"
+
           echo ""
-          
-          if [ -n "$TESTFLIGHT_LINK" ]; then
-            {
-              echo "## 🔗 TestFlight Public Link"
+          echo "════════════════════════════════════════════════════════════════════"
+
+          # ─── GitHub Step Summary ───
+          {
+            echo "## 🎉 iOS Build Complete"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| App Name | $APP_NAME |"
+            echo "| Bundle ID | $BUNDLE_ID |"
+            echo "| Version | $VERSION_NAME ($BUILD_NUMBER) |"
+            echo "| Status | $BUILD_STATUS |"
+            echo "| Link Saved to DB | $([ "$SUCCESS" = "true" ] && echo '✅ Yes' || echo '❌ No') |"
+            echo ""
+
+            if [ -n "$TESTFLIGHT_LINK" ]; then
+              echo "### 🔗 Public TestFlight Link"
               echo ""
               echo "\`\`\`"
               echo "$TESTFLIGHT_LINK"
               echo "\`\`\`"
-              echo ""
-              echo "**Status:** Submitted for Beta Review"
               echo ""
               echo "**Demo Credentials (configured in App Store Connect):**"
               echo "- Email: \`demo@applereview.com\`"
               echo "- Password: \`AppleReview2026!\`"
               echo ""
               echo "**Next Steps:**"
-              echo "- Apple will review build (24-48 hours)"
-              echo "- Share link with testers immediately"
-              echo "- Testers will be notified when build is approved"
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
-          
+              echo "- Apple will review the build (24-48 hours)"
+              echo "- Share the link with testers"
+              echo "- Testers will be notified when the build is approved"
+            else
+              echo "> ℹ️ Public TestFlight link will be available after Apple approves the first build."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
           exit 0
