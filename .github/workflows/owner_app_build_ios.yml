@@ -35,6 +35,9 @@ jobs:
       LC_ALL: en_US.UTF-8
 
     steps:
+      # ════════════════════════════════════════════════════════════════════
+      # CHECKOUT & TOOLING
+      # ════════════════════════════════════════════════════════════════════
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -73,6 +76,9 @@ jobs:
           flutter --version
           flutter pub get
 
+      # ════════════════════════════════════════════════════════════════════
+      # RUNTIME CONFIG
+      # ════════════════════════════════════════════════════════════════════
       - name: Show dispatch payload (debug)
         shell: bash
         run: |
@@ -238,48 +244,105 @@ jobs:
           echo "----- ci_env.json -----"
           cat lib/env/ci_env.json
 
-      - name: 🔐 Create Demo Account for Apple Review
+      # ════════════════════════════════════════════════════════════════════
+      # 🔐 DEMO ACCOUNT – calls BOTH endpoints, parses real credentials
+      # ════════════════════════════════════════════════════════════════════
+      - name: 🔐 Create Demo Account for Apple Review (this app)
         shell: bash
         run: |
           set -euo pipefail
-          
+
           API_BASE="$(cat ci_api_base.txt)"
           LINK_ID="$(cat ci_link_id.txt)"
-          
-          echo "🔐 Creating demo account for Apple Review..."
-          echo "   API: $API_BASE"
+
+          echo "🔐 Creating demo account for this app…"
+          echo "   API:     $API_BASE"
           echo "   Link ID: $LINK_ID"
           echo ""
-          
+
           RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST \
             "$API_BASE/api/auth/demo/create-apple-review-account?ownerProjectLinkId=$LINK_ID" \
             -H "Content-Type: application/json" \
             -H "X-Auth-Token: ${{ secrets.CI_RUNTIME_TOKEN }}" \
             2>&1)
-          
+
           HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          RESPONSE_BODY=$(echo "$RESPONSE" | sed '$d')
-          
-          if [ "$HTTP_CODE" = "200" ]; then
-            echo "✅ Demo account ready!"
-            echo "$RESPONSE_BODY" | python3 -m json.tool 2>/dev/null || echo "$RESPONSE_BODY"
-            echo ""
-            echo "════════════════════════════════════════════════════════════════════"
-            echo "              🔐 DEMO CREDENTIALS FOR APPLE REVIEW"
-            echo "════════════════════════════════════════════════════════════════════"
-            echo ""
-            echo "   📧 Email:    demo@applereview.com"
-            echo "   🔑 Password: AppleReview2026!"
-            echo ""
-            echo "════════════════════════════════════════════════════════════════════"
-            echo ""
-          else
-            echo "⚠️ Demo account creation returned HTTP $HTTP_CODE"
-            echo "$RESPONSE_BODY"
-            echo ""
-            echo "⚠️ Continuing anyway - you may need to add demo credentials manually"
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "HTTP $HTTP_CODE"
+          echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "⚠️  Single-app demo account creation returned HTTP $HTTP_CODE"
+            echo "    Continuing – seed-all step will run next."
           fi
 
+          # ── Parse email + password from the response ──────────────────
+          # Falls back to the hard-coded defaults that the Java endpoint itself uses.
+          DEMO_EMAIL=$(echo "$BODY" | python3 -c "
+          import sys, json
+          try:
+              print(json.load(sys.stdin).get('email',''))
+          except:
+              print('')
+          " 2>/dev/null || echo "")
+
+          DEMO_PASSWORD=$(echo "$BODY" | python3 -c "
+          import sys, json
+          try:
+              print(json.load(sys.stdin).get('password',''))
+          except:
+              print('')
+          " 2>/dev/null || echo "")
+
+          # Fall back to the same defaults the Java endpoint uses
+          [ -n "$DEMO_EMAIL"    ] || DEMO_EMAIL="demo@applereview.com"
+          [ -n "$DEMO_PASSWORD" ] || DEMO_PASSWORD="AppleReview2026!"
+
+          # ── Export to GITHUB_ENV so every later step can read them ─────
+          echo "DEMO_EMAIL=$DEMO_EMAIL"       >> "$GITHUB_ENV"
+          echo "DEMO_PASSWORD=$DEMO_PASSWORD" >> "$GITHUB_ENV"
+
+          echo ""
+          echo "════════════════════════════════════════════════════════════"
+          echo "        🔐 DEMO CREDENTIALS (parsed from endpoint)"
+          echo "════════════════════════════════════════════════════════════"
+          echo "   📧 Email:    $DEMO_EMAIL"
+          echo "   🔑 Password: $DEMO_PASSWORD"
+          echo "════════════════════════════════════════════════════════════"
+
+      - name: 🔐 Seed Demo Account across all apps
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          API_BASE="$(cat ci_api_base.txt)"
+
+          echo "🔐 Seeding demo account for every app…"
+          echo "   API: $API_BASE"
+          echo ""
+
+          RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST \
+            "$API_BASE/api/auth/demo/seed-apple-review-account-all" \
+            -H "Content-Type: application/json" \
+            -H "X-Auth-Token: ${{ secrets.CI_RUNTIME_TOKEN }}" \
+            2>&1)
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "HTTP $HTTP_CODE"
+          echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "⚠️  seed-all returned HTTP $HTTP_CODE – continuing anyway"
+          else
+            echo "✅ All apps seeded"
+          fi
+
+      # ════════════════════════════════════════════════════════════════════
+      # APP STORE CONNECT METADATA
+      # ════════════════════════════════════════════════════════════════════
       - name: Read App Store Connect metadata
         shell: bash
         run: |
@@ -343,6 +406,9 @@ jobs:
           print("PRIVACY_POLICY_URL=", privacy_url)
           PY
 
+      # ════════════════════════════════════════════════════════════════════
+      # FLUTTER / iOS PROJECT SETUP
+      # ════════════════════════════════════════════════════════════════════
       - name: Ensure iOS Podfile exists
         shell: bash
         run: |
@@ -471,6 +537,9 @@ jobs:
           
           echo "✅ iOS App Name set"
 
+      # ════════════════════════════════════════════════════════════════════
+      # CODE SIGNING
+      # ════════════════════════════════════════════════════════════════════
       - name: Setup iOS signing certificate
         shell: bash
         run: |
@@ -527,6 +596,9 @@ jobs:
           cd ios
           pod install || { pod repo update; pod install; }
 
+      # ════════════════════════════════════════════════════════════════════
+      # APP STORE CONNECT API KEY
+      # ════════════════════════════════════════════════════════════════════
       - name: Create App Store Connect api_key.json
         shell: bash
         run: |
@@ -581,6 +653,9 @@ jobs:
         run: |
           pip3 install PyJWT cryptography requests --break-system-packages
 
+      # ════════════════════════════════════════════════════════════════════
+      # BETA APP REVIEW – uses $DEMO_EMAIL / $DEMO_PASSWORD from GITHUB_ENV
+      # ════════════════════════════════════════════════════════════════════
       - name: Setup Beta App Review Info with Demo Credentials
         shell: bash
         run: |
@@ -588,9 +663,9 @@ jobs:
           
           API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
           BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
-          
-          DEMO_EMAIL="demo@applereview.com"
-          DEMO_PASSWORD="AppleReview2026!"
+
+          # DEMO_EMAIL and DEMO_PASSWORD are already exported to GITHUB_ENV
+          # by the "Create Demo Account" step – no hardcoding needed here.
           
           echo "📋 Setting up Beta App Review Info with demo credentials..."
           echo "Bundle ID: $BUNDLE_ID"
@@ -796,6 +871,9 @@ jobs:
           print("=" * 60)
           PYEOF
 
+      # ════════════════════════════════════════════════════════════════════
+      # PROVISIONING & EXPORT
+      # ════════════════════════════════════════════════════════════════════
       - name: Ensure App ID exists
         shell: bash
         run: |
@@ -949,6 +1027,9 @@ jobs:
 
           BUNDLE_ID="$BUNDLE_ID" PROFILE_NAME="$PROFILE_NAME" TEAM_ID="$TEAM_ID" ruby patch_runner_signing.rb
 
+      # ════════════════════════════════════════════════════════════════════
+      # BUILD, ARCHIVE, EXPORT
+      # ════════════════════════════════════════════════════════════════════
       - name: Build iOS
         shell: bash
         run: |
@@ -1019,6 +1100,9 @@ jobs:
           path: build/ios/ipa/**/*.ipa
           if-no-files-found: error
 
+      # ════════════════════════════════════════════════════════════════════
+      # TESTFLIGHT UPLOAD & EXTERNAL TESTING SETUP
+      # ════════════════════════════════════════════════════════════════════
       - name: Upload to TestFlight (External Testing)
         shell: bash
         run: |
@@ -1561,7 +1645,8 @@ jobs:
           PYEOF
 
       # ════════════════════════════════════════════════════════════════════
-      # ✅ FIXED: Save TestFlight Public Link to Database
+      # 💾 CALLBACK – save TestFlight link to DB, uses $DEMO_EMAIL /
+      #    $DEMO_PASSWORD from GITHUB_ENV everywhere (no hardcoding)
       # ════════════════════════════════════════════════════════════════════
       - name: 💾 Save TestFlight Public Link to Database
         if: always()
@@ -1602,7 +1687,6 @@ jobs:
           echo ""
           
           # ─── Build the callback payload ───
-          # ✅ Added multiple field names for backward compatibility
           cat > callback_payload.json <<EOF
           {
             "linkId": "$LINK_ID",
@@ -1734,9 +1818,9 @@ jobs:
             echo "   • Testers will receive email when build is approved"
             echo "   • Testers need TestFlight app installed"
             echo ""
-            echo "🔐 DEMO CREDENTIALS (Already configured in App Store Connect):"
-            echo "   📧 Email:    demo@applereview.com"
-            echo "   🔑 Password: AppleReview2026!"
+            echo "🔐 DEMO CREDENTIALS (from endpoint):"
+            echo "   📧 Email:    $DEMO_EMAIL"
+            echo "   🔑 Password: $DEMO_PASSWORD"
             echo ""
             echo "📧 WHAT TESTERS SHOULD DO:"
             echo "   1. Install TestFlight app from App Store"
@@ -1773,9 +1857,9 @@ jobs:
               echo "$TESTFLIGHT_LINK"
               echo "\`\`\`"
               echo ""
-              echo "**Demo Credentials (configured in App Store Connect):**"
-              echo "- Email: \`demo@applereview.com\`"
-              echo "- Password: \`AppleReview2026!\`"
+              echo "**Demo Credentials (from endpoint):**"
+              echo "- Email: \`$DEMO_EMAIL\`"
+              echo "- Password: \`$DEMO_PASSWORD\`"
               echo ""
               echo "### 📲 Next Steps"
               echo ""
