@@ -1,5 +1,3 @@
-// lib/features/profile/presentation/widgets/user_profile_header.dart
-
 import 'package:flutter/material.dart';
 import 'package:build4front/features/auth/domain/entities/user_entity.dart';
 import 'package:build4front/core/network/globals.dart' as g;
@@ -38,6 +36,7 @@ class UserProfileHeader extends StatelessWidget {
     const size = 96.0;
 
     final url = _buildImageUrl(user.profilePictureUrl);
+    final status = (user.status ?? 'ACTIVE').toString();
 
     return Column(
       children: [
@@ -72,6 +71,7 @@ class UserProfileHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
+
         // display name
         Text(
           user.displayName,
@@ -81,12 +81,14 @@ class UserProfileHeader extends StatelessWidget {
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 4),
-        // visibility + status
+        const SizedBox(height: 6),
+
+        // ✅ status only (no public/private)
         Text(
-          '${(user.isPublicProfile ?? true) ? "Public" : "Private"} • ${user.status ?? "ACTIVE"}',
-          // you can later replace those strings with l10n
-          style: theme.textTheme.bodyMedium,
+          'Status: $status',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onBackground.withOpacity(0.8),
+          ),
           textAlign: TextAlign.center,
         ),
       ],

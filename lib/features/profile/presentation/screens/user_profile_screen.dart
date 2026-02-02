@@ -115,7 +115,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
       id = JwtUtils.userIdFromToken(tokenRaw) ?? 0;
     }
 
-    // fallback فقط إذا التوكن ما فيه id
+    // fallback only if token doesn't contain id
     if (id <= 0) id = widget.userId;
 
     if (id <= 0) {
@@ -184,7 +184,11 @@ class _UserProfileScreenState extends State<UserProfileScreen>
             lastName: user.lastName,
             username: user.username,
             profilePictureUrl: user.profilePictureUrl,
+
+            // NOTE: We keep patching it if your Auth layer expects it,
+            // but the UI feature is removed.
             isPublicProfile: user.isPublicProfile,
+
             status: user.status,
           ),
         );
@@ -332,7 +336,6 @@ class _UserProfileScreenState extends State<UserProfileScreen>
         if (state is UserProfileLoaded) {
           final user = state.user;
           final theme = Theme.of(context);
-
           final ownerId = user.ownerProjectLinkId;
 
           return Scaffold(
@@ -386,21 +389,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                     leading: const Icon(Icons.settings),
                     title: Text(tr.manageAccount),
                     children: [
-                      _tile(
-                        context,
-                        icon: Icons.visibility,
-                        title: (user.isPublicProfile ?? true)
-                            ? tr.profileMakePrivate
-                            : tr.profileMakePublic,
-                        onTap: () => context.read<UserProfileBloc>().add(
-                              ToggleVisibilityPressed(
-                                _effectiveToken,
-                                user.id!, 
-                                !(user.isPublicProfile ?? true),
-                                ownerId,
-                              ),
-                            ),
-                      ),
+                      // ✅ ONLY keep "Set Inactive"
                       _tile(
                         context,
                         icon: Icons.power_settings_new,
