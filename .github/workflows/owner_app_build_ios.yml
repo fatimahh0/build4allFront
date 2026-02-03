@@ -1759,59 +1759,106 @@ jobs:
         if: always()
         shell: bash
         run: |
-         set -euo pipefail
-      
-          API_BASE="$(cat ci_api_base.txt | tr -d '\r\n')"
-          LINK_ID="$(cat ci_link_id.txt | tr -d '\r\n')"
-      
+          set -euo pipefail
+
+          API_BASE="$(tr -d '\r\n' < ci_api_base.txt)"
+          LINK_ID="$(tr -d '\r\n' < ci_link_id.txt)"
+          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
+          APP_NAME="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json')).get('APP_NAME',''))")"
+          VERSION_NAME="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json')).get('IOS_VERSION_NAME',''))")"
+          BUILD_NUMBER="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json')).get('IOS_BUILD_NUMBER',''))")"
+
           # Read public link (may not exist yet)
           TESTFLIGHT_LINK=""
           if [ -f "testflight_public_link.txt" ]; then
-            TESTFLIGHT_LINK="$(cat testflight_public_link.txt | tr -d '\r\n')"
+            TESTFLIGHT_LINK="$(tr -d '\r\n' < testflight_public_link.txt)"
           fi
-      
+
           echo "API_BASE=$API_BASE"
           echo "LINK_ID=$LINK_ID"
+          echo "BUNDLE_ID=$BUNDLE_ID"
+          echo "APP_NAME=$APP_NAME"
+          echo "VERSION=$VERSION_NAME ($BUILD_NUMBER)"
           echo "TESTFLIGHT_LINK=${TESTFLIGHT_LINK:-EMPTY}"
-      
+
           # If link is empty, don't overwrite ipaUrl with empty string
           if [ -z "${TESTFLIGHT_LINK:-}" ]; then
             echo "⚠️ No TestFlight public link available yet -> skipping ipaUrl save"
+            {
+              echo "## ℹ️ TestFlight Link Not Available Yet"
+              echo ""
+              echo "- Bundle: \`$BUNDLE_ID\`"
+              echo "- App: \`$APP_NAME\`"
+              echo "- Version: \`$VERSION_NAME ($BUILD_NUMBER)\`"
+              echo ""
+              echo "> Public link is often generated only after Apple processes the first build / review settings are complete."
+            } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-      
+
           # Must have CI_CALLBACK_TOKEN
           if [ -z "${CI_CALLBACK_TOKEN:-}" ]; then
             echo "❌ CI_CALLBACK_TOKEN missing -> cannot save ipaUrl"
             exit 1
           fi
-      
+
           CALLBACK_URL="$API_BASE/api/ci/owner-project-links/$LINK_ID/ipa-url"
-      
+
           echo ""
           echo "📡 Saving ipaUrl via: $CALLBACK_URL"
-      
-          PAYLOAD="$(jq -n --arg ipaUrl "$TESTFLIGHT_LINK" '{ipaUrl:$ipaUrl}')"
-          echo "$PAYLOAD" | jq .
-      
-          RESPONSE=$(curl -sS -w "\n%{http_code}" -X PUT "$CALLBACK_URL" \
+
+          # jq is not guaranteed; build JSON safely without it
+          PAYLOAD="$(python3 - <<PY
+          import json
+          print(json.dumps({"ipaUrl": "${TESTFLIGHT_LINK}"}))
+          PY
+          )"
+
+          echo "$PAYLOAD"
+
+          RESPONSE="$(curl -sS -w "\n%{http_code}" -X PUT "$CALLBACK_URL" \
             -H "Content-Type: application/json" \
             -H "X-Auth-Token: $CI_CALLBACK_TOKEN" \
-            -d "$PAYLOAD" 2>&1)
-      
+            -d "$PAYLOAD" 2>&1)"
+
           HTTP_CODE="$(echo "$RESPONSE" | tail -n1)"
           BODY="$(echo "$RESPONSE" | sed '$d')"
-      
+
           echo ""
           echo "HTTP $HTTP_CODE"
           echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
-      
+
           if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
             echo "❌ Failed to save ipaUrl"
+            {
+              echo "## ❌ Failed to save TestFlight link to DB"
+              echo ""
+              echo "- Endpoint: \`$CALLBACK_URL\`"
+              echo "- HTTP: \`$HTTP_CODE\`"
+              echo ""
+              echo "Response:"
+              echo "\`\`\`"
+              echo "$BODY"
+              echo "\`\`\`"
+            } >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
-      
+
           echo "✅ Saved TestFlight link into ipaUrl column"
+
+          {
+            echo "## ✅ TestFlight link saved"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| App | $APP_NAME |"
+            echo "| Bundle | $BUNDLE_ID |"
+            echo "| Version | $VERSION_NAME ($BUILD_NUMBER) |"
+            echo "| Link | \`$TESTFLIGHT_LINK\` |"
+            echo ""
+            echo "> Note: Link can exist while build is still processing / waiting for beta review."
+          } >> "$GITHUB_STEP_SUMMARY"
+
 
           
           echo ""
