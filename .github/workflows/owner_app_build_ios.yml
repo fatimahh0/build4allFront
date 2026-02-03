@@ -656,7 +656,7 @@ jobs:
           pip3 install PyJWT cryptography requests --break-system-packages
 
       # ════════════════════════════════════════════════════════════════════
-      # 🔢 AUTO-INCREMENT BUILD NUMBER FROM APP STORE CONNECT
+      # 🔢 AUTO-INCREMENT BUILD NUMBER FROM APP STORE CONNECT (FIXED)
       #    Queries ASC for the highest existing CFBundleVersion for this
       #    bundle ID and sets the new build to max + 1.  Runs AFTER
       #    api_key.json exists and BEFORE the archive step.
@@ -719,10 +719,11 @@ jobs:
           print(f"   App ID: {app_id}")
 
           # ── 2. Page through builds, collect the max buildNumber ─────────
+          # FIXED: Removed overly restrictive fields parameter
           max_bn = 0
           next_url = (
               f"https://api.appstoreconnect.apple.com/v1/builds"
-              f"?filter[app]={app_id}&fields[builds]=buildNumber&limit=100&sort=-uploadedDate"
+              f"?filter[app]={app_id}&limit=100&sort=-uploadedDate"
           )
 
           pages = 0
@@ -759,6 +760,8 @@ jobs:
 
           print(f"   ✅ Info.plist & ci_env.json updated to build number {new_bn}")
           PY
+
+  
 
       # ════════════════════════════════════════════════════════════════════
       # BETA APP REVIEW – uses $DEMO_EMAIL / $DEMO_PASSWORD from GITHUB_ENV
