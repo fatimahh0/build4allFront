@@ -1755,146 +1755,64 @@ jobs:
       # 💾 CALLBACK – save TestFlight link to DB, uses $DEMO_EMAIL /
       #    $DEMO_PASSWORD from GITHUB_ENV everywhere (no hardcoding)
       # ════════════════════════════════════════════════════════════════════
-      - name: 💾 Save TestFlight Public Link to Database
+      - name: 💾 Save TestFlight link into ipaUrl column
         if: always()
         shell: bash
         run: |
-          set -uo pipefail
-          
-          # ─── Load variables ───
-          API_BASE="$(cat ci_api_base.txt)"
-          LINK_ID="$(cat ci_link_id.txt)"
-          BUNDLE_ID="$(cat ci_ios_bundle_id.txt)"
-          APP_NAME="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['APP_NAME'])")"
-          VERSION_NAME="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['IOS_VERSION_NAME'])")"
-          BUILD_NUMBER="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['IOS_BUILD_NUMBER'])")"
-          
-          # ─── Read TestFlight public link ───
+         set -euo pipefail
+      
+          API_BASE="$(cat ci_api_base.txt | tr -d '\r\n')"
+          LINK_ID="$(cat ci_link_id.txt | tr -d '\r\n')"
+      
+          # Read public link (may not exist yet)
           TESTFLIGHT_LINK=""
           if [ -f "testflight_public_link.txt" ]; then
             TESTFLIGHT_LINK="$(cat testflight_public_link.txt | tr -d '\r\n')"
           fi
-          
-          # ─── Read build status ───
-          BUILD_STATUS="uploaded"
-          if [ -f "testflight_status.txt" ]; then
-            BUILD_STATUS="$(cat testflight_status.txt | tr -d '\r\n')"
-          fi
-          
-          echo ""
-          echo "════════════════════════════════════════════════════════════════════"
-          echo "          💾 SAVING TESTFLIGHT PUBLIC LINK TO DATABASE"
-          echo "════════════════════════════════════════════════════════════════════"
-          echo ""
-          echo "📱 App Name:          $APP_NAME"
-          echo "🆔 Bundle ID:         $BUNDLE_ID"
-          echo "📦 Version:           $VERSION_NAME ($BUILD_NUMBER)"
-          echo "📋 Status:            $BUILD_STATUS"
-          echo "🔗 TestFlight Link:   ${TESTFLIGHT_LINK:-⚠️  NOT AVAILABLE}"
-          echo ""
-          
-          # ─── Build the callback payload ───
-          cat > callback_payload.json <<EOF
-          {
-            "linkId": "$LINK_ID",
-            "platform": "ios",
-            "bundleId": "$BUNDLE_ID",
-            "appName": "$APP_NAME",
-            "version": "$VERSION_NAME",
-            "buildNumber": "$BUILD_NUMBER",
-            "status": "$BUILD_STATUS",
-            "testflightPublicLink": "$TESTFLIGHT_LINK",
-            "downloadUrl": "$TESTFLIGHT_LINK",
-            "githubArtifactUrl": "$TESTFLIGHT_LINK",
-            "iosTestflightLink": "$TESTFLIGHT_LINK",
-            "publicLink": "$TESTFLIGHT_LINK",
-            "message": "Build uploaded to TestFlight and submitted for external beta review. Build will be available to testers after Apple approval (24-48 hours).",
-            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          }
-          EOF
-          
-          echo "📄 Callback Payload:"
-          cat callback_payload.json | python3 -m json.tool 2>/dev/null || cat callback_payload.json
-          echo ""
-          
-          # ─── Guard: need token + api base ───
-          if [ -z "${CI_CALLBACK_TOKEN:-}" ] || [ -z "$API_BASE" ]; then
-            echo "⚠️ Missing CI_CALLBACK_TOKEN or API_BASE — cannot save to DB"
-            echo "   Set these secrets in GitHub repository settings"
+      
+          echo "API_BASE=$API_BASE"
+          echo "LINK_ID=$LINK_ID"
+          echo "TESTFLIGHT_LINK=${TESTFLIGHT_LINK:-EMPTY}"
+      
+          # If link is empty, don't overwrite ipaUrl with empty string
+          if [ -z "${TESTFLIGHT_LINK:-}" ]; then
+            echo "⚠️ No TestFlight public link available yet -> skipping ipaUrl save"
             exit 0
           fi
-          
-          # ─── POST callback with retry (3 attempts) ───
-          CALLBACK_URL="$API_BASE/api/ci/callback/testflight"
-          echo "📡 Posting to: $CALLBACK_URL"
-          echo ""
-          
-          MAX_ATTEMPTS=3
-          ATTEMPT=0
-          SUCCESS=false
-          
-          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-            ATTEMPT=$((ATTEMPT + 1))
-            echo "🔄 Attempt $ATTEMPT / $MAX_ATTEMPTS ..."
-          
-            if CALLBACK_RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST "$CALLBACK_URL" \
-              -H "Content-Type: application/json" \
-              -H "X-Auth-Token: $CI_CALLBACK_TOKEN" \
-              -d @callback_payload.json 2>&1); then
-              
-              HTTP_CODE=$(echo "$CALLBACK_RESPONSE" | tail -n1)
-              RESPONSE_BODY=$(echo "$CALLBACK_RESPONSE" | sed '$d')
-              
-              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
-                echo "   ✅ Callback successful (HTTP $HTTP_CODE) — TestFlight link saved to DB!"
-                echo "   Response: $RESPONSE_BODY"
-                SUCCESS=true
-                break
-              else
-                echo "   ⚠️  Callback returned HTTP $HTTP_CODE"
-                echo "   Response: $RESPONSE_BODY"
-                
-                if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
-                  echo "   ⏳ Retrying in 5 seconds..."
-                  sleep 5
-                fi
-              fi
-            else
-              CURL_EXIT=$?
-              echo "   ⚠️  Callback failed (curl exit code: $CURL_EXIT)"
-              echo "   Error: $CALLBACK_RESPONSE"
-              
-              case $CURL_EXIT in
-                6) echo "   💡 Could not resolve host - check network configuration" ;;
-                7) echo "   💡 Failed to connect to host" ;;
-                28) echo "   💡 Timeout connecting to server" ;;
-                *) echo "   💡 Check API endpoint and network settings" ;;
-              esac
-              
-              if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
-                echo "   ⏳ Retrying in 5 seconds..."
-                sleep 5
-              fi
-            fi
-          done
-          
-          echo ""
-          
-          if [ "$SUCCESS" = "false" ]; then
-            echo "❌ All $MAX_ATTEMPTS callback attempts failed"
-            echo "   💡 The TestFlight link was NOT saved to database"
-            echo "   💡 Link value: ${TESTFLIGHT_LINK:-EMPTY}"
-            echo "   💡 Check your backend endpoint: $CALLBACK_URL"
-            echo "   💡 Verify CI_CALLBACK_TOKEN secret is correct"
-            echo ""
-            echo "   🔧 Debug steps:"
-            echo "   1. Check if backend is running"
-            echo "   2. Test endpoint manually: curl -X POST $CALLBACK_URL"
-            echo "   3. Verify CI_CALLBACK_TOKEN in GitHub Secrets"
-            echo "   4. Check backend logs for errors"
-          else
-            echo "✅ TestFlight public link successfully saved to database!"
+      
+          # Must have CI_CALLBACK_TOKEN
+          if [ -z "${CI_CALLBACK_TOKEN:-}" ]; then
+            echo "❌ CI_CALLBACK_TOKEN missing -> cannot save ipaUrl"
+            exit 1
           fi
+      
+          CALLBACK_URL="$API_BASE/api/ci/owner-project-links/$LINK_ID/ipa-url"
+      
+          echo ""
+          echo "📡 Saving ipaUrl via: $CALLBACK_URL"
+      
+          PAYLOAD="$(jq -n --arg ipaUrl "$TESTFLIGHT_LINK" '{ipaUrl:$ipaUrl}')"
+          echo "$PAYLOAD" | jq .
+      
+          RESPONSE=$(curl -sS -w "\n%{http_code}" -X PUT "$CALLBACK_URL" \
+            -H "Content-Type: application/json" \
+            -H "X-Auth-Token: $CI_CALLBACK_TOKEN" \
+            -d "$PAYLOAD" 2>&1)
+      
+          HTTP_CODE="$(echo "$RESPONSE" | tail -n1)"
+          BODY="$(echo "$RESPONSE" | sed '$d')"
+      
+          echo ""
+          echo "HTTP $HTTP_CODE"
+          echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
+      
+          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+            echo "❌ Failed to save ipaUrl"
+            exit 1
+          fi
+      
+          echo "✅ Saved TestFlight link into ipaUrl column"
+
           
           echo ""
           echo "════════════════════════════════════════════════════════════════════"
