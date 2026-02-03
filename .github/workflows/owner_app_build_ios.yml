@@ -1859,6 +1859,18 @@ jobs:
             echo "> Note: Link can exist while build is still processing / waiting for beta review."
           } >> "$GITHUB_STEP_SUMMARY"
 
+          if [ -f "testflight_status.txt" ]; then
+            BUILD_STATUS="$(cat testflight_status.txt)"
+          else
+            BUILD_STATUS="UNKNOWN"
+          fi
+          
+          # Determine if save was successful
+          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
+            SUCCESS="true"
+          else
+            SUCCESS="false"
+          fi
 
           
           echo ""
