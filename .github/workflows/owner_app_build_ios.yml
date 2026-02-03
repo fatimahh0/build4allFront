@@ -278,7 +278,6 @@ jobs:
           fi
 
           # ── Parse email + password from the response ──────────────────
-          # Falls back to the hard-coded defaults that the Java endpoint itself uses.
           DEMO_EMAIL=$(echo "$BODY" | python3 -c "
           import sys, json
           try:
@@ -418,7 +417,7 @@ jobs:
           fi
           test -f ios/Podfile
 
-      - name: Set iOS version & build number
+      - name: Set iOS version & build number (initial)
         shell: bash
         run: |
           set -euo pipefail
@@ -435,7 +434,7 @@ jobs:
           build_number = str(build_number).strip()
           
           print(f"iOS Version: {version_name}")
-          print(f"iOS Build Number: {build_number}")
+          print(f"iOS Build Number (initial – may be overridden by ASC auto-increment): {build_number}")
           
           info_plist = "ios/Runner/Info.plist"
           with open(info_plist, "r", encoding="utf-8") as f:
@@ -648,10 +647,118 @@ jobs:
             head -n 1 .private/AuthKey_${ASC_KEY_ID}.p8
           fi
 
+      # ════════════════════════════════════════════════════════════════════
+      # PYTHON PACKAGES (consolidated – used by ASC scripts below)
+      # ════════════════════════════════════════════════════════════════════
       - name: Install required Python packages
         shell: bash
         run: |
           pip3 install PyJWT cryptography requests --break-system-packages
+
+      # ════════════════════════════════════════════════════════════════════
+      # 🔢 AUTO-INCREMENT BUILD NUMBER FROM APP STORE CONNECT
+      #    Queries ASC for the highest existing CFBundleVersion for this
+      #    bundle ID and sets the new build to max + 1.  Runs AFTER
+      #    api_key.json exists and BEFORE the archive step.
+      # ════════════════════════════════════════════════════════════════════
+      - name: Auto-increment build number from App Store Connect
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
+          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
+          ENV_FILE="lib/env/ci_env.json"
+
+          python3 - "$API_KEY_JSON" "$BUNDLE_ID" "$ENV_FILE" <<'PY'
+          import json, jwt, time, requests, sys, re
+
+          api_key  = json.load(open(sys.argv[1]))
+          bundle   = sys.argv[2]
+          env_path = sys.argv[3]
+
+          def token():
+              return jwt.encode(
+                  {"iss": api_key["issuer_id"],
+                   "iat": int(time.time()),
+                   "exp": int(time.time()) + 600,
+                   "aud": "appstoreconnect-v1"},
+                  api_key["key"], algorithm="ES256",
+                  headers={"kid": api_key["key_id"], "typ": "JWT"})
+
+          def h():
+              return {"Authorization": f"Bearer {token()}",
+                      "Content-Type": "application/json"}
+
+          # ── 1. Find the app ─────────────────────────────────────────────
+          print("🔎 Looking up app in ASC for bundle:", bundle)
+          r = requests.get(
+              f"https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]={bundle}",
+              headers=h())
+          r.raise_for_status()
+          apps = r.json()["data"]
+
+          if not apps:
+              # App doesn't exist in ASC yet (first-ever build) – use epoch fallback
+              env = json.load(open(env_path))
+              fallback = int(time.time()) % 100000
+              env["IOS_BUILD_NUMBER"] = fallback
+              json.dump(env, open(env_path, "w"), indent=2)
+
+              plist = "ios/Runner/Info.plist"
+              content = open(plist).read()
+              content = re.sub(
+                  r"(<key>CFBundleVersion</key>\s*<string>)[^<]*(</string>)",
+                  rf"\g<1>{fallback}\g<2>", content)
+              open(plist, "w").write(content)
+
+              print(f"⚠️  App not yet in ASC – epoch fallback build number: {fallback}")
+              sys.exit(0)
+
+          app_id = apps[0]["id"]
+          print(f"   App ID: {app_id}")
+
+          # ── 2. Page through builds, collect the max buildNumber ─────────
+          max_bn = 0
+          next_url = (
+              f"https://api.appstoreconnect.apple.com/v1/builds"
+              f"?filter[app]={app_id}&fields[builds]=buildNumber&limit=100&sort=-uploadedDate"
+          )
+
+          pages = 0
+          while next_url and pages < 5:          # safety cap – 500 builds max
+              r = requests.get(next_url, headers=h())
+              r.raise_for_status()
+              body = r.json()
+              for b in body.get("data", []):
+                  try:
+                      val = int(b["attributes"]["buildNumber"])
+                      if val > max_bn:
+                          max_bn = val
+                  except (KeyError, ValueError, TypeError):
+                      pass
+              next_url = body.get("links", {}).get("next")
+              pages += 1
+
+          new_bn = max_bn + 1
+          print(f"   Max existing build number: {max_bn}")
+          print(f"   ✅ New build number:        {new_bn}")
+
+          # ── 3. Patch ci_env.json ────────────────────────────────────────
+          env = json.load(open(env_path))
+          env["IOS_BUILD_NUMBER"] = new_bn
+          json.dump(env, open(env_path, "w"), indent=2)
+
+          # ── 4. Patch Info.plist (already written by the initial step) ───
+          plist = "ios/Runner/Info.plist"
+          content = open(plist).read()
+          content = re.sub(
+              r"(<key>CFBundleVersion</key>\s*<string>)[^<]*(</string>)",
+              rf"\g<1>{new_bn}\g<2>", content)
+          open(plist, "w").write(content)
+
+          print(f"   ✅ Info.plist & ci_env.json updated to build number {new_bn}")
+          PY
 
       # ════════════════════════════════════════════════════════════════════
       # BETA APP REVIEW – uses $DEMO_EMAIL / $DEMO_PASSWORD from GITHUB_ENV
@@ -664,9 +771,6 @@ jobs:
           API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
           BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
 
-          # DEMO_EMAIL and DEMO_PASSWORD are already exported to GITHUB_ENV
-          # by the "Create Demo Account" step – no hardcoding needed here.
-          
           echo "📋 Setting up Beta App Review Info with demo credentials..."
           echo "Bundle ID: $BUNDLE_ID"
           echo "Description: ${BETA_APP_DESCRIPTION:0:80}..."
