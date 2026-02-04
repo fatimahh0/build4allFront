@@ -158,19 +158,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final x = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 70,
-    );
-    if (x == null) return;
+ Future<void> _pickImage() async {
+  final picker = ImagePicker();
+  final x = await picker.pickImage(
+    source: ImageSource.gallery,
+    maxWidth: 1400,
+    maxHeight: 1400,
+  );
+  if (x == null) return;
 
-    setState(() {
-      _pickedImagePath = x.path;
-      _removeImage = false;
-    });
-  }
+  setState(() {
+    _pickedImagePath = x.path;
+    _removeImage = false;
+  });
+}
 
   @override
   Widget build(BuildContext context) {
