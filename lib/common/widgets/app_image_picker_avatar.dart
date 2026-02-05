@@ -72,23 +72,23 @@ class _AppImagePickerAvatarState extends State<AppImagePickerAvatar> {
   }
 
   Future<void> _pick(ImageSource source) async {
-  final picked = await _picker.pickImage(
-    source: source,
-    maxWidth: 800,
-    maxHeight: 800,
+    final picked = await _picker.pickImage(
+      source: source,
+      maxWidth: 800,
+      maxHeight: 800,
 
-    // ✅ iOS: don't recompress (prevents green tint)
-    // ✅ Android: keep compression
-    imageQuality: Platform.isIOS ? 100 : 85,
-  );
+      // ✅ iOS: don't recompress (prevents green tint)
+      // ✅ Android: keep compression
+      imageQuality: Platform.isIOS ? 100 : 85,
+    );
 
-  if (picked != null) {
-    setState(() {
-      _currentPath = picked.path;
-    });
-    widget.onImageChanged(picked.path);
+    if (picked != null) {
+      setState(() {
+        _currentPath = picked.path;
+      });
+      widget.onImageChanged(picked.path);
+    }
   }
-}
 
   Future<void> _onTap(BuildContext context) async {
     final canCamera = widget.enableCamera;
