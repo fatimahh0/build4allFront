@@ -412,6 +412,35 @@ jobs:
           echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
           echo "LINK_ID=$LINK_ID" >> $GITHUB_ENV
 
+      - name: Setup Play service account json   
+        shell: bash
+        run: |
+            set -euo pipefail
+            echo "${{ secrets.PLAY_SERVICE_ACCOUNT_JSON_B64 }}" | tr -d '\n\r ' | base64 --decode > play-sa.json
+            ls -la play-sa.json
+
+      - name: Install Fastlane
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo gem install fastlane -N
+
+      - name: Upload AAB to Google Play (internal)
+        shell: bash
+        run: |
+          set -euo pipefail
+          PKG="$(tr -d '\r\n' < ci_package_name.txt)"
+
+          fastlane supply \
+            --json_key play-sa.json \
+            --package_name "$PKG" \
+            --aab build/app/outputs/bundle/release/app-release.aab \
+            --track internal \
+            --skip_upload_metadata true \
+            --skip_upload_images true \
+            --skip_upload_screenshots true
+    
+
       # ════════════════════════════════════════════════════════════════════
       # CALLBACK (non-blocking)
       # ════════════════════════════════════════════════════════════════════
