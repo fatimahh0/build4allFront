@@ -147,21 +147,22 @@ jobs:
         run: |
           set -e
           mkdir -p android/app
-
+      
           # decode keystore
           echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 --decode > android/app/upload-keystore.jks
-
-          # key.properties MUST be under android/
+      
+          # key.properties (RELATIVE TO android/)
           cat > android/key.properties <<EOF
           storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
           keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-          storeFile=app/upload-keystore.jks
+          storeFile=upload-keystore.jks
           EOF
-
+      
           echo "Signing files:"
           ls -la android/app
           cat android/key.properties | sed 's/Password=.*/Password=***/g'
+
 
       # ─────────────────────────────────────────────
       # Build
