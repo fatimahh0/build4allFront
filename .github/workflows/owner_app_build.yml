@@ -58,7 +58,7 @@ jobs:
           mkdir -p assets/branding
 
       # ════════════════════════════════════════════════════════════════════
-      # FIX #2: compileSdk 36 (plugin flutter_file_dialog)
+      # FIX #2: compileSdk/targetSdk 36 (plugin flutter_file_dialog)
       # ════════════════════════════════════════════════════════════════════
       - name: Force compileSdk/targetSdk 36
         shell: bash
@@ -84,7 +84,7 @@ jobs:
           grep -n "compileSdk\|targetSdk" "$FILE" || true
 
       # ════════════════════════════════════════════════════════════════════
-      # NDK fixed (same as you)
+      # NDK fixed
       # ════════════════════════════════════════════════════════════════════
       - name: Force Android NDK 27
         shell: bash
@@ -107,7 +107,7 @@ jobs:
           fi
 
       # ════════════════════════════════════════════════════════════════════
-      # BUILD ci_env.json (unchanged logic, kept)
+      # BUILD ci_env.json (FIXED: reads backend camelCase too)
       # ════════════════════════════════════════════════════════════════════
       - name: Build ci_env.json (BY_LINK runtime-config + fallback)
         shell: bash
@@ -150,8 +150,8 @@ jobs:
                   raw = r.read().decode("utf-8")
                   runtime = json.loads(raw)
               source = "BY_LINK"
-          except (urllib.error.HTTPError, urllib.error.URLError, socket.timeout, json.JSONDecodeError):
-              pass
+          except (urllib.error.HTTPError, urllib.error.URLError, socket.timeout, json.JSONDecodeError) as e:
+              print("⚠️ runtime-config fetch failed, using fallback:", repr(e))
 
           def pick(key, default=None):
               v = runtime.get(key)
@@ -169,7 +169,16 @@ jobs:
           app_type   = pick("APP_TYPE", "ECOMMERCE")
           project_id = str(pick("PROJECT_ID", "")).strip()
 
-          pkg_raw = (pick("PACKAGE_NAME") or pick("APPLICATION_ID") or "").strip()
+          # ✅ PACKAGE: support backend androidPackageName too
+          pkg_raw = (
+              pick("PACKAGE_NAME")
+              or pick("APPLICATION_ID")
+              or runtime.get("androidPackageName")
+              or cfg.get("androidPackageName")
+              or payload.get("androidPackageName")
+              or ""
+          ).strip()
+
           if not pkg_raw:
               pkg_raw = f"com.build4all.app{link_id}"
 
@@ -179,14 +188,27 @@ jobs:
           if not pkg or pkg.count(".") < 1:
               pkg = f"com.build4all.app{link_id}"
 
-          vc = pick("ANDROID_VERSION_CODE")
-          vn = pick("ANDROID_VERSION_NAME")
+          # ✅ VERSION: support backend androidVersionCode/androidVersionName too
+          vc = (
+              pick("ANDROID_VERSION_CODE")
+              or runtime.get("androidVersionCode")
+              or cfg.get("androidVersionCode")
+              or payload.get("androidVersionCode")
+          )
+
+          vn = (
+              pick("ANDROID_VERSION_NAME")
+              or runtime.get("androidVersionName")
+              or cfg.get("androidVersionName")
+              or payload.get("androidVersionName")
+          )
+
           try:
-              vc_int = int(vc) if vc not in (None,"",[]) else 1
+              vc_int = int(vc) if vc not in (None, "", []) else 1
           except Exception:
               vc_int = 1
 
-          vn_str = (str(vn).strip() if vn not in (None,"",[]) else "1.0.0")
+          vn_str = (str(vn).strip() if vn not in (None, "", []) else "1.0.0")
 
           env = {
               "API_BASE_URL": api_base,
@@ -236,10 +258,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          echo "----- ci_env.json -----"
           cat lib/env/ci_env.json
+          echo ""
+          echo "----- version files -----"
+          cat ci_android_version_code.txt
+          cat ci_android_version_name.txt
 
       # ════════════════════════════════════════════════════════════════════
-      # Apply PACKAGE_NAME + version + MainActivity move (unchanged)
+      # Apply PACKAGE_NAME + VERSION (namespace + MainActivity + folders)
       # ════════════════════════════════════════════════════════════════════
       - name: Apply PACKAGE_NAME + VERSION (namespace + MainActivity + folders)
         shell: bash
@@ -300,8 +327,15 @@ jobs:
           fix_activity_in_root "$ROOT_KT"
           fix_activity_in_root "$ROOT_JAVA"
 
+      - name: Assert version before build
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "=== Gradle version lines ==="
+          grep -n "versionCode\\|versionName" android/app/build.gradle.kts || true
+
       # ════════════════════════════════════════════════════════════════════
-      # Branding (kept) + ensure folder already exists
+      # Branding
       # ════════════════════════════════════════════════════════════════════
       - name: Apply branding
         shell: bash
@@ -346,22 +380,19 @@ jobs:
           flutter pub run flutter_native_splash:create || true
 
       # ════════════════════════════════════════════════════════════════════
-      # FIX #3: Signing (make file name match what Gradle expects)
+      # Signing
       # ════════════════════════════════════════════════════════════════════
       - name: Setup Android signing (upload-keystore.jks)
         shell: bash
         run: |
           set -euo pipefail
 
-          # if secrets missing, fail early with clear msg
           [ -n "${{ secrets.ANDROID_KEYSTORE_B64 }}" ] || { echo "❌ ANDROID_KEYSTORE_B64 missing"; exit 1; }
           [ -n "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" ] || { echo "❌ ANDROID_KEYSTORE_PASSWORD missing"; exit 1; }
           [ -n "${{ secrets.ANDROID_KEY_PASSWORD }}" ] || { echo "❌ ANDROID_KEY_PASSWORD missing"; exit 1; }
           [ -n "${{ secrets.ANDROID_KEY_ALIAS }}" ] || { echo "❌ ANDROID_KEY_ALIAS missing"; exit 1; }
 
           mkdir -p android/app
-
-          # ✅ IMPORTANT: exact name Gradle searches for
           echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | tr -d '\n\r ' | base64 --decode > android/app/upload-keystore.jks
 
           cat > android/key.properties <<EOF
@@ -390,7 +421,7 @@ jobs:
           flutter build appbundle --release --dart-define-from-file=lib/env/ci_env.json
 
       # ════════════════════════════════════════════════════════════════════
-      # RELEASE
+      # GitHub Release
       # ════════════════════════════════════════════════════════════════════
       - name: Create GitHub Release
         env:
@@ -412,12 +443,19 @@ jobs:
           echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
           echo "LINK_ID=$LINK_ID" >> $GITHUB_ENV
 
-      - name: Setup Play service account json   
+      # ════════════════════════════════════════════════════════════════════
+      # Play Console Upload (Fastlane supply)
+      # ════════════════════════════════════════════════════════════════════
+      - name: Setup Play service account json
         shell: bash
         run: |
-            set -euo pipefail
-            echo "${{ secrets.PLAY_SERVICE_ACCOUNT_JSON_B64 }}" | tr -d '\n\r ' | base64 --decode > play-sa.json
-            ls -la play-sa.json
+          set -euo pipefail
+          echo "${{ secrets.PLAY_SERVICE_ACCOUNT_JSON_B64 }}" | tr -d '\n\r ' | base64 --decode > play-sa.json
+          python3 - <<'PY'
+          import json
+          json.load(open("play-sa.json","r",encoding="utf-8"))
+          print("✅ play-sa.json is valid JSON")
+          PY
 
       - name: Install Fastlane
         shell: bash
@@ -430,7 +468,7 @@ jobs:
         run: |
           set -euo pipefail
           PKG="$(tr -d '\r\n' < ci_package_name.txt)"
-
+          echo "Uploading package: $PKG"
           fastlane supply \
             --json_key play-sa.json \
             --package_name "$PKG" \
@@ -439,7 +477,6 @@ jobs:
             --skip_upload_metadata true \
             --skip_upload_images true \
             --skip_upload_screenshots true
-    
 
       # ════════════════════════════════════════════════════════════════════
       # CALLBACK (non-blocking)
