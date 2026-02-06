@@ -49,7 +49,7 @@ jobs:
           echo '${{ toJson(github.event.client_payload) }}'
 
       # ════════════════════════════════════════════════════════════════════
-      # FIX #1: Ensure branding folder exists (pubspec.yaml assets error)
+      # Ensure branding folder
       # ════════════════════════════════════════════════════════════════════
       - name: Ensure branding folder exists
         shell: bash
@@ -58,7 +58,7 @@ jobs:
           mkdir -p assets/branding
 
       # ════════════════════════════════════════════════════════════════════
-      # FIX #2: compileSdk/targetSdk 36 (plugin flutter_file_dialog)
+      # compileSdk / targetSdk
       # ════════════════════════════════════════════════════════════════════
       - name: Force compileSdk/targetSdk 36
         shell: bash
@@ -66,470 +66,121 @@ jobs:
           set -euo pipefail
           FILE="android/app/build.gradle.kts"
 
-          # compileSdk
-          if grep -qE 'compileSdk\s*=\s*[0-9]+' "$FILE"; then
-            sed -i 's/compileSdk\s*=\s*[0-9]\+/compileSdk = 36/g' "$FILE"
-          else
-            perl -0777 -i -pe 's/android\s*\{\s*/android {\n    compileSdk = 36\n/s' "$FILE"
-          fi
-
-          # targetSdk
-          if grep -qE 'targetSdk\s*=\s*[0-9]+' "$FILE"; then
-            sed -i 's/targetSdk\s*=\s*[0-9]\+/targetSdk = 36/g' "$FILE"
-          else
-            perl -0777 -i -pe 's/defaultConfig\s*\{\s*/defaultConfig {\n        targetSdk = 36\n/s' "$FILE"
-          fi
-
-          echo "---- compileSdk/targetSdk ----"
-          grep -n "compileSdk\|targetSdk" "$FILE" || true
+          sed -i 's/compileSdk\s*=.*/compileSdk = 36/' "$FILE" || true
+          sed -i 's/targetSdk\s*=.*/targetSdk = 36/' "$FILE" || true
 
       # ════════════════════════════════════════════════════════════════════
-      # NDK fixed
+      # NDK
       # ════════════════════════════════════════════════════════════════════
       - name: Force Android NDK 27
         shell: bash
         run: |
           set -euo pipefail
-          FILE="android/app/build.gradle.kts"
-
-          if [ -f "$FILE" ]; then
-            if grep -q "ndkVersion" "$FILE"; then
-              sed -i 's/^[[:space:]]*ndkVersion *=.*/    ndkVersion = "27.0.12077973"/' "$FILE"
-            else
-              perl -0777 -i -pe 's/android\s*\{\s*/android {\n    ndkVersion = "27.0.12077973"\n/s' "$FILE"
-            fi
-
-            echo "---- ndkVersion ----"
-            grep -n "ndkVersion" "$FILE" || true
-          else
-            echo "android/app/build.gradle.kts not found"
-            exit 1
-          fi
+          sed -i 's/ndkVersion\s*=.*/ndkVersion = "27.0.12077973"/' android/app/build.gradle.kts || true
 
       # ════════════════════════════════════════════════════════════════════
-      # BUILD ci_env.json (FIXED: reads backend camelCase too)
+      # BUILD ci_env.json  ✅ VERSION FIX HERE
       # ════════════════════════════════════════════════════════════════════
-      - name: Build ci_env.json (BY_LINK runtime-config + fallback)
+      - name: Build ci_env.json
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p lib/env
 
           python3 - <<'PY'
-          import json, re, os, urllib.request, urllib.error, socket
+          import json, re, os
 
           payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
           cfg = payload.get("CONFIG") or {}
 
           api_base = (cfg.get("API_BASE_URL") or payload.get("API_BASE_URL") or "").rstrip("/")
-          link_id  = str(
+          link_id = str(
               cfg.get("OWNER_PROJECT_LINK_ID")
               or payload.get("OWNER_PROJECT_LINK_ID")
               or payload.get("ownerProjectLinkId")
-              or cfg.get("ownerProjectLinkId")
               or ""
           ).strip()
 
-          if not api_base:
-              raise SystemExit("Missing API_BASE_URL")
-          if not link_id:
-              raise SystemExit("Missing OWNER_PROJECT_LINK_ID")
+          if not api_base or not link_id:
+              raise SystemExit("Missing API_BASE_URL or OWNER_PROJECT_LINK_ID")
 
-          url = f"{api_base}/api/public/runtime-config/by-link?linkId={link_id}"
-          runtime = {}
-          source = "FALLBACK"
-
-          token = (os.getenv("CI_RUNTIME_TOKEN") or "").strip()
-          headers = {"Accept": "application/json"}
-          if token:
-              headers["X-Auth-Token"] = token
-
-          try:
-              req = urllib.request.Request(url, headers=headers)
-              with urllib.request.urlopen(req, timeout=12) as r:
-                  raw = r.read().decode("utf-8")
-                  runtime = json.loads(raw)
-              source = "BY_LINK"
-          except (urllib.error.HTTPError, urllib.error.URLError, socket.timeout, json.JSONDecodeError) as e:
-              print("⚠️ runtime-config fetch failed, using fallback:", repr(e))
-
-          def pick(key, default=None):
-              v = runtime.get(key)
-              if v not in (None, "", []):
-                  return v
-              v = cfg.get(key)
-              if v not in (None, "", []):
-                  return v
-              v = payload.get(key)
-              if v not in (None, "", []):
-                  return v
-              return default
-
-          app_name   = pick("APP_NAME", "My App")
-          app_type   = pick("APP_TYPE", "ECOMMERCE")
-          project_id = str(pick("PROJECT_ID", "")).strip()
-
-          # ✅ PACKAGE: support backend androidPackageName too
-          pkg_raw = (
-              pick("PACKAGE_NAME")
-              or pick("APPLICATION_ID")
-              or runtime.get("androidPackageName")
-              or cfg.get("androidPackageName")
+          pkg = (
+              cfg.get("androidPackageName")
               or payload.get("androidPackageName")
-              or ""
-          ).strip()
+              or f"com.build4all.app{link_id}"
+          ).lower()
 
-          if not pkg_raw:
-              pkg_raw = f"com.build4all.app{link_id}"
-
-          pkg = pkg_raw.lower()
-          pkg = re.sub(r"[^a-z0-9._]", "", pkg)
-          pkg = re.sub(r"\.+", ".", pkg).strip(".")
-          if not pkg or pkg.count(".") < 1:
-              pkg = f"com.build4all.app{link_id}"
-
-          # ✅ VERSION: support backend androidVersionCode/androidVersionName too
           vc = (
-              pick("ANDROID_VERSION_CODE")
-              or runtime.get("androidVersionCode")
-              or cfg.get("androidVersionCode")
+              cfg.get("androidVersionCode")
               or payload.get("androidVersionCode")
           )
 
           vn = (
-              pick("ANDROID_VERSION_NAME")
-              or runtime.get("androidVersionName")
-              or cfg.get("androidVersionName")
+              cfg.get("androidVersionName")
               or payload.get("androidVersionName")
+              or "1.0.0"
           )
 
-          try:
-              vc_int = int(vc) if vc not in (None, "", []) else 1
-          except Exception:
-              vc_int = 1
+          run_number = int(os.getenv("GITHUB_RUN_NUMBER", "1"))
 
-          vn_str = (str(vn).strip() if vn not in (None, "", []) else "1.0.0")
+          try:
+              backend_vc = int(vc) if vc else 0
+          except:
+              backend_vc = 0
+
+          vc_int = max(backend_vc, run_number)
 
           env = {
               "API_BASE_URL": api_base,
-              "APP_NAME": app_name,
-              "APP_TYPE": app_type,
               "OWNER_PROJECT_LINK_ID": link_id,
-              "PROJECT_ID": project_id,
               "PACKAGE_NAME": pkg,
               "ANDROID_VERSION_CODE": vc_int,
-              "ANDROID_VERSION_NAME": vn_str,
-              "CONFIG_SOURCE": source,
+              "ANDROID_VERSION_NAME": vn
           }
 
-          currency_id = pick("CURRENCY_ID")
-          if currency_id in (None, "", []):
-              currency_id = runtime.get("currencyId") or cfg.get("currencyId") or payload.get("currencyId")
-          if currency_id not in (None, "", []):
-              env["CURRENCY_ID"] = str(currency_id).strip()
-
-          for key in ["THEME_JSON_B64","NAV_JSON_B64","HOME_JSON_B64","ENABLED_FEATURES_JSON_B64","BRANDING_JSON_B64"]:
-              v = pick(key)
-              if v:
-                  env[key] = v
-
-          logo_url = (pick("LOGO_URL") or pick("LOGO_PATH") or "").strip()
-          if not logo_url:
-              logo_url = (runtime.get("logoUrl") or cfg.get("logoUrl") or payload.get("logoUrl") or "").strip()
-          if logo_url:
-              env["LOGO_URL"] = logo_url
-
-          open("ci_api_base.txt","w").write(api_base)
-          open("ci_link_id.txt","w").write(link_id)
           open("ci_package_name.txt","w").write(pkg)
-          open("ci_android_version_code.txt","w").write(str(env["ANDROID_VERSION_CODE"]))
-          open("ci_android_version_name.txt","w").write(env["ANDROID_VERSION_NAME"])
+          open("ci_android_version_code.txt","w").write(str(vc_int))
+          open("ci_android_version_name.txt","w").write(vn)
+          open("ci_link_id.txt","w").write(link_id)
+          open("ci_api_base.txt","w").write(api_base)
 
-          with open("lib/env/ci_env.json","w",encoding="utf-8") as f:
-              json.dump(env,f,ensure_ascii=False,indent=2)
+          with open("lib/env/ci_env.json","w") as f:
+              json.dump(env, f, indent=2)
 
-          print("PACKAGE_NAME =", pkg)
-          print("ANDROID_VERSION_CODE =", env["ANDROID_VERSION_CODE"])
-          print("ANDROID_VERSION_NAME =", env["ANDROID_VERSION_NAME"])
-          print("CONFIG_SOURCE =", source)
+          print("versionCode =", vc_int)
+          print("versionName =", vn)
           PY
 
-      - name: Debug env
-        shell: bash
+      # ════════════════════════════════════════════════════════════════════
+      # Apply version to Gradle
+      # ════════════════════════════════════════════════════════════════════
+      - name: Apply version
         run: |
-          set -euo pipefail
-          echo "----- ci_env.json -----"
-          cat lib/env/ci_env.json
-          echo ""
-          echo "----- version files -----"
-          cat ci_android_version_code.txt
-          cat ci_android_version_name.txt
-
-      # ════════════════════════════════════════════════════════════════════
-      # Apply PACKAGE_NAME + VERSION (namespace + MainActivity + folders)
-      # ════════════════════════════════════════════════════════════════════
-      - name: Apply PACKAGE_NAME + VERSION (namespace + MainActivity + folders)
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          PKG="$(tr -d '\r\n' < ci_package_name.txt)"
-          VC="$(tr -d '\r\n' < ci_android_version_code.txt)"
-          VN="$(tr -d '\r\n' < ci_android_version_name.txt)"
-          FILE="android/app/build.gradle.kts"
-
-          # applicationId
-          if grep -qE 'applicationId\s*=\s*"' "$FILE"; then
-            sed -i "s/applicationId\s*=\s*\"[^\"]*\"/applicationId = \"$PKG\"/g" "$FILE"
-          elif grep -qE 'applicationId\s*"' "$FILE"; then
-            sed -i "s/applicationId\s*\"[^\"]*\"/applicationId \"$PKG\"/g" "$FILE"
-          fi
-
-          # namespace
-          if grep -qE 'namespace\s*=\s*"' "$FILE"; then
-            sed -i "s/namespace\s*=\s*\"[^\"]*\"/namespace = \"$PKG\"/g" "$FILE"
-          else
-            perl -0777 -i -pe "s/android\\s*\\{\\s*/android {\\n    namespace = \\\"$PKG\\\"\\n/s" "$FILE"
-          fi
-
-          # versionCode/versionName
-          if grep -qE 'versionCode\s*=\s*[0-9]+' "$FILE"; then
-            sed -i "s/versionCode\s*=\s*[0-9]\+/versionCode = $VC/g" "$FILE"
-          else
-            perl -0777 -i -pe "s/defaultConfig\\s*\\{\\s*/defaultConfig {\\n        versionCode = $VC\\n/s" "$FILE"
-          fi
-
-          if grep -qE 'versionName\s*=\s*"' "$FILE"; then
-            sed -i "s/versionName\s*=\s*\"[^\"]*\"/versionName = \"$VN\"/g" "$FILE"
-          else
-            perl -0777 -i -pe "s/defaultConfig\\s*\\{\\s*/defaultConfig {\\n        versionName = \\\"$VN\\\"\\n/s" "$FILE"
-          fi
-
-          echo "---- key lines ----"
-          grep -n "compileSdk\|targetSdk\|namespace\|applicationId\|versionCode\|versionName" "$FILE" || true
-
-          ROOT_KT="android/app/src/main/kotlin"
-          ROOT_JAVA="android/app/src/main/java"
-          NEW_PATH_REL="$(echo "$PKG" | tr '.' '/')"
-
-          fix_activity_in_root () {
-            local ROOT="$1"
-            [ -d "$ROOT" ] || return 0
-            local ACT
-            ACT="$(find "$ROOT" -type f \( -name "MainActivity.kt" -o -name "MainActivity.java" \) | head -n 1 || true)"
-            [ -n "$ACT" ] || return 0
-            sed -i "s/^package .*/package $PKG/" "$ACT" || true
-            local DEST_DIR="$ROOT/$NEW_PATH_REL"
-            mkdir -p "$DEST_DIR"
-            mv "$ACT" "$DEST_DIR/$(basename "$ACT")"
-          }
-
-          fix_activity_in_root "$ROOT_KT"
-          fix_activity_in_root "$ROOT_JAVA"
-
-      - name: Assert version before build
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "=== Gradle version lines ==="
-          grep -n "versionCode\\|versionName" android/app/build.gradle.kts || true
-
-      # ════════════════════════════════════════════════════════════════════
-      # Branding
-      # ════════════════════════════════════════════════════════════════════
-      - name: Apply branding
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import json, urllib.request, pathlib, shutil
-          from xml.sax.saxutils import escape
-
-          cfg = json.load(open("lib/env/ci_env.json","r",encoding="utf-8"))
-          app_name_raw = cfg.get("APP_NAME","My App")
-          app_name = escape(app_name_raw)
-
-          api_base = (cfg.get("API_BASE_URL") or "").rstrip("/")
-          logo_url = (cfg.get("LOGO_URL") or "").strip()
-
-          pathlib.Path("assets/branding").mkdir(parents=True, exist_ok=True)
-
-          if logo_url and logo_url.startswith("/") and api_base:
-              logo_url = api_base + logo_url
-
-          if logo_url:
-              try:
-                  urllib.request.urlretrieve(logo_url, "assets/branding/logo.png")
-                  shutil.copyfile("assets/branding/logo.png","assets/branding/launcher.png")
-                  shutil.copyfile("assets/branding/logo.png","assets/branding/splash.png")
-              except Exception:
-                  pass
-
-          values_dir = pathlib.Path("android/app/src/main/res/values")
-          values_dir.mkdir(parents=True, exist_ok=True)
-          (values_dir/"strings.xml").write_text(
-            '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n'
-            f'  <string name="app_name">{app_name}</string>\n'
-            '</resources>\n', encoding="utf-8"
-          )
-          print("strings.xml written for:", app_name_raw)
-          PY
-
-          flutter pub get
-          flutter pub run flutter_launcher_icons || true
-          flutter pub run flutter_native_splash:create || true
-
-      # ════════════════════════════════════════════════════════════════════
-      # Signing
-      # ════════════════════════════════════════════════════════════════════
-      - name: Setup Android signing (upload-keystore.jks)
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          [ -n "${{ secrets.ANDROID_KEYSTORE_B64 }}" ] || { echo "❌ ANDROID_KEYSTORE_B64 missing"; exit 1; }
-          [ -n "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" ] || { echo "❌ ANDROID_KEYSTORE_PASSWORD missing"; exit 1; }
-          [ -n "${{ secrets.ANDROID_KEY_PASSWORD }}" ] || { echo "❌ ANDROID_KEY_PASSWORD missing"; exit 1; }
-          [ -n "${{ secrets.ANDROID_KEY_ALIAS }}" ] || { echo "❌ ANDROID_KEY_ALIAS missing"; exit 1; }
-
-          mkdir -p android/app
-          echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | tr -d '\n\r ' | base64 --decode > android/app/upload-keystore.jks
-
-          cat > android/key.properties <<EOF
-          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
-          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-          storeFile=upload-keystore.jks
-          EOF
-
-          echo "✅ signing files:"
-          ls -la android/app | grep upload-keystore || true
+          VC=$(cat ci_android_version_code.txt)
+          VN=$(cat ci_android_version_name.txt)
+          sed -i "s/versionCode\s*=.*/versionCode = $VC/" android/app/build.gradle.kts
+          sed -i "s/versionName\s*=.*/versionName = \"$VN\"/" android/app/build.gradle.kts
 
       # ════════════════════════════════════════════════════════════════════
       # BUILD
       # ════════════════════════════════════════════════════════════════════
       - name: Build APK
-        shell: bash
-        run: |
-          set -euo pipefail
-          flutter build apk --release --dart-define-from-file=lib/env/ci_env.json
+        run: flutter build apk --release --dart-define-from-file=lib/env/ci_env.json
 
       - name: Build AAB
-        shell: bash
-        run: |
-          set -euo pipefail
-          flutter build appbundle --release --dart-define-from-file=lib/env/ci_env.json
+        run: flutter build appbundle --release --dart-define-from-file=lib/env/ci_env.json
 
       # ════════════════════════════════════════════════════════════════════
-      # GitHub Release
+      # UPLOAD TO PLAY CONSOLE
       # ════════════════════════════════════════════════════════════════════
-      - name: Create GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          LINK_ID="$(tr -d '\r\n' < ci_link_id.txt)"
-          TAG="build-${LINK_ID}-${{ github.run_number }}"
-
-          gh release view "$TAG" >/dev/null 2>&1 || \
-            gh release create "$TAG" --title "$TAG" --notes "CI build"
-
-          gh release upload "$TAG" \
-            build/app/outputs/flutter-apk/app-release.apk \
-            build/app/outputs/bundle/release/app-release.aab \
-            --clobber
-
-          echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
-          echo "LINK_ID=$LINK_ID" >> $GITHUB_ENV
-
-      # ════════════════════════════════════════════════════════════════════
-      # Play Console Upload (Fastlane supply)
-      # ════════════════════════════════════════════════════════════════════
-      - name: Setup Play service account json
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "${{ secrets.PLAY_SERVICE_ACCOUNT_JSON_B64 }}" | tr -d '\n\r ' | base64 --decode > play-sa.json
-          python3 - <<'PY'
-          import json
-          json.load(open("play-sa.json","r",encoding="utf-8"))
-          print("✅ play-sa.json is valid JSON")
-          PY
-
-      - name: Install Fastlane
-        shell: bash
-        run: |
-          set -euo pipefail
-          sudo gem install fastlane -N
-
       - name: Upload AAB to Google Play (internal)
-        shell: bash
         run: |
-          set -euo pipefail
-          PKG="$(tr -d '\r\n' < ci_package_name.txt)"
-          echo "Uploading package: $PKG"
+          echo "${{ secrets.PLAY_SERVICE_ACCOUNT_JSON_B64 }}" | base64 --decode > play-sa.json
           fastlane supply \
             --json_key play-sa.json \
-            --package_name "$PKG" \
+            --package_name "$(cat ci_package_name.txt)" \
             --aab build/app/outputs/bundle/release/app-release.aab \
             --track internal \
             --skip_upload_metadata true \
             --skip_upload_images true \
             --skip_upload_screenshots true
-
-      # ════════════════════════════════════════════════════════════════════
-      # CALLBACK (non-blocking)
-      # ════════════════════════════════════════════════════════════════════
-      - name: Callback backend (SAVE URLs) + show links (NON-BLOCKING)
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          API_BASE="$(tr -d '\r\n' < ci_api_base.txt)"
-          LINK_ID="$(tr -d '\r\n' < ci_link_id.txt)"
-          TAG="${RELEASE_TAG}"
-
-          OWNER="${{ github.repository_owner }}"
-          REPO="${{ github.event.repository.name }}"
-
-          APK_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/app-release.apk"
-          AAB_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/app-release.aab"
-
-          echo ""
-          echo "========================================"
-          echo "✅ BUILD OUTPUT LINKS"
-          echo "TAG:     $TAG"
-          echo "APK URL: $APK_URL"
-          echo "AAB URL: $AAB_URL"
-          echo "LINK_ID: $LINK_ID"
-          echo "API:     $API_BASE"
-          echo "========================================"
-          echo ""
-
-          APK_HTTP=$(curl -sS -o apk_resp.txt -w "%{http_code}" -X PUT \
-            "${API_BASE}/api/ci/owner-project-links/${LINK_ID}/apk-url" \
-            -H "Content-Type: application/json" \
-            -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
-            -d "{\"apkUrl\":\"${APK_URL}\"}" || true)
-
-          echo "APK save HTTP=$APK_HTTP"
-          cat apk_resp.txt || true
-          echo ""
-
-          AAB_HTTP=$(curl -sS -o aab_resp.txt -w "%{http_code}" -X PUT \
-            "${API_BASE}/api/ci/owner-project-links/${LINK_ID}/aab-url" \
-            -H "Content-Type: application/json" \
-            -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
-            -d "{\"aabUrl\":\"${AAB_URL}\"}" || true)
-
-          echo "AAB save HTTP=$AAB_HTTP"
-          cat aab_resp.txt || true
-          echo ""
-
-          if [ "$APK_HTTP" -ge 400 ] || [ "$AAB_HTTP" -ge 400 ]; then
-            echo "⚠️ Callback failed (backend did not save URLs). Build is still OK."
-            exit 0
-          fi
-
-          echo "✅ Callback succeeded."
