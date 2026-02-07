@@ -1,5 +1,5 @@
 // lib/features/explore/presentation/screens/explore_screen.dart
-// (Adjust the path/name to match your project. This is the FULL FILE.)
+
 
 import 'dart:async';
 import 'dart:math' as math;
@@ -20,10 +20,10 @@ import 'package:build4front/features/items/domain/entities/item_summary.dart';
 import 'package:build4front/common/widgets/app_search_field.dart';
 import 'package:build4front/common/widgets/ItemCard.dart';
 
-// ✅ currency formatter (dynamic currency, not hardcoded $)
+//  currency formatter (dynamic currency, not hardcoded $)
 import 'package:build4front/features/catalog/cubit/money.dart';
 
-// 🔥 Auth + Cart + Toast
+//  Auth + Cart + Toast
 import 'package:build4front/features/auth/presentation/login/bloc/auth_bloc.dart';
 import 'package:build4front/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:build4front/features/cart/presentation/bloc/cart_event.dart';
@@ -101,6 +101,26 @@ class _ExploreScreenState extends State<ExploreScreen> {
     });
   }
 
+  // ✅ NEW: detect if app has ANY items (all sections)
+  bool _hasAnyItems(HomeState s) {
+    return s.recommendedItems.isNotEmpty ||
+        s.popularItems.isNotEmpty ||
+        s.flashSaleItems.isNotEmpty ||
+        s.newArrivalsItems.isNotEmpty ||
+        s.bestSellersItems.isNotEmpty ||
+        s.topRatedItems.isNotEmpty;
+  }
+
+  // ✅ NEW: category ids that actually appear in a given item list
+  Set<int> _categoryIdsFromItems(List<ItemSummary> items) {
+    final set = <int>{};
+    for (final it in items) {
+      final cid = it.categoryId;
+      if (cid != null) set.add(cid);
+    }
+    return set;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -116,14 +136,35 @@ class _ExploreScreenState extends State<ExploreScreen> {
             }
 
             final baseItems = _baseItemsForExplore(homeState);
-            final filtered = _buildFilteredAndSortedItems(baseItems);
 
-            // ✅ keep highlight even if we came by categoryId only
-            final effectiveSelectedLabel = _selectedCategoryLabel ??
+            // ✅ categories should be based on items that exist (base dataset)
+            final availableCategoryIds = _categoryIdsFromItems(baseItems);
+
+            // ✅ derive categories (entities) that have items
+            final catsWithItems = homeState.categoryEntities
+                .where((c) => availableCategoryIds.contains(c.id))
+                .toList();
+
+            final categoryNames = catsWithItems.map((c) => c.name).toList();
+
+            // ✅ if initialCategoryId/Label points to category that has no items -> treat as "All"
+            final rawSelectedLabel = _selectedCategoryLabel ??
                 _labelForCategoryId(homeState, _selectedCategoryId);
 
-            final categories = homeState.categories;
-            final categoryEntities = homeState.categoryEntities;
+            final effectiveSelectedLabel = (rawSelectedLabel != null &&
+                    categoryNames.contains(rawSelectedLabel))
+                ? rawSelectedLabel
+                : null;
+
+            final effectiveSelectedCategoryId =
+                (availableCategoryIds.contains(_selectedCategoryId))
+                    ? _selectedCategoryId
+                    : null;
+
+            final filtered = _buildFilteredAndSortedItems(
+              baseItems,
+              effectiveCategoryId: effectiveSelectedCategoryId,
+            );
 
             // ✅ pagination math
             final totalItems = filtered.length;
@@ -138,6 +179,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
             final pageItems = (totalItems == 0 || start >= totalItems)
                 ? <ItemSummary>[]
                 : filtered.sublist(start, end);
+
+            // ✅ show category chips only when items exist
+            final showCategories = _hasAnyItems(homeState) &&
+                baseItems.isNotEmpty &&
+                categoryNames.isNotEmpty;
 
             return RefreshIndicator(
               onRefresh: () async {
@@ -178,16 +224,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           ),
                           SizedBox(height: spacing.md),
 
-                          // ✅ Category chips
-                          if (categories.isNotEmpty)
+                          // ✅ Category chips (ONLY if items exist)
+                          if (showCategories) ...[
                             _ExploreCategoryChips(
-                              categories: categories,
+                              categories: categoryNames,
                               selectedCategoryLabel: effectiveSelectedLabel,
                               onCategorySelected: (label) {
                                 int? foundId;
 
                                 if (label != null && label.trim().isNotEmpty) {
-                                  for (final cat in categoryEntities) {
+                                  // ✅ IMPORTANT: search only in catsWithItems
+                                  for (final cat in catsWithItems) {
                                     if (cat.name == label) {
                                       foundId = cat.id;
                                       break;
@@ -202,8 +249,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                 });
                               },
                             ),
-
-                          SizedBox(height: spacing.sm),
+                            SizedBox(height: spacing.sm),
+                          ] else ...[
+                            // If you want: keep spacing consistent without showing chips
+                            SizedBox(height: spacing.sm),
+                          ],
 
                           // ✅ Results + Sort
                           Row(
@@ -307,7 +357,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
         : homeState.popularItems;
   }
 
-  List<ItemSummary> _buildFilteredAndSortedItems(List<ItemSummary> base) {
+  List<ItemSummary> _buildFilteredAndSortedItems(
+    List<ItemSummary> base, {
+    required int? effectiveCategoryId,
+  }) {
     List<ItemSummary> result = base;
 
     // search
@@ -323,10 +376,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
       }).toList();
     }
 
-    // categoryId filter
-    if (_selectedCategoryId != null) {
+    // categoryId filter (only if effectiveCategoryId is valid)
+    if (effectiveCategoryId != null) {
       result = result
-          .where((item) => item.categoryId == _selectedCategoryId)
+          .where((item) => item.categoryId == effectiveCategoryId)
           .toList();
     }
 
@@ -369,9 +422,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   void _openDetails(BuildContext context, int itemId) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => ItemDetailsPage(itemId: itemId)));
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ItemDetailsPage(itemId: itemId)),
+    );
   }
 
   String _ctaLabelFor(BuildContext context, ItemSummary item) {
@@ -639,9 +692,7 @@ class _SortDropdown extends StatelessWidget {
 class _ExploreItemsGrid extends StatelessWidget {
   final List<ItemSummary> items;
 
-  // ✅ needs BuildContext so we can format currency dynamically
   final _PricingView Function(BuildContext, ItemSummary) pricingFor;
-
   final String? Function(ItemSummary) subtitleFor;
   final String? Function(ItemSummary) metaFor;
 
@@ -667,9 +718,6 @@ class _ExploreItemsGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
-
-        // ✅ always 2 per row
-        // ✅ responsive height: tall on phones, less tall on big screens
         final double aspect = w <= 420 ? 0.52 : (w <= 700 ? 0.60 : 0.70);
 
         return GridView.builder(
@@ -685,18 +733,9 @@ class _ExploreItemsGrid extends StatelessWidget {
           itemBuilder: (context, index) {
             final item = items[index];
 
-            // ✅ IMPORTANT FIX:
-            // money() uses context.select internally, and GridView/SliverGrid
-            // itemBuilder context is not allowed for select.
-            // So we create a fresh non-sliver context using Builder.
             return Builder(
               builder: (ctx) {
                 final pricing = pricingFor(ctx, item);
-
-                // ✅ contain for products, cover for activities
-                final fit = item.kind == ItemKind.product
-                    ? BoxFit.contain
-                    : BoxFit.cover;
 
                 return ItemCard(
                   itemId: item.id,

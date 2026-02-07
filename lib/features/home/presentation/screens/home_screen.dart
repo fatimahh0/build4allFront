@@ -64,6 +64,65 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   bool get wantKeepAlive => true;
 
+  String? _resolveOwnerPhone(AppConfig cfg) {
+    final dynamic d = cfg;
+
+    String? pick(dynamic v) {
+      final s = (v ?? '').toString().trim();
+      if (s.isEmpty || s == 'null') return null;
+      return s;
+    }
+
+    String? tryGet(dynamic Function() getter) {
+      try {
+        return pick(getter());
+      } catch (_) {
+        return null;
+      }
+    }
+
+    return tryGet(() => d.ownerPhoneNumber) ??
+        tryGet(() => d.ownerPhone) ??
+        tryGet(() => d.contactPhoneNumber) ??
+        tryGet(() => d.contactPhone) ??
+        tryGet(() => d.supportPhoneNumber) ??
+        tryGet(() => d.supportPhone) ??
+        tryGet(() => d.phoneNumber);
+  }
+
+  void _resetPaging() => _filterVersion++;
+
+  // ✅ NEW: check if there are ANY items at all (whole app)
+  bool _hasAnyItems(HomeState s) {
+    return s.recommendedItems.isNotEmpty ||
+        s.popularItems.isNotEmpty ||
+        s.flashSaleItems.isNotEmpty ||
+        s.newArrivalsItems.isNotEmpty ||
+        s.bestSellersItems.isNotEmpty ||
+        s.topRatedItems.isNotEmpty;
+  }
+
+  // ✅ NEW: get category ids that actually have items
+  Set<int> _availableCategoryIds(HomeState s) {
+    final set = <int>{};
+
+    void add(List<ItemSummary> list) {
+      for (final it in list) {
+        final id = it.categoryId;
+        if (id != null) set.add(id);
+      }
+    }
+
+    add(s.recommendedItems);
+    add(s.popularItems);
+    add(s.flashSaleItems);
+    add(s.newArrivalsItems);
+    add(s.bestSellersItems);
+    add(s.topRatedItems);
+
+    return set;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -81,8 +140,6 @@ class _HomeScreenState extends State<HomeScreen>
     _searchDebounce?.cancel();
     super.dispose();
   }
-
-  void _resetPaging() => _filterVersion++;
 
   void _onSearchChangedDebounced(String value) {
     _searchDebounce?.cancel();
@@ -237,19 +294,38 @@ class _HomeScreenState extends State<HomeScreen>
         );
 
       case HomeSectionType.categoryChips:
+        // ✅ NEW: If there are NO items in the app -> hide categories completely
+        if (!_hasAnyItems(homeState)) return const SizedBox.shrink();
+
+        // ✅ NEW: Show only categories that have items
+        final availableIds = _availableCategoryIds(homeState);
+
+        final cats = homeState.categoryEntities
+            .where((c) => availableIds.contains(c.id))
+            .toList();
+
+        // If no categories match items (rare) -> hide
+        if (cats.isEmpty) return const SizedBox.shrink();
+
+        // If selected category not available anymore, just display "All" (no setState loop)
         final selectedLabel = _selectedCategoryId == null
             ? l10n.explore_category_all
             : () {
-                for (final cat in homeState.categoryEntities) {
+                for (final cat in cats) {
                   if (cat.id == _selectedCategoryId) return cat.name;
                 }
                 return l10n.explore_category_all;
               }();
 
+        final chipNames = <String>[
+          l10n.explore_category_all,
+          ...cats.map((c) => c.name),
+        ];
+
         return Padding(
           padding: EdgeInsets.only(bottom: spacing.xs),
           child: HomeCategoryChips(
-            categories: [l10n.explore_category_all, ...homeState.categories],
+            categories: chipNames,
             selectedCategory: selectedLabel,
             onCategoryTap: (categoryName) {
               final selected = categoryName.trim();
@@ -263,12 +339,14 @@ class _HomeScreenState extends State<HomeScreen>
               }
 
               int? foundId;
-              for (final cat in homeState.categoryEntities) {
+              for (final cat in cats) {
                 if (cat.name == selected) {
                   foundId = cat.id;
                   break;
                 }
               }
+
+              if (foundId == null) return;
 
               setState(() {
                 _selectedCategoryId = foundId;
@@ -358,7 +436,14 @@ class _HomeScreenState extends State<HomeScreen>
         );
 
       case HomeSectionType.reviewList:
-        return const HomeBottomSection();
+        final ownerPhone = _resolveOwnerPhone(widget.appConfig);
+
+        return HomeBottomSection(
+          appName: widget.appConfig.appName,
+          ownerProjectId: widget.appConfig.ownerProjectId,
+          ownerPhoneNumber: ownerPhone,
+          debugLogs: false,
+        );
     }
   }
 
@@ -550,7 +635,10 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     return _PricingView(
-        currentLabel: currentLabel, oldLabel: oldLabel, tagLabel: tagLabel);
+      currentLabel: currentLabel,
+      oldLabel: oldLabel,
+      tagLabel: tagLabel,
+    );
   }
 
   _TrailingData _trailingForSection(
@@ -685,7 +773,9 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
             onTap: widget.onTrailingTap,
             child: Padding(
               padding: EdgeInsets.symmetric(
-                  horizontal: spacing.sm, vertical: spacing.xs),
+                horizontal: spacing.sm,
+                vertical: spacing.xs,
+              ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -735,7 +825,6 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
             final cardW = (w - ((cols - 1) * spacing.md)) / cols;
             final cardH = cardW / aspect;
 
-            // ✅ FIXED: shrink height based on items count of CURRENT page
             final viewH = () {
               if (widget.layout != _HomePagerLayout.grid3x2) return cardH;
 
@@ -758,7 +847,7 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
                   return ItemCard(
                     itemId: item.id,
                     width: double.infinity,
-                    imageFit: fit, // ✅ use it
+                    imageFit: fit,
                     title: item.title,
                     subtitle: widget.subtitleFor(item),
                     imageUrl: item.imageUrl,
@@ -934,7 +1023,10 @@ class _ProPagerBar extends StatelessWidget {
   }
 
   List<Widget> _dotsWithEllipsis(
-      List<int> dots, Widget Function(int) buildDot, double gap) {
+    List<int> dots,
+    Widget Function(int) buildDot,
+    double gap,
+  ) {
     final widgets = <Widget>[];
     for (var i = 0; i < dots.length; i++) {
       widgets.add(
