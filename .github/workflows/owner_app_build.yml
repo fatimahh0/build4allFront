@@ -445,6 +445,42 @@ jobs:
       - name: Build AAB
         run: flutter build appbundle --release --dart-define-from-file=lib/env/ci_env.json
 
+      - name: Rename artifacts (copy) + export names
+        run: |
+          set -e
+
+          LINK_ID=$(cat ci_link_id.txt | tr -d '\r\n')
+
+          # read from ci_env.json (app name + version)
+          APP_NAME=$(python3 - <<'PY'
+          import json, re
+          cfg=json.load(open("lib/env/ci_env.json","r",encoding="utf-8"))
+          s=(cfg.get("APP_NAME") or "app").strip().lower()
+          # safe filename: letters/numbers/_/-
+          s=re.sub(r"[^a-z0-9]+","-",s).strip("-")
+          print(s or "app")
+          PY
+          )
+
+          VN=$(cat ci_android_version_name.txt | tr -d '\r\n')
+          VN_SAFE=$(echo "$VN" | tr ' ' '-' | tr -cd '0-9A-Za-z._-')
+          if [ -z "$VN_SAFE" ]; then VN_SAFE="1.0.0"; fi
+
+          APK_NAME="${APP_NAME}-${LINK_ID}-v${VN_SAFE}.apk"
+          AAB_NAME="${APP_NAME}-${LINK_ID}-v${VN_SAFE}.aab"
+
+          # copy (safer than mv)
+          cp build/app/outputs/flutter-apk/app-release.apk "build/app/outputs/flutter-apk/${APK_NAME}"
+          cp build/app/outputs/bundle/release/app-release.aab "build/app/outputs/bundle/release/${AAB_NAME}"
+
+          echo "✅ APK_NAME=$APK_NAME"
+          echo "✅ AAB_NAME=$AAB_NAME"
+
+          # export for next steps
+          echo "APK_NAME=$APK_NAME" >> $GITHUB_ENV
+          echo "AAB_NAME=$AAB_NAME" >> $GITHUB_ENV
+ 
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -457,9 +493,10 @@ jobs:
             gh release create "$TAG" --title "$TAG" --notes "CI build"
 
           gh release upload "$TAG" \
-            build/app/outputs/flutter-apk/app-release.apk \
-            build/app/outputs/bundle/release/app-release.aab \
+            "build/app/outputs/flutter-apk/${APK_NAME}" \
+            "build/app/outputs/bundle/release/${AAB_NAME}" \
             --clobber
+
 
           echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
           echo "LINK_ID=$LINK_ID" >> $GITHUB_ENV
@@ -478,8 +515,9 @@ jobs:
           OWNER="${{ github.repository_owner }}"
           REPO="${{ github.event.repository.name }}"
 
-          APK_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/app-release.apk"
-          AAB_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/app-release.aab"
+          APK_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/${APK_NAME}"
+          AAB_URL="https://github.com/${OWNER}/${REPO}/releases/download/${TAG}/${AAB_NAME}"
+
 
           echo ""
           echo "========================================"
