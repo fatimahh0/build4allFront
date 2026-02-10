@@ -1,13 +1,7 @@
 // lib/features/admin/product/presentation/screens/admin_dashboard_screen.dart
 
-import 'package:build4front/features/admin/home_banner/presentation/screens/admin_home_banners_screen.dart';
-import 'package:build4front/features/admin/orders_admin/data/repository/admin_orders_repository_impl.dart';
-import 'package:build4front/features/admin/orders_admin/data/services/admin_orders_api_service.dart';
-import 'package:build4front/features/admin/orders_admin/domain/repositories/admin_orders_repository.dart';
-import 'package:build4front/features/admin/orders_admin/orders_admin_feature.dart';
-import 'package:build4front/features/admin/payment_config/presentation/screens/owner_payment_config_screen.dart';
-import 'package:build4front/features/admin/shipping/prensentation/screens/admin_shipping_methods_screen.dart';
-import 'package:build4front/features/admin/tax/presentation/screens/admin_tax_rules_screen.dart';
+import 'package:build4front/features/admin/licensing/data/models/owner_app_access_response.dart';
+import 'package:build4front/features/admin/licensing/data/services/licensing_api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -17,8 +11,12 @@ import 'package:build4front/core/config/env.dart';
 import 'package:build4front/features/auth/data/services/admin_token_store.dart';
 
 import 'package:build4front/features/admin/product/presentation/screens/admin_products_list_screen.dart';
+import 'package:build4front/features/admin/home_banner/presentation/screens/admin_home_banners_screen.dart';
+import 'package:build4front/features/admin/payment_config/presentation/screens/owner_payment_config_screen.dart';
+import 'package:build4front/features/admin/shipping/prensentation/screens/admin_shipping_methods_screen.dart';
+import 'package:build4front/features/admin/tax/presentation/screens/admin_tax_rules_screen.dart';
 
-// 🔹 NEW: Coupons imports
+// 🔹 Coupons
 import 'package:build4front/features/admin/coupons/presentations/screens/admin_coupons_screen.dart';
 import 'package:build4front/features/admin/coupons/presentations/bloc/coupon_bloc.dart';
 import 'package:build4front/features/admin/coupons/data/services/coupon_api_service.dart';
@@ -26,6 +24,10 @@ import 'package:build4front/features/admin/coupons/data/repositories/coupon_repo
 import 'package:build4front/features/admin/coupons/domain/usecases/get_coupons.dart';
 import 'package:build4front/features/admin/coupons/domain/usecases/save_coupon.dart';
 import 'package:build4front/features/admin/coupons/domain/usecases/delete_coupon.dart';
+
+// ✅ Toast + exception mapper
+import 'package:build4front/common/widgets/app_toast.dart';
+import 'package:build4front/core/exceptions/exception_mapper.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -38,10 +40,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final _store = AdminTokenStore();
   String? _role;
 
+  OwnerAppAccessResponse? _license;
+  bool _licenseLoading = true;
+  String? _licenseError;
+
+  late final LicensingApiService _licensingApi =
+      LicensingApiService(getToken: () => _store.getToken());
+
   @override
   void initState() {
     super.initState();
-    _loadRole();
+    _init();
+  }
+
+  Future<void> _init() async {
+    await _loadRole();
+    await _loadLicense();
   }
 
   Future<void> _loadRole() async {
@@ -50,10 +64,217 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     setState(() => _role = role?.toUpperCase());
   }
 
+  String _planCodeValue(dynamic v) {
+    if (v == null) return '';
+    if (v is String) return v.toUpperCase();
+    return v.toString().split('.').last.toUpperCase(); // supports enum too
+  }
+
+  Future<void> _loadLicense() async {
+    try {
+      setState(() {
+        _licenseLoading = true;
+        _licenseError = null;
+      });
+
+      final aupId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+      final access = await _licensingApi.getAccess(aupId);
+
+      if (!mounted) return;
+      setState(() {
+        _license = access;
+        _licenseLoading = false;
+      });
+
+      // Optional: auto prompt upgrade if user limit reached
+      if (access.blockingReason == 'USER_LIMIT_REACHED') {
+        // ignore: use_build_context_synchronously
+        _showUpgradeSheet(access);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _licenseLoading = false;
+        _licenseError = ExceptionMapper.toMessage(e); // ✅ clean message
+      });
+    }
+  }
+
   Future<void> _logout() async {
     await _store.clear();
     if (!mounted) return;
     Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+  }
+
+  Future<void> _showUpgradeSheet(OwnerAppAccessResponse access) async {
+    final current = _planCodeValue(access.planCode);
+
+    final options = <_UpgradeOption>[];
+
+    if (current == 'FREE') {
+      options.add(
+        const _UpgradeOption(
+          code: 'PRO_HOSTEDB',
+          title: 'Pro Hosted DB',
+          desc: 'Unlimited users',
+        ),
+      );
+      options.add(
+        const _UpgradeOption(
+          code: 'DEDICATED',
+          title: 'Dedicated',
+          desc: 'Needs server setup',
+        ),
+      );
+    } else if (current == 'PRO_HOSTEDB') {
+      options.add(
+        const _UpgradeOption(
+          code: 'DEDICATED',
+          title: 'Dedicated',
+          desc: 'Needs server setup',
+        ),
+      );
+    }
+
+    if (options.isEmpty) {
+      AppToast.show(context, 'No upgrades available.');
+      return;
+    }
+
+    String selected = options.first.code;
+
+    final sent = await showModalBottomSheet<bool>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        final tokens = ctx.watch<ThemeCubit>().state.tokens;
+        final colors = tokens.colors;
+        final t = Theme.of(ctx).textTheme;
+
+        return StatefulBuilder(
+          builder: (ctx2, setModalState) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    height: 4,
+                    width: 36,
+                    decoration: BoxDecoration(
+                      color: colors.border.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Request upgrade',
+                    style: t.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: colors.label,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Pick a plan to send for approval.',
+                    style: t.bodyMedium?.copyWith(color: colors.body),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 14),
+                  for (final o in options)
+                    InkWell(
+                      onTap: () => setModalState(() => selected = o.code),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: selected == o.code
+                              ? colors.primary.withOpacity(.08)
+                              : colors.surface,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: selected == o.code
+                                ? colors.primary.withOpacity(.35)
+                                : colors.border.withOpacity(.2),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              selected == o.code
+                                  ? Icons.radio_button_checked
+                                  : Icons.radio_button_off,
+                              color: selected == o.code
+                                  ? colors.primary
+                                  : colors.body,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    o.title,
+                                    style: t.bodyLarge?.copyWith(
+                                      color: colors.label,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    o.desc,
+                                    style: t.bodySmall
+                                        ?.copyWith(color: colors.body),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx2, true),
+                      child: const Text('Send'),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx2, false),
+                      child: const Text('Not now'),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (sent != true) return;
+
+    try {
+      final aupId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+      await _licensingApi.requestUpgrade(
+        aupId: aupId,
+        planCode: selected,
+      );
+
+      if (!mounted) return;
+      AppToast.show(context, 'Request sent ✅');
+      await _loadLicense();
+    } catch (e) {
+      if (!mounted) return;
+      AppToast.show(context, ExceptionMapper.toMessage(e), isError: true);
+    }
   }
 
   @override
@@ -69,7 +290,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       appBar: AppBar(
         backgroundColor: colors.surface,
         elevation: 0,
-
         actions: [
           IconButton(
             onPressed: _logout,
@@ -84,13 +304,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _RoleBanner(role: role),
+            const SizedBox(height: 12),
+            _LicenseBanner(
+              loading: _licenseLoading,
+              error: _licenseError,
+              access: _license,
+              onRetry: _loadLicense,
+              onRequestUpgrade: () {
+                if (_license != null) _showUpgradeSheet(_license!);
+              },
+            ),
             const SizedBox(height: 20),
             Text(
               l10n.adminDashboardQuickActions,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: colors.label,
-                fontWeight: FontWeight.w600,
-              ),
+                    color: colors.label,
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -112,8 +342,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     );
                   },
                 ),
-
-                // ✅ SHIPPING TILE
                 _AdminTile(
                   icon: Icons.local_shipping_outlined,
                   title: l10n.adminShippingTitle,
@@ -129,8 +357,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     );
                   },
                 ),
-
-                // PAYMENT CONFIG TILE
                 _AdminTile(
                   icon: Icons.credit_card_outlined,
                   title: l10n.adminPaymentConfigTitle,
@@ -138,20 +364,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   card: card,
                   onTap: () {
                     final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
-
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => OwnerPaymentConfigScreen(
                           ownerProjectId: ownerId,
-                          //  use admin token store (same as coupons)
                           getToken: () => _store.getToken(),
                         ),
                       ),
                     );
                   },
                 ),
-
-                // TAXES TILE
                 _AdminTile(
                   icon: Icons.receipt_long_outlined,
                   title: l10n.adminTaxesTitle,
@@ -167,8 +389,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     );
                   },
                 ),
-
-                //  HOME BANNERS TILE
                 _AdminTile(
                   icon: Icons.view_carousel_outlined,
                   title: l10n.adminHomeBannersTitle,
@@ -184,8 +404,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     );
                   },
                 ),
-
-                //  NEW: COUPONS TILE (with BlocProvider)
                 _AdminTile(
                   icon: Icons.card_giftcard_outlined,
                   title: l10n.adminCouponsTitle,
@@ -195,8 +413,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     final api = CouponApiService();
                     final repo = CouponRepositoryImpl(
                       api: api,
-                      getToken: () =>
-                          _store.getToken(), //  THIS is the missing line
+                      getToken: () => _store.getToken(),
                     );
 
                     final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
@@ -216,19 +433,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     );
                   },
                 ),
-
-                // ✅ ORDERS TILE (OWNER / SUPER_ADMIN)
                 _AdminTile(
                   icon: Icons.receipt_long_outlined,
                   title: 'Orders',
                   colors: colors,
                   card: card,
-                  onTap: () {
-                    Navigator.of(context).pushNamed('/admin/orders');
-                  },
-
+                  onTap: () => Navigator.of(context).pushNamed('/admin/orders'),
                 ),
-
                 _AdminTile(
                   icon: Icons.upload_file_outlined,
                   title: l10n.adminExcelImportTitle,
@@ -237,7 +448,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   onTap: () =>
                       Navigator.of(context).pushNamed('/admin/excel-import'),
                 ),
-
               ],
             ),
           ],
@@ -293,9 +503,9 @@ class _RoleBanner extends StatelessWidget {
             child: Text(
               l10n.adminSignedInAs(role),
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: colors.label,
-                fontWeight: FontWeight.w600,
-              ),
+                    color: colors.label,
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
           ),
         ],
@@ -366,4 +576,184 @@ class _AdminTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _LicenseBanner extends StatelessWidget {
+  final bool loading;
+  final String? error;
+  final OwnerAppAccessResponse? access;
+  final VoidCallback onRetry;
+  final VoidCallback onRequestUpgrade;
+
+  const _LicenseBanner({
+    required this.loading,
+    required this.error,
+    required this.access,
+    required this.onRetry,
+    required this.onRequestUpgrade,
+  });
+
+  String _reasonLabel(String? reason) {
+    switch (reason) {
+      case 'USER_LIMIT_REACHED':
+        return 'User limit reached';
+      case 'LICENSE_EXPIRED':
+        return 'License expired';
+      case 'DEDICATED_SERVER_NOT_ASSIGNED':
+        return 'Dedicated not ready';
+      case 'SUBSCRIPTION_INACTIVE':
+        return 'Inactive';
+      default:
+        return 'Blocked';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.watch<ThemeCubit>().state.tokens;
+    final colors = tokens.colors;
+    final t = Theme.of(context).textTheme;
+
+    if (loading) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: colors.border.withOpacity(.2)),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(
+              height: 18,
+              width: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Checking license…',
+              style: t.bodyMedium?.copyWith(color: colors.body),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (error != null) {
+      final oneLine = error!.split('\n').first;
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: colors.error.withOpacity(.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: colors.error.withOpacity(.25)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.error_outline, color: colors.error),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                oneLine,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: t.bodyMedium?.copyWith(color: colors.label),
+              ),
+            ),
+            TextButton(onPressed: onRetry, child: const Text('Retry')),
+          ],
+        ),
+      );
+    }
+
+    if (access == null) return const SizedBox.shrink();
+
+    final reason = access!.blockingReason;
+    final isOk = reason == null || reason.isEmpty;
+    final isLimit = reason == 'USER_LIMIT_REACHED';
+
+    final bg = isLimit
+        ? colors.primary.withOpacity(.08)
+        : (isOk ? colors.surface : colors.error.withOpacity(.06));
+
+    final border = isLimit
+        ? colors.primary.withOpacity(.25)
+        : (isOk
+            ? colors.border.withOpacity(.2)
+            : colors.error.withOpacity(.25));
+
+    String subtitle;
+    if (isOk) {
+      // keep it short: Active • users left OR days left
+      if (access!.usersRemaining != null) {
+        subtitle = 'Active • ${access!.usersRemaining} users left';
+      } else if (access!.daysLeft != null) {
+        subtitle = 'Active • ${access!.daysLeft}d left';
+      } else {
+        subtitle = 'Active';
+      }
+    } else if (isLimit) {
+      subtitle = '${_reasonLabel(reason)} • '
+          '${access!.activeUsers}/${access!.usersAllowed ?? 0}';
+    } else {
+      subtitle = _reasonLabel(reason);
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isLimit
+                ? Icons.people_outline
+                : (isOk ? Icons.verified_outlined : Icons.lock_outline),
+            color:
+                isLimit ? colors.primary : (isOk ? colors.body : colors.error),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  access!.planName ?? 'Plan',
+                  style: t.bodyLarge?.copyWith(
+                    color: colors.label,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: t.bodySmall?.copyWith(color: colors.body),
+                ),
+              ],
+            ),
+          ),
+          if (isLimit)
+            ElevatedButton(
+              onPressed: onRequestUpgrade,
+              child: const Text('Upgrade'),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UpgradeOption {
+  final String code;
+  final String title;
+  final String desc;
+
+  const _UpgradeOption({
+    required this.code,
+    required this.title,
+    required this.desc,
+  });
 }
