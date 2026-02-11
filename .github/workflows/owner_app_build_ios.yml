@@ -301,6 +301,8 @@ jobs:
           # ── Export to GITHUB_ENV so every later step can read them ─────
           echo "DEMO_EMAIL=$DEMO_EMAIL"       >> "$GITHUB_ENV"
           echo "DEMO_PASSWORD=$DEMO_PASSWORD" >> "$GITHUB_ENV"
+          echo "::add-mask::$DEMO_PASSWORD"
+
 
           echo ""
           echo "════════════════════════════════════════════════════════════"
@@ -653,7 +655,9 @@ jobs:
       - name: Install required Python packages
         shell: bash
         run: |
-          pip3 install PyJWT cryptography requests --break-system-packages
+          python3 -m pip install --upgrade pip
+          python3 -m pip install PyJWT cryptography requests
+
 
       # ════════════════════════════════════════════════════════════════════
       # 🔢 AUTO-INCREMENT BUILD NUMBER FROM APP STORE CONNECT (FIXED)
@@ -984,16 +988,20 @@ jobs:
       - name: Ensure App ID exists
         shell: bash
         run: |
-          set -euo pipefail
-          BUNDLE_ID="$(cat ci_ios_bundle_id.txt | tr -d '\r\n')"
-
+         set -euo pipefail
+          BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
+          
           fastlane run produce \
             app_identifier:"$BUNDLE_ID" \
             team_id:"${IOS_TEAM_ID}" \
             api_key_path:"$GITHUB_WORKSPACE/.private/api_key.json" \
-            skip_itc:true \
-            language:en \
-            app_name:"Runner" || true
+            skip_itc:false \
+            language:"${APPLE_PRIMARY_LOCALE:-en-US}" \
+            app_name:"${APPLE_APP_NAME:-Runner}" \
+            sku:"${APPLE_SKU:-$BUNDLE_ID}" || true
+
+
+
 
       - name: Get provisioning profile
         shell: bash
@@ -1222,14 +1230,15 @@ jobs:
           echo "📤 Uploading to TestFlight for External Testing..."
           echo "⚠️  Note: External builds require Apple's beta review (24-48 hours)"
           
-          fastlane pilot upload \
+           fastlane pilot upload \
             --ipa "$IPA_PATH" \
             --api_key_path "$API_KEY_JSON" \
             --app_identifier "$BUNDLE_ID" \
             --skip_waiting_for_build_processing false \
             --distribute_external false \
-            --skip_submission false \
+            --skip_submission true \
             --changelog "Initial beta release for testing"
+
       
           echo "✅ Upload complete!"
           echo "⏳ Build submitted for external beta review"
@@ -1374,8 +1383,12 @@ jobs:
                   print(f"   ⚠️  Error creating tester: {str(e)[:100]}")
           
           if not tester_id:
-              print(f"   ❌ Could not create or find beta tester")
-              sys.exit(0)
+            print("   ⚠️ Could not create/find beta tester — continuing without adding tester to group.")
+            tester_id = None
+
+         
+        
+
           
           print()
 
@@ -1491,11 +1504,24 @@ jobs:
           print()
 
           print("🔗 Step 5: Adding tester to external group...")
-          r = requests.post(
-              f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}/relationships/betaTesters",
-              headers=h(),
-              json={"data":[{"type":"betaTesters","id":tester_id}]}
-          )
+          if tester_id:
+              r = requests.post(
+                  f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}/relationships/betaTesters",
+                  headers=h(),
+                  json={"data":[{"type":"betaTesters","id":tester_id}]}
+              )
+              if r.status_code in (200, 204):
+                  print("   ✅ Tester added to external group")
+              elif r.status_code == 409:
+                  print("   ✅ Tester already in external group")
+              else:
+                  print(f"   ⚠️  Response: {r.status_code}")
+          else:
+              print("   ⚠️ tester_id missing — skipping add-tester step.")
+          print()
+
+
+
           if r.status_code in (200, 204):
               print("   ✅ Tester added to external group")
           elif r.status_code == 409:
@@ -1808,11 +1834,14 @@ jobs:
           echo "📡 Saving ipaUrl via: $CALLBACK_URL"
 
           # jq is not guaranteed; build JSON safely without it
-          PAYLOAD="$(python3 - <<PY
-          import json
-          print(json.dumps({"ipaUrl": "${TESTFLIGHT_LINK}"}))
+          export TESTFLIGHT_LINK
+
+          PAYLOAD="$(python3 - <<'PY'
+          import os, json
+          print(json.dumps({"ipaUrl": os.environ["TESTFLIGHT_LINK"]}))
           PY
           )"
+
 
           echo "$PAYLOAD"
 
@@ -1952,7 +1981,9 @@ jobs:
               echo "3. 📧 Testers will receive email notification when approved"
               echo "4. 📱 Testers install TestFlight app and access the build"
               echo ""
-              
+
+              MAX_ATTEMPTS="${MAX_ATTEMPTS:-1}"
+
               if [ "$SUCCESS" = "true" ]; then
                 echo "### ✅ Database Status"
                 echo ""
