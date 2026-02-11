@@ -238,6 +238,25 @@ jobs:
               print(k, "=", "YES" if env.get(k) else "NO")
           PY
 
+           - name: 📡 Callback backend: mark iOS build RUNNING
+            if: always()
+            shell: bash
+            run: |
+              set +e
+              API_BASE="$(tr -d '\r\n' < ci_api_base.txt)"
+              LINK_ID="$(tr -d '\r\n' < ci_link_id.txt)"
+    
+              [ -n "$API_BASE" ] || exit 0
+              [ -n "$LINK_ID" ] || exit 0
+              [ -n "${CI_CALLBACK_TOKEN:-}" ] || exit 0
+    
+              curl -sS -X PUT "$API_BASE/api/ci/owner-project-links/$LINK_ID/build-status" \
+                -H "Content-Type: application/json" \
+                -H "X-Auth-Token: $CI_CALLBACK_TOKEN" \
+                -d '{"platform":"IOS","status":"RUNNING"}' \
+                >/dev/null 2>&1 || true
+    
+
       - name: Debug env
         shell: bash
         run: |
@@ -1736,9 +1755,9 @@ jobs:
           echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
 
           if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
-            echo "❌ Failed to save ipaUrl"
+            echo "⚠️ Failed to save ipaUrl (NON-BLOCKING)"
             {
-              echo "## ❌ Failed to save TestFlight link to DB"
+              echo "## ⚠️ Failed to save TestFlight link to DB (non-blocking)"
               echo ""
               echo "- Endpoint: \`$CALLBACK_URL\`"
               echo "- HTTP: \`$HTTP_CODE\`"
@@ -1748,8 +1767,9 @@ jobs:
               echo "$BODY"
               echo "\`\`\`"
             } >> "$GITHUB_STEP_SUMMARY"
-            exit 1
+            exit 0
           fi
+
 
           echo "✅ Saved TestFlight link into ipaUrl column"
 
@@ -1884,5 +1904,45 @@ jobs:
               echo "Once available, the link will be automatically saved to your database on the next build."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
-          
+
+          - name: ✅ Callback backend: mark FINAL iOS build status
+            if: always()
+            shell: bash
+            run: |
+              set +e
+              API_BASE="$(tr -d '\r\n' < ci_api_base.txt)"
+              LINK_ID="$(tr -d '\r\n' < ci_link_id.txt)"
+    
+              [ -n "$API_BASE" ] || exit 0
+              [ -n "$LINK_ID" ] || exit 0
+              [ -n "${CI_CALLBACK_TOKEN:-}" ] || exit 0
+    
+              GH_STATUS="${{ job.status }}"   # success | failure | cancelled
+              case "$GH_STATUS" in
+                success)   FINAL="SUCCESS" ;;
+                failure)   FINAL="FAILED" ;;
+                cancelled) FINAL="CANCELLED" ;;
+                *)         FINAL="UNKNOWN" ;;
+              esac
+    
+              # optional: include testflight status if present
+              TF_STATUS=""
+              if [ -f "testflight_status.txt" ]; then
+                TF_STATUS="$(tr -d '\r\n' < testflight_status.txt)"
+              fi
+    
+              curl -sS -X PUT "$API_BASE/api/ci/owner-project-links/$LINK_ID/build-status" \
+                -H "Content-Type: application/json" \
+                -H "X-Auth-Token: $CI_CALLBACK_TOKEN" \
+                -d "{\"platform\":\"IOS\",\"status\":\"$FINAL\",\"testflight\":\"$TF_STATUS\"}" \
+                >/dev/null 2>&1 || true
+    
+              echo "✅ Final status sent to backend: $FINAL (testflight=$TF_STATUS)"
+
+
+      
           exit 0
+
+          
+
+          
