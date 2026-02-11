@@ -19,6 +19,68 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ════════════════════════════════════════════════════════════════════
+      # EXTRACT BUILD_ID & LINK_ID (needed for status callbacks)
+      # ════════════════════════════════════════════════════════════════════
+      - name: Extract BUILD_ID and LINK_ID
+        run: |
+          set -e
+          python3 - <<'PY'
+          import json, os
+          payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
+          cfg = payload.get("CONFIG") or {}
+          
+          build_id = (
+              (payload.get("BUILD_ID") or "")
+              or (payload.get("buildId") or "")
+              or ""
+          ).strip()
+          
+          link_id = str(
+              cfg.get("OWNER_PROJECT_LINK_ID")
+              or payload.get("OWNER_PROJECT_LINK_ID")
+              or payload.get("ownerProjectLinkId")
+              or cfg.get("ownerProjectLinkId")
+              or ""
+          ).strip()
+          
+          api_base = (cfg.get("API_BASE_URL") or payload.get("API_BASE_URL") or "").rstrip("/")
+          
+          open("ci_build_id.txt","w",encoding="utf-8").write(build_id)
+          open("ci_link_id.txt","w",encoding="utf-8").write(link_id)
+          open("ci_api_base.txt","w",encoding="utf-8").write(api_base)
+          
+          print("BUILD_ID =", build_id if build_id else "(empty)")
+          print("LINK_ID =", link_id if link_id else "(empty)")
+          print("API_BASE =", api_base if api_base else "(empty)")
+          
+          # Export to GITHUB_ENV for all steps
+          with open(os.environ["GITHUB_ENV"], "a") as f:
+              f.write(f"BUILD_ID={build_id}\n")
+              f.write(f"LINK_ID={link_id}\n")
+              f.write(f"API_BASE={api_base}\n")
+          PY
+
+      # ════════════════════════════════════════════════════════════════════
+      # MARK BUILD AS RUNNING (at start)
+      # ════════════════════════════════════════════════════════════════════
+      - name: 📡 Mark build RUNNING
+        if: always()
+        run: |
+          set +e
+          
+          if [ -z "${API_BASE:-}" ] || [ -z "${CI_CALLBACK_TOKEN:-}" ]; then
+            echo "⚠️ API_BASE or CI_CALLBACK_TOKEN missing, skipping status update"
+            exit 0
+          fi
+          
+          curl -sS -X PUT "${API_BASE}/api/ci/build-jobs/running" \
+            -H "Content-Type: application/json" \
+            -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
+            -d "{\"buildId\":\"${BUILD_ID}\",\"linkId\":\"${LINK_ID}\",\"platform\":\"ANDROID\"}" || true
+          
+          echo "✅ Build marked as RUNNING"
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -41,22 +103,6 @@ jobs:
         run: |
           echo '${{ toJson(github.event.client_payload) }}'
 
-      # ✅ NEW: Extract BUILD_ID so backend updates the correct AppBuildJob row
-      - name: Extract BUILD_ID
-        run: |
-          set -e
-          python3 - <<'PY'
-          import json
-          payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
-          build_id = (
-              (payload.get("BUILD_ID") or "")
-              or (payload.get("buildId") or "")
-              or ""
-          ).strip()
-          open("ci_build_id.txt","w",encoding="utf-8").write(build_id)
-          print("BUILD_ID =", build_id if build_id else "(empty)")
-          PY
-
       - name: Force Android NDK 27
         run: |
           set -e
@@ -76,7 +122,6 @@ jobs:
             exit 1
           fi
 
-      # ✅ BY_LINK fetch using CI token (X-Auth-Token) + SAFE FALLBACK + B64-ONLY + ✅ CURRENCY FIX + ✅ VERSION
       - name: Build ci_env.json (BY_LINK runtime-config + fallback)
         run: |
           set -e
@@ -98,9 +143,9 @@ jobs:
           ).strip()
 
           if not api_base:
-              raise SystemExit("Missing API_BASE_URL (need CONFIG.API_BASE_URL or top-level API_BASE_URL)")
+              raise SystemExit("Missing API_BASE_URL")
           if not link_id:
-              raise SystemExit("Missing OWNER_PROJECT_LINK_ID (need CONFIG.OWNER_PROJECT_LINK_ID or top-level OWNER_PROJECT_LINK_ID)")
+              raise SystemExit("Missing OWNER_PROJECT_LINK_ID")
 
           url = f"{api_base}/api/public/runtime-config/by-link?linkId={link_id}"
           runtime = {}
@@ -140,7 +185,6 @@ jobs:
           app_type   = pick("APP_TYPE", "ECOMMERCE")
           project_id = str(pick("PROJECT_ID", "")).strip()
 
-          # ✅ Package name: sanitize + fallback if broken
           pkg_raw = (pick("PACKAGE_NAME") or pick("APPLICATION_ID") or "").strip()
           if not pkg_raw:
               pkg_raw = f"com.build4all.app{link_id}"
@@ -152,7 +196,6 @@ jobs:
           if not pkg or pkg.count(".") < 1:
               pkg = f"com.build4all.app{link_id}"
 
-          # ✅ Version info (fallback safe)
           vc = pick("ANDROID_VERSION_CODE")
           vn = pick("ANDROID_VERSION_NAME")
 
@@ -175,7 +218,6 @@ jobs:
               "CONFIG_SOURCE": source,
           }
 
-          # ✅ Currency FIX: accept CURRENCY_ID or currencyId (camelCase)
           currency_id = pick("CURRENCY_ID")
           if currency_id in (None, "", []):
               currency_id = (
@@ -187,7 +229,6 @@ jobs:
           if currency_id not in (None, "", []):
               env["CURRENCY_ID"] = str(currency_id).strip()
 
-          # ✅ HARD GUARANTEE: B64 ONLY
           for key in [
               "THEME_JSON_B64",
               "NAV_JSON_B64",
@@ -199,17 +240,13 @@ jobs:
               if v:
                   env[key] = v
 
-          # logo
           logo_url = (pick("LOGO_URL") or pick("LOGO_PATH") or "").strip()
           if not logo_url:
               logo_url = (runtime.get("logoUrl") or cfg.get("logoUrl") or payload.get("logoUrl") or "").strip()
           if logo_url:
               env["LOGO_URL"] = logo_url
 
-          open("ci_api_base.txt", "w", encoding="utf-8").write(api_base)
-          open("ci_link_id.txt", "w", encoding="utf-8").write(link_id)
           open("ci_package_name.txt", "w", encoding="utf-8").write(pkg)
-
           open("ci_android_version_code.txt", "w", encoding="utf-8").write(str(env["ANDROID_VERSION_CODE"]))
           open("ci_android_version_name.txt", "w", encoding="utf-8").write(env["ANDROID_VERSION_NAME"])
 
@@ -503,21 +540,12 @@ jobs:
             --clobber
 
           echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
-          echo "LINK_ID=$LINK_ID" >> $GITHUB_ENV
 
-      # ✅ UPDATED: send buildId too (so backend updates correct job row)
-      - name: Callback backend (SAVE URLs) + show links (NON-BLOCKING)
+      - name: Callback backend (SAVE URLs)
         run: |
           set -e
 
-          echo "RUNTIME TOKEN len=${#CI_RUNTIME_TOKEN}"
-          echo "CALLBACK TOKEN len=${#CI_CALLBACK_TOKEN}"
-
-          API_BASE="$(cat ci_api_base.txt | tr -d '\r\n')"
-          LINK_ID="$(cat ci_link_id.txt | tr -d '\r\n')"
-          BUILD_ID="$(cat ci_build_id.txt | tr -d '\r\n')"
           TAG="${RELEASE_TAG}"
-
           OWNER="${{ github.repository_owner }}"
           REPO="${{ github.event.repository.name }}"
 
@@ -530,9 +558,9 @@ jobs:
           echo "TAG:      $TAG"
           echo "APK URL:  $APK_URL"
           echo "AAB URL:  $AAB_URL"
-          echo "LINK_ID:  $LINK_ID"
+          echo "LINK_ID:  ${LINK_ID}"
           echo "BUILD_ID: ${BUILD_ID:-"(empty)"}"
-          echo "API:      $API_BASE"
+          echo "API:      ${API_BASE}"
           echo "========================================"
           echo ""
 
@@ -575,8 +603,40 @@ jobs:
 
           if [ "$APK_HTTP" -ge 400 ] || [ "$AAB_HTTP" -ge 400 ]; then
             echo "⚠️ Callback failed (backend did not save URLs)."
-            echo "✅ BUT build/release links above are still valid, so we won’t fail the job."
+            echo "✅ BUT build/release links above are still valid, so we won't fail the job."
             exit 0
           fi
 
           echo "✅ Callback succeeded. Backend saved URLs."
+
+      # ════════════════════════════════════════════════════════════════════
+      # FINAL STATUS UPDATE (runs always, reports SUCCESS or FAILED)
+      # ════════════════════════════════════════════════════════════════════
+      - name: 📡 Report final status to backend
+        if: always()
+        run: |
+          set +e
+          
+          if [ -z "${API_BASE:-}" ] || [ -z "${CI_CALLBACK_TOKEN:-}" ]; then
+            echo "⚠️ API_BASE or CI_CALLBACK_TOKEN missing, skipping final status"
+            exit 0
+          fi
+          
+          JOB_STATUS="${{ job.status }}"
+          
+          if [ "$JOB_STATUS" = "success" ]; then
+            echo "✅ Job succeeded → marking SUCCEEDED"
+            curl -sS -X PUT "${API_BASE}/api/ci/build-jobs/succeeded" \
+              -H "Content-Type: application/json" \
+              -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
+              -d "{\"buildId\":\"${BUILD_ID}\",\"linkId\":\"${LINK_ID}\",\"platform\":\"ANDROID\"}" || true
+          else
+            echo "❌ Job failed/cancelled → marking FAILED"
+            ERROR_MSG="Android build ${JOB_STATUS} (see GitHub Actions logs for details)"
+            curl -sS -X PUT "${API_BASE}/api/ci/build-jobs/failed" \
+              -H "Content-Type: application/json" \
+              -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
+              -d "{\"buildId\":\"${BUILD_ID}\",\"linkId\":\"${LINK_ID}\",\"platform\":\"ANDROID\",\"error\":\"${ERROR_MSG}\"}" || true
+          fi
+          
+          echo "✅ Final status reported"
