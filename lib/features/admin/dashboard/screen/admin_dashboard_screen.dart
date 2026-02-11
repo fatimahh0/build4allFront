@@ -29,6 +29,25 @@ import 'package:build4front/features/admin/coupons/domain/usecases/delete_coupon
 import 'package:build4front/common/widgets/app_toast.dart';
 import 'package:build4front/core/exceptions/exception_mapper.dart';
 
+String _planCodeToString(dynamic v) {
+  if (v == null) return '';
+  if (v is String) return v;
+  return v.toString().split('.').last; // supports enum too
+}
+
+String _nicePlanName(String code) {
+  switch (code) {
+    case 'FREE':
+      return 'Free';
+    case 'PRO_HOSTEDB':
+      return 'Pro Hosted DB';
+    case 'DEDICATED':
+      return 'Dedicated';
+    default:
+      return code.isEmpty ? 'Plan' : code;
+  }
+}
+
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
 
@@ -64,12 +83,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     setState(() => _role = role?.toUpperCase());
   }
 
-  String _planCodeValue(dynamic v) {
-    if (v == null) return '';
-    if (v is String) return v.toUpperCase();
-    return v.toString().split('.').last.toUpperCase(); // supports enum too
-  }
-
   Future<void> _loadLicense() async {
     try {
       setState(() {
@@ -86,7 +99,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         _licenseLoading = false;
       });
 
-      // Optional: auto prompt upgrade if user limit reached
+      // ✅ if user limit reached, we can optionally auto-open upgrade sheet
       if (access.blockingReason == 'USER_LIMIT_REACHED') {
         // ignore: use_build_context_synchronously
         _showUpgradeSheet(access);
@@ -95,7 +108,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       if (!mounted) return;
       setState(() {
         _licenseLoading = false;
-        _licenseError = ExceptionMapper.toMessage(e); // ✅ clean message
+        // ✅ simple message (not essay)
+        _licenseError = ExceptionMapper.toMessage(e);
       });
     }
   }
@@ -107,37 +121,38 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Future<void> _showUpgradeSheet(OwnerAppAccessResponse access) async {
-    final current = _planCodeValue(access.planCode);
+    final current = access.planCode;
 
+    // hardcoded options (because /api/licensing/plans is SUPER_ADMIN only)
     final options = <_UpgradeOption>[];
 
-    if (current == 'FREE') {
+    if (current == PlanCode.FREE) {
       options.add(
         const _UpgradeOption(
           code: 'PRO_HOSTEDB',
           title: 'Pro Hosted DB',
-          desc: 'Unlimited users',
+          desc: 'Unlimited users (hosted by Build4All)',
         ),
       );
       options.add(
         const _UpgradeOption(
           code: 'DEDICATED',
           title: 'Dedicated',
-          desc: 'Needs server setup',
+          desc: 'Dedicated server (needs setup/assignment)',
         ),
       );
-    } else if (current == 'PRO_HOSTEDB') {
+    } else if (current == PlanCode.PRO_HOSTEDB) {
       options.add(
         const _UpgradeOption(
           code: 'DEDICATED',
           title: 'Dedicated',
-          desc: 'Needs server setup',
+          desc: 'Dedicated server (needs setup/assignment)',
         ),
       );
     }
 
     if (options.isEmpty) {
-      AppToast.show(context, 'No upgrades available.');
+      AppToast.show(context, 'No upgrade available.');
       return;
     }
 
@@ -170,15 +185,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Request upgrade',
+                    'Upgrade request',
                     style: t.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: colors.label,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   Text(
-                    'Pick a plan to send for approval.',
+                    'Choose a plan to send a request.',
                     style: t.bodyMedium?.copyWith(color: colors.body),
                     textAlign: TextAlign.center,
                   ),
@@ -240,7 +255,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () => Navigator.pop(ctx2, true),
-                      child: const Text('Send'),
+                      child: const Text('Send request'),
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -248,7 +263,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     width: double.infinity,
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(ctx2, false),
-                      child: const Text('Not now'),
+                      child: const Text('Cancel'),
                     ),
                   ),
                 ],
@@ -263,6 +278,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     try {
       final aupId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+
       await _licensingApi.requestUpgrade(
         aupId: aupId,
         planCode: selected,
@@ -285,6 +301,33 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final card = tokens.card;
     final role = _role ?? 'ADMIN';
 
+    final blockingReason = (_license?.blockingReason ?? '').trim();
+    final bool isBlockedByLicense = _license != null &&
+        ((_license!.canAccessDashboard == false) || blockingReason.isNotEmpty);
+
+    // ✅ if blocked (limit/expired/etc) => NO ACCESS to tiles
+    final bool lockActions =
+        _licenseLoading || _licenseError != null || isBlockedByLicense;
+
+    final bool isLimit = blockingReason == 'USER_LIMIT_REACHED';
+    final String lockMsg = _licenseLoading
+        ? 'Checking license…'
+        : (_licenseError != null
+            ? 'License check failed'
+            : (isLimit
+                ? 'Limit reached — upgrade required'
+                : 'Access blocked'));
+
+    VoidCallback guarded(VoidCallback realAction) {
+      return () {
+        if (lockActions) {
+          AppToast.show(context, lockMsg, isError: true);
+          return;
+        }
+        realAction();
+      };
+    }
+
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
@@ -305,6 +348,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           children: [
             _RoleBanner(role: role),
             const SizedBox(height: 12),
+
+            // ✅ License banner always visible
             _LicenseBanner(
               loading: _licenseLoading,
               error: _licenseError,
@@ -314,6 +359,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 if (_license != null) _showUpgradeSheet(_license!);
               },
             ),
+
             const SizedBox(height: 20),
             Text(
               l10n.adminDashboardQuickActions,
@@ -323,132 +369,140 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ),
             ),
             const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                _AdminTile(
-                  icon: Icons.shopping_bag_outlined,
-                  title: l10n.adminProductsTitle,
-                  colors: colors,
-                  card: card,
-                  onTap: () {
-                    final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            AdminProductsListScreen(ownerProjectId: ownerId),
-                      ),
-                    );
-                  },
-                ),
-                _AdminTile(
-                  icon: Icons.local_shipping_outlined,
-                  title: l10n.adminShippingTitle,
-                  colors: colors,
-                  card: card,
-                  onTap: () {
-                    final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            AdminShippingMethodsScreen(ownerProjectId: ownerId),
-                      ),
-                    );
-                  },
-                ),
-                _AdminTile(
-                  icon: Icons.credit_card_outlined,
-                  title: l10n.adminPaymentConfigTitle,
-                  colors: colors,
-                  card: card,
-                  onTap: () {
-                    final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => OwnerPaymentConfigScreen(
-                          ownerProjectId: ownerId,
-                          getToken: () => _store.getToken(),
+
+            // ✅ visually dim when locked (but we still show toast on tap via guarded())
+            Opacity(
+              opacity: lockActions ? 0.45 : 1,
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _AdminTile(
+                    icon: Icons.shopping_bag_outlined,
+                    title: l10n.adminProductsTitle,
+                    colors: colors,
+                    card: card,
+                    onTap: guarded(() {
+                      final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              AdminProductsListScreen(ownerProjectId: ownerId),
                         ),
-                      ),
-                    );
-                  },
-                ),
-                _AdminTile(
-                  icon: Icons.receipt_long_outlined,
-                  title: l10n.adminTaxesTitle,
-                  colors: colors,
-                  card: card,
-                  onTap: () {
-                    final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            AdminTaxRulesScreen(ownerProjectId: ownerId),
-                      ),
-                    );
-                  },
-                ),
-                _AdminTile(
-                  icon: Icons.view_carousel_outlined,
-                  title: l10n.adminHomeBannersTitle,
-                  colors: colors,
-                  card: card,
-                  onTap: () {
-                    final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            AdminHomeBannersScreen(ownerProjectId: ownerId),
-                      ),
-                    );
-                  },
-                ),
-                _AdminTile(
-                  icon: Icons.card_giftcard_outlined,
-                  title: l10n.adminCouponsTitle,
-                  colors: colors,
-                  card: card,
-                  onTap: () {
-                    final api = CouponApiService();
-                    final repo = CouponRepositoryImpl(
-                      api: api,
-                      getToken: () => _store.getToken(),
-                    );
-
-                    final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
-
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => BlocProvider<CouponBloc>(
-                          create: (_) => CouponBloc(
-                            getCouponsUc: GetCoupons(repo),
-                            saveCouponUc: SaveCoupon(repo),
-                            deleteCouponUc: DeleteCoupon(repo),
+                      );
+                    }),
+                  ),
+                  _AdminTile(
+                    icon: Icons.local_shipping_outlined,
+                    title: l10n.adminShippingTitle,
+                    colors: colors,
+                    card: card,
+                    onTap: guarded(() {
+                      final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => AdminShippingMethodsScreen(
+                              ownerProjectId: ownerId),
+                        ),
+                      );
+                    }),
+                  ),
+                  _AdminTile(
+                    icon: Icons.credit_card_outlined,
+                    title: l10n.adminPaymentConfigTitle,
+                    colors: colors,
+                    card: card,
+                    onTap: guarded(() {
+                      final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => OwnerPaymentConfigScreen(
                             ownerProjectId: ownerId,
+                            getToken: () => _store.getToken(),
                           ),
-                          child: const AdminCouponsScreen(),
                         ),
-                      ),
-                    );
-                  },
-                ),
-                _AdminTile(
-                  icon: Icons.receipt_long_outlined,
-                  title: 'Orders',
-                  colors: colors,
-                  card: card,
-                  onTap: () => Navigator.of(context).pushNamed('/admin/orders'),
-                ),
-                _AdminTile(
-                  icon: Icons.upload_file_outlined,
-                  title: l10n.adminExcelImportTitle,
-                  colors: colors,
-                  card: card,
-                  onTap: () =>
-                      Navigator.of(context).pushNamed('/admin/excel-import'),
-                ),
-              ],
+                      );
+                    }),
+                  ),
+                  _AdminTile(
+                    icon: Icons.receipt_long_outlined,
+                    title: l10n.adminTaxesTitle,
+                    colors: colors,
+                    card: card,
+                    onTap: guarded(() {
+                      final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              AdminTaxRulesScreen(ownerProjectId: ownerId),
+                        ),
+                      );
+                    }),
+                  ),
+                  _AdminTile(
+                    icon: Icons.view_carousel_outlined,
+                    title: l10n.adminHomeBannersTitle,
+                    colors: colors,
+                    card: card,
+                    onTap: guarded(() {
+                      final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              AdminHomeBannersScreen(ownerProjectId: ownerId),
+                        ),
+                      );
+                    }),
+                  ),
+                  _AdminTile(
+                    icon: Icons.card_giftcard_outlined,
+                    title: l10n.adminCouponsTitle,
+                    colors: colors,
+                    card: card,
+                    onTap: guarded(() {
+                      final api = CouponApiService();
+                      final repo = CouponRepositoryImpl(
+                        api: api,
+                        getToken: () => _store.getToken(),
+                      );
+
+                      final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => BlocProvider<CouponBloc>(
+                            create: (_) => CouponBloc(
+                              getCouponsUc: GetCoupons(repo),
+                              saveCouponUc: SaveCoupon(repo),
+                              deleteCouponUc: DeleteCoupon(repo),
+                              ownerProjectId: ownerId,
+                            ),
+                            child: const AdminCouponsScreen(),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                  _AdminTile(
+                    icon: Icons.receipt_long_outlined,
+                    title: 'Orders',
+                    colors: colors,
+                    card: card,
+                    onTap: guarded(() {
+                      Navigator.of(context).pushNamed('/admin/orders');
+                    }),
+                  ),
+                  _AdminTile(
+                    icon: Icons.upload_file_outlined,
+                    title: l10n.adminExcelImportTitle,
+                    colors: colors,
+                    card: card,
+                    onTap: guarded(() {
+                      Navigator.of(context).pushNamed('/admin/excel-import');
+                    }),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -533,7 +587,10 @@ class _AdminTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final width = MediaQuery.of(context).size.width;
-    final tileWidth = (width - 16 * 2 - 12) / 2;
+
+    // ✅ better mobile: 1 column on small screens
+    final cols = width < 420 ? 1 : 2;
+    final tileWidth = (width - 16 * 2 - 12 * (cols - 1)) / cols;
 
     return SizedBox(
       width: tileWidth,
@@ -593,21 +650,6 @@ class _LicenseBanner extends StatelessWidget {
     required this.onRequestUpgrade,
   });
 
-  String _reasonLabel(String? reason) {
-    switch (reason) {
-      case 'USER_LIMIT_REACHED':
-        return 'User limit reached';
-      case 'LICENSE_EXPIRED':
-        return 'License expired';
-      case 'DEDICATED_SERVER_NOT_ASSIGNED':
-        return 'Dedicated not ready';
-      case 'SUBSCRIPTION_INACTIVE':
-        return 'Inactive';
-      default:
-        return 'Blocked';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final tokens = context.watch<ThemeCubit>().state.tokens;
@@ -640,7 +682,6 @@ class _LicenseBanner extends StatelessWidget {
     }
 
     if (error != null) {
-      final oneLine = error!.split('\n').first;
       return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -654,9 +695,7 @@ class _LicenseBanner extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                oneLine,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                error!,
                 style: t.bodyMedium?.copyWith(color: colors.label),
               ),
             ),
@@ -668,8 +707,8 @@ class _LicenseBanner extends StatelessWidget {
 
     if (access == null) return const SizedBox.shrink();
 
-    final reason = access!.blockingReason;
-    final isOk = reason == null || reason.isEmpty;
+    final reason = (access!.blockingReason ?? '').trim();
+    final isOk = reason.isEmpty && (access!.canAccessDashboard != false);
     final isLimit = reason == 'USER_LIMIT_REACHED';
 
     final bg = isLimit
@@ -682,21 +721,20 @@ class _LicenseBanner extends StatelessWidget {
             ? colors.border.withOpacity(.2)
             : colors.error.withOpacity(.25));
 
+    final planCodeStr = _planCodeToString(access!.planCode);
+    final planName = (access!.planName ?? '').trim().isEmpty
+        ? _nicePlanName(planCodeStr)
+        : access!.planName!;
+
     String subtitle;
     if (isOk) {
-      // keep it short: Active • users left OR days left
-      if (access!.usersRemaining != null) {
-        subtitle = 'Active • ${access!.usersRemaining} users left';
-      } else if (access!.daysLeft != null) {
-        subtitle = 'Active • ${access!.daysLeft}d left';
-      } else {
-        subtitle = 'Active';
-      }
+      subtitle = 'Access granted ✅';
     } else if (isLimit) {
-      subtitle = '${_reasonLabel(reason)} • '
-          '${access!.activeUsers}/${access!.usersAllowed ?? 0}';
+      final active = access!.activeUsers ?? 0;
+      final allowed = access!.usersAllowed ?? 0;
+      subtitle = 'Limit reached: $active/$allowed users';
     } else {
-      subtitle = _reasonLabel(reason);
+      subtitle = 'Access blocked';
     }
 
     return Container(
@@ -721,7 +759,7 @@ class _LicenseBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  access!.planName ?? 'Plan',
+                  planName,
                   style: t.bodyLarge?.copyWith(
                     color: colors.label,
                     fontWeight: FontWeight.w700,
@@ -738,7 +776,7 @@ class _LicenseBanner extends StatelessWidget {
           if (isLimit)
             ElevatedButton(
               onPressed: onRequestUpgrade,
-              child: const Text('Upgrade'),
+              child: const Text('Request upgrade'),
             ),
         ],
       ),
