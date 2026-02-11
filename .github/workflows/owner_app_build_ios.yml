@@ -41,6 +41,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Mark build RUNNING on backend
+        if: always()
+        run: |
+          curl -sS -X PUT "$API_BASE/api/ci/build-jobs/running" \
+            -H "Content-Type: application/json" \
+            -H "X-Auth-Token: $CI_CALLBACK_TOKEN" \
+            -d "{\"buildId\":\"$BUILD_ID\",\"linkId\":\"$OWNER_PROJECT_LINK_ID\",\"platform\":\"IOS\"}" || true
+  
+
       - name: Select newest installed Xcode (safe)
         shell: bash
         run: |
@@ -61,6 +70,7 @@ jobs:
       
           xcodebuild -version
           echo "iOS SDK: $(xcrun --sdk iphoneos --show-sdk-version)"
+          
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -1938,6 +1948,28 @@ jobs:
                 >/dev/null 2>&1 || true
     
               echo "✅ Final status sent to backend: $FINAL (testflight=$TF_STATUS)"
+
+
+          - name: Report final status to backend (always)
+            if: always()
+            run: |
+              STATUS="${{ job.status }}"
+              if [ "$STATUS" = "success" ]; then
+                echo "✅ job success -> mark SUCCESS"
+                curl -sS -X PUT "$API_BASE/api/ci/build-jobs/succeeded" \
+                  -H "Content-Type: application/json" \
+                  -H "X-Auth-Token: $CI_CALLBACK_TOKEN" \
+                  -d "{\"buildId\":\"$BUILD_ID\",\"linkId\":\"$OWNER_PROJECT_LINK_ID\",\"platform\":\"IOS\"}" || true
+              else
+                echo "❌ job failed -> mark FAILED"
+                
+                ERR="CI job failed (see GitHub Actions logs)."
+                curl -sS -X PUT "$API_BASE/api/ci/build-jobs/failed" \
+                  -H "Content-Type: application/json" \
+                  -H "X-Auth-Token: $CI_CALLBACK_TOKEN" \
+                  -d "{\"buildId\":\"$BUILD_ID\",\"linkId\":\"$OWNER_PROJECT_LINK_ID\",\"platform\":\"IOS\",\"error\":\"$ERR\"}" || true
+              fi
+
 
 
       
