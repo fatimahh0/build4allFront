@@ -41,15 +41,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Mark build RUNNING on backend
-        if: always()
-        run: |
-          curl -sS -X PUT "$API_BASE/api/ci/build-jobs/running" \
-            -H "Content-Type: application/json" \
-            -H "X-Auth-Token: $CI_CALLBACK_TOKEN" \
-            -d "{\"buildId\":\"$BUILD_ID\",\"linkId\":\"$OWNER_PROJECT_LINK_ID\",\"platform\":\"IOS\"}" || true
-  
-
       - name: Select newest installed Xcode (safe)
         shell: bash
         run: |
@@ -70,7 +61,6 @@ jobs:
       
           xcodebuild -version
           echo "iOS SDK: $(xcrun --sdk iphoneos --show-sdk-version)"
-          
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -94,6 +84,45 @@ jobs:
         run: |
           set -euo pipefail
           echo '${{ toJson(github.event.client_payload) }}'
+
+          # ════════════════════════════════════════════════════════════════════
+      # EXTRACT BUILD_ID & LINK_ID (needed for status callbacks)
+      # ════════════════════════════════════════════════════════════════════
+      - name: Extract BUILD_ID and LINK_ID
+        shell: bash
+        run: |
+          set -e
+          python3 - <<'PY'
+          import json, os
+          payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
+          cfg = payload.get("CONFIG") or {}
+          
+          build_id = (
+              (payload.get("BUILD_ID") or "")
+              or (payload.get("buildId") or "")
+              or ""
+          ).strip()
+          
+          link_id = str(
+              cfg.get("OWNER_PROJECT_LINK_ID")
+              or payload.get("OWNER_PROJECT_LINK_ID")
+              or payload.get("ownerProjectLinkId")
+              or cfg.get("ownerProjectLinkId")
+              or ""
+          ).strip()
+          
+          api_base = (cfg.get("API_BASE_URL") or payload.get("API_BASE_URL") or "").rstrip("/")
+          
+          open("ci_build_id.txt","w",encoding="utf-8").write(build_id)
+          
+          print("BUILD_ID =", build_id if build_id else "(empty)")
+          print("LINK_ID (will be set by ci_env.json step) =", link_id if link_id else "(empty)")
+          print("API_BASE (will be set by ci_env.json step) =", api_base if api_base else "(empty)")
+          
+          # Export BUILD_ID to GITHUB_ENV for all steps
+          with open(os.environ["GITHUB_ENV"], "a") as f:
+              f.write(f"BUILD_ID={build_id}\n")
+          PY
 
       - name: Build ci_env.json (BY_LINK runtime-config + fallback + B64)
         shell: bash
@@ -255,17 +284,43 @@ jobs:
               set +e
               API_BASE="$(tr -d '\r\n' < ci_api_base.txt)"
               LINK_ID="$(tr -d '\r\n' < ci_link_id.txt)"
-    
+      
               [ -n "$API_BASE" ] || exit 0
               [ -n "$LINK_ID" ] || exit 0
               [ -n "${CI_CALLBACK_TOKEN:-}" ] || exit 0
-    
+      
               curl -sS -X PUT "$API_BASE/api/ci/owner-project-links/$LINK_ID/build-status" \
                 -H "Content-Type: application/json" \
                 -H "X-Auth-Token: $CI_CALLBACK_TOKEN" \
                 -d '{"platform":"IOS","status":"RUNNING"}' \
                 >/dev/null 2>&1 || true
     
+      
+
+      # ════════════════════════════════════════════════════════════════════
+      # MARK BUILD AS RUNNING (at start)
+      # ════════════════════════════════════════════════════════════════════
+      - name: 📡 Mark build RUNNING
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          
+          # Read from files created by ci_env.json step
+          API_BASE="$(cat ci_api_base.txt 2>/dev/null | tr -d '\r\n')"
+          LINK_ID="$(cat ci_link_id.txt 2>/dev/null | tr -d '\r\n')"
+          
+          if [ -z "$API_BASE" ] || [ -z "${CI_CALLBACK_TOKEN:-}" ]; then
+            echo "⚠️ API_BASE or CI_CALLBACK_TOKEN missing, skipping status update"
+            exit 0
+          fi
+          
+          curl -sS -X PUT "${API_BASE}/api/ci/build-jobs/running" \
+            -H "Content-Type: application/json" \
+            -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
+            -d "{\"buildId\":\"${BUILD_ID}\",\"linkId\":\"${LINK_ID}\",\"platform\":\"IOS\"}" || true
+          
+          echo "✅ Build marked as RUNNING"        
 
       - name: Debug env
         shell: bash
@@ -1915,66 +1970,44 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
-          - name: ✅ Callback backend: mark FINAL iOS build status
-            if: always()
-            shell: bash
-            run: |
-              set +e
-              API_BASE="$(tr -d '\r\n' < ci_api_base.txt)"
-              LINK_ID="$(tr -d '\r\n' < ci_link_id.txt)"
-    
-              [ -n "$API_BASE" ] || exit 0
-              [ -n "$LINK_ID" ] || exit 0
-              [ -n "${CI_CALLBACK_TOKEN:-}" ] || exit 0
-    
-              GH_STATUS="${{ job.status }}"   # success | failure | cancelled
-              case "$GH_STATUS" in
-                success)   FINAL="SUCCESS" ;;
-                failure)   FINAL="FAILED" ;;
-                cancelled) FINAL="CANCELLED" ;;
-                *)         FINAL="UNKNOWN" ;;
-              esac
-    
-              # optional: include testflight status if present
-              TF_STATUS=""
-              if [ -f "testflight_status.txt" ]; then
-                TF_STATUS="$(tr -d '\r\n' < testflight_status.txt)"
-              fi
-    
-              curl -sS -X PUT "$API_BASE/api/ci/owner-project-links/$LINK_ID/build-status" \
-                -H "Content-Type: application/json" \
-                -H "X-Auth-Token: $CI_CALLBACK_TOKEN" \
-                -d "{\"platform\":\"IOS\",\"status\":\"$FINAL\",\"testflight\":\"$TF_STATUS\"}" \
-                >/dev/null 2>&1 || true
-    
-              echo "✅ Final status sent to backend: $FINAL (testflight=$TF_STATUS)"
-
-
-          - name: Report final status to backend (always)
-            if: always()
-            run: |
-              STATUS="${{ job.status }}"
-              if [ "$STATUS" = "success" ]; then
-                echo "✅ job success -> mark SUCCESS"
-                curl -sS -X PUT "$API_BASE/api/ci/build-jobs/succeeded" \
-                  -H "Content-Type: application/json" \
-                  -H "X-Auth-Token: $CI_CALLBACK_TOKEN" \
-                  -d "{\"buildId\":\"$BUILD_ID\",\"linkId\":\"$OWNER_PROJECT_LINK_ID\",\"platform\":\"IOS\"}" || true
-              else
-                echo "❌ job failed -> mark FAILED"
-                
-                ERR="CI job failed (see GitHub Actions logs)."
-                curl -sS -X PUT "$API_BASE/api/ci/build-jobs/failed" \
-                  -H "Content-Type: application/json" \
-                  -H "X-Auth-Token: $CI_CALLBACK_TOKEN" \
-                  -d "{\"buildId\":\"$BUILD_ID\",\"linkId\":\"$OWNER_PROJECT_LINK_ID\",\"platform\":\"IOS\",\"error\":\"$ERR\"}" || true
-              fi
+        
 
 
 
-      
-          exit 0
-
+              # ════════════════════════════════════════════════════════════════════
+      # FINAL STATUS UPDATE (runs always, reports SUCCESS or FAILED)
+      # ════════════════════════════════════════════════════════════════════
+      - name: 📡 Report final status to backend
+        if: always()
+        shell: bash
+        run: |
+          set +e
           
-
+          # Read from files (fallback safe)
+          API_BASE="$(cat ci_api_base.txt 2>/dev/null | tr -d '\r\n')"
+          LINK_ID="$(cat ci_link_id.txt 2>/dev/null | tr -d '\r\n')"
           
+          if [ -z "$API_BASE" ] || [ -z "${CI_CALLBACK_TOKEN:-}" ]; then
+            echo "⚠️ API_BASE or CI_CALLBACK_TOKEN missing, skipping final status"
+            exit 0
+          fi
+          
+          JOB_STATUS="${{ job.status }}"
+          
+          if [ "$JOB_STATUS" = "success" ]; then
+            echo "✅ Job succeeded → marking SUCCEEDED"
+            curl -sS -X PUT "${API_BASE}/api/ci/build-jobs/succeeded" \
+              -H "Content-Type: application/json" \
+              -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
+              -d "{\"buildId\":\"${BUILD_ID}\",\"linkId\":\"${LINK_ID}\",\"platform\":\"IOS\"}" || true
+          else
+            echo "❌ Job failed/cancelled → marking FAILED"
+            ERROR_MSG="iOS build ${JOB_STATUS} (see GitHub Actions logs for details)"
+            curl -sS -X PUT "${API_BASE}/api/ci/build-jobs/failed" \
+              -H "Content-Type: application/json" \
+              -H "X-Auth-Token: ${CI_CALLBACK_TOKEN}" \
+              -d "{\"buildId\":\"${BUILD_ID}\",\"linkId\":\"${LINK_ID}\",\"platform\":\"IOS\",\"error\":\"${ERROR_MSG}\"}" || true
+          fi
+          
+          echo "✅ Final status reported"
+
