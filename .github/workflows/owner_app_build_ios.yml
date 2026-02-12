@@ -1329,34 +1329,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-      
+          
+          
           API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
           BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
           APP_NAME="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['APP_NAME'])")"
           
-          # Export to environment for later script usage
-          echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
-          echo "BUNDLE_ID=$BUNDLE_ID" >> $GITHUB_ENV
+       
+          python3 - <<'PY'
+          import json, pathlib
+          payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
+          pathlib.Path("/tmp/ci_payload.json").write_text(json.dumps(payload), encoding="utf-8")
+          print("✅ wrote /tmp/ci_payload.json")
+          PY
           
-          python3 - <<'PY'
-          import json, pathlib
-          payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
-          pathlib.Path("/tmp/ci_payload.json").write_text(json.dumps(payload), encoding="utf-8")
-          print("✅ wrote /tmp/ci_payload.json")
-          PY
-    
-      - name: Write payload to /tmp/ci_payload.json (safe)
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import json, pathlib
-          payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
-          pathlib.Path("/tmp/ci_payload.json").write_text(json.dumps(payload), encoding="utf-8")
-          print("✅ wrote /tmp/ci_payload.json")
-          PY
-
-      
+          
           python3 - <<'PY' > /tmp/owner_env.sh
           import json, shlex
           p = json.load(open("/tmp/ci_payload.json"))
@@ -1366,24 +1353,24 @@ jobs:
           print("OWNER_EMAIL=" + shlex.quote(owner_email))
           print("OWNER_NAME="  + shlex.quote(owner_name))
           PY
-      
+          
           source /tmp/owner_env.sh
-      
+          
           if [ -z "${OWNER_EMAIL:-}" ]; then
             echo "⚠️ ownerEmail not provided, skipping TestFlight setup"
             exit 0
           fi
-      
+          
           echo "📧 Owner: $OWNER_EMAIL ($OWNER_NAME)"
           echo "📱 App: $APP_NAME"
           echo "🆔 Bundle: $BUNDLE_ID"
           echo ""
-      
+          
           python3 - "$API_KEY_JSON" "$BUNDLE_ID" "$OWNER_EMAIL" "$OWNER_NAME" "$APP_NAME" "${BETA_APP_DESCRIPTION:-}" "${BETA_FEEDBACK_EMAIL:-}" "${BETA_CONTACT_PHONE:-}" <<'PYEOF'
           import json, jwt, time, requests, sys, os
-      
+          
           api_key = json.load(open(sys.argv[1]))
-      
+          
           def create_token():
               return jwt.encode({
                   "iss": api_key["issuer_id"],
@@ -1392,10 +1379,10 @@ jobs:
                   "aud": "appstoreconnect-v1"
               }, api_key["key"], algorithm="ES256",
               headers={"kid": api_key["key_id"], "typ": "JWT"})
-      
+          
           def h():
               return {"Authorization": f"Bearer {create_token()}", "Content-Type": "application/json"}
-      
+          
           bundle_id        = sys.argv[2]
           owner_email      = sys.argv[3]
           owner_name       = sys.argv[4]
@@ -1403,14 +1390,14 @@ jobs:
           beta_description = sys.argv[6] if len(sys.argv) > 6 and sys.argv[6] else f"Test {app_name} and provide feedback"
           feedback_email   = sys.argv[7] if len(sys.argv) > 7 and sys.argv[7] else owner_email
           contact_phone    = sys.argv[8] if len(sys.argv) > 8 and sys.argv[8] else "+1234567890"
-      
+          
           print("="*70)
           print("🚀 COMPLETE EXTERNAL TESTFLIGHT SETUP")
           print("="*70)
           print(f"📧 Feedback Email: {feedback_email}")
           print(f"📱 Contact Phone: {contact_phone}")
           print()
-      
+          
           # ───────────────────────────────────────────────────────────────
           # Step 1: Find app
           # ───────────────────────────────────────────────────────────────
@@ -1424,13 +1411,13 @@ jobs:
           app_id = apps[0]["id"]
           print(f"   ✅ App found: {app_id}")
           print()
-      
+          
           # ───────────────────────────────────────────────────────────────
           # Step 2: Ensure beta tester exists
           # ───────────────────────────────────────────────────────────────
           print("🧪 Step 2: Setting up external beta tester...")
           tester_id = None
-      
+          
           try:
               r = requests.get(f"https://api.appstoreconnect.apple.com/v1/betaTesters?filter[email]={owner_email}", headers=h())
               if r.status_code == 200:
@@ -1440,19 +1427,19 @@ jobs:
                       print(f"   ✅ Beta tester exists: {tester_id}")
           except Exception as e:
               print(f"   ⚠️  Error checking testers: {str(e)[:100]}")
-      
+          
           if not tester_id:
               try:
                   print("   ⚙️  Creating external beta tester...")
                   first = owner_name.split()[0] if owner_name.strip() else "Owner"
                   last  = " ".join(owner_name.split()[1:]) if len(owner_name.split()) > 1 else ""
-      
+          
                   r = requests.post(
                       "https://api.appstoreconnect.apple.com/v1/betaTesters",
                       headers=h(),
                       json={"data":{"type":"betaTesters","attributes":{"email": owner_email,"firstName": first,"lastName": last}}}
                   )
-      
+          
                   if r.status_code in (200, 201):
                       tester_id = r.json()["data"]["id"]
                       print(f"   ✅ External beta tester created: {tester_id}")
@@ -1469,11 +1456,11 @@ jobs:
                       print(r.text[:300])
               except Exception as e:
                   print(f"   ⚠️  Error creating tester: {str(e)[:100]}")
-      
+          
           if not tester_id:
               print("   ⚠️ Could not create/find beta tester — will continue without adding tester to group.")
           print()
-      
+          
           # ───────────────────────────────────────────────────────────────
           # Step 3: Ensure external group exists + public link enabled
           # ───────────────────────────────────────────────────────────────
@@ -1484,11 +1471,11 @@ jobs:
           )
           r.raise_for_status()
           groups = r.json().get("data", [])
-      
+          
           group_id = None
           group_name = None
           public_link_enabled = False
-      
+          
           for g in groups:
               if g.get("attributes", {}).get("publicLinkEnabled", False):
                   group_id = g["id"]
@@ -1496,13 +1483,13 @@ jobs:
                   public_link_enabled = True
                   print(f"   ✅ Public external group exists: '{group_name}'")
                   break
-      
+          
           if not group_id and groups:
               group_id = groups[0]["id"]
               group_name = groups[0]["attributes"]["name"]
               public_link_enabled = groups[0]["attributes"].get("publicLinkEnabled", False)
               print(f"   ✅ External group exists: '{group_name}'")
-      
+          
           if not group_id:
               print("   ⚙️  Creating external testing group with public link...")
               r = requests.post(
@@ -1531,7 +1518,7 @@ jobs:
                   print(f"   ❌ Could not create external group (HTTP {r.status_code})")
                   print(r.text[:300])
                   sys.exit(1)
-      
+          
           if not public_link_enabled:
               print(f"   ⚙️  Enabling public link on group '{group_name}'...")
               try:
@@ -1549,7 +1536,7 @@ jobs:
               except Exception as e:
                   print(f"   ⚠️  Error enabling public link: {str(e)[:100]}")
           print()
-      
+          
           # ───────────────────────────────────────────────────────────────
           # Step 4: Retrieve public link (may be empty initially)
           # ───────────────────────────────────────────────────────────────
@@ -1571,7 +1558,7 @@ jobs:
           except Exception as e:
               print(f"   ⚠️  Error retrieving public link: {str(e)[:100]}")
           print()
-      
+          
           # ───────────────────────────────────────────────────────────────
           # Step 5: Add tester to group (SAFE — no duplicate r usage)
           # ───────────────────────────────────────────────────────────────
@@ -1592,14 +1579,14 @@ jobs:
           else:
               print("   ⚠️ tester_id missing — skipping add-tester step.")
           print()
-      
+          
           # ───────────────────────────────────────────────────────────────
           # Step 6: Wait for latest build to be VALID
           # ───────────────────────────────────────────────────────────────
           print("⏳ Step 6: Waiting for build to finish processing...")
           build_id = version = build_num = None
           max_retries = 20
-      
+          
           for attempt in range(max_retries):
               r = requests.get(
                   f"https://api.appstoreconnect.apple.com/v1/builds?filter[app]={app_id}&sort=-uploadedDate&limit=1",
@@ -1607,24 +1594,24 @@ jobs:
               )
               r.raise_for_status()
               builds = r.json().get("data", [])
-      
+          
               if builds:
                   b = builds[0]
                   build_id = b["id"]
                   version = b["attributes"].get("version")
                   build_num = b["attributes"].get("buildNumber", "")
                   state = b["attributes"].get("processingState", "PROCESSING")
-      
+          
                   if state == "VALID":
                       print(f"   ✅ Build ready: {version} ({build_num})")
                       break
                   print(f"   ⏳ Build {version} {state} - attempt {attempt+1}/{max_retries}")
               else:
                   print(f"   ⏳ No builds found yet - attempt {attempt+1}/{max_retries}")
-      
+          
               if attempt < max_retries - 1:
                   time.sleep(30)
-      
+          
           if not build_id:
               print("\n   ⚠️  Build not ready yet")
               with open("testflight_status.txt", "w") as f:
@@ -1637,7 +1624,7 @@ jobs:
                   print("="*70)
               sys.exit(0)
           print()
-      
+          
           # ───────────────────────────────────────────────────────────────
           # Step 7: Export compliance
           # ───────────────────────────────────────────────────────────────
@@ -1659,7 +1646,7 @@ jobs:
           except Exception as e:
               print(f"   ⚠️  {str(e)[:80]}")
           print()
-      
+          
           # ───────────────────────────────────────────────────────────────
           # Step 8: Beta build localization (WhatsNew)
           # ───────────────────────────────────────────────────────────────
@@ -1687,7 +1674,7 @@ jobs:
           except Exception as e:
               print(f"   ⚠️  {str(e)[:80]}")
           print()
-      
+          
           # ───────────────────────────────────────────────────────────────
           # Step 9: Add build to external group
           # ───────────────────────────────────────────────────────────────
@@ -1711,7 +1698,7 @@ jobs:
               print(r.text[:200])
               time.sleep(30)
           print()
-      
+          
           # ───────────────────────────────────────────────────────────────
           # Step 10: Submit for beta review
           # ───────────────────────────────────────────────────────────────
@@ -1732,11 +1719,11 @@ jobs:
           except Exception as e:
               print(f"   ⚠️  Error submitting for review: {str(e)[:100]}")
           print()
-      
+          
           status = "SUBMITTED_FOR_REVIEW" if review_submitted else "BUILD_ADDED"
           with open("testflight_status.txt", "w") as f:
               f.write(status)
-      
+          
           print("="*70)
           if build_added and review_submitted:
               print("🎉 ✅ EXTERNAL TESTING FULLY CONFIGURED!")
