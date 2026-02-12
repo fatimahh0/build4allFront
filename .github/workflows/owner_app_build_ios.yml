@@ -1333,7 +1333,18 @@ jobs:
           API_KEY_JSON="$GITHUB_WORKSPACE/.private/api_key.json"
           BUNDLE_ID="$(tr -d '\r\n' < ci_ios_bundle_id.txt)"
           APP_NAME="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['APP_NAME'])")"
-      
+          
+          # Export to environment for later script usage
+          echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
+          echo "BUNDLE_ID=$BUNDLE_ID" >> $GITHUB_ENV
+          
+          python3 - <<'PY'
+          import json, pathlib
+          payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
+          pathlib.Path("/tmp/ci_payload.json").write_text(json.dumps(payload), encoding="utf-8")
+          print("✅ wrote /tmp/ci_payload.json")
+          PY
+    
       - name: Write payload to /tmp/ci_payload.json (safe)
         shell: bash
         run: |
