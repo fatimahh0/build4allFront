@@ -101,7 +101,16 @@ jobs:
 
       - name: Show payload (debug)
         run: |
-          echo '${{ toJson(github.event.client_payload) }}'
+          cat > payload.json <<'JSON'
+          ${{ toJson(github.event.client_payload) }}
+          JSON
+      
+          echo "----- payload.json -----"
+          cat payload.json
+          echo ""
+          echo "----- pretty -----"
+          python3 -m json.tool payload.json || true
+
 
       - name: Force Android NDK 27
         run: |
