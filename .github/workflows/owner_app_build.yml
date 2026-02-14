@@ -131,6 +131,23 @@ jobs:
             exit 1
           fi
 
+      - name: Force compileSdk 36 (plugin requirement)
+        run: |
+          set -e
+          FILE="android/app/build.gradle.kts"
+
+          if grep -qE 'compileSdk\s*=\s*flutter\.compileSdkVersion' "$FILE"; then
+            sed -i 's/compileSdk\s*=\s*flutter\.compileSdkVersion/compileSdk = 36/g' "$FILE"
+          elif grep -qE 'compileSdk\s*=\s*[0-9]+' "$FILE"; then
+            sed -i 's/compileSdk\s*=\s*[0-9]\+/compileSdk = 36/g' "$FILE"
+          else
+            perl -0777 -i -pe 's/android\s*\{\s*/android {\n    compileSdk = 36\n/s' "$FILE"
+          fi
+
+          echo "---- compileSdk now ----"
+          grep -n "compileSdk" "$FILE" || true
+
+
       - name: Build ci_env.json (BY_LINK runtime-config + fallback)
         run: |
           set -e
@@ -408,18 +425,42 @@ jobs:
           set -e
 
           python3 - <<'PY'
-          import json, urllib.request, pathlib, shutil
+          import json, re, pathlib, shutil, urllib.request
           from xml.sax.saxutils import escape
 
           cfg = json.load(open("lib/env/ci_env.json","r",encoding="utf-8"))
 
-          app_name_raw = cfg.get("APP_NAME","My App")
-          app_name = escape(app_name_raw)
+          def decode_js_unicode(s: str) -> str:
+              # Convert JS-style \u{XXXX} into real characters
+              def repl(m):
+                  try:
+                      return chr(int(m.group(1), 16))
+                  except Exception:
+                      return m.group(0)
+              s = re.sub(r'\\u\{([0-9a-fA-F]+)\}', repl, s)
+
+              # Convert classic \uXXXX sequences too (if present as literals)
+              try:
+                  s = bytes(s, "utf-8").decode("unicode_escape")
+              except Exception:
+                  pass
+
+              # If anything weird is still there, neutralize it
+              s = re.sub(r'\\u\{[^}]*\}', '', s)
+              return s
+
+          app_name_raw = str(cfg.get("APP_NAME") or "My App")
+          app_name_clean = decode_js_unicode(app_name_raw)
+
+          # Android treats backslash as escape in string resources
+          app_name_clean = app_name_clean.replace("\\", "\\\\")
+          app_name_xml = escape(app_name_clean)
 
           api_base = (cfg.get("API_BASE_URL") or "").rstrip("/")
           logo_url = (cfg.get("LOGO_URL") or "").strip()
 
-          print("APP_NAME:", app_name_raw)
+          print("APP_NAME (raw):", app_name_raw)
+          print("APP_NAME (clean):", app_name_clean)
           print("LOGO_URL (raw):", logo_url)
           print("API_BASE_URL:", api_base)
 
@@ -437,7 +478,6 @@ jobs:
                   shutil.copyfile("assets/branding/logo.png","assets/branding/splash.png")
               except Exception as e:
                   print("⚠️ Failed to download logo:", e)
-                  print("Continuing without custom logo...")
 
           values_dir = pathlib.Path("android/app/src/main/res/values")
           values_dir.mkdir(parents=True, exist_ok=True)
@@ -445,16 +485,21 @@ jobs:
           strings_xml = (
             '<?xml version="1.0" encoding="utf-8"?>\n'
             '<resources>\n'
-            f'  <string name="app_name">{app_name}</string>\n'
+            f'  <string name="app_name">{app_name_xml}</string>\n'
             '</resources>\n'
           )
           (values_dir/"strings.xml").write_text(strings_xml, encoding="utf-8")
-          print("strings.xml written for:", app_name_raw)
+
+          print("✅ strings.xml written")
           PY
+
+          echo "----- strings.xml (final) -----"
+          cat android/app/src/main/res/values/strings.xml
 
           flutter pub get
           flutter pub run flutter_launcher_icons
           flutter pub run flutter_native_splash:create
+
 
       - name: Disable R8
         run: |
