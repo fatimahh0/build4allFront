@@ -27,7 +27,7 @@ class ItemCard extends StatelessWidget {
   final String? ctaLabel;
   final VoidCallback? onCtaPressed;
 
-  // ✅ NEW: allow product images to be "contain"
+  // ✅ allow product images to be "contain"
   final BoxFit imageFit;
 
   const ItemCard({
@@ -65,6 +65,9 @@ class ItemCard extends StatelessWidget {
     final showOld = (oldPriceLabel ?? '').trim().isNotEmpty;
     final showMeta = (metaLabel ?? '').trim().isNotEmpty;
 
+    // ✅ CTA disabled if null
+    final bool ctaDisabled = hasCta && onCtaPressed == null;
+
     Widget card = LayoutBuilder(
       builder: (context, constraints) {
         final maxW = constraints.maxWidth;
@@ -100,6 +103,28 @@ class ItemCard extends StatelessWidget {
         final double gapSM = veryCompact
             ? (spacing.sm * 0.65)
             : (compact ? (spacing.sm * 0.85) : spacing.sm);
+
+        final ButtonStyle ctaStyle = ButtonStyle(
+          padding: MaterialStateProperty.all(EdgeInsets.zero),
+          shape: MaterialStateProperty.all(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(cardTokens.radius / 1.5),
+            ),
+          ),
+          elevation: MaterialStateProperty.all(0),
+          backgroundColor: MaterialStateProperty.resolveWith((states) {
+            if (states.contains(MaterialState.disabled)) {
+              return c.surfaceVariant.withOpacity(0.85);
+            }
+            return c.primary;
+          }),
+          foregroundColor: MaterialStateProperty.resolveWith((states) {
+            if (states.contains(MaterialState.disabled)) {
+              return c.onSurface.withOpacity(0.45);
+            }
+            return c.onPrimary;
+          }),
+        );
 
         return Material(
           color: Colors.transparent,
@@ -143,7 +168,7 @@ class ItemCard extends StatelessWidget {
                               color: c.surface,
                               child: Image.network(
                                 resolvedImageUrl!,
-                                fit: imageFit, // ✅ key
+                                fit: imageFit,
                                 errorBuilder: (_, __, ___) {
                                   return Container(
                                     color: c.surface,
@@ -269,7 +294,7 @@ class ItemCard extends StatelessWidget {
                                       veryCompact ? 34 : (compact ? 36 : 40),
                                   child: OutlinedButton.icon(
                                     onPressed: () {
-                                     showModalBottomSheet(
+                                      showModalBottomSheet(
                                         context: context,
                                         isScrollControlled: true,
                                         backgroundColor: Colors.transparent,
@@ -291,7 +316,6 @@ class ItemCard extends StatelessWidget {
                                           );
                                         },
                                       );
-
                                     },
                                     style: OutlinedButton.styleFrom(
                                       side: BorderSide(
@@ -321,22 +345,17 @@ class ItemCard extends StatelessWidget {
                               width: double.infinity,
                               height: ctaH,
                               child: ElevatedButton(
+                                // ✅ null => disabled
                                 onPressed: onCtaPressed,
-                                style: ElevatedButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      cardTokens.radius / 1.5,
-                                    ),
-                                  ),
-                                  elevation: 0,
-                                  backgroundColor: c.primary,
-                                  foregroundColor: c.onPrimary,
-                                ),
+                                style: ctaStyle,
                                 child: Text(
                                   ctaLabel!.trim(),
                                   style: t.labelLarge?.copyWith(
                                     fontWeight: FontWeight.w800,
+                                    // ✅ optional: make disabled text slightly smaller-looking
+                                    color: ctaDisabled
+                                        ? c.onSurface.withOpacity(0.45)
+                                        : null,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,

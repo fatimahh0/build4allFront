@@ -1,5 +1,3 @@
-// lib/features/items/data/repositories/items_repository_impl.dart
-
 import '../../domain/entities/item_details.dart';
 import '../../domain/entities/item_summary.dart';
 import '../../domain/repositories/items_repository.dart';
@@ -9,8 +7,6 @@ import '../services/items_api_service.dart';
 
 /// Concrete implementation of [ItemsRepository] that uses
 /// [ItemsApiService] to talk to the backend.
-///
-/// It converts raw JSON lists into [ItemSummary] entities.
 class ItemsRepositoryImpl implements ItemsRepository {
   final ItemsApiService api;
 
@@ -29,14 +25,15 @@ class ItemsRepositoryImpl implements ItemsRepository {
   }
 
   @override
-  Future<List<ItemSummary>> getGuestUpcoming({int? typeId}) async {
-    final data = await api.getUpcomingGuest(typeId: typeId);
+  Future<List<ItemSummary>> getGuestUpcoming(
+      {int? typeId, String? token}) async {
+    final data = await api.getUpcomingGuest(typeId: typeId, token: token);
     return _mapList(data);
   }
 
   @override
-  Future<List<ItemSummary>> getByType(int typeId) async {
-    final data = await api.getByType(typeId);
+  Future<List<ItemSummary>> getByType(int typeId, {String? token}) async {
+    final data = await api.getByType(typeId, token: token);
     return _mapList(data);
   }
 
@@ -50,19 +47,28 @@ class ItemsRepositoryImpl implements ItemsRepository {
   }
 
   @override
-  Future<ItemDetails> getById(int id) async {
-    final data = await api.getById(id);
+  Future<ItemDetails> getById(int id, {String? token}) async {
+    final data = await api.getById(id, token: token);
     return ItemDetailsModel.fromJson(data).toEntity();
   }
 
-@override
+  @override
   Future<ItemDetails> getDetails(int id, {String? token}) async {
     final json = await api.getDetails(id, token: token);
     return ItemDetailsModel.fromJson(json).toEntity();
   }
+
   @override
-  Future<List<ItemSummary>> getNewArrivals({int? categoryId, int? days}) async {
-    final data = await api.getNewArrivals(categoryId: categoryId, days: days);
+  Future<List<ItemSummary>> getNewArrivals({
+    int? categoryId,
+    int? days,
+    String? token,
+  }) async {
+    final data = await api.getNewArrivals(
+      categoryId: categoryId,
+      days: days,
+      token: token,
+    );
     return _mapList(data);
   }
 
@@ -70,14 +76,20 @@ class ItemsRepositoryImpl implements ItemsRepository {
   Future<List<ItemSummary>> getBestSellers({
     int? categoryId,
     int limit = 20,
+    String? token,
   }) async {
-    final data = await api.getBestSellers(categoryId: categoryId, limit: limit);
+    final data = await api.getBestSellers(
+      categoryId: categoryId,
+      limit: limit,
+      token: token,
+    );
     return _mapList(data);
   }
 
   @override
-  Future<List<ItemSummary>> getDiscounted({int? categoryId}) async {
-    final data = await api.getDiscounted(categoryId: categoryId);
+  Future<List<ItemSummary>> getDiscounted(
+      {int? categoryId, String? token}) async {
+    final data = await api.getDiscounted(categoryId: categoryId, token: token);
     return _mapList(data);
   }
 }

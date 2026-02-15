@@ -12,10 +12,12 @@ class CartSummaryCard extends StatelessWidget {
   final double? discountTotal;
   final double grandTotal;
 
-  // keep it to avoid breaking calls, but we won't use it (Explore-style currency)
   final String? currencySymbol;
 
   final bool isUpdating;
+  final bool canCheckout;
+  final List<String> blockingErrors;
+
   final String checkoutLabel;
   final VoidCallback onCheckout;
 
@@ -28,6 +30,10 @@ class CartSummaryCard extends StatelessWidget {
     required this.grandTotal,
     required this.currencySymbol,
     required this.isUpdating,
+
+    // ✅ NEW
+    required this.canCheckout,
+    required this.blockingErrors,
     required this.checkoutLabel,
     required this.onCheckout,
   });
@@ -42,6 +48,8 @@ class CartSummaryCard extends StatelessWidget {
     final t = Theme.of(context).textTheme;
 
     final hasDiscount = (discountTotal ?? 0) > 0;
+
+    final bool checkoutEnabled = !isUpdating && canCheckout;
 
     return Container(
       padding: EdgeInsets.all(spacing.lg),
@@ -100,15 +108,12 @@ class CartSummaryCard extends StatelessWidget {
           SizedBox(height: spacing.md),
 
           _SummaryRow(
-            label: l10n.itemsSubtotalLabel,
-            value: money(context, itemsTotal),
-          ),
+              label: l10n.itemsSubtotalLabel,
+              value: money(context, itemsTotal)),
           SizedBox(height: spacing.xs),
 
           _SummaryRow(
-            label: l10n.shippingLabel,
-            value: money(context, shippingTotal),
-          ),
+              label: l10n.shippingLabel, value: money(context, shippingTotal)),
           SizedBox(height: spacing.xs),
 
           _SummaryRow(label: l10n.taxLabel, value: money(context, taxTotal)),
@@ -146,12 +151,25 @@ class CartSummaryCard extends StatelessWidget {
             ],
           ),
 
+          // ✅ Small hint if blocked
+          if (!canCheckout && blockingErrors.isNotEmpty) ...[
+            SizedBox(height: spacing.sm),
+            Text(
+              blockingErrors.first,
+              textAlign: TextAlign.center,
+              style: t.bodySmall?.copyWith(
+                color: c.error.withOpacity(0.9),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+
           SizedBox(height: spacing.lg),
 
           SizedBox(
             height: 50,
             child: ElevatedButton(
-              onPressed: isUpdating ? null : onCheckout,
+              onPressed: checkoutEnabled ? onCheckout : null,
               style: ElevatedButton.styleFrom(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(999),

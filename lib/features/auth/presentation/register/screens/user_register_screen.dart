@@ -47,9 +47,8 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
 
     if (!_formKey.currentState!.validate()) return;
 
-    final email = _method == RegisterMethod.email
-        ? _emailCtrl.text.trim()
-        : null;
+    final email =
+        _method == RegisterMethod.email ? _emailCtrl.text.trim() : null;
     final phone = _method == RegisterMethod.phone ? _fullPhone?.trim() : null;
 
     if (_method == RegisterMethod.email && (email == null || email.isEmpty)) {
@@ -63,13 +62,13 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
     }
 
     context.read<RegisterBloc>().add(
-      RegisterSendCodeSubmitted(
-        method: _method,
-        email: email,
-        phoneNumber: phone,
-        password: _passwordCtrl.text,
-      ),
-    );
+          RegisterSendCodeSubmitted(
+            method: _method,
+            email: email,
+            phoneNumber: phone,
+            password: _passwordCtrl.text,
+          ),
+        );
   }
 
   @override
@@ -89,11 +88,14 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: BlocConsumer<RegisterBloc, RegisterState>(
               listener: (context, state) {
-                if (state.errorMessage != null) {
-                  final msg = state.errorMessage!.isNotEmpty
-                      ? state.errorMessage!
-                      : l10n.authErrorGeneric;
-                  AppToast.show(context, msg, isError: true);
+                final l10n = AppLocalizations.of(context)!;
+
+                if (state.errorCode != null) {
+                  AppToast.show(
+                    context,
+                    _l10nFromCode(l10n, state.errorCode!),
+                    isError: true,
+                  );
                 }
 
                 if (state.codeSent &&
@@ -465,3 +467,47 @@ class _PhoneFieldIntlRegister extends StatelessWidget {
     );
   }
 }
+
+String _l10nFromCode(AppLocalizations l10n, String code) {
+  switch (code) {
+    case 'EMAIL_ALREADY_EXISTS':
+      return l10n.authEmailAlreadyExists;
+    case 'PHONE_ALREADY_EXISTS':
+      return l10n.authPhoneAlreadyExists;
+    case 'USERNAME_TAKEN':
+      return l10n.authUsernameTaken;
+
+    case 'USER_NOT_FOUND':
+      return l10n.authUserNotFound;
+    case 'WRONG_PASSWORD':
+      return l10n.authWrongPassword;
+    case 'INVALID_CREDENTIALS':
+      return l10n.authInvalidCredentials;
+    case 'INACTIVE':
+      return l10n.authAccountInactive;
+
+    case 'NO_INTERNET':
+      return l10n.networkNoInternet;
+    case 'TIMEOUT':
+      return l10n.networkTimeout;
+    case 'NETWORK_ERROR':
+      return l10n.networkError;
+
+    case 'VALIDATION_ERROR':
+      return l10n.httpValidationError;
+    case 'CONFLICT':
+      return l10n.httpConflict;
+    case 'UNAUTHORIZED':
+      return l10n.httpUnauthorized;
+    case 'FORBIDDEN':
+      return l10n.httpForbidden;
+    case 'NOT_FOUND':
+      return l10n.httpNotFound;
+    case 'SERVER_ERROR':
+      return l10n.httpServerError;
+
+    default:
+      return l10n.authErrorGeneric;
+  }
+}
+

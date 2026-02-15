@@ -13,7 +13,7 @@ class CartRepositoryImpl implements CartRepository {
 
   CartRepositoryImpl(this.api);
 
-  Cart _mapCart(CartModel model) {
+ Cart _mapCart(CartModel model) {
     return Cart(
       id: model.cartId,
       status: model.status,
@@ -24,6 +24,11 @@ class CartRepositoryImpl implements CartRepository {
       grandTotal: model.grandTotal,
       currencySymbol: model.currencySymbol,
       items: model.items.map(_mapCartItem).toList(),
+
+      // ✅ NEW
+      canCheckout: model.canCheckout,
+      blockingErrors: model.blockingErrors,
+      checkoutTotalPrice: model.checkoutTotalPrice,
     );
   }
 
@@ -36,6 +41,14 @@ class CartRepositoryImpl implements CartRepository {
       quantity: m.quantity,
       unitPrice: m.unitPrice,
       lineTotal: m.lineTotal,
+
+      // ✅ NEW
+      availableStock: m.availableStock,
+      outOfStock: m.outOfStock,
+      quantityExceedsStock: m.quantityExceedsStock,
+      maxAllowedQuantity: m.maxAllowedQuantity,
+      disabled: m.disabled,
+      blockingReason: m.blockingReason,
     );
   }
 

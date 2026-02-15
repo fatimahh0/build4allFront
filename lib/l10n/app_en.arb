@@ -1005,6 +1005,25 @@
   "ai_chat_error_send_failed": "Failed to send message",
   "ai_prompt_summary": "Summarize this item",
   "ai_prompt_features": "What are the main features?",
-  "ai_prompt_best_use": "Is this good for me?"
+  "ai_prompt_best_use": "Is this good for me?",
+  "outOfStock" : "Out Of Stock",
+   "authUsernameTaken": "Username already in use.",
+  "authEmailAlreadyExists": "This email is already registered.",
+  "authPhoneAlreadyExists": "This phone number is already registered.",
+  "authUserNotFound": "No account found for this email/phone.",
+  "authWrongPassword": "Wrong password.",
+  "authInvalidCredentials": "Invalid email/phone or password.",
+  "authAccountInactive": "Your account is inactive. Reactivate to continue.",
+
+  "httpValidationError": "Some fields are invalid.",
+  "httpConflict": "Conflict. Please retry.",
+  "httpUnauthorized": "Unauthorized.",
+  "httpForbidden": "You don’t have permission to do this.",
+  "httpNotFound": "Not found.",
+  "httpServerError": "Server error. Please try later.",
+
+  "networkNoInternet": "No internet connection.",
+  "networkTimeout": "Request timed out.",
+  "networkError": "Network error."
   
 }

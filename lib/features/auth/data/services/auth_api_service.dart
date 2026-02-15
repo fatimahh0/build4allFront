@@ -282,17 +282,6 @@ class AuthApiService {
 
   // ========================= USER REACTIVATION =========================
 
-  /// Call /api/auth/reactivate to turn an INACTIVE user back to ACTIVE.
-  ///
-  /// Returns the updated user model with the new token.
-  // ========================= USER REACTIVATION =========================
-
-  // ========================= USER REACTIVATION =========================
-
-  /// Reactivate an INACTIVE user account.
-  /// - Calls /api/auth/reactivate with { "id": userId }
-  /// - Stores the new JWT token in AuthTokenStore
-  /// - Does NOT try to parse a UserModel (to avoid decode errors).
   Future<void> reactivateUser({
     required int userId,
     required int ownerProjectLinkId,
@@ -305,7 +294,7 @@ class AuthApiService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'id': userId,
-          'ownerProjectLinkId': ownerProjectLinkId, // ✅ REQUIRED
+          'ownerProjectLinkId': ownerProjectLinkId,
         }),
       );
 
@@ -340,7 +329,7 @@ class AuthApiService {
   Future<AdminLoginResponse> adminLogin({
     required String usernameOrEmail,
     required String password,
-    int? ownerProjectId, // optional
+    int? ownerProjectId,
   }) async {
     final uri = _uri('/api/auth/admin/login/front');
 
@@ -359,7 +348,7 @@ class AuthApiService {
     final decoded = _safeJson(resp.body);
     if (resp.statusCode >= 400) _throwAdminFromLogin(resp, decoded);
 
-    return AdminLoginResponse.fromJson(decoded); // ✅
+    return AdminLoginResponse.fromJson(decoded);
   }
 
   // ============================= TOKEN HELPERS ==========================
@@ -368,7 +357,6 @@ class AuthApiService {
     final token = json['token'] as String?;
     final wasInactive = json['wasInactive'] as bool? ?? false;
 
-    // ✅ try to get user map from the login payload
     final user = (json['user'] as Map?)?.cast<String, dynamic>();
 
     if (token != null && token.isNotEmpty) {
@@ -376,7 +364,6 @@ class AuthApiService {
       g.setAuthToken(token);
     }
 
-    // ✅ persist user json + userId if available
     if (user != null && user.isNotEmpty) {
       await _tokenStore.saveUserJson(user);
 
@@ -395,6 +382,11 @@ class AuthApiService {
     debugPrint('🔓 Auth cleared: token removed from storage and globals');
   }
 
+  Future<void> clearUserSession() async {
+    await _tokenStore.clear();
+    g.setAuthToken('');
+  }
+
   // ============================ HELPERS ================================
 
   Map<String, dynamic> _safeJson(String body) {
@@ -408,11 +400,47 @@ class AuthApiService {
     }
   }
 
+  /// ✅ upgraded: gets best message from backend without assuming structure
   String? _extractBackendMessage(Map<String, dynamic> json) {
-    final m = json['message'];
-    final e = json['error'];
-    if (m is String && m.trim().isNotEmpty) return m;
-    if (e is String && e.trim().isNotEmpty) return e;
+    dynamic v;
+
+    // common keys
+    for (final key in ['message', 'error', 'detail', 'title']) {
+      v = json[key];
+      if (v is String && v.trim().isNotEmpty) return v.trim();
+    }
+
+    // errors can be List or Map
+    v = json['errors'];
+
+    // errors: [".."]
+    if (v is List && v.isNotEmpty) {
+      final first = v.first;
+      if (first is String && first.trim().isNotEmpty) return first.trim();
+
+      // errors: [{field: [".."]}]
+      if (first is Map) {
+        for (final entry in first.entries) {
+          final val = entry.value;
+          if (val is String && val.trim().isNotEmpty) return val.trim();
+          if (val is List && val.isNotEmpty && val.first is String) {
+            return (val.first as String).trim();
+          }
+        }
+      }
+    }
+
+    // errors: { field: [".."] }
+    if (v is Map) {
+      for (final entry in v.entries) {
+        final val = entry.value;
+        if (val is String && val.trim().isNotEmpty) return val.trim();
+        if (val is List && val.isNotEmpty && val.first is String) {
+          return (val.first as String).trim();
+        }
+      }
+    }
+
     return null;
   }
 
@@ -448,82 +476,117 @@ class AuthApiService {
     }
   }
 
+  // ✅ IMPORTANT: this returns codes so UI can show l10n messages
   Never _throwAuthFromHttp(
     http.Response resp,
     Map<String, dynamic> decoded, {
     required String fallback,
   }) {
-    final backendMsg = _extractBackendMessage(decoded);
     final status = resp.statusCode;
+    final backendMsg = _extractBackendMessage(decoded);
+    final msg = (backendMsg?.trim().isNotEmpty ?? false)
+        ? backendMsg!.trim()
+        : fallback;
 
-    final message = backendMsg ??
-        () {
-          switch (status) {
-            case 400:
-              return 'Invalid request.';
-            case 401:
-              return 'Unauthorized.';
-            case 403:
-              return 'You don’t have permission to do this.';
-            case 404:
-              return 'Not found.';
-            case 409:
-              return 'Conflict. Please retry.';
-            case 422:
-              return 'Some fields are invalid.';
-            case 500:
-              return 'Server error. Please try later.';
-            default:
-              return fallback;
-          }
-        }();
+    final m = msg.toLowerCase();
+    bool hasAny(List<String> needles) => needles.any((n) => m.contains(n));
 
-    throw AuthException(message, original: resp);
+    final isAlreadyExists =
+        hasAny(['already', 'exists', 'in use', 'taken', 'duplicate']);
+    final mentionsUsername = hasAny(['username']);
+    final mentionsEmail = hasAny(['email']);
+    final mentionsPhone =
+        hasAny(['phone', 'phone number', 'phonenumber', 'mobile']);
+
+    final isConflictStatus = (status == 409 || status == 400 || status == 422);
+
+    // --- specific conflicts first (best UX) ---
+    if (isConflictStatus && isAlreadyExists && mentionsUsername) {
+      throw AuthException(msg, code: 'USERNAME_TAKEN', original: resp);
+    }
+    if (isConflictStatus && isAlreadyExists && mentionsEmail) {
+      throw AuthException(msg, code: 'EMAIL_ALREADY_EXISTS', original: resp);
+    }
+    if (isConflictStatus && isAlreadyExists && mentionsPhone) {
+      throw AuthException(msg, code: 'PHONE_ALREADY_EXISTS', original: resp);
+    }
+
+    // --- generic classification ---
+    if (status == 400 || status == 422) {
+      throw AuthException(msg, code: 'VALIDATION_ERROR', original: resp);
+    }
+    if (status == 401) {
+      throw AuthException(msg, code: 'UNAUTHORIZED', original: resp);
+    }
+    if (status == 403) {
+      throw AuthException(msg, code: 'FORBIDDEN', original: resp);
+    }
+    if (status == 404) {
+      throw AuthException(msg, code: 'NOT_FOUND', original: resp);
+    }
+    if (status == 409) {
+      throw AuthException(msg, code: 'CONFLICT', original: resp);
+    }
+    if (status >= 500) {
+      throw AuthException(msg, code: 'SERVER_ERROR', original: resp);
+    }
+
+    throw AuthException(msg, code: 'HTTP_ERROR', original: resp);
   }
 
-  Future<void> clearUserSession() async {
-    await _tokenStore.clear();
-    g.setAuthToken('');
-  }
-
+  // ✅ IMPORTANT: login now gives specific codes (not everything = INVALID_CREDENTIALS)
   Never _throwAuthFromLogin(http.Response resp, Map<String, dynamic> decoded) {
     final status = resp.statusCode;
-    final backendMsg = _extractBackendMessage(decoded)?.toLowerCase() ?? '';
-
-    if (status == 404 || backendMsg.contains('user not found')) {
-      throw AuthException(
-        'User not found',
-        code: 'USER_NOT_FOUND',
-        original: resp,
-      );
-    }
-
-    if (status == 400 ||
-        status == 401 ||
-        backendMsg.contains('invalid credentials') ||
-        backendMsg.contains('bad credentials') ||
-        backendMsg.contains('wrong password')) {
-      throw AuthException(
-        'Invalid email or password',
-        code: 'INVALID_CREDENTIALS',
-        original: resp,
-      );
-    }
-
-    if (status == 423 ||
-        backendMsg.contains('inactive') ||
-        backendMsg.contains('disabled') ||
-        backendMsg.contains('locked')) {
-      throw AuthException(
-        'Your account is inactive. Reactivate to continue.',
-        code: 'INACTIVE',
-        original: resp,
-      );
-    }
-
-    final msg =
+    final rawMsg =
         _extractBackendMessage(decoded) ?? 'Login failed. Please try again.';
-    throw AuthException(msg, code: 'AUTH_ERROR', original: resp);
+    final m = rawMsg.toLowerCase();
+
+    bool hasAny(List<String> needles) => needles.any((n) => m.contains(n));
+
+    final isAlreadyExists =
+        hasAny(['already', 'exists', 'in use', 'taken', 'duplicate']);
+    final mentionsEmail = hasAny(['email']);
+    final mentionsPhone =
+        hasAny(['phone', 'phone number', 'phonenumber', 'mobile']);
+    final mentionsUsername = hasAny(['username']);
+
+    // if backend sends already-exists even in login, classify it correctly
+    if ((status == 400 || status == 409 || status == 422) &&
+        isAlreadyExists &&
+        mentionsEmail) {
+      throw AuthException(rawMsg, code: 'EMAIL_ALREADY_EXISTS', original: resp);
+    }
+    if ((status == 400 || status == 409 || status == 422) &&
+        isAlreadyExists &&
+        mentionsPhone) {
+      throw AuthException(rawMsg, code: 'PHONE_ALREADY_EXISTS', original: resp);
+    }
+    if ((status == 400 || status == 409 || status == 422) &&
+        isAlreadyExists &&
+        mentionsUsername) {
+      throw AuthException(rawMsg, code: 'USERNAME_TAKEN', original: resp);
+    }
+
+    // user not found
+    if (status == 404 || hasAny(['user not found', 'not found', 'no user'])) {
+      throw AuthException(rawMsg, code: 'USER_NOT_FOUND', original: resp);
+    }
+
+    // inactive/locked
+    if (status == 423 || hasAny(['inactive', 'disabled', 'locked'])) {
+      throw AuthException(rawMsg, code: 'INACTIVE', original: resp);
+    }
+
+    // wrong password vs invalid creds
+    if (status == 400 || status == 401) {
+      if (hasAny(['wrong password', 'incorrect password']) ||
+          hasAny(['password'])) {
+        throw AuthException(rawMsg, code: 'WRONG_PASSWORD', original: resp);
+      }
+      throw AuthException(rawMsg, code: 'INVALID_CREDENTIALS', original: resp);
+    }
+
+    throw AuthException(rawMsg, code: 'AUTH_ERROR', original: resp);
   }
 
   Never _throwAdminFromLogin(http.Response resp, Map<String, dynamic> decoded) {

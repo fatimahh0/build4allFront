@@ -8,28 +8,15 @@ class HomeState extends Equatable {
   final bool hasLoaded;
   final String? errorMessage;
 
-  /// "Popular" = generic main list (upcoming/new).
   final List<ItemSummary> popularItems;
-
-  /// Later: real interest-based; for now can mirror popular.
   final List<ItemSummary> recommendedItems;
 
-  /// Category labels used by chips (names only).
   final List<String> categories;
-
-  /// Full category entities (with id) for filtering.
   final List<Category> categoryEntities;
 
-  /// Flash sale / discounted items.
   final List<ItemSummary> flashSaleItems;
-
-  /// New arrivals items.
   final List<ItemSummary> newArrivalsItems;
-
-  /// Best sellers items.
   final List<ItemSummary> bestSellersItems;
-
-  /// Top rated items (for now we can reuse best sellers).
   final List<ItemSummary> topRatedItems;
 
   const HomeState({
@@ -47,18 +34,18 @@ class HomeState extends Equatable {
   });
 
   factory HomeState.initial() => const HomeState(
-    isLoading: false,
-    hasLoaded: false,
-    errorMessage: null,
-    popularItems: <ItemSummary>[],
-    recommendedItems: <ItemSummary>[],
-    categories: <String>[],
-    categoryEntities: <Category>[],
-    flashSaleItems: <ItemSummary>[],
-    newArrivalsItems: <ItemSummary>[],
-    bestSellersItems: <ItemSummary>[],
-    topRatedItems: <ItemSummary>[],
-  );
+        isLoading: false,
+        hasLoaded: false,
+        errorMessage: null,
+        popularItems: <ItemSummary>[],
+        recommendedItems: <ItemSummary>[],
+        categories: <String>[],
+        categoryEntities: <Category>[],
+        flashSaleItems: <ItemSummary>[],
+        newArrivalsItems: <ItemSummary>[],
+        bestSellersItems: <ItemSummary>[],
+        topRatedItems: <ItemSummary>[],
+      );
 
   HomeState copyWith({
     bool? isLoading,
@@ -76,7 +63,7 @@ class HomeState extends Equatable {
     return HomeState(
       isLoading: isLoading ?? this.isLoading,
       hasLoaded: hasLoaded ?? this.hasLoaded,
-      errorMessage: errorMessage,
+      errorMessage: errorMessage ?? this.errorMessage,
       popularItems: popularItems ?? this.popularItems,
       recommendedItems: recommendedItems ?? this.recommendedItems,
       categories: categories ?? this.categories,
@@ -90,16 +77,16 @@ class HomeState extends Equatable {
 
   @override
   List<Object?> get props => [
-    isLoading,
-    hasLoaded,
-    errorMessage,
-    popularItems,
-    recommendedItems,
-    categories,
-    categoryEntities,
-    flashSaleItems,
-    newArrivalsItems,
-    bestSellersItems,
-    topRatedItems,
-  ];
+        isLoading,
+        hasLoaded,
+        errorMessage,
+        popularItems,
+        recommendedItems,
+        categories,
+        categoryEntities,
+        flashSaleItems,
+        newArrivalsItems,
+        bestSellersItems,
+        topRatedItems,
+      ];
 }

@@ -36,9 +36,6 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   void _goHome() {
-    // ✅ Force MainShell to open Home tab
-    // IMPORTANT: Make sure "/" is your MainShell route.
-    // If your MainShell route is "/shell" (for example), change it here too.
     Navigator.of(context).pushNamedAndRemoveUntil(
       '/',
       (route) => false,
@@ -71,7 +68,6 @@ class _CartScreenState extends State<CartScreen> {
 
           final cart = state.cart;
 
-          // ✅ Empty cart -> Browse must go HOME (not pop)
           if (cart == null || cart.items.isEmpty) {
             return _EmptyCartView(
               message: l10n.cart_empty_message,
@@ -79,6 +75,11 @@ class _CartScreenState extends State<CartScreen> {
               onGoShopping: _goHome,
             );
           }
+
+          final bool canCheckout = cart.canCheckout == true;
+          final blockingErrors = (cart.blockingErrors ?? <String>[])
+              .where((e) => e.trim().isNotEmpty)
+              .toList();
 
           return RefreshIndicator(
             onRefresh: () async {
@@ -88,43 +89,72 @@ class _CartScreenState extends State<CartScreen> {
               padding: EdgeInsets.all(spacing.lg),
               child: Column(
                 children: [
+                  // ✅ Banner when checkout blocked
+                  if (!canCheckout && blockingErrors.isNotEmpty) ...[
+                    _CheckoutBlockedBanner(errors: blockingErrors),
+                    SizedBox(height: spacing.md),
+                  ],
+
                   Expanded(
                     child: ListView.builder(
                       physics: const AlwaysScrollableScrollPhysics(),
                       itemCount: cart.items.length,
                       itemBuilder: (context, index) {
                         final item = cart.items[index];
+
                         return CartItemTile(
                           item: item,
-                          currencySymbol: cart.currencySymbol, // kept, unused
+                          currencySymbol: cart.currencySymbol, // kept
                           onRemove: () {
                             context.read<CartBloc>().add(
-                              CartItemRemoved(cartItemId: item.cartItemId),
-                            );
+                                  CartItemRemoved(cartItemId: item.cartItemId),
+                                );
                           },
                           onQuantityChanged: (q) {
                             context.read<CartBloc>().add(
-                              CartItemQuantityChanged(
-                                cartItemId: item.cartItemId,
-                                quantity: q,
-                              ),
-                            );
+                                  CartItemQuantityChanged(
+                                    cartItemId: item.cartItemId,
+                                    quantity: q,
+                                  ),
+                                );
                           },
                         );
                       },
                     ),
                   ),
+
                   SizedBox(height: spacing.md),
+
                   CartSummaryCard(
                     itemsTotal: cart.itemsTotal,
                     shippingTotal: cart.shippingTotal,
                     taxTotal: cart.taxTotal,
                     discountTotal: cart.discountTotal,
                     grandTotal: cart.grandTotal,
-                    currencySymbol: cart.currencySymbol, // kept, unused
+                    currencySymbol: cart.currencySymbol, // kept
                     isUpdating: state.isUpdating,
+
+                    // ✅ NEW
+                    canCheckout: canCheckout,
+                    blockingErrors: blockingErrors,
+
                     checkoutLabel: l10n.cart_checkout,
                     onCheckout: () {
+                      // hard guard: even if user taps fast
+                      if (!canCheckout) {
+                        final msg = blockingErrors.isNotEmpty
+                            ? blockingErrors.first
+                            : 'Fix your cart before checkout.';
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(msg),
+                            backgroundColor:
+                                Theme.of(context).colorScheme.error,
+                          ),
+                        );
+                        return;
+                      }
+
                       final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
                       final currencyId = int.tryParse(Env.currencyId) ?? 1;
 
@@ -142,6 +172,55 @@ class _CartScreenState extends State<CartScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _CheckoutBlockedBanner extends StatelessWidget {
+  final List<String> errors;
+
+  const _CheckoutBlockedBanner({required this.errors});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final spacing = context.read<ThemeCubit>().state.tokens.spacing;
+
+    return Container(
+      padding: EdgeInsets.all(spacing.md),
+      decoration: BoxDecoration(
+        color: c.error.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: c.error.withOpacity(0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.error_outline_rounded, color: c.error),
+          SizedBox(width: spacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Checkout blocked',
+                  style: t.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: c.error,
+                  ),
+                ),
+                SizedBox(height: spacing.xs),
+                Text(
+                  errors.join('\n'),
+                  style: t.bodyMedium
+                      ?.copyWith(color: c.onSurface.withOpacity(0.85)),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

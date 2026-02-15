@@ -240,7 +240,9 @@ RepositoryProvider<AdminTokenStore>.value(value: adminTokenStore),
               getDiscountedItems: GetDiscountedItems(
                 ctx.read<ItemsRepository>(),
               ),
-            )..add(const HomeStarted()),
+           )..add(HomeStarted(
+                token: (g.token ?? '').trim().isEmpty ? null : g.token)),
+
           ),
 
           BlocProvider<CartBloc>(

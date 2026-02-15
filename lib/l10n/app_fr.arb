@@ -877,5 +877,27 @@
 
   "adminShippingTotal": "Total livraison",
   "adminItemsTaxTotal": "Total taxe articles",
-  "adminShippingTaxTotal": "Total taxe livraison"
+  "adminShippingTaxTotal": "Total taxe livraison",
+  "authUsernameTaken": "Ce nom d’utilisateur est déjà utilisé.",
+  "authEmailAlreadyExists": "Cet e-mail est déjà enregistré.",
+  "authPhoneAlreadyExists": "Ce numéro de téléphone est déjà enregistré.",
+
+  "authUserNotFound": "Aucun compte trouvé pour cet e-mail/téléphone.",
+  "authWrongPassword": "Mot de passe incorrect.",
+  "authInvalidCredentials": "Identifiants invalides.",
+  "authAccountInactive": "Votre compte est inactif. Réactivez-le pour continuer.",
+
+  "httpValidationError": "Certains champs sont invalides.",
+  "httpConflict": "Conflit. Veuillez réessayer.",
+  "httpUnauthorized": "Non autorisé.",
+  "httpForbidden": "Vous n’avez pas la permission de faire cela.",
+  "httpNotFound": "Introuvable.",
+  "httpServerError": "Erreur serveur. Veuillez réessayer plus tard.",
+
+  "networkNoInternet": "Aucune connexion Internet.",
+  "networkTimeout": "Délai d’attente dépassé.",
+  "networkError": "Erreur réseau.",
+
+  "authErrorGeneric": "Une erreur s’est produite. Veuillez réessayer.",
+   "outOfStock" :"En rupture de stock"
 }

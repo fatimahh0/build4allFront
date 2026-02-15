@@ -1,9 +1,9 @@
 // lib/features/explore/presentation/screens/explore_screen.dart
 
-
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:build4front/core/network/globals.dart' as authState;
 import 'package:build4front/features/itemsDetails/presentation/screens/item_details_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -20,10 +20,10 @@ import 'package:build4front/features/items/domain/entities/item_summary.dart';
 import 'package:build4front/common/widgets/app_search_field.dart';
 import 'package:build4front/common/widgets/ItemCard.dart';
 
-//  currency formatter (dynamic currency, not hardcoded $)
+// currency formatter (dynamic currency, not hardcoded $)
 import 'package:build4front/features/catalog/cubit/money.dart';
 
-//  Auth + Cart + Toast
+// Auth + Cart + Toast
 import 'package:build4front/features/auth/presentation/login/bloc/auth_bloc.dart';
 import 'package:build4front/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:build4front/features/cart/presentation/bloc/cart_event.dart';
@@ -58,12 +58,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
   int? _selectedCategoryId;
   ExploreSortOption _sortOption = ExploreSortOption.relevance;
 
-  // ✅ pagination (3 rows × 2 cols = 6 items per page)
+  // pagination (3 rows × 2 cols = 6 items per page)
   static const int _rowsPerPage = 3;
   static const int _itemsPerPage = _rowsPerPage * 2;
   int _page = 1;
 
-  // ✅ typing debounce
+  // typing debounce
   Timer? _searchDebounce;
 
   @override
@@ -76,7 +76,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
     final homeBloc = context.read<HomeBloc>();
     if (!homeBloc.state.hasLoaded && !homeBloc.state.isLoading) {
-      homeBloc.add(const HomeStarted());
+      final raw = (authState.token ?? '').trim();
+      final token = raw.isEmpty ? null : raw;
+
+      homeBloc.add(HomeStarted(token: token));
     }
   }
 
@@ -101,7 +104,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     });
   }
 
-  // ✅ NEW: detect if app has ANY items (all sections)
+  // detect if app has ANY items (all sections)
   bool _hasAnyItems(HomeState s) {
     return s.recommendedItems.isNotEmpty ||
         s.popularItems.isNotEmpty ||
@@ -111,7 +114,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         s.topRatedItems.isNotEmpty;
   }
 
-  // ✅ NEW: category ids that actually appear in a given item list
+  // category ids that actually appear in a given item list
   Set<int> _categoryIdsFromItems(List<ItemSummary> items) {
     final set = <int>{};
     for (final it in items) {
@@ -119,6 +122,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
       if (cid != null) set.add(cid);
     }
     return set;
+  }
+
+  // ✅ NEW: out of stock helper (correct place)
+  bool _isOutOfStock(ItemSummary item) {
+    if (item.kind != ItemKind.product) return false;
+    final s = item.stock;
+    if (s == null) return false;
+    return s <= 0;
   }
 
   @override
@@ -137,17 +148,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
             final baseItems = _baseItemsForExplore(homeState);
 
-            // ✅ categories should be based on items that exist (base dataset)
+            // categories should be based on items that exist (base dataset)
             final availableCategoryIds = _categoryIdsFromItems(baseItems);
 
-            // ✅ derive categories (entities) that have items
+            // derive categories (entities) that have items
             final catsWithItems = homeState.categoryEntities
                 .where((c) => availableCategoryIds.contains(c.id))
                 .toList();
 
             final categoryNames = catsWithItems.map((c) => c.name).toList();
 
-            // ✅ if initialCategoryId/Label points to category that has no items -> treat as "All"
+            // if initialCategoryId/Label points to category that has no items -> treat as "All"
             final rawSelectedLabel = _selectedCategoryLabel ??
                 _labelForCategoryId(homeState, _selectedCategoryId);
 
@@ -166,7 +177,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               effectiveCategoryId: effectiveSelectedCategoryId,
             );
 
-            // ✅ pagination math
+            // pagination math
             final totalItems = filtered.length;
             final totalPages =
                 totalItems == 0 ? 1 : ((totalItems / _itemsPerPage).ceil());
@@ -180,19 +191,24 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 ? <ItemSummary>[]
                 : filtered.sublist(start, end);
 
-            // ✅ show category chips only when items exist
+            // show category chips only when items exist
             final showCategories = _hasAnyItems(homeState) &&
                 baseItems.isNotEmpty &&
                 categoryNames.isNotEmpty;
 
             return RefreshIndicator(
               onRefresh: () async {
-                context.read<HomeBloc>().add(const HomeRefreshRequested());
+                final raw = (authState.token ?? '').trim();
+                final token = raw.isEmpty ? null : raw;
+
+                context
+                    .read<HomeBloc>()
+                    .add(HomeRefreshRequested(token: token));
+
                 setState(() => _resetToFirstPage());
               },
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  // ✅ like HomeScreen: keep nice width on tablets/desktop
                   final maxW = constraints.maxWidth;
                   final contentMaxWidth = maxW > 900 ? 900.0 : maxW;
 
@@ -209,7 +225,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           spacing.xl,
                         ),
                         children: [
-                          // ✅ Search (typing)
+                          // Search
                           AppSearchField(
                             hintText: l10n.explore_search_hint,
                             initialValue:
@@ -224,7 +240,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           ),
                           SizedBox(height: spacing.md),
 
-                          // ✅ Category chips (ONLY if items exist)
+                          // Category chips (ONLY if items exist)
                           if (showCategories) ...[
                             _ExploreCategoryChips(
                               categories: categoryNames,
@@ -233,7 +249,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                 int? foundId;
 
                                 if (label != null && label.trim().isNotEmpty) {
-                                  // ✅ IMPORTANT: search only in catsWithItems
+                                  // IMPORTANT: search only in catsWithItems
                                   for (final cat in catsWithItems) {
                                     if (cat.name == label) {
                                       foundId = cat.id;
@@ -251,11 +267,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             ),
                             SizedBox(height: spacing.sm),
                           ] else ...[
-                            // If you want: keep spacing consistent without showing chips
                             SizedBox(height: spacing.sm),
                           ],
 
-                          // ✅ Results + Sort
+                          // Results + Sort
                           Row(
                             children: [
                               Expanded(
@@ -284,13 +299,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               message: l10n.explore_empty_message,
                             )
                           else ...[
-                            // ✅ Grid (always 2 per row)
+                            // Grid
                             _ExploreItemsGrid(
                               items: pageItems,
                               pricingFor: _pricingFor,
                               subtitleFor: _subtitleFor,
                               metaFor: _metaLabelFor,
                               ctaLabelFor: _ctaLabelFor,
+                              isOutOfStock: _isOutOfStock, // ✅ pass helper
                               onTapItem: (id) => _openDetails(context, id),
                               onCtaPressed: (item) =>
                                   _handleCtaPressed(context, item),
@@ -298,7 +314,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
                             SizedBox(height: spacing.lg),
 
-                            // ✅ Pagination bar  ‹ 1 2 3 ›
+                            // Pagination bar ‹ 1 2 3 ›
                             _PaginationBar(
                               currentPage: safePage,
                               totalPages: totalPages,
@@ -376,7 +392,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       }).toList();
     }
 
-    // categoryId filter (only if effectiveCategoryId is valid)
+    // categoryId filter
     if (effectiveCategoryId != null) {
       result = result
           .where((item) => item.categoryId == effectiveCategoryId)
@@ -432,9 +448,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
     switch (item.kind) {
       case ItemKind.product:
+        // ✅ Out of stock label
+        if (_isOutOfStock(item)) return l10n.outOfStock;
         return l10n.cart_add_button;
+
       case ItemKind.activity:
         return l10n.home_book_now_button;
+
       default:
         return l10n.home_view_details_button;
     }
@@ -452,6 +472,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   String? _metaLabelFor(ItemSummary item) {
+    final l10n = AppLocalizations.of(context)!;
+
     switch (item.kind) {
       case ItemKind.activity:
         if (item.start == null) return null;
@@ -464,8 +486,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
         return '$d/$m/$y  $hh:$mm';
 
       case ItemKind.product:
+        // ✅ show Out of stock instead of Stock: 0
+        if (_isOutOfStock(item)) return l10n.outOfStock;
         if (item.stock == null) return null;
-        return 'Stock: ${item.stock}';
+        return l10n.home_stock_label(item.stock!);
 
       default:
         return null;
@@ -482,6 +506,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
     }
 
     if (item.kind == ItemKind.product) {
+      // ✅ HARD GUARD (even if UI bug)
+      if (_isOutOfStock(item)) {
+        AppToast.show(context, l10n.outOfStock, isError: true);
+        return;
+      }
+
       context.read<CartBloc>().add(
             CartAddItemRequested(itemId: item.id, quantity: 1),
           );
@@ -492,10 +522,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     _openDetails(context, item.id);
   }
 
-  // =========================
-  // ✅ pricing (sale window)
-  // =========================
-
+  // pricing (sale window)
   bool _isSaleActiveNow(ItemSummary item) {
     final now = DateTime.now();
     final start = item.saleStart;
@@ -515,7 +542,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         : item.price;
   }
 
-  // ✅ NOW uses money(context, amount) so currency is dynamic (not "$")
+  // uses money(context, amount) so currency is dynamic
   _PricingView _pricingFor(BuildContext context, ItemSummary item) {
     final saleActive = item.onSale && _isSaleActiveNow(item);
     final current = _currentPrice(item);
@@ -697,6 +724,8 @@ class _ExploreItemsGrid extends StatelessWidget {
   final String? Function(ItemSummary) metaFor;
 
   final String Function(BuildContext, ItemSummary) ctaLabelFor;
+  final bool Function(ItemSummary) isOutOfStock; // ✅ NEW
+
   final void Function(int itemId) onTapItem;
   final void Function(ItemSummary) onCtaPressed;
 
@@ -707,6 +736,7 @@ class _ExploreItemsGrid extends StatelessWidget {
     required this.subtitleFor,
     required this.metaFor,
     required this.ctaLabelFor,
+    required this.isOutOfStock,
     required this.onTapItem,
     required this.onCtaPressed,
   });
@@ -737,10 +767,14 @@ class _ExploreItemsGrid extends StatelessWidget {
               builder: (ctx) {
                 final pricing = pricingFor(ctx, item);
 
+                final bool out = isOutOfStock(item);
+
                 return ItemCard(
                   itemId: item.id,
                   width: double.infinity,
-                  imageFit: BoxFit.cover,
+                  imageFit: item.kind == ItemKind.product
+                      ? BoxFit.contain
+                      : BoxFit.cover,
                   title: item.title,
                   subtitle: subtitleFor(item),
                   imageUrl: item.imageUrl,
@@ -750,7 +784,9 @@ class _ExploreItemsGrid extends StatelessWidget {
                   metaLabel: metaFor(item),
                   ctaLabel: ctaLabelFor(ctx, item),
                   onTap: () => onTapItem(item.id),
-                  onCtaPressed: () => onCtaPressed(item),
+
+                  // ✅ KEY: null => disabled button
+                  onCtaPressed: out ? null : () => onCtaPressed(item),
                 );
               },
             );

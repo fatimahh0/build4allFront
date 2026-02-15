@@ -1,5 +1,4 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 import '../../../../core/config/env.dart';
 
 // items
@@ -11,7 +10,7 @@ import '../../../items/domain/usecases/get_new_arrivals_items.dart';
 import '../../../items/domain/usecases/get_best_sellers_items.dart';
 import '../../../items/domain/usecases/get_discounted_items.dart';
 
-// catalog (item types + categories)
+// catalog
 import '../../../catalog/domain/entities/item_type.dart';
 import '../../../catalog/domain/entities/category.dart';
 import '../../../catalog/domain/usecases/get_item_types_by_project.dart';
@@ -27,7 +26,6 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   final GetItemTypesByProject getItemTypesByProject;
   final GetCategoriesByProject getCategoriesByProject;
 
-  /// New use cases for e-commerce sections.
   final GetNewArrivalsItems getNewArrivalsItems;
   final GetBestSellersItems getBestSellersItems;
   final GetDiscountedItems getDiscountedItems;
@@ -47,72 +45,89 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   }
 
   Future<void> _onStarted(HomeStarted event, Emitter<HomeState> emit) async {
-    await _loadHome(emit);
+    await _loadHome(emit, token: event.token);
   }
 
   Future<void> _onRefresh(
     HomeRefreshRequested event,
     Emitter<HomeState> emit,
   ) async {
-    await _loadHome(emit);
+    await _loadHome(emit, token: event.token);
   }
 
-  Future<void> _loadHome(Emitter<HomeState> emit) async {
+  Set<int> _collectUsedCategoryIds(List<List<ItemSummary>> lists) {
+    final set = <int>{};
+    for (final list in lists) {
+      for (final item in list) {
+        final cid = item.categoryId;
+        if (cid != null) set.add(cid);
+      }
+    }
+    return set;
+  }
+
+  Future<void> _loadHome(Emitter<HomeState> emit, {String? token}) async {
+    // ✅ Prevent duplicate requests if HomeStarted fired twice by mistake.
+    if (state.isLoading) return;
+
+    // ✅ Keep old lists while loading (nice UX)
     emit(state.copyWith(isLoading: true, errorMessage: null));
 
     try {
       final projectId = int.tryParse(Env.projectId) ?? 0;
 
-      // 1) Main "popular" list = upcoming/new items (works for both modes).
-      final List<ItemSummary> popularItems = await getGuestUpcomingItems();
+      // ✅ Start everything ASAP (parallel)
+      final popularF = getGuestUpcomingItems(token: token);
+      final flashF = getDiscountedItems.call(token: token);
+      final newF = getNewArrivalsItems.call(days: 3650, token: token);
+      final bestF = getBestSellersItems.call(limit: 20, token: token);
 
-      // 2) Recommended: later we can use getInterestBased + userId + token.
-      //    For now fallback to popular items to keep UI non-empty.
-      final List<ItemSummary> recommendedItems = popularItems;
+      final typesF = projectId > 0
+          ? getItemTypesByProject(projectId)
+          : Future.value(<ItemType>[]);
 
-      // 3) Flash sale / discounted items.
-      final List<ItemSummary> flashSaleItems = await getDiscountedItems.call();
+      final catsF = projectId > 0
+          ? getCategoriesByProject(projectId)
+          : Future.value(<Category>[]);
 
-      // 4) New arrivals items.
-      final List<ItemSummary> newArrivalsItems = await getNewArrivalsItems
-          .call();
+      // ✅ Await (already running in parallel)
+      final popularItems = await popularF;
+      final flashSaleItems = await flashF;
+      final newArrivalsItems = await newF;
+      final bestSellersItems = await bestF;
 
-      // 5) Best sellers items.
-      final List<ItemSummary> bestSellersItems = await getBestSellersItems
-          .call();
+      // Recommended (temporary)
+      final recommendedItems = popularItems;
 
-      // 6) Top rated: for now we simply reuse best sellers.
-      final List<ItemSummary> topRatedItems = bestSellersItems;
+      // Top rated (temporary)
+      final topRatedItems = bestSellersItems;
 
-      // 7) Build categories list (labels for chips + entities for filtering).
+      // ✅ Fetch types/categories (also already running)
+      final types = await typesF;
+      // ignore: unused_local_variable
+      final _ = types;
+
+      final allCategories = await catsF;
+
+      // categories
       List<String> categoryLabels = <String>[];
       List<Category> categoryEntities = <Category>[];
 
       if (projectId > 0) {
-        // These are available if you need them later.
-        final List<ItemType> types = await getItemTypesByProject(projectId);
-        // ignore: unused_local_variable
-        final _ = types;
+        final usedCategoryIds = _collectUsedCategoryIds([
+          popularItems,
+          recommendedItems,
+          flashSaleItems,
+          newArrivalsItems,
+          bestSellersItems,
+          topRatedItems,
+        ]);
 
-        final List<Category> allCategories = await getCategoriesByProject(
-          projectId,
-        );
-
-        // Collect categoryIds used in the popular items list.
-        final Set<int> usedCategoryIds = <int>{};
-        for (final item in popularItems) {
-          final cid = item.categoryId;
-          if (cid != null) {
-            usedCategoryIds.add(cid);
-          }
-        }
-
-        // Filter categories by those which are actually used.
-        final List<Category> filteredCategories = usedCategoryIds.isEmpty
+        final filteredCategories = usedCategoryIds.isEmpty
             ? allCategories
             : allCategories
-                  .where((cat) => usedCategoryIds.contains(cat.id))
-                  .toList();
+                .where((c) => usedCategoryIds.contains(c.id))
+                .toList();
 
         categoryLabels = filteredCategories.map((c) => c.name).toList();
         categoryEntities = filteredCategories;

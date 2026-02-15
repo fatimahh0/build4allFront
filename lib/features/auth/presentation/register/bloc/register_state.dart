@@ -1,18 +1,19 @@
-// lib/features/auth/presentation/bloc/register_state.dart
 import 'package:equatable/equatable.dart';
-
 import 'register_event.dart';
 
 class RegisterState extends Equatable {
   final bool isLoading;
-  final String? errorMessage;
+
+  /// ✅ UI will localize this via l10n (NO raw messages shown to user)
+  final String? errorCode;
+
   final bool codeSent;
   final String? contact; // email OR phone
   final RegisterMethod? method;
 
   const RegisterState({
     required this.isLoading,
-    required this.errorMessage,
+    required this.errorCode,
     required this.codeSent,
     required this.contact,
     required this.method,
@@ -21,7 +22,7 @@ class RegisterState extends Equatable {
   factory RegisterState.initial() {
     return const RegisterState(
       isLoading: false,
-      errorMessage: null,
+      errorCode: null,
       codeSent: false,
       contact: null,
       method: null,
@@ -30,14 +31,15 @@ class RegisterState extends Equatable {
 
   RegisterState copyWith({
     bool? isLoading,
-    String? errorMessage,
+    String? errorCode,
+    bool clearErrorCode = false,
     bool? codeSent,
     String? contact,
     RegisterMethod? method,
   }) {
     return RegisterState(
       isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage,
+      errorCode: clearErrorCode ? null : (errorCode ?? this.errorCode),
       codeSent: codeSent ?? this.codeSent,
       contact: contact ?? this.contact,
       method: method ?? this.method,
@@ -46,10 +48,10 @@ class RegisterState extends Equatable {
 
   @override
   List<Object?> get props => [
-    isLoading,
-    errorMessage,
-    codeSent,
-    contact,
-    method,
-  ];
+        isLoading,
+        errorCode,
+        codeSent,
+        contact,
+        method,
+      ];
 }

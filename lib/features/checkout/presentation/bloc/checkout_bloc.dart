@@ -1,3 +1,4 @@
+import 'package:build4front/features/checkout/domain/errors/checkout_blocked_failure.dart';
 import 'package:build4front/features/checkout/domain/usecases/get_last_shipping_address.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_stripe/flutter_stripe.dart' hide PaymentMethod;
@@ -48,19 +49,17 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     on<CheckoutPlaceOrderPressed>(_onPlaceOrder);
   }
 
-  List<CartLine> _linesFromCart(CheckoutCart cart) {
-    return cart.items.where((x) => x.itemId != 0 && x.quantity > 0).map((x) {
-      final effectiveUnit = (x.lineTotal > 0 && x.quantity > 0)
-          ? (x.lineTotal / x.quantity)
-          : x.unitPrice;
-
-      return CartLine(
-        itemId: x.itemId,
-        quantity: x.quantity,
-        unitPrice: effectiveUnit,
-      );
-    }).toList();
+List<CartLine> _linesFromCart(CheckoutCart cart) {
+    return cart.items
+        .where((x) => x.itemId != 0 && x.quantity > 0)
+        .map((x) => CartLine(
+              itemId: x.itemId,
+              quantity: x.quantity,
+              unitPrice: 0.0, // ✅ keep required type happy, server ignores
+            ))
+        .toList();
   }
+
 
   String? _stripeAccountIdFromPaymentMethod(PaymentMethod pm) {
     final cfg = pm.configMap;
@@ -354,8 +353,34 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
           clearError: true,
         ),
       );
-    } catch (err) {
-      emit(state.copyWith(placing: false, error: err.toString()));
-    }
+     } catch (err) {
+  if (err is CheckoutBlockedFailure) {
+    final msg = err.blockingErrors.isNotEmpty
+        ? err.blockingErrors.join('\n')
+        : err.message;
+
+    emit(state.copyWith(placing: false, error: msg));
+    return;
   }
+
+  emit(state.copyWith(placing: false, error: _friendlyError(err)));
+}
+
+  }
+
+  String _friendlyError(Object err) {
+    final s = err.toString();
+
+    // common stripe cases already handled, keep generic clean:
+    if (s.contains('CheckoutBlocked') || s.contains('blockingErrors')) {
+      return 'Some items are no longer available. Please review your cart.';
+    }
+
+    // tighten ugly exceptions
+    return s.replaceAll('Exception:', '').trim();
+  }
+
+
+  
+
 }

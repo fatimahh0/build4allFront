@@ -11,10 +11,17 @@ class AppTextField extends StatefulWidget {
   final bool obscureText;
   final String? Function(String?)? validator;
 
-  // ✅ NEW
+  // ✅ NEW (already in your code)
   final int maxLines;
   final int? minLines;
   final TextInputAction? textInputAction;
+
+  // ✅ ADDED
+  final FocusNode? focusNode;
+  final bool autofocus;
+  final bool enabled;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onFieldSubmitted;
 
   const AppTextField({
     super.key,
@@ -27,6 +34,13 @@ class AppTextField extends StatefulWidget {
     this.maxLines = 1,
     this.minLines,
     this.textInputAction,
+
+    // ✅ added
+    this.focusNode,
+    this.autofocus = false,
+    this.enabled = true,
+    this.onChanged,
+    this.onFieldSubmitted,
   });
 
   @override
@@ -58,12 +72,21 @@ class _AppTextFieldState extends State<AppTextField> {
         const SizedBox(height: 6),
         TextFormField(
           controller: widget.controller,
+          focusNode: widget.focusNode, // ✅ here
+          autofocus: widget.autofocus, // ✅ optional
+          enabled: widget.enabled, // ✅ optional
+
           keyboardType: widget.keyboardType,
           obscureText: canToggleObscure ? _obscure : false,
           validator: widget.validator,
+
           maxLines: widget.maxLines,
           minLines: widget.minLines,
           textInputAction: widget.textInputAction,
+
+          onChanged: widget.onChanged, // ✅ optional
+          onFieldSubmitted: widget.onFieldSubmitted, // ✅ optional
+
           decoration: InputDecoration(
             hintText: widget.hintText,
             filled: true,

@@ -2159,4 +2159,55 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get ai_prompt_best_use => 'Is this good for me?';
+
+  @override
+  String get outOfStock => 'Out Of Stock';
+
+  @override
+  String get authUsernameTaken => 'Username already in use.';
+
+  @override
+  String get authEmailAlreadyExists => 'This email is already registered.';
+
+  @override
+  String get authPhoneAlreadyExists => 'This phone number is already registered.';
+
+  @override
+  String get authUserNotFound => 'No account found for this email/phone.';
+
+  @override
+  String get authWrongPassword => 'Wrong password.';
+
+  @override
+  String get authInvalidCredentials => 'Invalid email/phone or password.';
+
+  @override
+  String get authAccountInactive => 'Your account is inactive. Reactivate to continue.';
+
+  @override
+  String get httpValidationError => 'Some fields are invalid.';
+
+  @override
+  String get httpConflict => 'Conflict. Please retry.';
+
+  @override
+  String get httpUnauthorized => 'Unauthorized.';
+
+  @override
+  String get httpForbidden => 'You don’t have permission to do this.';
+
+  @override
+  String get httpNotFound => 'Not found.';
+
+  @override
+  String get httpServerError => 'Server error. Please try later.';
+
+  @override
+  String get networkNoInternet => 'No internet connection.';
+
+  @override
+  String get networkTimeout => 'Request timed out.';
+
+  @override
+  String get networkError => 'Network error.';
 }

@@ -1,79 +1,76 @@
-// lib/features/items/data/datasources/items_api_service.dart
-
 import 'package:build4front/core/config/env.dart';
 import 'package:build4front/core/network/api_fetch.dart';
 import 'package:build4front/core/network/api_methods.dart';
 import 'package:build4front/core/exceptions/app_exception.dart';
 import 'package:build4front/core/exceptions/network_exception.dart';
 
-/// Service responsible for talking to backend "items" or "products" API.
-///
-/// It is multi-mode:
-/// - Activities mode:
-///   base = /api/items
-/// - E-commerce/products mode:
-///   base = /api/products
-///
-/// This class is reused by repositories and use cases.
 class ItemsApiService {
   final ApiFetch _fetch;
 
   ItemsApiService({ApiFetch? fetch}) : _fetch = fetch ?? ApiFetch();
 
-  /// Current owner/app id coming from dart-define (OWNER_PROJECT_LINK_ID).
   int _ownerId() => int.tryParse(Env.ownerProjectLinkId) ?? 0;
 
-  /// Raw app type string from env (e.g. "ACTIVITIES", "ECOMMERCE").
- // SAFE: if Env.appType is null, we get empty string.
   String get _appType => (Env.appType ?? '').toUpperCase().trim();
-
-  /// True when this app is an e-commerce/product app.
   bool get _isEcommerce => _appType == 'ECOMMERCE' || _appType == 'PRODUCTS';
-
-  /// Base path:
-  /// - Activities => /api/items
-  /// - E-commerce  => /api/products
   String get _base => _isEcommerce ? '/api/products' : '/api/items';
 
-  // ---------------------------------------------------------------------------
-  //  getUpcomingGuest
-  //
-  //  Activities:
-  //    GET /api/items/guest/upcoming?ownerProjectLinkId=...&typeId=...
-  //
-  //  Products:
-  //    For historical reasons, in e-commerce mode this was reused as:
-  //    GET /api/products/new-arrivals?ownerProjectId=...&categoryId=...
-  //
-  //  You can still use this as a generic "upcoming / new items" endpoint,
-  //  but for cleaner code prefer using getNewArrivals() below.
-  // ---------------------------------------------------------------------------
-  Future<List<dynamic>> getUpcomingGuest({int? typeId}) async {
-    final ownerId = _ownerId();
+  Map<String, String>? _authHeaders(String? token) {
+    final raw = token?.trim();
+    if (raw == null || raw.isEmpty) return null;
+    return {'Authorization': raw.startsWith('Bearer ') ? raw : 'Bearer $raw'};
+  }
 
+  void _requireTokenForEcommerce(String? token, String context) {
+    if (!_isEcommerce) return;
+    final raw = token?.trim();
+    if (raw == null || raw.isEmpty) {
+      throw AppException('Auth token is required for products ($context).');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // ✅ FIXED: getUpcomingGuest
+  //
+  // Activities:
+  //   GET /api/items/guest/upcoming?ownerProjectLinkId=...&typeId=...
+  //
+  // E-commerce (FIX):
+  //   ✅ GET /api/products?categoryId=...   (tenant from token)
+  //
+  // Why:
+  //   Your /new-arrivals, /discounted, /best-sellers are returning [].
+  //   So Home needs a reliable “main list” => /api/products.
+  // ---------------------------------------------------------------------------
+  Future<List<dynamic>> getUpcomingGuest({int? typeId, String? token}) async {
+    final ownerId = _ownerId();
     final query = <String, dynamic>{};
     String path;
 
     if (_isEcommerce) {
-      // Products mode → use "new-arrivals"
-      path = '$_base/new-arrivals';
+      _requireTokenForEcommerce(token, 'getUpcomingGuest/products list');
+
+      // ✅ Main list endpoint
+      path = _base; // /api/products
+
+      // backward compatibility only (backend may ignore)
       query['ownerProjectId'] = ownerId;
 
-      // We use the typeId as a categoryId in e-commerce context.
-      if (typeId != null) {
-        query['categoryId'] = typeId;
-      }
+      // optional filter by category
+      if (typeId != null) query['categoryId'] = typeId;
     } else {
-      // Activities mode → use "guest/upcoming"
       path = '$_base/guest/upcoming';
       query['ownerProjectLinkId'] = ownerId;
-      if (typeId != null) {
-        query['typeId'] = typeId;
-      }
+      if (typeId != null) query['typeId'] = typeId;
     }
 
     try {
-      final res = await _fetch.fetch(HttpMethod.get, path, data: query);
+      final res = await _fetch.fetch(
+        HttpMethod.get,
+        path,
+        headers: _authHeaders(token),
+        data: query,
+      );
 
       final data = res.data;
       if (data is! List) {
@@ -91,35 +88,37 @@ class ItemsApiService {
   }
 
   // ---------------------------------------------------------------------------
-  //  getByType
+  // getByType
   //
-  //  Activities:
-  //    GET /api/items/by-type/{typeId}?ownerProjectLinkId=...
+  // Activities:
+  //   GET /api/items/by-type/{typeId}?ownerProjectLinkId=...
   //
-  //  Products:
-  //    GET /api/products?ownerProjectId=...&categoryId=typeId
-  //
-  //  In e-commerce, "typeId" is used as categoryId.
+  // Products:
+  //   GET /api/products?categoryId=... (tenant from token)
   // ---------------------------------------------------------------------------
-  Future<List<dynamic>> getByType(int typeId) async {
+  Future<List<dynamic>> getByType(int typeId, {String? token}) async {
     final ownerId = _ownerId();
 
     String path;
     final query = <String, dynamic>{};
 
     if (_isEcommerce) {
-      // E-commerce: filter products by category
+      _requireTokenForEcommerce(token, 'getByType/products');
       path = _base;
-      query['ownerProjectId'] = ownerId;
+      query['ownerProjectId'] = ownerId; // may be ignored
       query['categoryId'] = typeId;
     } else {
-      // Activities: filter items by item type
       path = '$_base/by-type/$typeId';
       query['ownerProjectLinkId'] = ownerId;
     }
 
     try {
-      final res = await _fetch.fetch(HttpMethod.get, path, data: query);
+      final res = await _fetch.fetch(
+        HttpMethod.get,
+        path,
+        headers: _authHeaders(token),
+        data: query,
+      );
 
       final data = res.data;
       if (data is! List) {
@@ -136,20 +135,32 @@ class ItemsApiService {
     }
   }
 
-  Future<Map<String, dynamic>> getById(int id) async {
+  Future<Map<String, dynamic>> getById(int id, {String? token}) async {
+    final ownerId = _ownerId();
     final path = '$_base/$id';
 
-    try {
-      final res = await _fetch.fetch(HttpMethod.get, path);
-      final data = res.data;
+    final query = <String, dynamic>{};
+    if (_isEcommerce) {
+      _requireTokenForEcommerce(token, 'getById/products');
+    } else {
+      query['ownerProjectLinkId'] = ownerId;
+    }
 
+    try {
+      final res = await _fetch.fetch(
+        HttpMethod.get,
+        path,
+        headers: _authHeaders(token),
+        data: query.isEmpty ? null : query,
+      );
+
+      final data = res.data;
       if (data is! Map) {
         throw ServerException(
           'Invalid response format for item details',
           statusCode: res.statusCode ?? 200,
         );
       }
-
       return Map<String, dynamic>.from(data as Map);
     } on AppException {
       rethrow;
@@ -158,56 +169,18 @@ class ItemsApiService {
     }
   }
 
-Future<Map<String, dynamic>> getDetails(int id, {String? token}) async {
-    final ownerId = _ownerId();
-
-    final headers = <String, String>{};
-    final raw = token?.trim();
-    if (raw != null && raw.isNotEmpty) {
-      headers['Authorization'] = raw.startsWith('Bearer ')
-          ? raw
-          : 'Bearer $raw';
-    }
-
-    final query = <String, dynamic>{};
-    String path;
-
-    if (_isEcommerce) {
-      path = '$_base/$id'; // /api/products/{id}
-    } else {
-      path = '$_base/$id'; // /api/items/{id}
-      query['ownerProjectLinkId'] = ownerId;
-    }
-
-    final res = await _fetch.fetch(
-      HttpMethod.get,
-      path,
-      headers: headers.isEmpty ? null : headers,
-      data: query.isEmpty ? null : query,
-    );
-
-    final data = res.data;
-    if (data is! Map) {
-      throw ServerException(
-        'Invalid response format for item details',
-        statusCode: res.statusCode ?? 200,
-      );
-    }
-    return Map<String, dynamic>.from(data as Map);
+  Future<Map<String, dynamic>> getDetails(int id, {String? token}) async {
+    return getById(id, token: token);
   }
 
   // ---------------------------------------------------------------------------
-  //  getInterestBased
+  // getInterestBased
   //
-  //  Activities:
-  //    GET /api/items/category-based/{userId}?ownerProjectLinkId=...
+  // Activities:
+  //   GET /api/items/category-based/{userId}?ownerProjectLinkId=...
   //
-  //  Products:
-  //    For now we re-use "best-sellers" as a kind of "recommended":
-  //    GET /api/products/best-sellers?ownerProjectId=...&limit=20
-  //
-  //  Token is required for activities; for products we still send it
-  //  in case backend adds auth in the future.
+  // Products:
+  //   GET /api/products/best-sellers?limit=20
   // ---------------------------------------------------------------------------
   Future<List<dynamic>> getInterestBased({
     required int userId,
@@ -215,20 +188,16 @@ Future<Map<String, dynamic>> getDetails(int id, {String? token}) async {
   }) async {
     final ownerId = _ownerId();
 
-    final headers = <String, String>{
-      'Authorization': token.startsWith('Bearer ') ? token : 'Bearer $token',
-    };
+    final headers = _authHeaders(token) ?? <String, String>{};
 
     String path;
     final query = <String, dynamic>{};
 
     if (_isEcommerce) {
-      // E-commerce mode → "best-sellers" used as recommendation
       path = '$_base/best-sellers';
-      query['ownerProjectId'] = ownerId;
+      query['ownerProjectId'] = ownerId; // may be ignored
       query['limit'] = 20;
     } else {
-      // Activities mode → interest-based by user categories
       path = '$_base/category-based/$userId';
       query['ownerProjectLinkId'] = ownerId;
     }
@@ -257,38 +226,40 @@ Future<Map<String, dynamic>> getDetails(int id, {String? token}) async {
   }
 
   // ---------------------------------------------------------------------------
-  //  NEW: getNewArrivals
+  // getNewArrivals
   //
-  //  E-commerce:
-  //    GET /api/products/new-arrivals?ownerProjectId=...&categoryId=...?&days=...?
+  // Products:
+  //   GET /api/products/new-arrivals?days=...
   //
-  //  Activities:
-  //    For now we fall back to "guest/upcoming" so the method is still usable
-  //    even if the appType is ACTIVITIES.
+  // Activities:
+  //   fallback guest/upcoming
   // ---------------------------------------------------------------------------
-  Future<List<dynamic>> getNewArrivals({int? categoryId, int? days}) async {
+  Future<List<dynamic>> getNewArrivals(
+      {int? categoryId, int? days, String? token}) async {
     final ownerId = _ownerId();
 
     String path;
     final query = <String, dynamic>{};
 
     if (_isEcommerce) {
+      _requireTokenForEcommerce(token, 'getNewArrivals/products');
       path = '$_base/new-arrivals';
-      query['ownerProjectId'] = ownerId;
-      if (categoryId != null) {
-        query['categoryId'] = categoryId;
-      }
-      if (days != null) {
-        query['days'] = days;
-      }
+      query['ownerProjectId'] = ownerId; // may be ignored
+      if (categoryId != null)
+        query['categoryId'] = categoryId; // backend might ignore
+      if (days != null) query['days'] = days;
     } else {
-      // Activities: reuse guest/upcoming for now
       path = '$_base/guest/upcoming';
       query['ownerProjectLinkId'] = ownerId;
     }
 
     try {
-      final res = await _fetch.fetch(HttpMethod.get, path, data: query);
+      final res = await _fetch.fetch(
+        HttpMethod.get,
+        path,
+        headers: _authHeaders(token),
+        data: query,
+      );
 
       final data = res.data;
       if (data is! List) {
@@ -305,39 +276,32 @@ Future<Map<String, dynamic>> getDetails(int id, {String? token}) async {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  //  NEW: getBestSellers
-  //
-  //  E-commerce:
-  //    GET /api/products/best-sellers?ownerProjectId=...&categoryId=...?&limit=...?
-  //
-  //  Activities:
-  //    For now, we fall back to "guest/upcoming" so we always return something.
-  // ---------------------------------------------------------------------------
-  Future<List<dynamic>> getBestSellers({
-    int? categoryId,
-    int limit = 20,
-  }) async {
+  Future<List<dynamic>> getBestSellers(
+      {int? categoryId, int limit = 20, String? token}) async {
     final ownerId = _ownerId();
 
     String path;
     final query = <String, dynamic>{};
 
     if (_isEcommerce) {
+      _requireTokenForEcommerce(token, 'getBestSellers/products');
       path = '$_base/best-sellers';
-      query['ownerProjectId'] = ownerId;
+      query['ownerProjectId'] = ownerId; // may be ignored
       query['limit'] = limit;
-      if (categoryId != null) {
-        query['categoryId'] = categoryId;
-      }
+      if (categoryId != null)
+        query['categoryId'] = categoryId; // backend might ignore
     } else {
-      // Activities: simple fallback
       path = '$_base/guest/upcoming';
       query['ownerProjectLinkId'] = ownerId;
     }
 
     try {
-      final res = await _fetch.fetch(HttpMethod.get, path, data: query);
+      final res = await _fetch.fetch(
+        HttpMethod.get,
+        path,
+        headers: _authHeaders(token),
+        data: query,
+      );
 
       final data = res.data;
       if (data is! List) {
@@ -354,36 +318,30 @@ Future<Map<String, dynamic>> getDetails(int id, {String? token}) async {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  //  NEW: getDiscounted
-  //
-  //  E-commerce:
-  //    GET /api/products/discounted?ownerProjectId=...&categoryId=...?
-  //    → this is perfect for "Flash sale" / "On sale" sections.
-  //
-  //  Activities:
-  //    Again, we fall back to "guest/upcoming" to keep behavior safe.
-  // ---------------------------------------------------------------------------
-  Future<List<dynamic>> getDiscounted({int? categoryId}) async {
+  Future<List<dynamic>> getDiscounted({int? categoryId, String? token}) async {
     final ownerId = _ownerId();
 
     String path;
     final query = <String, dynamic>{};
 
     if (_isEcommerce) {
+      _requireTokenForEcommerce(token, 'getDiscounted/products');
       path = '$_base/discounted';
-      query['ownerProjectId'] = ownerId;
-      if (categoryId != null) {
-        query['categoryId'] = categoryId;
-      }
+      query['ownerProjectId'] = ownerId; // may be ignored
+      if (categoryId != null)
+        query['categoryId'] = categoryId; // backend might ignore
     } else {
-      // Activities: fallback behavior
       path = '$_base/guest/upcoming';
       query['ownerProjectLinkId'] = ownerId;
     }
 
     try {
-      final res = await _fetch.fetch(HttpMethod.get, path, data: query);
+      final res = await _fetch.fetch(
+        HttpMethod.get,
+        path,
+        headers: _authHeaders(token),
+        data: query,
+      );
 
       final data = res.data;
       if (data is! List) {

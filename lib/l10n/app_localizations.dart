@@ -4260,6 +4260,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Is this good for me?'**
   String get ai_prompt_best_use;
+
+  /// No description provided for @outOfStock.
+  ///
+  /// In en, this message translates to:
+  /// **'Out Of Stock'**
+  String get outOfStock;
+
+  /// No description provided for @authUsernameTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'Username already in use.'**
+  String get authUsernameTaken;
+
+  /// No description provided for @authEmailAlreadyExists.
+  ///
+  /// In en, this message translates to:
+  /// **'This email is already registered.'**
+  String get authEmailAlreadyExists;
+
+  /// No description provided for @authPhoneAlreadyExists.
+  ///
+  /// In en, this message translates to:
+  /// **'This phone number is already registered.'**
+  String get authPhoneAlreadyExists;
+
+  /// No description provided for @authUserNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No account found for this email/phone.'**
+  String get authUserNotFound;
+
+  /// No description provided for @authWrongPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong password.'**
+  String get authWrongPassword;
+
+  /// No description provided for @authInvalidCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid email/phone or password.'**
+  String get authInvalidCredentials;
+
+  /// No description provided for @authAccountInactive.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account is inactive. Reactivate to continue.'**
+  String get authAccountInactive;
+
+  /// No description provided for @httpValidationError.
+  ///
+  /// In en, this message translates to:
+  /// **'Some fields are invalid.'**
+  String get httpValidationError;
+
+  /// No description provided for @httpConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'Conflict. Please retry.'**
+  String get httpConflict;
+
+  /// No description provided for @httpUnauthorized.
+  ///
+  /// In en, this message translates to:
+  /// **'Unauthorized.'**
+  String get httpUnauthorized;
+
+  /// No description provided for @httpForbidden.
+  ///
+  /// In en, this message translates to:
+  /// **'You don’t have permission to do this.'**
+  String get httpForbidden;
+
+  /// No description provided for @httpNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Not found.'**
+  String get httpNotFound;
+
+  /// No description provided for @httpServerError.
+  ///
+  /// In en, this message translates to:
+  /// **'Server error. Please try later.'**
+  String get httpServerError;
+
+  /// No description provided for @networkNoInternet.
+  ///
+  /// In en, this message translates to:
+  /// **'No internet connection.'**
+  String get networkNoInternet;
+
+  /// No description provided for @networkTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Request timed out.'**
+  String get networkTimeout;
+
+  /// No description provided for @networkError.
+  ///
+  /// In en, this message translates to:
+  /// **'Network error.'**
+  String get networkError;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

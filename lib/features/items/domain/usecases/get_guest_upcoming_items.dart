@@ -5,7 +5,7 @@ import '../repositories/items_repository.dart';
 /// (activities or products) optionally filtered by type.
 ///
 /// For products:
-///   - routes to /api/products/new-arrivals
+///   - routes to /api/products/new-arrivals (token required)
 /// For activities:
 ///   - routes to /api/items/guest/upcoming
 class GetGuestUpcomingItems {
@@ -13,7 +13,7 @@ class GetGuestUpcomingItems {
 
   GetGuestUpcomingItems(this.repo);
 
-  Future<List<ItemSummary>> call({int? typeId}) {
-    return repo.getGuestUpcoming(typeId: typeId);
+  Future<List<ItemSummary>> call({int? typeId, String? token}) {
+    return repo.getGuestUpcoming(typeId: typeId, token: token);
   }
 }

@@ -6,7 +6,6 @@ class Cart extends Equatable {
   final int id;
   final String status;
 
-  /// Breakdown
   final double itemsTotal;
   final double shippingTotal;
   final double taxTotal;
@@ -15,6 +14,11 @@ class Cart extends Equatable {
 
   final String? currencySymbol;
   final List<CartItem> items;
+
+  // ✅ NEW
+  final bool canCheckout;
+  final List<String> blockingErrors;
+  final double? checkoutTotalPrice;
 
   const Cart({
     required this.id,
@@ -26,20 +30,26 @@ class Cart extends Equatable {
     required this.grandTotal,
     required this.currencySymbol,
     required this.items,
+    required this.canCheckout,
+    required this.blockingErrors,
+    required this.checkoutTotalPrice,
   });
 
   bool get isEmpty => items.isEmpty;
 
   @override
   List<Object?> get props => [
-    id,
-    status,
-    itemsTotal,
-    shippingTotal,
-    taxTotal,
-    discountTotal,
-    grandTotal,
-    currencySymbol,
-    items,
-  ];
+        id,
+        status,
+        itemsTotal,
+        shippingTotal,
+        taxTotal,
+        discountTotal,
+        grandTotal,
+        currencySymbol,
+        items,
+        canCheckout,
+        blockingErrors,
+        checkoutTotalPrice,
+      ];
 }

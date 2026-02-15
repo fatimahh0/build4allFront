@@ -4,6 +4,7 @@ import 'package:build4front/common/widgets/app_toast.dart';
 import 'package:build4front/common/widgets/app_image_picker_avatar.dart';
 
 import 'package:build4front/core/config/app_config.dart';
+import 'package:build4front/core/exceptions/app_exception.dart';
 import 'package:build4front/core/theme/theme_cubit.dart';
 
 import 'package:build4front/features/auth/data/repository/auth_repository_impl.dart';
@@ -14,6 +15,8 @@ import 'package:build4front/l10n/app_localizations.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+
 
 class UserCompleteProfileScreen extends StatefulWidget {
   final int pendingId;
@@ -40,19 +43,23 @@ class _UserCompleteProfileScreenState extends State<UserCompleteProfileScreen> {
   final _lastNameCtrl = TextEditingController();
   final _usernameCtrl = TextEditingController();
 
+  // ✅ Focus nodes to jump to problem fields
+  final _firstNameFocus = FocusNode();
+  final _lastNameFocus = FocusNode();
+  final _usernameFocus = FocusNode();
+
   bool _isPublicProfile = true;
   bool _isLoading = false;
-  int _currentStep = 0; // 0 = names, 1 = username, 2 = photo
+  bool _submitting = false;
 
+  int _currentStep = 0; // 0 = names, 1 = username, 2 = photo
   String? _profileImagePath;
 
-  // Local usecase – created once
   late final CompleteUserProfile _completeUserProfileUsecase;
 
   @override
   void initState() {
     super.initState();
-    // ✅ Use already injected AuthRepositoryImpl (which has AuthApiService + tokenStore)
     final repo = context.read<AuthRepositoryImpl>();
     _completeUserProfileUsecase = CompleteUserProfile(repo);
   }
@@ -62,7 +69,34 @@ class _UserCompleteProfileScreenState extends State<UserCompleteProfileScreen> {
     _firstNameCtrl.dispose();
     _lastNameCtrl.dispose();
     _usernameCtrl.dispose();
+
+    _firstNameFocus.dispose();
+    _lastNameFocus.dispose();
+    _usernameFocus.dispose();
+
     super.dispose();
+  }
+
+  void _jumpToStep({
+    required int step,
+    String? toastMessage,
+    FocusNode? focus,
+  }) {
+    if (!mounted) return;
+
+    setState(() {
+      _currentStep = step;
+    });
+
+    if (toastMessage != null && toastMessage.trim().isNotEmpty) {
+      AppToast.show(context, toastMessage.trim(), isError: true);
+    }
+
+    if (focus != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) focus.requestFocus();
+      });
+    }
   }
 
   bool _validateCurrentStep(BuildContext context) {
@@ -71,8 +105,21 @@ class _UserCompleteProfileScreenState extends State<UserCompleteProfileScreen> {
     if (_currentStep == 0) {
       final f = _firstNameCtrl.text.trim();
       final l = _lastNameCtrl.text.trim();
-      if (f.isEmpty || l.isEmpty) {
-        AppToast.show(context, l10n.fieldRequired, isError: true);
+
+      if (f.isEmpty) {
+        _jumpToStep(
+          step: 0,
+          toastMessage: l10n.fieldRequired,
+          focus: _firstNameFocus,
+        );
+        return false;
+      }
+      if (l.isEmpty) {
+        _jumpToStep(
+          step: 0,
+          toastMessage: l10n.fieldRequired,
+          focus: _lastNameFocus,
+        );
         return false;
       }
       return true;
@@ -80,22 +127,44 @@ class _UserCompleteProfileScreenState extends State<UserCompleteProfileScreen> {
 
     if (_currentStep == 1) {
       final u = _usernameCtrl.text.trim();
+
       if (u.isEmpty) {
-        AppToast.show(context, l10n.fieldRequired, isError: true);
+        _jumpToStep(
+          step: 1,
+          toastMessage: l10n.fieldRequired,
+          focus: _usernameFocus,
+        );
         return false;
       }
       if (u.length < 3) {
-        AppToast.show(context, l10n.usernameTooShort, isError: true);
+        _jumpToStep(
+          step: 1,
+          toastMessage: l10n.usernameTooShort,
+          focus: _usernameFocus,
+        );
         return false;
       }
+
+      // optional but useful:
+      final reg = RegExp(r'^[a-zA-Z0-9_.]+$');
+      if (!reg.hasMatch(u)) {
+        _jumpToStep(
+          step: 1,
+          toastMessage: 'Username: فقط حروف/أرقام/underscore/dot',
+          focus: _usernameFocus,
+        );
+        return false;
+      }
+
       return true;
     }
 
-    // Step 2 (photo) – nothing mandatory
-    return true;
+    return true; // step 2 (photo) optional
   }
 
   Future<void> _onNextOrFinishPressed(BuildContext context) async {
+    if (_isLoading) return;
+
     if (_currentStep < 2) {
       if (_validateCurrentStep(context)) {
         setState(() => _currentStep += 1);
@@ -108,25 +177,70 @@ class _UserCompleteProfileScreenState extends State<UserCompleteProfileScreen> {
     await _submitProfile(context);
   }
 
+  void _routeCompleteProfileError(String message) {
+    final msg = message.trim();
+    final m = msg.toLowerCase();
+
+    // ✅ Username issues → step 1
+    if (m.contains('username') &&
+        (m.contains('already') ||
+            m.contains('in use') ||
+            m.contains('taken') ||
+            m.contains('exists'))) {
+      _jumpToStep(step: 1, toastMessage: msg, focus: _usernameFocus);
+      return;
+    }
+
+    // ✅ First/Last name issues → step 0
+    if (m.contains('first') && m.contains('name')) {
+      _jumpToStep(step: 0, toastMessage: msg, focus: _firstNameFocus);
+      return;
+    }
+    if (m.contains('last') && m.contains('name')) {
+      _jumpToStep(step: 0, toastMessage: msg, focus: _lastNameFocus);
+      return;
+    }
+
+    // ✅ Photo/File issues → step 2
+    if (m.contains('photo') ||
+        m.contains('image') ||
+        m.contains('avatar') ||
+        m.contains('file')) {
+      _jumpToStep(step: 2, toastMessage: msg);
+      return;
+    }
+
+    // Fallback: show error and keep current step
+    AppToast.show(context, msg.isEmpty ? 'Something went wrong' : msg,
+        isError: true);
+  }
+
   Future<void> _submitProfile(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
 
+    if (_submitting) return;
+    _submitting = true;
+
     setState(() => _isLoading = true);
 
-    final result = await _completeUserProfileUsecase(
-      pendingId: widget.pendingId,
-      username: _usernameCtrl.text.trim(),
-      firstName: _firstNameCtrl.text.trim(),
-      lastName: _lastNameCtrl.text.trim(),
-      isPublicProfile: _isPublicProfile,
-      ownerProjectLinkId: widget.ownerProjectLinkId,
-      profileImagePath: _profileImagePath,
-    );
+    try {
+      final result = await _completeUserProfileUsecase(
+        pendingId: widget.pendingId,
+        username: _usernameCtrl.text.trim(),
+        firstName: _firstNameCtrl.text.trim(),
+        lastName: _lastNameCtrl.text.trim(),
+        isPublicProfile: _isPublicProfile,
+        ownerProjectLinkId: widget.ownerProjectLinkId,
+        profileImagePath: _profileImagePath,
+      );
 
-    // The usecase returns a UserEntity (not an Either), so handle it directly.
-    if (result == null) {
-      AppToast.show(context, 'Failed to complete profile', isError: true);
-    } else {
+      if (!mounted) return;
+
+      if (result == null) {
+        AppToast.show(context, 'Failed to complete profile', isError: true);
+        return;
+      }
+
       AppToast.show(
         context,
         l10n.profileCompletedSuccessMessage,
@@ -139,9 +253,17 @@ class _UserCompleteProfileScreenState extends State<UserCompleteProfileScreen> {
         ),
         (route) => false,
       );
+    } on AppException catch (e) {
+      if (!mounted) return;
+      final msg = (e.message ?? e.toString()).trim();
+      _routeCompleteProfileError(msg);
+    } catch (e) {
+      if (!mounted) return;
+      AppToast.show(context, l10n.authErrorGeneric, isError: true);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+      _submitting = false;
     }
-
-    if (mounted) setState(() => _isLoading = false);
   }
 
   String _stepTitle(AppLocalizations l10n) {
@@ -210,7 +332,6 @@ class _UserCompleteProfileScreenState extends State<UserCompleteProfileScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Step indicator chip
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Container(
@@ -235,8 +356,6 @@ class _UserCompleteProfileScreenState extends State<UserCompleteProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
-                    // Title + subtitle
                     Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
@@ -256,24 +375,25 @@ class _UserCompleteProfileScreenState extends State<UserCompleteProfileScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-
-                    // Step content
                     if (_currentStep == 0) ...[
                       AppTextField(
                         label: l10n.firstNameLabel,
                         controller: _firstNameCtrl,
+                        focusNode: _firstNameFocus,
                         validator: (_) => null,
                       ),
                       const SizedBox(height: 12),
                       AppTextField(
                         label: l10n.lastNameLabel,
                         controller: _lastNameCtrl,
+                        focusNode: _lastNameFocus,
                         validator: (_) => null,
                       ),
                     ] else if (_currentStep == 1) ...[
                       AppTextField(
                         label: l10n.usernameLabel,
                         controller: _usernameCtrl,
+                        focusNode: _usernameFocus,
                         validator: (_) => null,
                       ),
                       const SizedBox(height: 16),
@@ -331,20 +451,19 @@ class _UserCompleteProfileScreenState extends State<UserCompleteProfileScreen> {
                         textAlign: TextAlign.center,
                       ),
                     ],
-
                     const SizedBox(height: 24),
-
-                    // Buttons row (Back / Next or Save)
                     Row(
                       children: [
                         if (_currentStep > 0)
                           Expanded(
                             child: TextButton(
-                              onPressed: () {
-                                if (_currentStep > 0) {
-                                  setState(() => _currentStep -= 1);
-                                }
-                              },
+                              onPressed: _isLoading
+                                  ? null
+                                  : () {
+                                      if (_currentStep > 0) {
+                                        setState(() => _currentStep -= 1);
+                                      }
+                                    },
                               child: Text(
                                 l10n.previousStepButton,
                                 style: t.bodyMedium?.copyWith(
@@ -359,7 +478,9 @@ class _UserCompleteProfileScreenState extends State<UserCompleteProfileScreen> {
                           child: PrimaryButton(
                             label: _primaryButtonLabel(l10n),
                             isLoading: _isLoading,
-                            onPressed: () => _onNextOrFinishPressed(context),
+                            onPressed: _isLoading
+                                ? null
+                                : () => _onNextOrFinishPressed(context),
                           ),
                         ),
                       ],

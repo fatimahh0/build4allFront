@@ -127,12 +127,7 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final homeBloc = context.read<HomeBloc>();
-      if (!homeBloc.state.hasLoaded && !homeBloc.state.isLoading) {
-        homeBloc.add(const HomeStarted());
-      }
-    });
+   
   }
 
   @override
@@ -208,7 +203,12 @@ class _HomeScreenState extends State<HomeScreen>
                       _selectedCategoryId = null;
                       _resetPaging();
                     });
-                    context.read<HomeBloc>().add(const HomeRefreshRequested());
+                    final raw = (authState.token ?? '').trim();
+                    final token = raw.isEmpty ? null : raw;
+
+                    context
+                        .read<HomeBloc>()
+                        .add(HomeRefreshRequested(token: token));
                   },
                   child: LayoutBuilder(
                     builder: (context, constraints) {
@@ -524,13 +524,26 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  bool _isOutOfStock(ItemSummary item) {
+    if (item.kind != ItemKind.product) return false;
+
+    final s = item.stock;
+    if (s == null) return false;
+
+    return s <= 0;
+  }
+
   String _ctaLabelFor(BuildContext context, ItemSummary item) {
     final l10n = AppLocalizations.of(context)!;
+
     switch (item.kind) {
       case ItemKind.product:
+        if (_isOutOfStock(item)) return l10n.outOfStock;
         return l10n.cart_add_button;
+
       case ItemKind.activity:
         return l10n.home_book_now_button;
+
       default:
         return l10n.home_view_details_button;
     }
@@ -562,6 +575,7 @@ class _HomeScreenState extends State<HomeScreen>
         return '$d/$m/$y  $hh:$mm';
 
       case ItemKind.product:
+        if (_isOutOfStock(item)) return l10n.outOfStock;
         if (item.stock == null) return null;
         return l10n.home_stock_label(item.stock!);
 
@@ -580,9 +594,14 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     if (item.kind == ItemKind.product) {
-      context
-          .read<CartBloc>()
-          .add(CartAddItemRequested(itemId: item.id, quantity: 1));
+      if (_isOutOfStock(item)) {
+        AppToast.show(context, l10n.outOfStock, isError: true);
+        return;
+      }
+
+      context.read<CartBloc>().add(
+            CartAddItemRequested(itemId: item.id, quantity: 1),
+          );
       AppToast.show(context, l10n.cart_item_added_snackbar);
       return;
     }
@@ -836,13 +855,18 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
               return (rowsNeeded * cardH) + ((rowsNeeded - 1) * spacing.md);
             }();
 
-            Widget card(ItemSummary item) {
+         Widget card(ItemSummary item) {
               return Builder(
                 builder: (ctx) {
                   final pricing = widget.pricingFor(ctx, item);
                   final fit = item.kind == ItemKind.product
                       ? BoxFit.contain
                       : BoxFit.cover;
+
+               
+                  final bool outOfStock = item.kind == ItemKind.product &&
+                      (item.stock != null) &&
+                      item.stock! <= 0;
 
                   return ItemCard(
                     itemId: item.id,
@@ -857,11 +881,15 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
                     metaLabel: widget.metaFor(ctx, item),
                     ctaLabel: widget.ctaLabelFor(ctx, item),
                     onTap: () => widget.onTapItem(item.id),
-                    onCtaPressed: () => widget.onCtaPressed(item),
+
+                    // ✅ KEY LINE: null = button disabled
+                    onCtaPressed:
+                        outOfStock ? null : () => widget.onCtaPressed(item),
                   );
                 },
               );
             }
+
 
             return Column(
               mainAxisSize: MainAxisSize.min,

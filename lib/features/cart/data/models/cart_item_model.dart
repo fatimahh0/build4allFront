@@ -8,6 +8,14 @@ class CartItemModel {
   final double unitPrice;
   final double lineTotal;
 
+  // ✅ NEW from backend
+  final int? availableStock; // null => stock not tracked
+  final bool outOfStock;
+  final bool quantityExceedsStock;
+  final int? maxAllowedQuantity; // equals stock when tracked
+  final bool disabled;
+  final String? blockingReason;
+
   const CartItemModel({
     required this.cartItemId,
     required this.itemId,
@@ -16,6 +24,14 @@ class CartItemModel {
     required this.quantity,
     required this.unitPrice,
     required this.lineTotal,
+
+    // new
+    required this.availableStock,
+    required this.outOfStock,
+    required this.quantityExceedsStock,
+    required this.maxAllowedQuantity,
+    required this.disabled,
+    required this.blockingReason,
   });
 
   factory CartItemModel.fromJson(Map<String, dynamic> json) {
@@ -27,6 +43,14 @@ class CartItemModel {
       quantity: (json['quantity'] ?? 0) as int,
       unitPrice: (json['unitPrice'] as num?)?.toDouble() ?? 0.0,
       lineTotal: (json['lineTotal'] as num?)?.toDouble() ?? 0.0,
+
+      // ✅ NEW mapping
+      availableStock: json['availableStock'] as int?,
+      outOfStock: (json['outOfStock'] ?? false) as bool,
+      quantityExceedsStock: (json['quantityExceedsStock'] ?? false) as bool,
+      maxAllowedQuantity: json['maxAllowedQuantity'] as int?,
+      disabled: (json['disabled'] ?? false) as bool,
+      blockingReason: json['blockingReason'] as String?,
     );
   }
 
@@ -39,6 +63,14 @@ class CartItemModel {
       'quantity': quantity,
       'unitPrice': unitPrice,
       'lineTotal': lineTotal,
+
+      // new
+      'availableStock': availableStock,
+      'outOfStock': outOfStock,
+      'quantityExceedsStock': quantityExceedsStock,
+      'maxAllowedQuantity': maxAllowedQuantity,
+      'disabled': disabled,
+      'blockingReason': blockingReason,
     };
   }
 }

@@ -1,5 +1,3 @@
-// lib/features/home/presentation/bloc/home_event.dart
-
 import 'package:equatable/equatable.dart';
 
 abstract class HomeEvent extends Equatable {
@@ -11,28 +9,32 @@ abstract class HomeEvent extends Equatable {
 
 /// first load when we enter Home
 class HomeStarted extends HomeEvent {
-  const HomeStarted();
+  final String? token;
+  const HomeStarted({this.token});
+
+  @override
+  List<Object?> get props => [token];
 }
 
 /// pull-to-refresh or manual reload
 class HomeRefreshRequested extends HomeEvent {
-  const HomeRefreshRequested();
+  final String? token;
+  const HomeRefreshRequested({this.token});
+
+  @override
+  List<Object?> get props => [token];
 }
 
-/// search text changed (from search field)
 class HomeSearchChanged extends HomeEvent {
   final String query;
-
   const HomeSearchChanged(this.query);
 
   @override
   List<Object?> get props => [query];
 }
 
-/// category chip selected (by categoryId)
 class HomeCategorySelected extends HomeEvent {
   final int categoryId;
-
   const HomeCategorySelected(this.categoryId);
 
   @override

@@ -798,5 +798,27 @@
 
   "adminShippingTotal": "إجمالي التوصيل",
   "adminItemsTaxTotal": "إجمالي ضريبة العناصر",
-  "adminShippingTaxTotal": "إجمالي ضريبة التوصيل"
+  "adminShippingTaxTotal": "إجمالي ضريبة التوصيل",
+  "authUsernameTaken": "اسم المستخدم مستخدم بالفعل.",
+  "authEmailAlreadyExists": "هذا البريد الإلكتروني مسجّل بالفعل.",
+  "authPhoneAlreadyExists": "رقم الهاتف هذا مسجّل بالفعل.",
+
+  "authUserNotFound": "لا يوجد حساب لهذا البريد/الرقم.",
+  "authWrongPassword": "كلمة المرور غير صحيحة.",
+  "authInvalidCredentials": "بيانات الدخول غير صحيحة.",
+  "authAccountInactive": "حسابك غير مُفعّل. أعد تفعيل الحساب للمتابعة.",
+
+  "httpValidationError": "بعض الحقول غير صحيحة.",
+  "httpConflict": "يوجد تعارض. حاول مرة أخرى.",
+  "httpUnauthorized": "غير مصرح لك.",
+  "httpForbidden": "ليس لديك صلاحية للقيام بذلك.",
+  "httpNotFound": "غير موجود.",
+  "httpServerError": "خطأ في الخادم. حاول لاحقاً.",
+
+  "networkNoInternet": "لا يوجد اتصال بالإنترنت.",
+  "networkTimeout": "انتهت مهلة الطلب.",
+  "networkError": "خطأ في الشبكة.",
+
+  "authErrorGeneric": "حدث خطأ ما. حاول مرة أخرى.",
+  "outOfStock" :"غير متوفر"
 }
