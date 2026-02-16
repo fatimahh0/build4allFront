@@ -49,7 +49,7 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
     try {
       await toggleVisibility(
         token: e.token,
-        userId: e.userId, // ✅ use explicit userId
+        userId: e.userId,
         isPublic: e.newValue,
         ownerProjectLinkId: e.ownerProjectLinkId,
       );
@@ -72,6 +72,13 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
         ownerProjectLinkId: e.ownerProjectLinkId,
         password: e.password,
       );
+
+      // ✅ CRITICAL FIX:
+      // If you set INACTIVE, backend may hide the profile,
+      // so reloading will throw "could not find the correct profile".
+      if (e.status.toUpperCase() == 'INACTIVE') {
+        return;
+      }
 
       add(LoadUserProfile(e.token, e.userId, e.ownerProjectLinkId));
     } catch (err) {

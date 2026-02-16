@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:dlibphonenumber/dlibphonenumber.dart';
 
 import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/l10n/app_localizations.dart';
@@ -20,21 +21,31 @@ import 'package:build4front/core/network/globals.dart' as net;
 class HomeBottomSection extends StatelessWidget {
   final String? ownerPhoneNumber;
 
-  /// ✅ multi-app identity
+  /// Optional: if backend sends local numbers (no +country),
+  /// you can pass "LB", "FR", "US", ...
+  final String? ownerPhoneRegionIso2;
+
+  /// Front-only fallback region if backend doesn’t provide region.
+  /// Default = LB
+  final String fallbackRegionIso2;
+
+  /// multi-app identity
   final String? appName;
 
-  /// ✅ optional: identify instance (if you have it)
+  /// optional: identify instance
   final int? ownerProjectId;
 
-  /// ✅ optional override
+  /// optional override
   final String? whatsappMessageOverride;
 
-  /// ✅ enable/disable logs
+  /// enable/disable logs
   final bool debugLogs;
 
   const HomeBottomSection({
     super.key,
     this.ownerPhoneNumber,
+    this.ownerPhoneRegionIso2,
+    this.fallbackRegionIso2 = 'LB',
     this.appName,
     this.ownerProjectId,
     this.whatsappMessageOverride,
@@ -47,7 +58,7 @@ class HomeBottomSection extends StatelessWidget {
   }
 
   // -----------------------------
-  // ✅ Same name logic as header
+  // ✅ User name resolver (Profile -> Auth -> JWT)
   // -----------------------------
   String? _nameFromUserEntity(UserEntity? user) {
     if (user == null) return null;
@@ -99,7 +110,7 @@ class HomeBottomSection extends StatelessWidget {
   }
 
   String? _resolveUserName(BuildContext context) {
-    // 1) UserProfileBloc (like header)
+    // 1) Profile bloc
     UserEntity? profileUser;
     try {
       final st = context.read<UserProfileBloc>().state;
@@ -107,22 +118,18 @@ class HomeBottomSection extends StatelessWidget {
     } catch (_) {
       profileUser = null;
     }
+    final fromProfile = _nameFromUserEntity(profileUser);
 
-    final nameFromProfile = _nameFromUserEntity(profileUser);
-    _log('nameFromProfile=$nameFromProfile profileUser=${profileUser != null}');
-
-    // 2) AuthBloc user
+    // 2) Auth bloc
     final AuthState authSt = context.read<AuthBloc>().state;
     final dynamic authUser = authSt.user;
-    String? nameFromAuth;
+    String? fromAuth;
 
     if (authSt.isLoggedIn && authUser != null) {
       try {
-        // If authUser is UserEntity, this works:
         if (authUser is UserEntity) {
-          nameFromAuth = _nameFromUserEntity(authUser);
+          fromAuth = _nameFromUserEntity(authUser);
         } else {
-          // dynamic access attempt
           final first = ('${authUser.firstName ?? ''}').trim();
           final last = ('${authUser.lastName ?? ''}').trim();
           final username = ('${authUser.username ?? ''}').trim();
@@ -130,51 +137,124 @@ class HomeBottomSection extends StatelessWidget {
           final phone = ('${authUser.phoneNumber ?? ''}').trim();
 
           if (first.isNotEmpty || last.isNotEmpty) {
-            nameFromAuth = ('$first $last').trim();
+            fromAuth = ('$first $last').trim();
           } else if (username.isNotEmpty) {
-            nameFromAuth = username;
+            fromAuth = username;
           } else if (email.isNotEmpty) {
-            nameFromAuth = email;
+            fromAuth = email;
           } else if (phone.isNotEmpty) {
-            nameFromAuth = phone;
+            fromAuth = phone;
           }
         }
-      } catch (e) {
-        _log('nameFromAuth error: $e');
-        nameFromAuth = null;
+      } catch (_) {
+        fromAuth = null;
       }
     }
 
-    _log(
-        'auth.isLoggedIn=${authSt.isLoggedIn} auth.userType=${authUser?.runtimeType} nameFromAuth=$nameFromAuth');
-
     // 3) JWT fallback
-    final jwtName = _getUserNameFromJwt();
-    _log('jwtName=$jwtName');
+    final fromJwt = _getUserNameFromJwt();
 
-    final chosen = nameFromProfile ?? nameFromAuth ?? jwtName;
-
-    _log('FINAL chosen name=$chosen');
-
+    final chosen = fromProfile ?? fromAuth ?? fromJwt;
+    _log('resolveUserName => "$chosen"');
     return chosen;
   }
 
   // -----------------------------
-  // ✅ WhatsApp number normalizer
+  // ✅ Region resolver
+  // priority: param -> fallbackRegionIso2 -> locale country -> platform locale -> LB
   // -----------------------------
-  String? _normalizeForWhatsApp(String raw) {
+  String _resolveRegionIso2(BuildContext context) {
+    final fromParam = (ownerPhoneRegionIso2 ?? '').trim().toUpperCase();
+    if (fromParam.isNotEmpty) return fromParam;
+
+    final fromFallback = fallbackRegionIso2.trim().toUpperCase();
+    if (fromFallback.isNotEmpty) return fromFallback;
+
+    try {
+      final loc = (Localizations.localeOf(context).countryCode ?? '')
+          .trim()
+          .toUpperCase();
+      if (loc.isNotEmpty) return loc;
+    } catch (_) {}
+
+    final loc2 =
+        (WidgetsBinding.instance.platformDispatcher.locale.countryCode ?? '')
+            .trim()
+            .toUpperCase();
+
+    return loc2.isNotEmpty ? loc2 : 'LB';
+  }
+
+  // -----------------------------
+  // ✅ WhatsApp normalizer (E.164 -> digits only)
+  // Accepts:
+  // +96170123123
+  // 0096170123123
+  // 96170123123
+  // 70123123 (needs region LB)
+  // -----------------------------
+  String? _normalizeForWhatsApp(BuildContext context, String raw) {
     var s = raw.trim();
     if (s.isEmpty) return null;
 
+    final low = s.toLowerCase();
+    if (low == 'null' || low == 'n/a' || low == 'none') return null;
+
+    // keep digits and +
     s = s.replaceAll(RegExp(r'[^0-9+]'), '');
 
-    if (s.startsWith('+')) s = s.substring(1);
-    if (s.startsWith('00')) s = s.substring(2);
+    // 00xxxx -> +xxxx
+    if (s.startsWith('00')) s = '+${s.substring(2)}';
 
-    // ✅ Lebanon quick test: 8 digits => assume +961
-    if (s.length == 8) return '961$s';
+    final util = PhoneNumberUtil.instance;
+    final region = _resolveRegionIso2(context);
 
-    if (s.length >= 10) return s;
+    _log('normalize raw="$raw" cleaned="$s" region="$region"');
+
+    String? okToDigits(String e164) {
+      final digits = e164.startsWith('+') ? e164.substring(1) : e164;
+      // WhatsApp generally expects 8..15 digits (E.164 max 15)
+      if (!RegExp(r'^\d{8,15}$').hasMatch(digits)) return null;
+      return digits;
+    }
+
+    // 1) If starts with + => parse as international
+    if (s.startsWith('+')) {
+      try {
+        final num = util.parse(s, 'ZZ');
+        if (!util.isValidNumber(num)) return null;
+        final e164 = util.format(num, PhoneNumberFormat.e164);
+        return okToDigits(e164);
+      } catch (e) {
+        _log('intl parse error: $e');
+      }
+    }
+
+    // 2) digits-only => try local first, then try "+digits"
+    if (RegExp(r'^\d+$').hasMatch(s)) {
+      // local parse (70123123 in LB)
+      try {
+        final numLocal = util.parse(s, region);
+        if (util.isValidNumber(numLocal)) {
+          final e164 = util.format(numLocal, PhoneNumberFormat.e164);
+          return okToDigits(e164);
+        }
+      } catch (e) {
+        _log('local parse error: $e');
+      }
+
+      // maybe it already includes country code without plus: 96170123123
+      try {
+        final numIntl = util.parse('+$s', 'ZZ');
+        if (util.isValidNumber(numIntl)) {
+          final e164 = util.format(numIntl, PhoneNumberFormat.e164);
+          return okToDigits(e164);
+        }
+      } catch (e) {
+        _log('digits->intl parse error: $e');
+      }
+    }
+
     return null;
   }
 
@@ -185,6 +265,7 @@ class HomeBottomSection extends StatelessWidget {
 
     final app = (appName ?? '').trim().isNotEmpty ? appName!.trim() : 'the app';
     final userName = _resolveUserName(context);
+
     final whoLine = (userName ?? '').trim().isNotEmpty
         ? 'User: $userName'
         : 'User: (guest)';
@@ -204,33 +285,51 @@ class HomeBottomSection extends StatelessWidget {
 
   Future<void> _openWhatsApp(BuildContext context) async {
     final raw = (ownerPhoneNumber ?? '').trim();
-    final phone = _normalizeForWhatsApp(raw);
+    final region = _resolveRegionIso2(context);
 
-    _log('tap contact: ownerPhoneRaw="$raw" normalized="$phone"');
+    if (raw.isEmpty || raw.toLowerCase() == 'null') {
+      AppToast.show(
+        context,
+        'Owner contact number is not configured in app config.',
+        isError: true,
+      );
+      _log('tap blocked: raw is empty/null');
+      return;
+    }
+
+    final phone = _normalizeForWhatsApp(context, raw);
+    _log('tap: raw="$raw" region="$region" normalized="$phone"');
 
     if (phone == null) {
       AppToast.show(
         context,
-        'Invalid owner number. Use international format like +961XXXXXXXX.',
+        'Invalid owner number.\n'
+        '✅ Best: +<country><number> like +96170123123\n'
+        '✅ If local: we interpret using region="$region".\n'
+        '🔎 Raw received: "$raw"',
         isError: true,
       );
       return;
     }
 
     final msg = Uri.encodeComponent(_buildMessage(context));
-    final uri = Uri.parse('https://wa.me/$phone?text=$msg');
 
-    _log('opening WA uri=$uri');
+    // Try app scheme first (best UX), fallback to wa.me
+    final appUri = Uri.parse('whatsapp://send?phone=$phone&text=$msg');
+    final webUri = Uri.parse('https://wa.me/$phone?text=$msg');
 
     try {
-      final ok = await launchUrl(
-        uri,
-        mode: LaunchMode.externalNonBrowserApplication, // ✅ Android best
-      );
+      if (await canLaunchUrl(appUri)) {
+        final ok =
+            await launchUrl(appUri, mode: LaunchMode.externalApplication);
+        _log('launch whatsapp:// ok=$ok');
+        if (ok) return;
+      }
 
-      _log('launchUrl ok=$ok');
+      final ok2 = await launchUrl(webUri, mode: LaunchMode.externalApplication);
+      _log('launch wa.me ok=$ok2');
 
-      if (!ok) {
+      if (!ok2) {
         AppToast.show(context, 'Could not open WhatsApp.', isError: true);
       }
     } catch (e) {
@@ -241,8 +340,6 @@ class HomeBottomSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = Theme.of(context).colorScheme;
-    final t = Theme.of(context).textTheme;
     final spacing = context.read<ThemeCubit>().state.tokens.spacing;
     final l10n = AppLocalizations.of(context)!;
 
@@ -316,8 +413,7 @@ class _ProBottomCard extends StatelessWidget {
     );
 
     final card = Container(
-      constraints:
-          const BoxConstraints(minHeight: 92), // ✅ same “weight” for all
+      constraints: const BoxConstraints(minHeight: 92),
       padding:
           EdgeInsets.symmetric(horizontal: spacing.lg, vertical: spacing.md),
       decoration: BoxDecoration(
@@ -344,23 +440,18 @@ class _ProBottomCard extends StatelessWidget {
             child: Icon(model.icon, color: c.primary, size: 24),
           ),
           SizedBox(width: spacing.md),
-
           Expanded(
             child: Column(
-              mainAxisAlignment:
-                  MainAxisAlignment.center, // ✅ nicer vertical alignment
+              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   model.title,
                   style: titleStyle,
-                  maxLines: 2, // ✅ was 1 (this was the cut)
-                  overflow:
-                      TextOverflow.ellipsis, // ✅ still safe on tiny screens
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 SizedBox(height: spacing.xs),
-
-                // ✅ always reserve subtitle line height so all cards look same
                 Opacity(
                   opacity: subtitleText.isNotEmpty ? 1 : 0,
                   child: Text(
@@ -373,8 +464,6 @@ class _ProBottomCard extends StatelessWidget {
               ],
             ),
           ),
-
-          // ✅ keep arrow only for clickable (pro UX)
           if (clickable) ...[
             SizedBox(width: spacing.sm),
             Icon(Icons.chevron_right_rounded,

@@ -33,6 +33,36 @@ class CatalogApiService {
     return list;
   }
 
+  Future<List<Map<String, dynamic>>> getCategoriesByOwnerProject(
+    int ownerProjectId, {
+    String? authToken,
+  }) async {
+    final res = await _dio.get(
+      '/api/admin/categories/by-owner-project/$ownerProjectId',
+      options: _opts(authToken),
+    );
+
+    final data = (res.data as List?) ?? [];
+    return data.map((e) => (e as Map).cast<String, dynamic>()).toList();
+  }
+
+  // ✅ POST create category by ownerProjectId
+  Future<Map<String, dynamic>> createCategoryByOwnerProject({
+    required int ownerProjectId,
+    required String name,
+    String? authToken,
+  }) async {
+    final res = await _dio.post(
+      '/api/admin/categories/by-owner-project/$ownerProjectId',
+      data: {'name': name},
+      options: _opts(authToken),
+    );
+
+    final data = res.data;
+    if (data is Map) return data.cast<String, dynamic>();
+    throw Exception('Invalid create category response');
+  }
+
   Future<List<RegionModel>> listRegions({String? authToken}) async {
     final res = await _dio.get('/api/regions', options: _opts(authToken));
 

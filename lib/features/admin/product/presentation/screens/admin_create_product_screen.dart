@@ -129,8 +129,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
 
   Future<void> _bootstrap() async {
     final rawCurrency = Env.currencyId.trim();
-    _effectiveCurrencyId =
-        widget.currencyId ??
+    _effectiveCurrencyId = widget.currencyId ??
         (rawCurrency.isNotEmpty ? int.tryParse(rawCurrency) : null);
 
     if (_isEdit) {
@@ -203,6 +202,10 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
         _attributes.add(row);
       }
     });
+
+    // keep current category/type if possible (they'll be resolved after loading)
+    _selectedCategoryId = p.categoryId;
+    _selectedItemTypeId = p.itemTypeId;
   }
 
   ProductTypeDto _productTypeFromString(String s) {
@@ -289,14 +292,6 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
     return token;
   }
 
-  int _requireProjectId() {
-    final projectId = int.tryParse(Env.projectId) ?? 0;
-    if (projectId <= 0) {
-      throw Exception('PROJECT_ID is not configured for this app.');
-    }
-    return projectId;
-  }
-
   String? _resolveImageUrl(String? url) {
     if (url == null || url.trim().isEmpty) return null;
 
@@ -340,7 +335,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
   }
 
   // ---------------- Categories + ItemTypes ----------------
-  Future<void> _loadCategories() async {
+ Future<void> _loadCategories() async {
     setState(() {
       _loadingCategories = true;
       _metaError = null;
@@ -348,11 +343,11 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
 
     try {
       final token = await _requireAdminToken();
-      final projectId = _requireProjectId();
-
       final api = CategoryApiService();
-      final rawList = await api.getCategoriesByProject(
-        projectId,
+
+      // ✅ CORRECT: ownerProjectId -> backend resolves projectId internally
+      final rawList = await api.getCategoriesByOwnerProject(
+        widget.ownerProjectId,
         authToken: token,
       );
 
@@ -368,6 +363,9 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       } else if (widget.categoryId != null &&
           cats.any((c) => c.id == widget.categoryId)) {
         initialCategoryId = widget.categoryId;
+      } else if (_selectedCategoryId != null &&
+          cats.any((c) => c.id == _selectedCategoryId)) {
+        initialCategoryId = _selectedCategoryId;
       } else if (cats.isNotEmpty) {
         initialCategoryId = cats.first.id;
       }
@@ -406,9 +404,8 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
         authToken: token,
       );
 
-      final types = rawList
-          .map((m) => ItemTypeModel.fromJson(m).toEntity())
-          .toList();
+      final types =
+          rawList.map((m) => ItemTypeModel.fromJson(m).toEntity()).toList();
 
       int? initialTypeId;
 
@@ -420,6 +417,9 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       } else if (widget.itemTypeId != null &&
           types.any((t) => t.id == widget.itemTypeId)) {
         initialTypeId = widget.itemTypeId;
+      } else if (_selectedItemTypeId != null &&
+          types.any((t) => t.id == _selectedItemTypeId)) {
+        initialTypeId = _selectedItemTypeId;
       } else if (types.isNotEmpty) {
         initialTypeId = types.first.id;
       }
@@ -473,12 +473,12 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
   Future<void> _createCategory(String name) async {
     try {
       final token = await _requireAdminToken();
-      final projectId = _requireProjectId();
-
       final api = CategoryApiService();
-      final data = await api.createCategory(
+
+      // ✅ CORRECT: use ownerProject endpoint
+      final data = await api.createCategoryByOwnerProject(
+        ownerProjectId: widget.ownerProjectId,
         name: name,
-        projectId: projectId,
         authToken: token,
       );
 
@@ -497,6 +497,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       setState(() => _metaError = e.toString());
     }
   }
+
 
   Future<void> _showCreateItemTypeDialog() async {
     final categoryId = _selectedCategoryId;
@@ -636,17 +637,15 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
 
       final downloadUrl =
           _downloadable && _downloadUrlCtrl.text.trim().isNotEmpty
-          ? _downloadUrlCtrl.text.trim()
-          : null;
+              ? _downloadUrlCtrl.text.trim()
+              : null;
 
-      final externalUrl =
-          _selectedProductType == ProductTypeDto.external &&
+      final externalUrl = _selectedProductType == ProductTypeDto.external &&
               _externalUrlCtrl.text.trim().isNotEmpty
           ? _externalUrlCtrl.text.trim()
           : null;
 
-      final buttonText =
-          _selectedProductType == ProductTypeDto.external &&
+      final buttonText = _selectedProductType == ProductTypeDto.external &&
               _buttonTextCtrl.text.trim().isNotEmpty
           ? _buttonTextCtrl.text.trim()
           : null;
@@ -654,9 +653,8 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       final saleStartText = _saleStartCtrl.text.trim().isEmpty
           ? null
           : _saleStartCtrl.text.trim();
-      final saleEndText = _saleEndCtrl.text.trim().isEmpty
-          ? null
-          : _saleEndCtrl.text.trim();
+      final saleEndText =
+          _saleEndCtrl.text.trim().isEmpty ? null : _saleEndCtrl.text.trim();
 
       if (!_isEdit) {
         final req = CreateProductRequest(
@@ -688,7 +686,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
           productId: widget.initialProduct!.id,
           reqBody: {
             'ownerProjectId': widget.ownerProjectId,
-            if (categoryId != null) 'categoryId': categoryId,
+            'categoryId': categoryId,
             if (itemTypeId != null) 'itemTypeId': itemTypeId,
             'currencyId': currencyId,
             'name': _nameCtrl.text.trim(),
@@ -779,22 +777,15 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
             key: _formKey,
             child: Column(
               children: [
-                // Header
                 _AdminFormHeader(tokens: tokens, l: l, isEdit: _isEdit),
-
                 SizedBox(height: spacing.lg),
-
-                // Basic info
                 AdminProductBasicInfoSection(
                   tokens: tokens,
                   l: l,
                   nameCtrl: _nameCtrl,
                   descriptionCtrl: _descriptionCtrl,
                 ),
-
                 SizedBox(height: spacing.md),
-
-                // Category + Item type
                 AdminProductCategoryTypeSection(
                   tokens: tokens,
                   l: l,
@@ -813,13 +804,14 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                     });
                     await _loadItemTypesForCategory(id);
                   },
+                  // ✅ FIX: item type selection handler
+                  onItemTypeChanged: (id) {
+                    setState(() => _selectedItemTypeId = id);
+                  },
                   onCreateCategory: _showCreateCategoryDialog,
                   onCreateItemType: _showCreateItemTypeDialog,
                 ),
-
                 SizedBox(height: spacing.md),
-
-                // Pricing
                 AdminProductPricingSection(
                   tokens: tokens,
                   l: l,
@@ -828,10 +820,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                   loadingCurrency: _loadingCurrency,
                   currencyLabel: _currencyLabel,
                 ),
-
                 SizedBox(height: spacing.md),
-
-                // Image
                 AdminProductImageSection(
                   tokens: tokens,
                   l: l,
@@ -842,10 +831,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                   onPickImage: _pickImage,
                   onRemoveImage: _removePickedImage,
                 ),
-
                 SizedBox(height: spacing.md),
-
-                // SKU + type + flags
                 AdminProductConfigSection(
                   tokens: tokens,
                   l: l,
@@ -856,7 +842,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                       _selectedProductType = val;
                       if (val != ProductTypeDto.external) {
                         _externalUrlCtrl.clear();
-                        _buttonTextCtrl.clear();
+                        _buttonTextCtrl.text = 'Add to cart';
                       }
                     });
                   },
@@ -873,10 +859,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                   externalUrlCtrl: _externalUrlCtrl,
                   buttonTextCtrl: _buttonTextCtrl,
                 ),
-
                 SizedBox(height: spacing.md),
-
-                // Sale
                 AdminProductSaleSection(
                   tokens: tokens,
                   l: l,
@@ -886,10 +869,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                   onPickSaleStart: _pickSaleStartDate,
                   onPickSaleEnd: _pickSaleEndDate,
                 ),
-
                 SizedBox(height: spacing.md),
-
-                // Attributes
                 AdminProductAttributesSection(
                   tokens: tokens,
                   l: l,
@@ -898,9 +878,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                   onAddAttribute: _addAttributeRow,
                   onRemoveAttribute: _removeAttributeRow,
                 ),
-
                 SizedBox(height: spacing.lg),
-
                 if (_errorMessage != null)
                   Padding(
                     padding: EdgeInsets.only(bottom: spacing.md),
@@ -912,7 +890,6 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                       ),
                     ),
                   ),
-
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -1101,9 +1078,8 @@ class AdminProductBasicInfoSection extends StatelessWidget {
           TextFormField(
             controller: descriptionCtrl,
             maxLines: 3,
-            decoration: InputDecoration(
-              hintText: l.adminProductDescriptionHint,
-            ),
+            decoration:
+                InputDecoration(hintText: l.adminProductDescriptionHint),
           ),
         ],
       ),
@@ -1126,6 +1102,10 @@ class AdminProductCategoryTypeSection extends StatelessWidget {
   final String? metaError;
 
   final Future<void> Function(int? id) onCategoryChanged;
+
+  // ✅ FIX: add item type change callback
+  final ValueChanged<int?> onItemTypeChanged;
+
   final Future<void> Function() onCreateCategory;
   final Future<void> Function() onCreateItemType;
 
@@ -1141,6 +1121,7 @@ class AdminProductCategoryTypeSection extends StatelessWidget {
     required this.loadingItemTypes,
     required this.metaError,
     required this.onCategoryChanged,
+    required this.onItemTypeChanged,
     required this.onCreateCategory,
     required this.onCreateItemType,
   });
@@ -1273,11 +1254,8 @@ class AdminProductCategoryTypeSection extends StatelessWidget {
                               ),
                             )
                             .toList(),
-                        onChanged: (val) {
-                          // parent handles state
-                          onCategoryChanged(selectedCategoryId);
-                          // we can't set itemType directly here, parent will handle
-                        },
+                        // ✅ FIX: actually change itemType
+                        onChanged: onItemTypeChanged,
                       ),
                     ),
                   ),
@@ -1449,16 +1427,16 @@ class AdminProductImageSection extends StatelessWidget {
                     ),
                   )
                 : existingImageUrl != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(tokens.card.radius),
-                    child: Image.network(
-                      existingImageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          Center(child: placeholderIcon()),
-                    ),
-                  )
-                : Center(child: placeholderIcon()),
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(tokens.card.radius),
+                        child: Image.network(
+                          existingImageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              Center(child: placeholderIcon()),
+                        ),
+                      )
+                    : Center(child: placeholderIcon()),
           ),
           SizedBox(height: spacing.sm),
           Row(
@@ -1531,7 +1509,6 @@ class AdminProductConfigSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // SKU
           Text(l.adminProductSkuLabel, style: text.titleMedium),
           SizedBox(height: spacing.xs),
           TextFormField(
@@ -1539,8 +1516,6 @@ class AdminProductConfigSection extends StatelessWidget {
             decoration: InputDecoration(hintText: l.adminProductSkuHint),
           ),
           SizedBox(height: spacing.md),
-
-          // Product type
           Text(l.adminProductTypeLabel, style: text.titleMedium),
           SizedBox(height: spacing.xs),
           Container(
@@ -1582,10 +1557,7 @@ class AdminProductConfigSection extends StatelessWidget {
               ),
             ),
           ),
-
           SizedBox(height: spacing.md),
-
-          // Flags
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: Text(l.adminProductVirtualLabel, style: text.bodyMedium),
@@ -1594,44 +1566,37 @@ class AdminProductConfigSection extends StatelessWidget {
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text(
-              l.adminProductDownloadableLabel,
-              style: text.bodyMedium,
-            ),
+            title:
+                Text(l.adminProductDownloadableLabel, style: text.bodyMedium),
             value: downloadable,
             onChanged: onDownloadableChanged,
           ),
-
           if (downloadable) ...[
             SizedBox(height: spacing.sm),
             Text(l.adminProductDownloadUrlLabel, style: text.titleMedium),
             SizedBox(height: spacing.xs),
             TextFormField(
               controller: downloadUrlCtrl,
-              decoration: InputDecoration(
-                hintText: l.adminProductDownloadUrlHint,
-              ),
+              decoration:
+                  InputDecoration(hintText: l.adminProductDownloadUrlHint),
             ),
           ],
-
           if (selectedProductType == ProductTypeDto.external) ...[
             SizedBox(height: spacing.md),
             Text(l.adminProductExternalUrlLabel, style: text.titleMedium),
             SizedBox(height: spacing.xs),
             TextFormField(
               controller: externalUrlCtrl,
-              decoration: InputDecoration(
-                hintText: l.adminProductExternalUrlHint,
-              ),
+              decoration:
+                  InputDecoration(hintText: l.adminProductExternalUrlHint),
             ),
             SizedBox(height: spacing.md),
             Text(l.adminProductButtonTextLabel, style: text.titleMedium),
             SizedBox(height: spacing.xs),
             TextFormField(
               controller: buttonTextCtrl,
-              decoration: InputDecoration(
-                hintText: l.adminProductButtonTextHint,
-              ),
+              decoration:
+                  InputDecoration(hintText: l.adminProductButtonTextHint),
             ),
           ],
         ],
@@ -1676,12 +1641,10 @@ class AdminProductSaleSection extends StatelessWidget {
               Expanded(
                 child: TextFormField(
                   controller: salePriceCtrl,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: l.adminProductSalePriceLabel,
-                  ),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration:
+                      InputDecoration(labelText: l.adminProductSalePriceLabel),
                 ),
               ),
               SizedBox(width: spacing.md),
@@ -1850,7 +1813,6 @@ class _CategoryOption {
   factory _CategoryOption.fromJson(Map<String, dynamic> j) {
     final raw = j['id'];
     final id = raw is int ? raw : int.tryParse('$raw') ?? 0;
-
     return _CategoryOption(id: id, name: (j['name'] ?? '').toString());
   }
 }

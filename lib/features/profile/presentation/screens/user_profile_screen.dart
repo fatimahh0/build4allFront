@@ -50,7 +50,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   String _effectiveToken = '';
   int _effectiveUserId = 0;
 
-  // ✅ multi-tenant ownerProjectLinkId (start from Env, then lock from loaded profile)
+  // ✅ multi-tenant ownerProjectLinkId
   int _effectiveOwnerProjectLinkId = 0;
 
   // ✅ guard to prevent spam reloads
@@ -105,17 +105,16 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     final tGlobal = g.readAuthToken().trim();
     final tStored = (await _store.getToken())?.trim() ?? '';
 
-    // ✅ IMPORTANT: stored before global to avoid wrong token from another app/session
+    // ✅ stored before global to avoid wrong token from another app/session
     final tokenFull = _firstNonEmpty([tWidget, tStored, tGlobal]);
     final tokenRaw = _stripBearer(tokenFull);
 
-    // ✅ FIX: ALWAYS take userId from token first (single source of truth)
+    // ✅ ALWAYS take userId from token first
     int id = 0;
     if (tokenRaw.isNotEmpty) {
       id = JwtUtils.userIdFromToken(tokenRaw) ?? 0;
     }
 
-    // fallback only if token doesn't contain id
     if (id <= 0) id = widget.userId;
 
     if (id <= 0) {
@@ -130,7 +129,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
       if (v is String) id = int.tryParse(v.trim()) ?? 0;
     }
 
-    // keep global token synced (some parts read it)
+    // keep global token synced
     if (tokenFull.isNotEmpty) {
       g.setAuthToken(tokenFull);
     }
@@ -141,7 +140,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
       _effectiveToken = tokenRaw;
       _effectiveUserId = id;
 
-      // start with env ownerId; once profile loads we lock on real ownerId
+      // ✅ start with env ownerId; lock later if backend returns real one
       _effectiveOwnerProjectLinkId = _envOwnerId();
 
       _hydrating = false;
@@ -174,7 +173,6 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     Navigator.pushNamedAndRemoveUntil(context, AppRouter.startup, (_) => false);
   }
 
-  /// ✅ Patch AuthBloc from loaded profile entity (safe)
   void _patchAuthFromProfile(UserProfileLoaded st) {
     final user = st.user;
 
@@ -184,11 +182,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
             lastName: user.lastName,
             username: user.username,
             profilePictureUrl: user.profilePictureUrl,
-
-            // NOTE: We keep patching it if your Auth layer expects it,
-            // but the UI feature is removed.
             isPublicProfile: user.isPublicProfile,
-
             status: user.status,
           ),
         );
@@ -209,7 +203,6 @@ class _UserProfileScreenState extends State<UserProfileScreen>
 
     if (!mounted) return;
 
-    // refresh (same owner)
     context.read<UserProfileBloc>().add(
           LoadUserProfile(
               _effectiveToken, _effectiveUserId, ownerProjectLinkId),
@@ -257,10 +250,12 @@ class _UserProfileScreenState extends State<UserProfileScreen>
         if (state is UserProfileLoaded) {
           _patchAuthFromProfile(state);
 
-          // ✅ lock onto REAL ownerProjectLinkId after we load it
+          // If backend returns a real owner id, lock it and reload once
           final realOwnerId = state.user.ownerProjectLinkId;
           if (realOwnerId > 0 && realOwnerId != _effectiveOwnerProjectLinkId) {
             setState(() => _effectiveOwnerProjectLinkId = realOwnerId);
+            WidgetsBinding.instance
+                .addPostFrameCallback((_) => _kickLoadIfNeeded());
           }
         }
       },
@@ -336,7 +331,11 @@ class _UserProfileScreenState extends State<UserProfileScreen>
         if (state is UserProfileLoaded) {
           final user = state.user;
           final theme = Theme.of(context);
-          final ownerId = user.ownerProjectLinkId;
+
+          // ✅ CRITICAL FIX: do NOT trust user.ownerProjectLinkId
+          final ownerId = _effectiveOwnerProjectLinkId > 0
+              ? _effectiveOwnerProjectLinkId
+              : _envOwnerId();
 
           return Scaffold(
             backgroundColor: theme.colorScheme.background,
@@ -374,7 +373,8 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                            builder: (_) => const PrivacyPolicyScreen()),
+                          builder: (_) => const PrivacyPolicyScreen(),
+                        ),
                       );
                     },
                   ),
@@ -389,7 +389,6 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                     leading: const Icon(Icons.settings),
                     title: Text(tr.manageAccount),
                     children: [
-                      // ✅ ONLY keep "Set Inactive"
                       _tile(
                         context,
                         icon: Icons.power_settings_new,
@@ -405,9 +404,9 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                             ),
                           );
 
+                          // ✅ After success, logout + navigate away.
                           if (ok == true) {
-                            _resetSessionUi();
-                            widget.onLogout();
+                            _goToLogin(context);
                           }
                         },
                       ),

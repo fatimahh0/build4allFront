@@ -12,6 +12,19 @@ class CategoryApiService {
 
   static const String _base = '/api/admin/categories';
 
+  // ---------------- Helpers ----------------
+
+  Map<String, String>? _authHeaders(String? token) {
+    final t = token?.trim();
+    if (t == null || t.isEmpty) return null;
+    final normalized = t.startsWith('Bearer ') ? t : 'Bearer $t';
+    return {'Authorization': normalized};
+  }
+
+  // ---------------- By PROJECT ----------------
+  // ⚠️ Uses "projectId" (Project table). If you send ownerProjectId here you'll get:
+  // "project not found: X"
+
   Future<List<Map<String, dynamic>>> getCategoriesByProject(
     int projectId, {
     String? authToken,
@@ -21,34 +34,13 @@ class CategoryApiService {
       final r = await _fetch.fetch(
         HttpMethod.get,
         path,
-        headers: authToken != null && authToken.isNotEmpty
-            ? {'Authorization': 'Bearer $authToken'}
-            : null,
+        headers: _authHeaders(authToken),
       );
       return _asListOfMap(r.data);
     } on AppException {
       rethrow;
     } catch (e) {
       throw AppException('Failed to load categories by project', original: e);
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> getAllCategories({
-    String? authToken,
-  }) async {
-    try {
-      final r = await _fetch.fetch(
-        HttpMethod.get,
-        _base,
-        headers: authToken != null && authToken.isNotEmpty
-            ? {'Authorization': 'Bearer $authToken'}
-            : null,
-      );
-      return _asListOfMap(r.data);
-    } on AppException {
-      rethrow;
-    } catch (e) {
-      throw AppException('Failed to load categories', original: e);
     }
   }
 
@@ -62,7 +54,7 @@ class CategoryApiService {
         HttpMethod.post,
         _base,
         data: {'name': name, 'projectId': projectId},
-        headers: {'Authorization': 'Bearer $authToken'},
+        headers: _authHeaders(authToken),
       );
       return _asMap(r.data);
     } on AppException {
@@ -72,6 +64,77 @@ class CategoryApiService {
     }
   }
 
+  // ---------------- By OWNER PROJECT ----------------
+  // ✅ Uses "ownerProjectId" (tenant / AUP / store). This matches your screen param:
+  // widget.ownerProjectId
+
+  Future<List<Map<String, dynamic>>> getCategoriesByOwnerProject(
+    int ownerProjectId, {
+    String? authToken,
+  }) async {
+    try {
+      final path = '$_base/by-owner-project/$ownerProjectId';
+      final r = await _fetch.fetch(
+        HttpMethod.get,
+        path,
+        headers: _authHeaders(authToken),
+      );
+      return _asListOfMap(r.data);
+    } on AppException {
+      rethrow;
+    } catch (e) {
+      throw AppException(
+        'Failed to load categories by owner project',
+        original: e,
+      );
+    }
+  }
+
+  Future<Map<String, dynamic>> createCategoryByOwnerProject({
+    required int ownerProjectId,
+    required String name,
+    required String authToken,
+  }) async {
+    try {
+      final path = '$_base/by-owner-project/$ownerProjectId';
+      final r = await _fetch.fetch(
+        HttpMethod.post,
+        path,
+        data: {'name': name},
+        headers: _authHeaders(authToken),
+      );
+      return _asMap(r.data);
+    } on AppException {
+      rethrow;
+    } catch (e) {
+      throw AppException(
+        'Failed to create category by owner project',
+        original: e,
+      );
+    }
+  }
+
+  // ---------------- Other ----------------
+
+  Future<List<Map<String, dynamic>>> getAllCategories({
+    String? authToken,
+  }) async {
+    try {
+      final r = await _fetch.fetch(
+        HttpMethod.get,
+        _base,
+        headers: _authHeaders(authToken),
+      );
+      return _asListOfMap(r.data);
+    } on AppException {
+      rethrow;
+    } catch (e) {
+      throw AppException('Failed to load categories', original: e);
+    }
+  }
+
+  // ---------------- Parsing ----------------
+
   List<Map<String, dynamic>> _asListOfMap(dynamic data) {
     if (data is List) {
       return data
@@ -79,6 +142,7 @@ class CategoryApiService {
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
     }
+
     if (data is Map && data['data'] is List) {
       final list = data['data'] as List;
       return list

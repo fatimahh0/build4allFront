@@ -64,35 +64,93 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   bool get wantKeepAlive => true;
 
+  // ✅ FULL FIX: resolve owner phone from:
+  // 1) direct fields
+  // 2) cfg.toJson() flat keys
+  // 3) cfg.toJson() nested keys (owner/contact/support)
   String? _resolveOwnerPhone(AppConfig cfg) {
-    final dynamic d = cfg;
-
-    String? pick(dynamic v) {
+    String? clean(dynamic v) {
       final s = (v ?? '').toString().trim();
-      if (s.isEmpty || s == 'null') return null;
+      if (s.isEmpty) return null;
+
+      final low = s.toLowerCase();
+      if (low == 'null' || low == 'n/a' || low == 'none') return null;
+
       return s;
     }
 
-    String? tryGet(dynamic Function() getter) {
-      try {
-        return pick(getter());
-      } catch (_) {
-        return null;
+    // 1) direct dynamic fields (if AppConfig exposes them)
+    try {
+      final d = cfg as dynamic;
+      final direct = clean(d.ownerPhoneNumber) ??
+          clean(d.ownerPhone) ??
+          clean(d.contactPhoneNumber) ??
+          clean(d.contactPhone) ??
+          clean(d.supportPhoneNumber) ??
+          clean(d.supportPhone) ??
+          clean(d.phoneNumber) ??
+          clean(d.whatsappNumber) ??
+          clean(d.whatsAppNumber) ??
+          clean(d.ownerWhatsappNumber) ??
+          clean(d.supportWhatsappNumber);
+      if (direct != null) return direct;
+    } catch (_) {}
+
+    // 2) try toJson() map
+    Map<String, dynamic>? m;
+    try {
+      final x = (cfg as dynamic).toJson();
+      if (x is Map<String, dynamic>) m = x;
+    } catch (_) {}
+
+    if (m == null) return null;
+
+    String? fromKey(String key) => clean(m![key]);
+
+    // 2a) flat keys
+    final flat = fromKey('ownerPhoneNumber') ??
+        fromKey('ownerPhone') ??
+        fromKey('contactPhoneNumber') ??
+        fromKey('contactPhone') ??
+        fromKey('supportPhoneNumber') ??
+        fromKey('supportPhone') ??
+        fromKey('phoneNumber') ??
+        fromKey('whatsappNumber') ??
+        fromKey('whatsAppNumber') ??
+        fromKey('ownerWhatsappNumber') ??
+        fromKey('supportWhatsappNumber');
+    if (flat != null) return flat;
+
+    // 2b) nested keys
+    dynamic dig(dynamic root, List<String> path) {
+      dynamic cur = root;
+      for (final k in path) {
+        if (cur is Map<String, dynamic>) {
+          cur = cur[k];
+        } else {
+          return null;
+        }
       }
+      return cur;
     }
 
-    return tryGet(() => d.ownerPhoneNumber) ??
-        tryGet(() => d.ownerPhone) ??
-        tryGet(() => d.contactPhoneNumber) ??
-        tryGet(() => d.contactPhone) ??
-        tryGet(() => d.supportPhoneNumber) ??
-        tryGet(() => d.supportPhone) ??
-        tryGet(() => d.phoneNumber);
+    final nested = clean(dig(m, ['owner', 'phone'])) ??
+        clean(dig(m, ['owner', 'phoneNumber'])) ??
+        clean(dig(m, ['owner', 'whatsapp'])) ??
+        clean(dig(m, ['owner', 'whatsappNumber'])) ??
+        clean(dig(m, ['contact', 'phone'])) ??
+        clean(dig(m, ['contact', 'phoneNumber'])) ??
+        clean(dig(m, ['support', 'phone'])) ??
+        clean(dig(m, ['support', 'phoneNumber'])) ??
+        clean(dig(m, ['support', 'whatsapp'])) ??
+        clean(dig(m, ['support', 'whatsappNumber']));
+
+    return nested;
   }
 
   void _resetPaging() => _filterVersion++;
 
-  // ✅ NEW: check if there are ANY items at all (whole app)
+  // ✅ check if there are ANY items at all (whole app)
   bool _hasAnyItems(HomeState s) {
     return s.recommendedItems.isNotEmpty ||
         s.popularItems.isNotEmpty ||
@@ -102,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen>
         s.topRatedItems.isNotEmpty;
   }
 
-  // ✅ NEW: get category ids that actually have items
+  // ✅ get category ids that actually have items
   Set<int> _availableCategoryIds(HomeState s) {
     final set = <int>{};
 
@@ -126,8 +184,6 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
-
-   
   }
 
   @override
@@ -294,20 +350,15 @@ class _HomeScreenState extends State<HomeScreen>
         );
 
       case HomeSectionType.categoryChips:
-        // ✅ NEW: If there are NO items in the app -> hide categories completely
         if (!_hasAnyItems(homeState)) return const SizedBox.shrink();
 
-        // ✅ NEW: Show only categories that have items
         final availableIds = _availableCategoryIds(homeState);
-
         final cats = homeState.categoryEntities
             .where((c) => availableIds.contains(c.id))
             .toList();
 
-        // If no categories match items (rare) -> hide
         if (cats.isEmpty) return const SizedBox.shrink();
 
-        // If selected category not available anymore, just display "All" (no setState loop)
         final selectedLabel = _selectedCategoryId == null
             ? l10n.explore_category_all
             : () {
@@ -437,12 +488,14 @@ class _HomeScreenState extends State<HomeScreen>
 
       case HomeSectionType.reviewList:
         final ownerPhone = _resolveOwnerPhone(widget.appConfig);
+        debugPrint('[HomeScreen] ownerPhone resolved = "$ownerPhone"');
 
         return HomeBottomSection(
           appName: widget.appConfig.appName,
           ownerProjectId: widget.appConfig.ownerProjectId,
           ownerPhoneNumber: ownerPhone,
-          debugLogs: false,
+          fallbackRegionIso2: 'LB',
+          debugLogs: true,
         );
     }
   }
@@ -526,10 +579,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   bool _isOutOfStock(ItemSummary item) {
     if (item.kind != ItemKind.product) return false;
-
     final s = item.stock;
     if (s == null) return false;
-
     return s <= 0;
   }
 
@@ -680,7 +731,6 @@ class _HomeScreenState extends State<HomeScreen>
 
 // ================================
 // ✅ PRO PAGINATION SECTION
-// FIXED: New Arrivals height shrinks when page has 1–2 items
 // ================================
 
 enum _HomePagerLayout { rowPages2, grid3x2 }
@@ -752,7 +802,7 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
   }
 
   int _rowsNeeded(int count, int cols, int maxRows) {
-    final needed = ((count + cols - 1) ~/ cols); // ceil without doubles
+    final needed = ((count + cols - 1) ~/ cols);
     return needed.clamp(1, maxRows);
   }
 
@@ -855,7 +905,7 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
               return (rowsNeeded * cardH) + ((rowsNeeded - 1) * spacing.md);
             }();
 
-         Widget card(ItemSummary item) {
+            Widget card(ItemSummary item) {
               return Builder(
                 builder: (ctx) {
                   final pricing = widget.pricingFor(ctx, item);
@@ -863,7 +913,6 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
                       ? BoxFit.contain
                       : BoxFit.cover;
 
-               
                   final bool outOfStock = item.kind == ItemKind.product &&
                       (item.stock != null) &&
                       item.stock! <= 0;
@@ -881,15 +930,12 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
                     metaLabel: widget.metaFor(ctx, item),
                     ctaLabel: widget.ctaLabelFor(ctx, item),
                     onTap: () => widget.onTapItem(item.id),
-
-                    // ✅ KEY LINE: null = button disabled
                     onCtaPressed:
                         outOfStock ? null : () => widget.onCtaPressed(item),
                   );
                 },
               );
             }
-
 
             return Column(
               mainAxisSize: MainAxisSize.min,
@@ -933,7 +979,9 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
                           itemCount: pageItems.length,
                           itemBuilder: (context, i) {
                             return SizedBox(
-                                width: cardW, child: card(pageItems[i]));
+                              width: cardW,
+                              child: card(pageItems[i]),
+                            );
                           },
                         );
                       }

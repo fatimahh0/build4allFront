@@ -12,7 +12,7 @@ class LoadUserProfile extends UserProfileEvent {
 
 class ToggleVisibilityPressed extends UserProfileEvent {
   final String token;
-  final int userId; // ✅ ADD THIS
+  final int userId;
   final bool newValue;
   final int ownerProjectLinkId;
 

@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:build4front/l10n/app_localizations.dart';
 
 import 'package:build4front/features/profile/presentation/bloc/user_profile_bloc.dart';
-import 'package:build4front/features/profile/presentation/bloc/user_profile_event.dart';
 
 class DeactivateUserDialog extends StatefulWidget {
   final String token;
@@ -89,16 +88,16 @@ class _DeactivateUserDialogState extends State<DeactivateUserDialog> {
     });
 
     try {
-      // Fire the bloc event instead of calling service directly
-      context.read<UserProfileBloc>().add(
-            UpdateStatusPressed(
-              widget.token,
-              widget.userId,
-              'INACTIVE',
-              widget.ownerProjectLinkId,
-              password: pwd,
-            ),
-          );
+      final bloc = context.read<UserProfileBloc>();
+
+      // ✅ WAIT for real response (don’t close dialog on failure)
+      await bloc.updateStatus(
+        token: widget.token,
+        userId: widget.userId,
+        status: 'INACTIVE',
+        ownerProjectLinkId: widget.ownerProjectLinkId,
+        password: pwd,
+      );
 
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
