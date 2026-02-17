@@ -69,7 +69,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
 
   final _downloadUrlCtrl = TextEditingController();
   final _externalUrlCtrl = TextEditingController();
-  final _buttonTextCtrl = TextEditingController(text: 'Add to cart');
+  final _buttonTextCtrl = TextEditingController(); // l10n default set later
 
   final _salePriceCtrl = TextEditingController();
   final _saleStartCtrl = TextEditingController();
@@ -124,6 +124,16 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Set l10n default button text after first frame (safe for localization).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final l = AppLocalizations.of(context)!;
+      if (_buttonTextCtrl.text.trim().isEmpty) {
+        _buttonTextCtrl.text = l.adminButtonTextDefaultAddToCart;
+      }
+    });
+
     _bootstrap();
   }
 
@@ -178,7 +188,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
 
     _downloadUrlCtrl.text = p.downloadUrl ?? '';
     _externalUrlCtrl.text = p.externalUrl ?? '';
-    _buttonTextCtrl.text = p.buttonText ?? 'Add to cart';
+    _buttonTextCtrl.text = p.buttonText ?? ''; // default set via post-frame
 
     _selectedProductType = _productTypeFromString(p.productType);
 
@@ -203,7 +213,6 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       }
     });
 
-    // keep current category/type if possible (they'll be resolved after loading)
     _selectedCategoryId = p.categoryId;
     _selectedItemTypeId = p.itemTypeId;
   }
@@ -287,9 +296,24 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
   Future<String> _requireAdminToken() async {
     final token = await AdminTokenStore().getToken();
     if (token == null || token.isEmpty) {
-      throw Exception('Missing admin token – please log in again.');
+      // internal code; localized later in UI
+      throw Exception('ADMIN_TOKEN_MISSING');
     }
     return token;
+  }
+
+  String _localizeError(Object e, AppLocalizations l) {
+    final s = e.toString();
+
+    if (s.contains('ADMIN_TOKEN_MISSING')) {
+      return l.adminMissingAdminToken;
+    }
+
+    // If later you throw structured codes from backend, map them here.
+    // Example (optional):
+    // if (s.contains('ITEMTYPE_DELETE_HAS_ITEMS')) return l.adminItemTypeDeleteHasItems;
+
+    return l.adminGenericError;
   }
 
   String? _resolveImageUrl(String? url) {
@@ -300,6 +324,138 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       return trimmed;
     }
     return '${Env.apiBaseUrl}$trimmed';
+  }
+
+  // ---------------- Confirm delete dialog ----------------
+  Future<bool> _confirmDelete({
+    required String title,
+    required String message,
+  }) async {
+    final l = AppLocalizations.of(context)!;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l.commonCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.adminRemove), // reuse existing key
+          ),
+        ],
+      ),
+    );
+    return ok == true;
+  }
+
+  Future<void> _deleteSelectedCategory() async {
+    final categoryId = _selectedCategoryId;
+    if (categoryId == null) return;
+
+    final l = AppLocalizations.of(context)!;
+
+    final catName = _categories
+        .firstWhere(
+          (c) => c.id == categoryId,
+          orElse: () => _CategoryOption(
+            id: categoryId,
+            name: l.adminCategoryFallbackName,
+          ),
+        )
+        .name;
+
+    final ok = await _confirmDelete(
+      title: l.adminDeleteCategoryTitle,
+      message: l.adminDeleteCategoryMessage(catName),
+    );
+    if (!ok) return;
+
+    setState(() {
+      _metaError = null;
+      _loadingCategories = true;
+    });
+
+    try {
+      final token = await _requireAdminToken();
+      final api = CategoryApiService();
+
+      await api.deleteCategory(
+  categoryId,
+  authToken: token,
+);
+
+
+      final nextCats = _categories.where((c) => c.id != categoryId).toList();
+      final nextSelected = nextCats.isNotEmpty ? nextCats.first.id : null;
+
+      if (!mounted) return;
+      setState(() {
+        _categories = nextCats;
+        _selectedCategoryId = nextSelected;
+        _itemTypes = [];
+        _selectedItemTypeId = null;
+      });
+
+      if (nextSelected != null) {
+        await _loadItemTypesForCategory(nextSelected);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _metaError = _localizeError(e, l));
+    } finally {
+      if (mounted) setState(() => _loadingCategories = false);
+    }
+  }
+
+  Future<void> _deleteSelectedItemType() async {
+    final itemTypeId = _selectedItemTypeId;
+    if (itemTypeId == null) return;
+
+    final l = AppLocalizations.of(context)!;
+
+    final typeName = _itemTypes
+        .firstWhere(
+          (t) => t.id == itemTypeId,
+          orElse: () => ItemType(id: itemTypeId, name: l.adminItemTypeFallbackName),
+        )
+        .name;
+
+    final ok = await _confirmDelete(
+      title: l.adminDeleteItemTypeTitle,
+      message: l.adminDeleteItemTypeMessage(typeName),
+    );
+    if (!ok) return;
+
+    setState(() {
+      _metaError = null;
+      _loadingItemTypes = true;
+    });
+
+    try {
+      final token = await _requireAdminToken();
+      final api = ItemTypeApiService();
+
+      await api.deleteItemType(itemTypeId, authToken: token);
+
+      final nextTypes = _itemTypes.where((t) => t.id != itemTypeId).toList();
+      final nextSelected = nextTypes.isNotEmpty ? nextTypes.first.id : null;
+
+      if (!mounted) return;
+      setState(() {
+        _itemTypes = nextTypes;
+        _selectedItemTypeId = nextSelected;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _metaError = _localizeError(e, l));
+    } finally {
+      if (mounted) setState(() => _loadingItemTypes = false);
+    }
   }
 
   // ---------------- Currency ----------------
@@ -335,7 +491,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
   }
 
   // ---------------- Categories + ItemTypes ----------------
- Future<void> _loadCategories() async {
+  Future<void> _loadCategories() async {
     setState(() {
       _loadingCategories = true;
       _metaError = null;
@@ -345,11 +501,9 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       final token = await _requireAdminToken();
       final api = CategoryApiService();
 
-      // ✅ CORRECT: ownerProjectId -> backend resolves projectId internally
-      final rawList = await api.getCategoriesByOwnerProject(
-        widget.ownerProjectId,
-        authToken: token,
-      );
+     final rawList = await api.getCategoriesForTenant(
+  authToken: token,
+);
 
       final cats = rawList.map(_CategoryOption.fromJson).toList();
 
@@ -381,7 +535,8 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() => _metaError = e.toString());
+      final l = AppLocalizations.of(context)!;
+      setState(() => _metaError = _localizeError(e, l));
     } finally {
       if (mounted) setState(() => _loadingCategories = false);
     }
@@ -401,7 +556,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       final api = ItemTypeApiService();
       final rawList = await api.getItemTypesByCategory(
         categoryId,
-        authToken: token,
+        authToken: token
       );
 
       final types =
@@ -431,56 +586,74 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _metaError = e.toString());
+      final l = AppLocalizations.of(context)!;
+      setState(() => _metaError = _localizeError(e, l));
     } finally {
       if (mounted) setState(() => _loadingItemTypes = false);
     }
   }
 
   // ---------------- Create Category / Type ----------------
-  Future<void> _showCreateCategoryDialog() async {
-    final ctrl = TextEditingController();
+Future<void> _showCreateCategoryDialog() async {
+  final l = AppLocalizations.of(context)!;
+  final ctrl = TextEditingController();
+  String? errorText;
 
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('New category'),
+  final result = await showDialog<String>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setState) => AlertDialog(
+        title: Text(l.adminNewCategoryTitle),
         content: TextField(
           controller: ctrl,
-          decoration: const InputDecoration(hintText: 'Ex: Laptops'),
+          autofocus: true,
+          onChanged: (_) {
+            if (errorText != null && ctrl.text.trim().isNotEmpty) {
+              setState(() => errorText = null);
+            }
+          },
+          decoration: InputDecoration(
+            hintText: l.adminNewCategoryHint,
+            errorText: errorText,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+            child: Text(l.commonCancel),
           ),
           TextButton(
             onPressed: () {
               final v = ctrl.text.trim();
-              if (v.isEmpty) return;
+              if (v.isEmpty) {
+                // ✅ no static text: reuse an existing key you already have
+                setState(() => errorText = l.adminProductNameRequired);
+                return;
+              }
               Navigator.of(ctx).pop(v);
             },
-            child: const Text('Save'),
+            child: Text(l.commonSave),
           ),
         ],
       ),
-    );
+    ),
+  );
 
-    if (result == null || result.trim().isEmpty) return;
-    await _createCategory(result.trim());
-  }
+  if (result == null || result.trim().isEmpty) return;
+  await _createCategory(result.trim());
+}
+
 
   Future<void> _createCategory(String name) async {
     try {
       final token = await _requireAdminToken();
       final api = CategoryApiService();
 
-      // ✅ CORRECT: use ownerProject endpoint
-      final data = await api.createCategoryByOwnerProject(
-        ownerProjectId: widget.ownerProjectId,
-        name: name,
-        authToken: token,
-      );
+     final data = await api.createCategory(
+  name: name,
+  authToken: token,
+);
+
 
       final cat = _CategoryOption.fromJson(data);
 
@@ -494,51 +667,66 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       await _loadItemTypesForCategory(cat.id);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _metaError = e.toString());
+      final l = AppLocalizations.of(context)!;
+      setState(() => _metaError = _localizeError(e, l));
     }
   }
 
-
   Future<void> _showCreateItemTypeDialog() async {
-    final categoryId = _selectedCategoryId;
-    if (categoryId == null) {
-      setState(
-        () =>
-            _metaError = 'Please select a category before creating item type.',
-      );
-      return;
-    }
+  final l = AppLocalizations.of(context)!;
 
-    final ctrl = TextEditingController();
+  final categoryId = _selectedCategoryId;
+  if (categoryId == null) {
+    setState(() => _metaError = l.adminSelectCategoryFirst);
+    return;
+  }
 
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('New item type'),
+  final ctrl = TextEditingController();
+  String? errorText;
+
+  final result = await showDialog<String>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setState) => AlertDialog(
+        title: Text(l.adminNewItemTypeTitle),
         content: TextField(
           controller: ctrl,
-          decoration: const InputDecoration(hintText: 'Ex: Laptop'),
+          autofocus: true,
+          onChanged: (_) {
+            if (errorText != null && ctrl.text.trim().isNotEmpty) {
+              setState(() => errorText = null);
+            }
+          },
+          decoration: InputDecoration(
+            hintText: l.adminNewItemTypeHint,
+            errorText: errorText,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+            child: Text(l.commonCancel),
           ),
           TextButton(
             onPressed: () {
               final v = ctrl.text.trim();
-              if (v.isEmpty) return;
+              if (v.isEmpty) {
+                setState(() => errorText = l.adminProductNameRequired);
+                return;
+              }
               Navigator.of(ctx).pop(v);
             },
-            child: const Text('Save'),
+            child: Text(l.commonSave),
           ),
         ],
       ),
-    );
+    ),
+  );
 
-    if (result == null || result.trim().isEmpty) return;
-    await _createItemType(result.trim(), categoryId);
-  }
+  if (result == null || result.trim().isEmpty) return;
+  await _createItemType(result.trim(), categoryId);
+}
+
 
   Future<void> _createItemType(String name, int categoryId) async {
     try {
@@ -548,7 +736,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       final data = await api.createItemType(
         name: name,
         categoryId: categoryId,
-        authToken: token,
+        authToken: token, 
       );
 
       final newType = ItemTypeModel.fromJson(data).toEntity();
@@ -560,7 +748,8 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _metaError = e.toString());
+      final l = AppLocalizations.of(context)!;
+      setState(() => _metaError = _localizeError(e, l));
     }
   }
 
@@ -582,20 +771,19 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
 
   // ---------------- Submit ----------------
   Future<void> _submit() async {
+    final l = AppLocalizations.of(context)!;
+
     if (!_formKey.currentState!.validate()) return;
 
     final categoryId = _selectedCategoryId ?? widget.categoryId;
     if (categoryId == null) {
-      setState(() => _errorMessage = 'Please select a category before saving.');
+      setState(() => _errorMessage = l.adminSelectCategoryBeforeSavingProduct);
       return;
     }
 
     final currencyId = widget.currencyId ?? _effectiveCurrencyId;
     if (currencyId == null) {
-      setState(
-        () => _errorMessage =
-            'Missing currency for this app. Please configure currency first.',
-      );
+      setState(() => _errorMessage = l.adminMissingCurrencyConfig);
       return;
     }
 
@@ -712,7 +900,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {
-      setState(() => _errorMessage = e.toString());
+      setState(() => _errorMessage = _localizeError(e, l));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -804,12 +992,13 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                     });
                     await _loadItemTypesForCategory(id);
                   },
-                  // ✅ FIX: item type selection handler
                   onItemTypeChanged: (id) {
                     setState(() => _selectedItemTypeId = id);
                   },
                   onCreateCategory: _showCreateCategoryDialog,
                   onCreateItemType: _showCreateItemTypeDialog,
+                  onDeleteCategory: _deleteSelectedCategory,
+                  onDeleteItemType: _deleteSelectedItemType,
                 ),
                 SizedBox(height: spacing.md),
                 AdminProductPricingSection(
@@ -842,7 +1031,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                       _selectedProductType = val;
                       if (val != ProductTypeDto.external) {
                         _externalUrlCtrl.clear();
-                        _buttonTextCtrl.text = 'Add to cart';
+                        _buttonTextCtrl.text = l.adminButtonTextDefaultAddToCart;
                       }
                     });
                   },
@@ -1078,8 +1267,7 @@ class AdminProductBasicInfoSection extends StatelessWidget {
           TextFormField(
             controller: descriptionCtrl,
             maxLines: 3,
-            decoration:
-                InputDecoration(hintText: l.adminProductDescriptionHint),
+            decoration: InputDecoration(hintText: l.adminProductDescriptionHint),
           ),
         ],
       ),
@@ -1102,12 +1290,13 @@ class AdminProductCategoryTypeSection extends StatelessWidget {
   final String? metaError;
 
   final Future<void> Function(int? id) onCategoryChanged;
-
-  // ✅ FIX: add item type change callback
   final ValueChanged<int?> onItemTypeChanged;
 
   final Future<void> Function() onCreateCategory;
   final Future<void> Function() onCreateItemType;
+
+  final Future<void> Function() onDeleteCategory;
+  final Future<void> Function() onDeleteItemType;
 
   const AdminProductCategoryTypeSection({
     super.key,
@@ -1124,6 +1313,8 @@ class AdminProductCategoryTypeSection extends StatelessWidget {
     required this.onItemTypeChanged,
     required this.onCreateCategory,
     required this.onCreateItemType,
+    required this.onDeleteCategory,
+    required this.onDeleteItemType,
   });
 
   @override
@@ -1131,6 +1322,9 @@ class AdminProductCategoryTypeSection extends StatelessWidget {
     final c = tokens.colors;
     final spacing = tokens.spacing;
     final text = tokens.typography;
+
+    final canDeleteCategory = selectedCategoryId != null && categories.isNotEmpty;
+    final canDeleteType = selectedItemTypeId != null && itemTypes.isNotEmpty;
 
     return AdminFormSectionCard(
       tokens: tokens,
@@ -1198,6 +1392,12 @@ class AdminProductCategoryTypeSection extends StatelessWidget {
                   color: c.primary,
                   tooltip: l.adminCreateCategory,
                 ),
+                IconButton(
+                  onPressed: canDeleteCategory ? onDeleteCategory : null,
+                  icon: const Icon(Icons.delete_outline),
+                  color: c.danger,
+                  tooltip: l.adminDeleteCategoryTooltip,
+                ),
               ],
             ),
 
@@ -1254,7 +1454,6 @@ class AdminProductCategoryTypeSection extends StatelessWidget {
                               ),
                             )
                             .toList(),
-                        // ✅ FIX: actually change itemType
                         onChanged: onItemTypeChanged,
                       ),
                     ),
@@ -1266,6 +1465,12 @@ class AdminProductCategoryTypeSection extends StatelessWidget {
                   icon: const Icon(Icons.add),
                   color: c.primary,
                   tooltip: l.adminCreateItemType,
+                ),
+                IconButton(
+                  onPressed: canDeleteType ? onDeleteItemType : null,
+                  icon: const Icon(Icons.delete_outline),
+                  color: c.danger,
+                  tooltip: l.adminDeleteItemTypeTooltip,
                 ),
               ],
             ),
@@ -1337,10 +1542,9 @@ class AdminProductPricingSection extends StatelessWidget {
                 SizedBox(height: spacing.xs),
                 TextFormField(
                   controller: priceCtrl,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(hintText: '120.00'),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(hintText: l.adminPriceExampleHint),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) {
                       return l.adminProductPriceRequired;
@@ -1566,8 +1770,7 @@ class AdminProductConfigSection extends StatelessWidget {
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title:
-                Text(l.adminProductDownloadableLabel, style: text.bodyMedium),
+            title: Text(l.adminProductDownloadableLabel, style: text.bodyMedium),
             value: downloadable,
             onChanged: onDownloadableChanged,
           ),
@@ -1587,8 +1790,7 @@ class AdminProductConfigSection extends StatelessWidget {
             SizedBox(height: spacing.xs),
             TextFormField(
               controller: externalUrlCtrl,
-              decoration:
-                  InputDecoration(hintText: l.adminProductExternalUrlHint),
+              decoration: InputDecoration(hintText: l.adminProductExternalUrlHint),
             ),
             SizedBox(height: spacing.md),
             Text(l.adminProductButtonTextLabel, style: text.titleMedium),
@@ -1654,7 +1856,7 @@ class AdminProductSaleSection extends StatelessWidget {
                   readOnly: true,
                   decoration: InputDecoration(
                     labelText: l.adminProductSaleStartLabel,
-                    hintText: 'YYYY-MM-DD',
+                    hintText: l.commonDateFormatHint,
                     suffixIcon: const Icon(Icons.calendar_today),
                   ),
                   onTap: onPickSaleStart,
@@ -1668,7 +1870,7 @@ class AdminProductSaleSection extends StatelessWidget {
             readOnly: true,
             decoration: InputDecoration(
               labelText: l.adminProductSaleEndLabel,
-              hintText: 'YYYY-MM-DD',
+              hintText: l.commonDateFormatHint,
               suffixIcon: const Icon(Icons.calendar_today),
             ),
             onTap: onPickSaleEnd,
@@ -1719,9 +1921,13 @@ class AdminProductAttributesSection extends StatelessWidget {
                 style: text.bodySmall.copyWith(color: c.muted),
               ),
             ),
+
           ...attributes.asMap().entries.map((entry) {
             final index = entry.key;
             final row = entry.value;
+
+            // ✅ Ensure the row always has a valid selectedCode
+            row.selectedCode ??= allowedAttributeCodes.first;
 
             return Padding(
               padding: EdgeInsets.only(bottom: spacing.sm),
@@ -1740,37 +1946,44 @@ class AdminProductAttributesSection extends StatelessWidget {
                         border: Border.all(color: c.border.withOpacity(0.4)),
                       ),
                       child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value:
-                              row.selectedCode ?? allowedAttributeCodes.first,
-                          isExpanded: true,
-                          items: allowedAttributeCodes
-                              .map(
-                                (code) => DropdownMenuItem(
-                                  value: code,
-                                  child: Text(code),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (val) {
-                            if (val == null) return;
-                            row.selectedCode = val;
+                        child: StatefulBuilder(
+                          builder: (ctx, setLocalState) {
+                            return DropdownButton<String>(
+                              value: row.selectedCode,
+                              isExpanded: true,
+                              items: allowedAttributeCodes
+                                  .map(
+                                    (code) => DropdownMenuItem(
+                                      value: code,
+                                      child: Text(code),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (val) {
+                                if (val == null) return;
+                                // ✅ this rebuilds the dropdown immediately
+                                setLocalState(() => row.selectedCode = val);
+                              },
+                            );
                           },
                         ),
                       ),
                     ),
                   ),
+
                   SizedBox(width: spacing.sm),
+
                   Expanded(
                     flex: 3,
                     child: TextFormField(
                       controller: row.valueCtrl,
                       decoration: InputDecoration(
                         labelText: l.adminProductAttributeValueLabel,
-                        hintText: 'Samsung',
+                        hintText: l.adminProductAttributeValueHint,
                       ),
                     ),
                   ),
+
                   IconButton(
                     onPressed: () => onRemoveAttribute(index),
                     icon: Icon(Icons.delete, color: c.danger),
@@ -1779,6 +1992,7 @@ class AdminProductAttributesSection extends StatelessWidget {
               ),
             );
           }).toList(),
+
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(

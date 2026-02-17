@@ -90,8 +90,8 @@ class _DeactivateUserDialogState extends State<DeactivateUserDialog> {
     try {
       final bloc = context.read<UserProfileBloc>();
 
-      // ✅ WAIT for real response (don’t close dialog on failure)
-      await bloc.updateStatus(
+      // ✅ WAIT for real response (don’t close on failure)
+      await bloc.updateStatusDirect(
         token: widget.token,
         userId: widget.userId,
         status: 'INACTIVE',

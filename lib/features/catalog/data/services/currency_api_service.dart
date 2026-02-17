@@ -12,6 +12,15 @@ class CurrencyApiService {
 
   static const String _base = '/api/currencies';
 
+  // ✅ Normalize Bearer (prevents: "Bearer Bearer <token>")
+  Map<String, String>? _authHeaders(String? token) {
+    final t = token?.trim();
+    if (t == null || t.isEmpty) return null;
+
+    final normalized = t.startsWith('Bearer ') ? t : 'Bearer $t';
+    return {'Authorization': normalized};
+  }
+
   Future<Map<String, dynamic>> getCurrencyById(
     int id, {
     String? authToken,
@@ -20,9 +29,7 @@ class CurrencyApiService {
       final r = await _fetch.fetch(
         HttpMethod.get,
         '$_base/$id',
-        headers: authToken != null && authToken.isNotEmpty
-            ? {'Authorization': 'Bearer $authToken'}
-            : null,
+        headers: _authHeaders(authToken),
       );
       return _asMap(r.data);
     } on AppException {

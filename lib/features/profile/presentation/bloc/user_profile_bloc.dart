@@ -22,6 +22,23 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
     on<UpdateStatusPressed>(_onUpdateStatus);
   }
 
+  // ✅ NEW: direct method you can await from dialogs (no Provider drama, no event guessing)
+  Future<void> updateStatusDirect({
+    required String token,
+    required int userId,
+    required String status,
+    required int ownerProjectLinkId,
+    String? password,
+  }) async {
+    await updateStatus(
+      token: token,
+      userId: userId,
+      status: status,
+      ownerProjectLinkId: ownerProjectLinkId,
+      password: password,
+    );
+  }
+
   Future<void> _onLoad(
     LoadUserProfile e,
     Emitter<UserProfileState> emit,
@@ -74,8 +91,8 @@ class UserProfileBloc extends Bloc<UserProfileEvent, UserProfileState> {
       );
 
       // ✅ CRITICAL FIX:
-      // If you set INACTIVE, backend may hide the profile,
-      // so reloading will throw "could not find the correct profile".
+      // If INACTIVE -> backend may hide profile,
+      // so reloading causes "could not find the correct profile".
       if (e.status.toUpperCase() == 'INACTIVE') {
         return;
       }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:build4front/core/network/globals.dart' as g;
 import 'package:build4front/core/config/env.dart';
@@ -22,6 +24,51 @@ class UserProfileService {
 
   String get _base => '$_apiRoot/users';
 
+  // ---------- helpers ----------
+
+  String _extractMessage(dynamic data) {
+    // If backend returns JSON map
+    if (data is Map) {
+      final m = data.cast<String, dynamic>();
+      return (m['error'] ?? m['message'] ?? m['detail'] ?? m['msg'] ?? '').toString();
+    }
+
+    // If backend returns a string (plain text OR JSON string)
+    if (data is String) {
+      final s = data.trim();
+      if (s.isEmpty) return '';
+
+      // Try decode JSON string safely
+      if (s.startsWith('{') || s.startsWith('[')) {
+        try {
+          final decoded = jsonDecode(s);
+          return _extractMessage(decoded);
+        } catch (_) {
+          // Not valid JSON, treat as plain
+          return s;
+        }
+      }
+      return s;
+    }
+
+    return '';
+  }
+
+  void _throwBadResponse(Response res) {
+    final code = res.statusCode ?? 0;
+    final msg = _extractMessage(res.data);
+    final fallback = 'Request failed ($code)';
+
+    throw DioException(
+      requestOptions: res.requestOptions,
+      response: res,
+      type: DioExceptionType.badResponse,
+      message: msg.isNotEmpty ? msg : fallback,
+    );
+  }
+
+  // ---------- API ----------
+
   Future<Map<String, dynamic>> fetchProfileMap({
     required String token,
     required int userId,
@@ -33,27 +80,34 @@ class UserProfileService {
       options: Options(
         headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
         responseType: ResponseType.json,
-        validateStatus: (s) => s != null && s >= 200 && s < 300,
+        receiveDataWhenStatusError: true,
+        validateStatus: (s) => s != null && s >= 200 && s < 500,
       ),
     );
+
+    if ((res.statusCode ?? 0) < 200 || (res.statusCode ?? 0) >= 300) {
+      _throwBadResponse(res);
+    }
 
     final data = res.data;
     if (data is Map) return data.cast<String, dynamic>();
 
     throw DioException(
       requestOptions: res.requestOptions,
+      response: res,
+      type: DioExceptionType.unknown,
       message: 'Invalid profile response: expected JSON object',
     );
   }
 
-  /// ✅ FIX: pass userId in path so backend doesn't rely on token identity
+  /// visibility (keep plain, backend often returns text)
   Future<void> updateVisibility({
     required String token,
     required int userId,
     required bool isPublic,
     required int ownerProjectLinkId,
   }) async {
-    await _dio.put(
+    final res = await _dio.put(
       '$_base/$userId/profile-visibility',
       queryParameters: {
         'isPublic': isPublic,
@@ -63,11 +117,18 @@ class UserProfileService {
       options: Options(
         headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
         responseType: ResponseType.plain,
-        validateStatus: (s) => s != null && s >= 200 && s < 300,
+        receiveDataWhenStatusError: true,
+        validateStatus: (s) => s != null && s >= 200 && s < 500,
       ),
     );
+
+    if ((res.statusCode ?? 0) < 200 || (res.statusCode ?? 0) >= 300) {
+      _throwBadResponse(res);
+    }
   }
 
+  /// ✅ FIXED: status endpoint should NOT be ResponseType.json
+  /// because backend usually returns plain text (or empty).
   Future<void> updateStatus({
     required String token,
     required int userId,
@@ -76,19 +137,27 @@ class UserProfileService {
     String? password,
   }) async {
     final body = <String, dynamic>{'status': status};
+
     if (status.toUpperCase() == 'INACTIVE' && (password?.isNotEmpty ?? false)) {
       body['password'] = password;
     }
 
-    await _dio.put(
+    final res = await _dio.put(
       '$_base/$userId/status',
       queryParameters: {'ownerProjectLinkId': ownerProjectLinkId},
       data: body,
       options: Options(
         headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
-        responseType: ResponseType.json,
-        validateStatus: (s) => s != null && s >= 200 && s < 300,
+        responseType: ResponseType.plain, // ✅ important
+        receiveDataWhenStatusError: true, // ✅ keep body even on 400/401
+        validateStatus: (s) => s != null && s >= 200 && s < 500,
       ),
     );
+
+    if ((res.statusCode ?? 0) < 200 || (res.statusCode ?? 0) >= 300) {
+      _throwBadResponse(res);
+    }
+
+    // success: ignore body (could be empty or text)
   }
 }

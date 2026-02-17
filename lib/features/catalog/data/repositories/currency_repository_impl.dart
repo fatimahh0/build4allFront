@@ -5,12 +5,17 @@ import '../services/currency_api_service.dart';
 
 class CurrencyRepositoryImpl implements CurrencyRepository {
   final CurrencyApiService api;
+  final Future<String?> Function() getToken;
 
-  CurrencyRepositoryImpl({required this.api});
+  CurrencyRepositoryImpl({
+    required this.api,
+    required this.getToken,
+  });
 
   @override
   Future<Currency> getById(int id) async {
-    final json = await api.getCurrencyById(id);
+    final token = (await getToken())?.trim();
+    final json = await api.getCurrencyById(id, authToken: token);
     return CurrencyModel.fromJson(json).toEntity();
   }
 }

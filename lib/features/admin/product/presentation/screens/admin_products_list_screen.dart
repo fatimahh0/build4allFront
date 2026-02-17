@@ -1,5 +1,3 @@
-// lib/features/admin/product/presentation/screens/admin_products_list_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -18,6 +16,10 @@ import '../bloc/list/product_list_state.dart';
 
 import '../widgets/admin_product_card.dart';
 import 'admin_create_product_screen.dart';
+
+// ✅ currency fetch + cache
+import 'package:build4front/features/catalog/data/services/currency_api_service.dart';
+import 'package:build4front/features/catalog/utils/currency_symbol_cache.dart';
 
 class AdminProductsListScreen extends StatelessWidget {
   final int ownerProjectId;
@@ -51,6 +53,52 @@ class _AdminProductsListView extends StatefulWidget {
 class _AdminProductsListViewState extends State<_AdminProductsListView> {
   String _searchQuery = '';
   String _typeFilter = 'ALL';
+
+  // ✅ currency symbol cache
+  late final CurrencySymbolCache _currencyCache = CurrencySymbolCache(
+    api: CurrencyApiService(),
+    getToken: AdminTokenStore().getToken,
+  );
+
+  Map<int, String> _symbolByCurrencyId = {};
+  bool _warmingCurrency = false;
+
+  Future<void> _warmCurrencySymbols(List<Product> products) async {
+    if (_warmingCurrency) return;
+
+    final ids = products.map((p) => p.currencyId).whereType<int>().toSet();
+
+    final missing =
+        ids.where((id) => !_symbolByCurrencyId.containsKey(id)).toList();
+
+    if (missing.isEmpty) return;
+
+    setState(() => _warmingCurrency = true);
+    try {
+      await _currencyCache.warmUp(missing);
+      if (!mounted) return;
+      setState(() {
+        _symbolByCurrencyId = Map<int, String>.from(_currencyCache.snapshot);
+      });
+    } finally {
+      if (mounted) setState(() => _warmingCurrency = false);
+    }
+  }
+
+  /// ✅ Reliable warm-up trigger:
+  /// call it from builder → schedules after frame only if there are missing ids
+  void _maybeWarmUp(List<Product> products) {
+    final ids = products.map((p) => p.currencyId).whereType<int>().toSet();
+    final missing =
+        ids.where((id) => !_symbolByCurrencyId.containsKey(id)).toList();
+
+    if (missing.isEmpty) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _warmCurrencySymbols(products);
+    });
+  }
 
   Future<void> _confirmDelete(BuildContext context, Product product) async {
     final tokens = context.read<ThemeCubit>().state.tokens;
@@ -98,8 +146,8 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
       if (context.mounted) {
         Navigator.of(context).pop(); // close loader
         context.read<ProductListBloc>().add(
-          LoadProductsForOwner(widget.ownerProjectId),
-        );
+              LoadProductsForOwner(widget.ownerProjectId),
+            );
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Product deleted successfully')),
         );
@@ -107,9 +155,9 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
     } catch (e) {
       if (context.mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to delete product: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete product: $e')),
+        );
       }
     }
   }
@@ -167,8 +215,8 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
 
           if (changed == true && context.mounted) {
             context.read<ProductListBloc>().add(
-              LoadProductsForOwner(widget.ownerProjectId),
-            );
+                  LoadProductsForOwner(widget.ownerProjectId),
+                );
           }
         },
         backgroundColor: colors.primary,
@@ -200,20 +248,22 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
               );
             }
 
+            // ✅ Always try to warm up currency symbols (only if missing)
+            _maybeWarmUp(state.products);
+
             final filtered = _applyFilters(state);
             final width = MediaQuery.of(context).size.width;
             final crossAxisCount = width >= 1100
                 ? 5
                 : width >= 900
-                ? 4
-                : width >= 600
-                ? 3
-                : 2;
+                    ? 4
+                    : width >= 600
+                        ? 3
+                        : 2;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ---- Header row: search + filter + count ----
                 _AdminProductsHeaderBar(
                   tokens: tokens,
                   l10n: l10n,
@@ -241,26 +291,31 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
                     itemCount: filtered.length,
                     itemBuilder: (context, index) {
                       final product = filtered[index];
+
+                      final sym = product.currencyId != null
+                          ? _symbolByCurrencyId[product.currencyId!]
+                          : null;
+
                       return AdminProductCard(
                         product: product,
+                        currencySymbol: sym,
                         onEdit: () async {
-                          final changed = await Navigator.of(context)
-                              .push<bool>(
-                                MaterialPageRoute(
-                                  builder: (_) => AdminCreateProductScreen(
-                                    ownerProjectId: widget.ownerProjectId,
-                                    categoryId: product.categoryId,
-                                    itemTypeId: product.itemTypeId,
-                                    currencyId: product.currencyId,
-                                    initialProduct: product,
-                                  ),
-                                ),
-                              );
+                          final changed = await Navigator.of(context).push<bool>(
+                            MaterialPageRoute(
+                              builder: (_) => AdminCreateProductScreen(
+                                ownerProjectId: widget.ownerProjectId,
+                                categoryId: product.categoryId,
+                                itemTypeId: product.itemTypeId,
+                                currencyId: product.currencyId,
+                                initialProduct: product,
+                              ),
+                            ),
+                          );
 
                           if (changed == true && context.mounted) {
                             context.read<ProductListBloc>().add(
-                              LoadProductsForOwner(widget.ownerProjectId),
-                            );
+                                  LoadProductsForOwner(widget.ownerProjectId),
+                                );
                           }
                         },
                         onDelete: () => _confirmDelete(context, product),
@@ -324,7 +379,6 @@ class _AdminProductsHeaderBar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top row: title + count
           Row(
             children: [
               Icon(Icons.inventory_2_outlined, color: c.primary),
@@ -355,7 +409,6 @@ class _AdminProductsHeaderBar extends StatelessWidget {
           ),
           SizedBox(height: spacing.md),
 
-          // Second row: search + type filter
           Row(
             children: [
               Expanded(

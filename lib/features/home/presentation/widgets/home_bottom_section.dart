@@ -35,6 +35,13 @@ class HomeBottomSection extends StatelessWidget {
   /// optional: identify instance
   final int? ownerProjectId;
 
+  /// ✅ NEW: link id (ownerProjectLinkId)
+  final int? ownerProjectLinkId;
+
+  /// ✅ NEW: support info (nice-to-have)
+  final String? supportName;
+  final String? supportEmail;
+
   /// optional override
   final String? whatsappMessageOverride;
 
@@ -48,6 +55,9 @@ class HomeBottomSection extends StatelessWidget {
     this.fallbackRegionIso2 = 'LB',
     this.appName,
     this.ownerProjectId,
+    this.ownerProjectLinkId,
+    this.supportName,
+    this.supportEmail,
     this.whatsappMessageOverride,
     this.debugLogs = true,
   });
@@ -213,12 +223,10 @@ class HomeBottomSection extends StatelessWidget {
 
     String? okToDigits(String e164) {
       final digits = e164.startsWith('+') ? e164.substring(1) : e164;
-      // WhatsApp generally expects 8..15 digits (E.164 max 15)
       if (!RegExp(r'^\d{8,15}$').hasMatch(digits)) return null;
       return digits;
     }
 
-    // 1) If starts with + => parse as international
     if (s.startsWith('+')) {
       try {
         final num = util.parse(s, 'ZZ');
@@ -230,9 +238,7 @@ class HomeBottomSection extends StatelessWidget {
       }
     }
 
-    // 2) digits-only => try local first, then try "+digits"
     if (RegExp(r'^\d+$').hasMatch(s)) {
-      // local parse (70123123 in LB)
       try {
         final numLocal = util.parse(s, region);
         if (util.isValidNumber(numLocal)) {
@@ -243,7 +249,6 @@ class HomeBottomSection extends StatelessWidget {
         _log('local parse error: $e');
       }
 
-      // maybe it already includes country code without plus: 96170123123
       try {
         final numIntl = util.parse('+$s', 'ZZ');
         if (util.isValidNumber(numIntl)) {
@@ -258,30 +263,36 @@ class HomeBottomSection extends StatelessWidget {
     return null;
   }
 
-  String _buildMessage(BuildContext context) {
-    if ((whatsappMessageOverride ?? '').trim().isNotEmpty) {
-      return whatsappMessageOverride!.trim();
-    }
+ String _buildMessage(BuildContext context) {
+  final app = (appName ?? '').trim().isNotEmpty ? appName!.trim() : 'Build4All';
+  final userName = (_resolveUserName(context) ?? '').trim();
+  final identity = userName.isNotEmpty ? userName : 'Guest';
 
-    final app = (appName ?? '').trim().isNotEmpty ? appName!.trim() : 'the app';
-    final userName = _resolveUserName(context);
+  final proj = ownerProjectId != null ? '#$ownerProjectId' : 'N/A';
+  final link = ownerProjectLinkId != null ? '#$ownerProjectLinkId' : 'N/A';
 
-    final whoLine = (userName ?? '').trim().isNotEmpty
-        ? 'User: $userName'
-        : 'User: (guest)';
+  final now = DateTime.now();
+  final ts =
+      '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} '
+      '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
 
-    final projLine =
-        ownerProjectId != null ? 'Project: #$ownerProjectId' : null;
+  return [
+    'Hello Support,',
+    '',
+    'I need assistance with an issue in $app.',
+    '',
+    '• Project ID: $proj',
+    '• Link ID: $link',
+    '• User: $identity',
+    '• Time: $ts',
+    '',
+    'Issue:',
+    '- ',
+    '',
+    'Thank you.',
+  ].join('\n');
+}
 
-    return [
-      'Hi 👋',
-      'I’m contacting you from $app.',
-      if (projLine != null) projLine,
-      whoLine,
-      '',
-      'I need help with:',
-    ].join('\n');
-  }
 
   Future<void> _openWhatsApp(BuildContext context) async {
     final raw = (ownerPhoneNumber ?? '').trim();
@@ -290,7 +301,7 @@ class HomeBottomSection extends StatelessWidget {
     if (raw.isEmpty || raw.toLowerCase() == 'null') {
       AppToast.show(
         context,
-        'Owner contact number is not configured in app config.',
+        'Owner support number is not configured.',
         isError: true,
       );
       _log('tap blocked: raw is empty/null');
@@ -303,7 +314,7 @@ class HomeBottomSection extends StatelessWidget {
     if (phone == null) {
       AppToast.show(
         context,
-        'Invalid owner number.\n'
+        'Invalid support number.\n'
         '✅ Best: +<country><number> like +96170123123\n'
         '✅ If local: we interpret using region="$region".\n'
         '🔎 Raw received: "$raw"',
@@ -314,7 +325,6 @@ class HomeBottomSection extends StatelessWidget {
 
     final msg = Uri.encodeComponent(_buildMessage(context));
 
-    // Try app scheme first (best UX), fallback to wa.me
     final appUri = Uri.parse('whatsapp://send?phone=$phone&text=$msg');
     final webUri = Uri.parse('https://wa.me/$phone?text=$msg');
 
@@ -343,12 +353,15 @@ class HomeBottomSection extends StatelessWidget {
     final spacing = context.read<ThemeCubit>().state.tokens.spacing;
     final l10n = AppLocalizations.of(context)!;
 
+    final hasPhone = (ownerPhoneNumber ?? '').trim().isNotEmpty &&
+        (ownerPhoneNumber ?? '').trim().toLowerCase() != 'null';
+
     final cards = <_BottomCardModel>[
       _BottomCardModel(
         icon: Icons.chat_rounded,
         title: l10n.home_footer_contact_title,
-        subtitle: 'WhatsApp',
-        onTap: () => _openWhatsApp(context),
+        subtitle: hasPhone ? 'WhatsApp' : l10n.home_bookings_placeholder,
+        onTap: hasPhone ? () => _openWhatsApp(context) : null,
       ),
       _BottomCardModel(
         icon: Icons.credit_card_rounded,

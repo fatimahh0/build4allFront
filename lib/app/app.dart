@@ -116,8 +116,14 @@ class Build4AllFrontApp extends StatelessWidget {
 
     // ---------- CURRENCY LAYER (single instances) ----------
     final currencyApi = CurrencyApiService();
-    final currencyRepo = CurrencyRepositoryImpl(api: currencyApi);
+    final currencyRepo = CurrencyRepositoryImpl(
+  api: CurrencyApiService(),
+  getToken: AdminTokenStore().getToken,
+);
 
+final currencyCubit = CurrencyCubit(
+  getCurrencyById: GetCurrencyById(currencyRepo),
+);
     //order user
     final ordersApi = OrdersApiService(tokenStore: tokenStore);
     final ordersRepo = OrdersRepositoryImpl(api: ordersApi);

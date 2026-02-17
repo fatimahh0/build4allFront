@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:build4front/features/support/data/services/support_api_service.dart';
+import 'package:build4front/features/support/domain/support_info.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -37,6 +39,9 @@ import 'package:build4front/common/widgets/app_toast.dart';
 // ✅ dynamic currency formatter
 import 'package:build4front/features/catalog/cubit/money.dart';
 
+// ✅ IMPORTANT: Env (you said linkId comes from Env.ownerProjectLinkId)
+import 'package:build4front/core/config/env.dart';
+
 class HomeScreen extends StatefulWidget {
   final AppConfig appConfig;
   final List<HomeSectionConfig> sections;
@@ -64,22 +69,136 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   bool get wantKeepAlive => true;
 
-  // ✅ FULL FIX: resolve owner phone from:
-  // 1) direct fields
-  // 2) cfg.toJson() flat keys
-  // 3) cfg.toJson() nested keys (owner/contact/support)
-  String? _resolveOwnerPhone(AppConfig cfg) {
+  // -----------------------------
+  // ✅ Support info state
+  // -----------------------------
+  final OwnerSupportService _supportService = OwnerSupportService();
+  SupportInfo? _supportInfo;
+  bool _supportLoading = false;
+  String? _supportError;
+  DateTime? _supportLoadedAt;
+
+  // prevent log spam (helps scroll perf)
+  int _lastBottomLogHash = 0;
+
+  void _log(String msg) {
+    debugPrint('[HomeScreen] $msg');
+  }
+
+  void _logErr(String msg, Object e, StackTrace st) {
+    debugPrint('[HomeScreen][ERR] $msg -> $e');
+    debugPrintStack(stackTrace: st);
+  }
+
+  int _asInt(dynamic v) {
+    if (v == null) return 0;
+    if (v is int) return v;
+    return int.tryParse('$v') ?? 0;
+  }
+
+  /// ✅ Your rule: "linkId = ownerProjectId"
+  /// and it's coming from Env like: (Env.ownerProjectLinkId) ?? 0
+  int get _resolvedOwnerProjectLinkId {
+    final envLink = _asInt((Env.ownerProjectLinkId));
+    if (envLink > 0) return envLink;
+
+    final cfgOwnerProjectId = _asInt(widget.appConfig.ownerProjectId);
+    if (cfgOwnerProjectId > 0) return cfgOwnerProjectId;
+
+    final envOwner = _asInt((Env.ownerProjectLinkId));
+    if (envOwner > 0) return envOwner;
+
+    return 0;
+  }
+
+  int get _resolvedOwnerProjectId {
+    final cfgOwnerProjectId = _asInt(widget.appConfig.ownerProjectId);
+    if (cfgOwnerProjectId > 0) return cfgOwnerProjectId;
+
+    // if you only have link id, use it (same value)
+    final link = _resolvedOwnerProjectLinkId;
+    if (link > 0) return link;
+
+    final envOwner = _asInt((Env.ownerProjectLinkId));
+    if (envOwner > 0) return envOwner;
+
+    return 0;
+  }
+
+  Future<void> _loadSupportInfo({bool silent = true, String reason = ''}) async {
+    final linkId = _resolvedOwnerProjectLinkId;
+
+    if (linkId <= 0) {
+      if (!silent) {
+        setState(() {
+          _supportInfo = null;
+          _supportError =
+              'Missing ownerProjectLinkId (Env.ownerProjectLinkId is 0).';
+          _supportLoading = false;
+          _supportLoadedAt = null;
+        });
+      }
+      _log(
+        'SupportInfo skipped: linkId invalid (<=0) | envLink=${_asInt(Env.ownerProjectLinkId)} | cfgOwner=${_asInt(widget.appConfig.ownerProjectId)} | envOwner=${_asInt(Env.ownerProjectLinkId)} | reason=$reason',
+      );
+      return;
+    }
+
+    if (!silent) {
+      setState(() {
+        _supportLoading = true;
+        _supportError = null;
+      });
+    }
+
+    _log(
+      'SupportInfo START | linkId=$linkId | envLink=${_asInt(Env.ownerProjectLinkId)} | cfgOwner=${_asInt(widget.appConfig.ownerProjectId)} | envOwner=${_asInt(Env.ownerProjectLinkId)} | reason=$reason',
+    );
+
+    try {
+      final raw = (authState.token ?? '').trim();
+      final token = raw.isEmpty ? null : raw;
+
+      final info = await _supportService.fetchSupportInfo(
+        token: token,
+        ownerProjectLinkId: linkId,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _supportInfo = info;
+        _supportError = null;
+        _supportLoading = false;
+        _supportLoadedAt = DateTime.now();
+      });
+
+      _log(
+        'SupportInfo OK | linkId=$linkId | phone="${info.phoneNumber ?? ''}" | email="${info.email ?? ''}" | owner="${info.ownerName ?? ''}"',
+      );
+    } catch (e, st) {
+      if (!mounted) return;
+      setState(() {
+        _supportInfo = null;
+        _supportError = '$e';
+        _supportLoading = false;
+        _supportLoadedAt = null;
+      });
+      _logErr('SupportInfo FAIL (linkId=$linkId)', e, st);
+    }
+  }
+
+  void _resetPaging() => _filterVersion++;
+
+  // ✅ fallback ONLY (if support api fails)
+  String? _fallbackOwnerPhoneFromConfig(AppConfig cfg) {
     String? clean(dynamic v) {
       final s = (v ?? '').toString().trim();
       if (s.isEmpty) return null;
-
       final low = s.toLowerCase();
       if (low == 'null' || low == 'n/a' || low == 'none') return null;
-
       return s;
     }
 
-    // 1) direct dynamic fields (if AppConfig exposes them)
     try {
       final d = cfg as dynamic;
       final direct = clean(d.ownerPhoneNumber) ??
@@ -96,7 +215,6 @@ class _HomeScreenState extends State<HomeScreen>
       if (direct != null) return direct;
     } catch (_) {}
 
-    // 2) try toJson() map
     Map<String, dynamic>? m;
     try {
       final x = (cfg as dynamic).toJson();
@@ -107,7 +225,6 @@ class _HomeScreenState extends State<HomeScreen>
 
     String? fromKey(String key) => clean(m![key]);
 
-    // 2a) flat keys
     final flat = fromKey('ownerPhoneNumber') ??
         fromKey('ownerPhone') ??
         fromKey('contactPhoneNumber') ??
@@ -121,7 +238,6 @@ class _HomeScreenState extends State<HomeScreen>
         fromKey('supportWhatsappNumber');
     if (flat != null) return flat;
 
-    // 2b) nested keys
     dynamic dig(dynamic root, List<String> path) {
       dynamic cur = root;
       for (final k in path) {
@@ -147,8 +263,6 @@ class _HomeScreenState extends State<HomeScreen>
 
     return nested;
   }
-
-  void _resetPaging() => _filterVersion++;
 
   // ✅ check if there are ANY items at all (whole app)
   bool _hasAnyItems(HomeState s) {
@@ -184,6 +298,9 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadSupportInfo(silent: true, reason: 'init');
+    });
   }
 
   @override
@@ -259,12 +376,14 @@ class _HomeScreenState extends State<HomeScreen>
                       _selectedCategoryId = null;
                       _resetPaging();
                     });
+
                     final raw = (authState.token ?? '').trim();
                     final token = raw.isEmpty ? null : raw;
-
                     context
                         .read<HomeBloc>()
                         .add(HomeRefreshRequested(token: token));
+
+                    await _loadSupportInfo(silent: false, reason: 'pull-to-refresh');
                   },
                   child: LayoutBuilder(
                     builder: (context, constraints) {
@@ -278,8 +397,7 @@ class _HomeScreenState extends State<HomeScreen>
                       return Align(
                         alignment: Alignment.topCenter,
                         child: ConstrainedBox(
-                          constraints:
-                              BoxConstraints(maxWidth: contentMaxWidth),
+                          constraints: BoxConstraints(maxWidth: contentMaxWidth),
                           child: ListView.builder(
                             physics: const AlwaysScrollableScrollPhysics(),
                             padding: EdgeInsets.fromLTRB(hp, top, hp, bottom),
@@ -411,7 +529,7 @@ class _HomeScreenState extends State<HomeScreen>
         return Padding(
           padding: EdgeInsets.only(bottom: spacing.xs),
           child: HomeBannerSlider(
-            ownerProjectId: widget.appConfig.ownerProjectId ?? 1,
+            ownerProjectId: _resolvedOwnerProjectId,
             token: authState.token ?? '',
             onBannerTap: (banner) {
               if (banner.targetType == 'CATEGORY' && banner.targetId != null) {
@@ -487,18 +605,45 @@ class _HomeScreenState extends State<HomeScreen>
         );
 
       case HomeSectionType.reviewList:
-        final ownerPhone = _resolveOwnerPhone(widget.appConfig);
-        debugPrint('[HomeScreen] ownerPhone resolved = "$ownerPhone"');
+        final linkId = _resolvedOwnerProjectLinkId;
+
+        // prefer support API phone, fallback to config
+        final phoneFromApi = (_supportInfo?.phoneNumber ?? '').trim();
+        final phoneFallback =
+            (_fallbackOwnerPhoneFromConfig(widget.appConfig) ?? '').trim();
+
+        final ownerPhone = phoneFromApi.isNotEmpty
+            ? phoneFromApi
+            : (phoneFallback.isNotEmpty ? phoneFallback : null);
+
+        // ✅ log only when values change
+        final logLine =
+            '[HomeScreen] BottomSection: loading=$_supportLoading linkId=$linkId '
+            'apiPhone="$phoneFromApi" fallback="$phoneFallback" chosen="$ownerPhone" '
+            'err="${_supportError ?? ''}" loadedAt="${_supportLoadedAt?.toIso8601String() ?? ''}" '
+            'envLink=${_asInt(Env.ownerProjectLinkId)} cfgOwner=${_asInt(widget.appConfig.ownerProjectId)} envOwner=${_asInt(Env.ownerProjectLinkId)}';
+
+        final h = logLine.hashCode;
+        if (h != _lastBottomLogHash) {
+          _lastBottomLogHash = h;
+          debugPrint(logLine);
+        }
 
         return HomeBottomSection(
           appName: widget.appConfig.appName,
-          ownerProjectId: widget.appConfig.ownerProjectId,
+          ownerProjectId: _resolvedOwnerProjectId,
+          ownerProjectLinkId: linkId,
           ownerPhoneNumber: ownerPhone,
+          supportEmail: _supportInfo?.email,
+          supportName: _supportInfo?.ownerName,
           fallbackRegionIso2: 'LB',
           debugLogs: true,
         );
     }
   }
+  // -----------------------------
+  // ✅ Rest of functions (unchanged, just kept full)
+  // -----------------------------
 
   List<ItemSummary> _applyFilters(List<ItemSummary> items) {
     var result = items;
@@ -777,7 +922,6 @@ class _HomeItemsPagerSection extends StatefulWidget {
   @override
   State<_HomeItemsPagerSection> createState() => _HomeItemsPagerSectionState();
 }
-
 class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
   late PageController _pc;
   int _page = 0;

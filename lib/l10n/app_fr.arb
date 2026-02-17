@@ -899,5 +899,40 @@
   "networkError": "Erreur réseau.",
 
   "authErrorGeneric": "Une erreur s’est produite. Veuillez réessayer.",
-   "outOfStock" :"En rupture de stock"
+   "outOfStock" :"En rupture de stock",
+   "commonCancel": "Annuler",
+  "commonSave": "Enregistrer",
+
+  "adminMissingAdminToken": "Session expirée. Veuillez vous reconnecter.",
+  "adminGenericError": "Une erreur est survenue. Réessayez.",
+
+  "adminCategoryFallbackName": "Catégorie",
+  "adminItemTypeFallbackName": "Type d’article",
+
+  "adminDeleteCategoryTitle": "Supprimer la catégorie ?",
+  "adminDeleteCategoryMessage": "Supprimer « {name} » ?\n\nCela peut aussi supprimer ses types d’articles (selon les règles backend).",
+
+  "adminDeleteItemTypeTitle": "Supprimer le type d’article ?",
+  "adminDeleteItemTypeMessage": "Supprimer « {name} » ?",
+
+  "adminDeleteCategoryTooltip": "Supprimer la catégorie",
+  "adminDeleteItemTypeTooltip": "Supprimer le type d’article",
+
+  "adminNewCategoryTitle": "Nouvelle catégorie",
+  "adminNewCategoryHint": "Ex : Ordinateurs",
+
+  "adminNewItemTypeTitle": "Nouveau type d’article",
+  "adminNewItemTypeHint": "Ex : Laptop",
+
+  "adminSelectCategoryBeforeCreateItemType": "Veuillez sélectionner une catégorie avant de créer un type d’article.",
+  "adminSelectCategoryBeforeSavingProduct": "Veuillez sélectionner une catégorie avant d’enregistrer.",
+  "adminMissingCurrencyConfig": "Devise manquante pour cette application. Configurez d’abord une devise.",
+
+  "adminButtonTextDefaultAddToCart": "Ajouter au panier",
+
+  "adminPriceExampleHint": "Ex : 120.00",
+  "commonDateFormatHint": "AAAA-MM-JJ",
+  "adminAttributeValueExampleHint": "Ex : Samsung",
+  "adminProductAttributeValueHint": "Ex : Samsung"
+
 }

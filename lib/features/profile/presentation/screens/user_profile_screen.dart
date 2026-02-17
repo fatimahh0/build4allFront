@@ -393,22 +393,27 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                         context,
                         icon: Icons.power_settings_new,
                         title: tr.setInactive,
-                        onTap: () async {
-                          final ok = await showDialog<bool>(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (ctx) => DeactivateUserDialog(
-                              token: _effectiveToken,
-                              userId: _effectiveUserId,
-                              ownerProjectLinkId: ownerId,
-                            ),
-                          );
+                       onTap: () async {
+  final ok = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    useRootNavigator: false, // ✅ IMPORTANT: keep same navigator tree
+    builder: (_) => BlocProvider.value(
+      value: context.read<UserProfileBloc>(), // ✅ inject existing bloc
+      child: DeactivateUserDialog(
+        token: _effectiveToken,
+        userId: _effectiveUserId,
+        ownerProjectLinkId: ownerId,
+      ),
+    ),
+  );
 
-                          // ✅ After success, logout + navigate away.
-                          if (ok == true) {
-                            _goToLogin(context);
-                          }
-                        },
+  // ✅ After success, logout + navigate away.
+  if (ok == true) {
+    _goToLogin(context);
+  }
+},
+
                       ),
                     ],
                   ),

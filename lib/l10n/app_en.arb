@@ -1024,6 +1024,51 @@
 
   "networkNoInternet": "No internet connection.",
   "networkTimeout": "Request timed out.",
-  "networkError": "Network error."
-  
+  "networkError": "Network error.",
+  "commonCancel": "Cancel",
+  "commonSave": "Save",
+
+  "adminMissingAdminToken": "Session expired. Please log in again.",
+  "adminGenericError": "Something went wrong. Please try again.",
+
+  "adminCategoryFallbackName": "Category",
+  "adminItemTypeFallbackName": "Item type",
+
+  "adminDeleteCategoryTitle": "Delete category?",
+  "adminDeleteCategoryMessage": "Delete \"{name}\"?\n\nThis may also delete its item types (depending on backend rules).",
+
+  "adminDeleteItemTypeTitle": "Delete item type?",
+  "adminDeleteItemTypeMessage": "Delete \"{name}\"?",
+
+  "adminDeleteCategoryTooltip": "Delete category",
+  "adminDeleteItemTypeTooltip": "Delete item type",
+
+  "adminNewCategoryTitle": "New category",
+  "adminNewCategoryHint": "e.g. Laptops",
+
+  "adminNewItemTypeTitle": "New item type",
+  "adminNewItemTypeHint": "e.g. Laptop",
+
+  "adminSelectCategoryBeforeCreateItemType": "Please select a category before creating an item type.",
+  "adminSelectCategoryBeforeSavingProduct": "Please select a category before saving.",
+  "adminMissingCurrencyConfig": "Currency is missing for this app. Configure currency first.",
+
+  "adminButtonTextDefaultAddToCart": "Add to cart",
+
+  "adminPriceExampleHint": "e.g. 120.00",
+  "commonDateFormatHint": "YYYY-MM-DD",
+  "adminAttributeValueExampleHint": "e.g. Samsung",
+
+  "@adminDeleteCategoryMessage": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "@adminDeleteItemTypeMessage": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+ "adminProductAttributeValueHint": "Ex: Samsung"
+
 }

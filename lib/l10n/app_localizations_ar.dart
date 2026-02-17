@@ -42,7 +42,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get passwordTooShort => 'يجب أن تكون كلمة المرور 6 أحرف على الأقل.';
 
   @override
-  String get authErrorGeneric => 'حدث خطأ ما. يرجى المحاولة مرة أخرى.';
+  String get authErrorGeneric => 'حدث خطأ ما. حاول مرة أخرى.';
 
   @override
   String get noAccountText => 'ليس لديك حساب؟';
@@ -2161,53 +2161,129 @@ class AppLocalizationsAr extends AppLocalizations {
   String get ai_prompt_best_use => 'Is this good for me?';
 
   @override
-  String get outOfStock => 'Out Of Stock';
+  String get outOfStock => 'غير متوفر';
 
   @override
-  String get authUsernameTaken => 'Username already in use.';
+  String get authUsernameTaken => 'اسم المستخدم مستخدم بالفعل.';
 
   @override
-  String get authEmailAlreadyExists => 'This email is already registered.';
+  String get authEmailAlreadyExists => 'هذا البريد الإلكتروني مسجّل بالفعل.';
 
   @override
-  String get authPhoneAlreadyExists => 'This phone number is already registered.';
+  String get authPhoneAlreadyExists => 'رقم الهاتف هذا مسجّل بالفعل.';
 
   @override
-  String get authUserNotFound => 'No account found for this email/phone.';
+  String get authUserNotFound => 'لا يوجد حساب لهذا البريد/الرقم.';
 
   @override
-  String get authWrongPassword => 'Wrong password.';
+  String get authWrongPassword => 'كلمة المرور غير صحيحة.';
 
   @override
-  String get authInvalidCredentials => 'Invalid email/phone or password.';
+  String get authInvalidCredentials => 'بيانات الدخول غير صحيحة.';
 
   @override
-  String get authAccountInactive => 'Your account is inactive. Reactivate to continue.';
+  String get authAccountInactive => 'حسابك غير مُفعّل. أعد تفعيل الحساب للمتابعة.';
 
   @override
-  String get httpValidationError => 'Some fields are invalid.';
+  String get httpValidationError => 'بعض الحقول غير صحيحة.';
 
   @override
-  String get httpConflict => 'Conflict. Please retry.';
+  String get httpConflict => 'يوجد تعارض. حاول مرة أخرى.';
 
   @override
-  String get httpUnauthorized => 'Unauthorized.';
+  String get httpUnauthorized => 'غير مصرح لك.';
 
   @override
-  String get httpForbidden => 'You don’t have permission to do this.';
+  String get httpForbidden => 'ليس لديك صلاحية للقيام بذلك.';
 
   @override
-  String get httpNotFound => 'Not found.';
+  String get httpNotFound => 'غير موجود.';
 
   @override
-  String get httpServerError => 'Server error. Please try later.';
+  String get httpServerError => 'خطأ في الخادم. حاول لاحقاً.';
 
   @override
-  String get networkNoInternet => 'No internet connection.';
+  String get networkNoInternet => 'لا يوجد اتصال بالإنترنت.';
 
   @override
-  String get networkTimeout => 'Request timed out.';
+  String get networkTimeout => 'انتهت مهلة الطلب.';
 
   @override
-  String get networkError => 'Network error.';
+  String get networkError => 'خطأ في الشبكة.';
+
+  @override
+  String get commonCancel => 'إلغاء';
+
+  @override
+  String get commonSave => 'حفظ';
+
+  @override
+  String get adminMissingAdminToken => 'انتهت الجلسة. الرجاء تسجيل الدخول من جديد.';
+
+  @override
+  String get adminGenericError => 'صار في مشكلة. جرّب مرة تانية.';
+
+  @override
+  String get adminCategoryFallbackName => 'تصنيف';
+
+  @override
+  String get adminItemTypeFallbackName => 'نوع عنصر';
+
+  @override
+  String get adminDeleteCategoryTitle => 'حذف التصنيف؟';
+
+  @override
+  String adminDeleteCategoryMessage(String name) {
+    return 'بدّك تحذف \"$name\"؟\n\nممكن كمان ينحذف معه أنواع العناصر التابعة له (حسب قواعد السيرفر).';
+  }
+
+  @override
+  String get adminDeleteItemTypeTitle => 'حذف نوع العنصر؟';
+
+  @override
+  String adminDeleteItemTypeMessage(String name) {
+    return 'بدّك تحذف \"$name\"؟';
+  }
+
+  @override
+  String get adminDeleteCategoryTooltip => 'حذف التصنيف';
+
+  @override
+  String get adminDeleteItemTypeTooltip => 'حذف نوع العنصر';
+
+  @override
+  String get adminNewCategoryTitle => 'تصنيف جديد';
+
+  @override
+  String get adminNewCategoryHint => 'مثال: لابتوبات';
+
+  @override
+  String get adminNewItemTypeTitle => 'نوع عنصر جديد';
+
+  @override
+  String get adminNewItemTypeHint => 'مثال: Laptop';
+
+  @override
+  String get adminSelectCategoryBeforeCreateItemType => 'لازم تختار تصنيف قبل ما تعمل نوع عنصر.';
+
+  @override
+  String get adminSelectCategoryBeforeSavingProduct => 'لازم تختار تصنيف قبل الحفظ.';
+
+  @override
+  String get adminMissingCurrencyConfig => 'العملة مش محددة لهالتطبيق. حدّد العملة بالأول.';
+
+  @override
+  String get adminButtonTextDefaultAddToCart => 'أضف إلى السلة';
+
+  @override
+  String get adminPriceExampleHint => 'مثال: 120.00';
+
+  @override
+  String get commonDateFormatHint => 'YYYY-MM-DD';
+
+  @override
+  String get adminAttributeValueExampleHint => 'مثال: Samsung';
+
+  @override
+  String get adminProductAttributeValueHint => 'مثال: سامسونج';
 }

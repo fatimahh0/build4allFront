@@ -820,5 +820,39 @@
   "networkError": "خطأ في الشبكة.",
 
   "authErrorGeneric": "حدث خطأ ما. حاول مرة أخرى.",
-  "outOfStock" :"غير متوفر"
+  "outOfStock" :"غير متوفر","commonCancel": "إلغاء",
+  "commonSave": "حفظ",
+
+  "adminMissingAdminToken": "انتهت الجلسة. الرجاء تسجيل الدخول من جديد.",
+  "adminGenericError": "صار في مشكلة. جرّب مرة تانية.",
+
+  "adminCategoryFallbackName": "تصنيف",
+  "adminItemTypeFallbackName": "نوع عنصر",
+
+  "adminDeleteCategoryTitle": "حذف التصنيف؟",
+  "adminDeleteCategoryMessage": "بدّك تحذف \"{name}\"؟\n\nممكن كمان ينحذف معه أنواع العناصر التابعة له (حسب قواعد السيرفر).",
+
+  "adminDeleteItemTypeTitle": "حذف نوع العنصر؟",
+  "adminDeleteItemTypeMessage": "بدّك تحذف \"{name}\"؟",
+
+  "adminDeleteCategoryTooltip": "حذف التصنيف",
+  "adminDeleteItemTypeTooltip": "حذف نوع العنصر",
+
+  "adminNewCategoryTitle": "تصنيف جديد",
+  "adminNewCategoryHint": "مثال: لابتوبات",
+
+  "adminNewItemTypeTitle": "نوع عنصر جديد",
+  "adminNewItemTypeHint": "مثال: Laptop",
+
+  "adminSelectCategoryBeforeCreateItemType": "لازم تختار تصنيف قبل ما تعمل نوع عنصر.",
+  "adminSelectCategoryBeforeSavingProduct": "لازم تختار تصنيف قبل الحفظ.",
+  "adminMissingCurrencyConfig": "العملة مش محددة لهالتطبيق. حدّد العملة بالأول.",
+
+  "adminButtonTextDefaultAddToCart": "أضف إلى السلة",
+
+  "adminPriceExampleHint": "مثال: 120.00",
+  "commonDateFormatHint": "YYYY-MM-DD",
+  "adminAttributeValueExampleHint": "مثال: Samsung",
+  "adminProductAttributeValueHint": "مثال: سامسونج"
+
 }

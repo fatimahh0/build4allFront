@@ -4362,6 +4362,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Network error.'**
   String get networkError;
+
+  /// No description provided for @commonCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get commonCancel;
+
+  /// No description provided for @commonSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get commonSave;
+
+  /// No description provided for @adminMissingAdminToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Session expired. Please log in again.'**
+  String get adminMissingAdminToken;
+
+  /// No description provided for @adminGenericError.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again.'**
+  String get adminGenericError;
+
+  /// No description provided for @adminCategoryFallbackName.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get adminCategoryFallbackName;
+
+  /// No description provided for @adminItemTypeFallbackName.
+  ///
+  /// In en, this message translates to:
+  /// **'Item type'**
+  String get adminItemTypeFallbackName;
+
+  /// No description provided for @adminDeleteCategoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete category?'**
+  String get adminDeleteCategoryTitle;
+
+  /// No description provided for @adminDeleteCategoryMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete \"{name}\"?\n\nThis may also delete its item types (depending on backend rules).'**
+  String adminDeleteCategoryMessage(String name);
+
+  /// No description provided for @adminDeleteItemTypeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete item type?'**
+  String get adminDeleteItemTypeTitle;
+
+  /// No description provided for @adminDeleteItemTypeMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete \"{name}\"?'**
+  String adminDeleteItemTypeMessage(String name);
+
+  /// No description provided for @adminDeleteCategoryTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete category'**
+  String get adminDeleteCategoryTooltip;
+
+  /// No description provided for @adminDeleteItemTypeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete item type'**
+  String get adminDeleteItemTypeTooltip;
+
+  /// No description provided for @adminNewCategoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New category'**
+  String get adminNewCategoryTitle;
+
+  /// No description provided for @adminNewCategoryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Laptops'**
+  String get adminNewCategoryHint;
+
+  /// No description provided for @adminNewItemTypeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New item type'**
+  String get adminNewItemTypeTitle;
+
+  /// No description provided for @adminNewItemTypeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Laptop'**
+  String get adminNewItemTypeHint;
+
+  /// No description provided for @adminSelectCategoryBeforeCreateItemType.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a category before creating an item type.'**
+  String get adminSelectCategoryBeforeCreateItemType;
+
+  /// No description provided for @adminSelectCategoryBeforeSavingProduct.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a category before saving.'**
+  String get adminSelectCategoryBeforeSavingProduct;
+
+  /// No description provided for @adminMissingCurrencyConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency is missing for this app. Configure currency first.'**
+  String get adminMissingCurrencyConfig;
+
+  /// No description provided for @adminButtonTextDefaultAddToCart.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to cart'**
+  String get adminButtonTextDefaultAddToCart;
+
+  /// No description provided for @adminPriceExampleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 120.00'**
+  String get adminPriceExampleHint;
+
+  /// No description provided for @commonDateFormatHint.
+  ///
+  /// In en, this message translates to:
+  /// **'YYYY-MM-DD'**
+  String get commonDateFormatHint;
+
+  /// No description provided for @adminAttributeValueExampleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Samsung'**
+  String get adminAttributeValueExampleHint;
+
+  /// No description provided for @adminProductAttributeValueHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ex: Samsung'**
+  String get adminProductAttributeValueHint;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

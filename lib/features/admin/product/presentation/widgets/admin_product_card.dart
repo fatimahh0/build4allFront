@@ -3,17 +3,22 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:build4front/core/config/env.dart';
 import 'package:build4front/core/theme/theme_cubit.dart';
-import 'package:build4front/features/catalog/cubit/money.dart';
+
 import '../../domain/entities/product.dart';
 
 class AdminProductCard extends StatelessWidget {
   final Product product;
+
+  /// ✅ currency symbol from API cache (resolved by currencyId in list screen)
+  final String? currencySymbol;
+
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
   const AdminProductCard({
     super.key,
     required this.product,
+    this.currencySymbol,
     this.onEdit,
     this.onDelete,
   });
@@ -26,6 +31,16 @@ class AdminProductCard extends StatelessWidget {
       return trimmed;
     }
     return '${Env.apiBaseUrl}$trimmed';
+  }
+
+  /// ✅ Strict money display:
+  /// - If symbol not ready yet → show placeholder "…16.00" (NOT "$16.00")
+  String _moneyStrict(num value, {int decimals = 2}) {
+    final s = (currencySymbol ?? '').trim();
+    final amount = value.toDouble().toStringAsFixed(decimals);
+
+    if (s.isEmpty) return '…$amount';
+    return '$s$amount';
   }
 
   Future<void> _showActionsSheet(BuildContext context) async {
@@ -160,11 +175,11 @@ class AdminProductCard extends StatelessWidget {
 
                       const Spacer(),
 
-                      // ✅ Currency like Explore (no manual toStringAsFixed)
+                      /// ✅ NO MORE "$" fallback here.
                       Row(
                         children: [
                           Text(
-                            money(context, product.effectivePrice),
+                            _moneyStrict(product.effectivePrice),
                             style: text.bodyMedium.copyWith(
                               color: colors.primary,
                               fontWeight: FontWeight.bold,
@@ -173,7 +188,7 @@ class AdminProductCard extends StatelessWidget {
                           if (product.onSale) SizedBox(width: spacing.xs),
                           if (product.onSale)
                             Text(
-                              money(context, product.price),
+                              _moneyStrict(product.price),
                               style: text.bodySmall.copyWith(
                                 color: colors.muted,
                                 decoration: TextDecoration.lineThrough,

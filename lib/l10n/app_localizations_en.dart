@@ -2210,4 +2210,80 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get networkError => 'Network error.';
+
+  @override
+  String get commonCancel => 'Cancel';
+
+  @override
+  String get commonSave => 'Save';
+
+  @override
+  String get adminMissingAdminToken => 'Session expired. Please log in again.';
+
+  @override
+  String get adminGenericError => 'Something went wrong. Please try again.';
+
+  @override
+  String get adminCategoryFallbackName => 'Category';
+
+  @override
+  String get adminItemTypeFallbackName => 'Item type';
+
+  @override
+  String get adminDeleteCategoryTitle => 'Delete category?';
+
+  @override
+  String adminDeleteCategoryMessage(String name) {
+    return 'Delete \"$name\"?\n\nThis may also delete its item types (depending on backend rules).';
+  }
+
+  @override
+  String get adminDeleteItemTypeTitle => 'Delete item type?';
+
+  @override
+  String adminDeleteItemTypeMessage(String name) {
+    return 'Delete \"$name\"?';
+  }
+
+  @override
+  String get adminDeleteCategoryTooltip => 'Delete category';
+
+  @override
+  String get adminDeleteItemTypeTooltip => 'Delete item type';
+
+  @override
+  String get adminNewCategoryTitle => 'New category';
+
+  @override
+  String get adminNewCategoryHint => 'e.g. Laptops';
+
+  @override
+  String get adminNewItemTypeTitle => 'New item type';
+
+  @override
+  String get adminNewItemTypeHint => 'e.g. Laptop';
+
+  @override
+  String get adminSelectCategoryBeforeCreateItemType => 'Please select a category before creating an item type.';
+
+  @override
+  String get adminSelectCategoryBeforeSavingProduct => 'Please select a category before saving.';
+
+  @override
+  String get adminMissingCurrencyConfig => 'Currency is missing for this app. Configure currency first.';
+
+  @override
+  String get adminButtonTextDefaultAddToCart => 'Add to cart';
+
+  @override
+  String get adminPriceExampleHint => 'e.g. 120.00';
+
+  @override
+  String get commonDateFormatHint => 'YYYY-MM-DD';
+
+  @override
+  String get adminAttributeValueExampleHint => 'e.g. Samsung';
+
+  @override
+  String get adminProductAttributeValueHint => 'Ex: Samsung';
 }

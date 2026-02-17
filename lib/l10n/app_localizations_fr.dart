@@ -42,7 +42,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get passwordTooShort => 'Le mot de passe doit contenir au moins 6 caractères.';
 
   @override
-  String get authErrorGeneric => 'Une erreur est survenue. Veuillez réessayer.';
+  String get authErrorGeneric => 'Une erreur s’est produite. Veuillez réessayer.';
 
   @override
   String get noAccountText => 'Vous n’avez pas de compte ?';
@@ -2161,53 +2161,129 @@ class AppLocalizationsFr extends AppLocalizations {
   String get ai_prompt_best_use => 'Is this good for me?';
 
   @override
-  String get outOfStock => 'Out Of Stock';
+  String get outOfStock => 'En rupture de stock';
 
   @override
-  String get authUsernameTaken => 'Username already in use.';
+  String get authUsernameTaken => 'Ce nom d’utilisateur est déjà utilisé.';
 
   @override
-  String get authEmailAlreadyExists => 'This email is already registered.';
+  String get authEmailAlreadyExists => 'Cet e-mail est déjà enregistré.';
 
   @override
-  String get authPhoneAlreadyExists => 'This phone number is already registered.';
+  String get authPhoneAlreadyExists => 'Ce numéro de téléphone est déjà enregistré.';
 
   @override
-  String get authUserNotFound => 'No account found for this email/phone.';
+  String get authUserNotFound => 'Aucun compte trouvé pour cet e-mail/téléphone.';
 
   @override
-  String get authWrongPassword => 'Wrong password.';
+  String get authWrongPassword => 'Mot de passe incorrect.';
 
   @override
-  String get authInvalidCredentials => 'Invalid email/phone or password.';
+  String get authInvalidCredentials => 'Identifiants invalides.';
 
   @override
-  String get authAccountInactive => 'Your account is inactive. Reactivate to continue.';
+  String get authAccountInactive => 'Votre compte est inactif. Réactivez-le pour continuer.';
 
   @override
-  String get httpValidationError => 'Some fields are invalid.';
+  String get httpValidationError => 'Certains champs sont invalides.';
 
   @override
-  String get httpConflict => 'Conflict. Please retry.';
+  String get httpConflict => 'Conflit. Veuillez réessayer.';
 
   @override
-  String get httpUnauthorized => 'Unauthorized.';
+  String get httpUnauthorized => 'Non autorisé.';
 
   @override
-  String get httpForbidden => 'You don’t have permission to do this.';
+  String get httpForbidden => 'Vous n’avez pas la permission de faire cela.';
 
   @override
-  String get httpNotFound => 'Not found.';
+  String get httpNotFound => 'Introuvable.';
 
   @override
-  String get httpServerError => 'Server error. Please try later.';
+  String get httpServerError => 'Erreur serveur. Veuillez réessayer plus tard.';
 
   @override
-  String get networkNoInternet => 'No internet connection.';
+  String get networkNoInternet => 'Aucune connexion Internet.';
 
   @override
-  String get networkTimeout => 'Request timed out.';
+  String get networkTimeout => 'Délai d’attente dépassé.';
 
   @override
-  String get networkError => 'Network error.';
+  String get networkError => 'Erreur réseau.';
+
+  @override
+  String get commonCancel => 'Annuler';
+
+  @override
+  String get commonSave => 'Enregistrer';
+
+  @override
+  String get adminMissingAdminToken => 'Session expirée. Veuillez vous reconnecter.';
+
+  @override
+  String get adminGenericError => 'Une erreur est survenue. Réessayez.';
+
+  @override
+  String get adminCategoryFallbackName => 'Catégorie';
+
+  @override
+  String get adminItemTypeFallbackName => 'Type d’article';
+
+  @override
+  String get adminDeleteCategoryTitle => 'Supprimer la catégorie ?';
+
+  @override
+  String adminDeleteCategoryMessage(String name) {
+    return 'Supprimer « $name » ?\n\nCela peut aussi supprimer ses types d’articles (selon les règles backend).';
+  }
+
+  @override
+  String get adminDeleteItemTypeTitle => 'Supprimer le type d’article ?';
+
+  @override
+  String adminDeleteItemTypeMessage(String name) {
+    return 'Supprimer « $name » ?';
+  }
+
+  @override
+  String get adminDeleteCategoryTooltip => 'Supprimer la catégorie';
+
+  @override
+  String get adminDeleteItemTypeTooltip => 'Supprimer le type d’article';
+
+  @override
+  String get adminNewCategoryTitle => 'Nouvelle catégorie';
+
+  @override
+  String get adminNewCategoryHint => 'Ex : Ordinateurs';
+
+  @override
+  String get adminNewItemTypeTitle => 'Nouveau type d’article';
+
+  @override
+  String get adminNewItemTypeHint => 'Ex : Laptop';
+
+  @override
+  String get adminSelectCategoryBeforeCreateItemType => 'Veuillez sélectionner une catégorie avant de créer un type d’article.';
+
+  @override
+  String get adminSelectCategoryBeforeSavingProduct => 'Veuillez sélectionner une catégorie avant d’enregistrer.';
+
+  @override
+  String get adminMissingCurrencyConfig => 'Devise manquante pour cette application. Configurez d’abord une devise.';
+
+  @override
+  String get adminButtonTextDefaultAddToCart => 'Ajouter au panier';
+
+  @override
+  String get adminPriceExampleHint => 'Ex : 120.00';
+
+  @override
+  String get commonDateFormatHint => 'AAAA-MM-JJ';
+
+  @override
+  String get adminAttributeValueExampleHint => 'Ex : Samsung';
+
+  @override
+  String get adminProductAttributeValueHint => 'Ex : Samsung';
 }
