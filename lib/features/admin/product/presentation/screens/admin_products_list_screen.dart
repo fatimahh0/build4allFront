@@ -54,7 +54,7 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
   String _searchQuery = '';
   String _typeFilter = 'ALL';
 
-  // ✅ currency symbol cache
+  // ✅ Currency symbol cache (ONE place only)
   late final CurrencySymbolCache _currencyCache = CurrencySymbolCache(
     api: CurrencyApiService(),
     getToken: AdminTokenStore().getToken,
@@ -62,14 +62,13 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
 
   Map<int, String> _symbolByCurrencyId = {};
   bool _warmingCurrency = false;
+  bool _warmScheduled = false;
 
   Future<void> _warmCurrencySymbols(List<Product> products) async {
     if (_warmingCurrency) return;
 
     final ids = products.map((p) => p.currencyId).whereType<int>().toSet();
-
-    final missing =
-        ids.where((id) => !_symbolByCurrencyId.containsKey(id)).toList();
+    final missing = ids.where((id) => !_symbolByCurrencyId.containsKey(id)).toList();
 
     if (missing.isEmpty) return;
 
@@ -77,6 +76,7 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
     try {
       await _currencyCache.warmUp(missing);
       if (!mounted) return;
+
       setState(() {
         _symbolByCurrencyId = Map<int, String>.from(_currencyCache.snapshot);
       });
@@ -85,18 +85,19 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
     }
   }
 
-  /// ✅ Reliable warm-up trigger:
-  /// call it from builder → schedules after frame only if there are missing ids
   void _maybeWarmUp(List<Product> products) {
+    if (_warmScheduled || _warmingCurrency) return;
+
     final ids = products.map((p) => p.currencyId).whereType<int>().toSet();
-    final missing =
-        ids.where((id) => !_symbolByCurrencyId.containsKey(id)).toList();
+    final missing = ids.where((id) => !_symbolByCurrencyId.containsKey(id)).toList();
 
     if (missing.isEmpty) return;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    _warmScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      _warmScheduled = false;
       if (!mounted) return;
-      _warmCurrencySymbols(products);
+      await _warmCurrencySymbols(products);
     });
   }
 
@@ -175,9 +176,7 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
     }
 
     if (_typeFilter != 'ALL') {
-      list = list
-          .where((p) => (p.productType).toUpperCase() == _typeFilter)
-          .toList();
+      list = list.where((p) => (p.productType).toUpperCase() == _typeFilter).toList();
     }
 
     return list;
@@ -248,7 +247,7 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
               );
             }
 
-            // ✅ Always try to warm up currency symbols (only if missing)
+            // ✅ Warm currency symbols once (only missing ids)
             _maybeWarmUp(state.products);
 
             final filtered = _applyFilters(state);
@@ -270,16 +269,11 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
                   totalCount: state.products.length,
                   filteredCount: filtered.length,
                   searchQuery: _searchQuery,
-                  onSearchChanged: (val) {
-                    setState(() => _searchQuery = val);
-                  },
+                  onSearchChanged: (val) => setState(() => _searchQuery = val),
                   typeFilter: _typeFilter,
-                  onTypeFilterChanged: (val) {
-                    setState(() => _typeFilter = val);
-                  },
+                  onTypeFilterChanged: (val) => setState(() => _typeFilter = val),
                 ),
                 SizedBox(height: spacing.md),
-
                 Expanded(
                   child: GridView.builder(
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -296,9 +290,14 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
                           ? _symbolByCurrencyId[product.currencyId!]
                           : null;
 
+                      final bool showCurrencyLoading = _warmingCurrency &&
+                          product.currencyId != null &&
+                          ((sym ?? '').trim().isEmpty);
+
                       return AdminProductCard(
                         product: product,
                         currencySymbol: sym,
+                        currencyLoading: showCurrencyLoading,
                         onEdit: () async {
                           final changed = await Navigator.of(context).push<bool>(
                             MaterialPageRoute(
@@ -408,7 +407,6 @@ class _AdminProductsHeaderBar extends StatelessWidget {
             ],
           ),
           SizedBox(height: spacing.md),
-
           Row(
             children: [
               Expanded(

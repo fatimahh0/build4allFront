@@ -26,6 +26,8 @@ import '../widgets/admin_tax_empty_state.dart';
 import '../widgets/admin_tax_filters_bar.dart';
 
 class AdminTaxRulesScreen extends StatelessWidget {
+  /// ✅ Keep temporarily ONLY because your TaxRuleFormSheet still expects it.
+  /// Once we update the sheet, we can remove this completely.
   final int ownerProjectId;
 
   const AdminTaxRulesScreen({super.key, required this.ownerProjectId});
@@ -79,8 +81,8 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
 
     if (t != null && t.isNotEmpty) {
       context.read<TaxRulesBloc>().add(
-        LoadTaxRules(ownerProjectId: widget.ownerProjectId, token: t),
-      );
+            LoadTaxRules(token: t), // ✅ token-only
+          );
     }
   }
 
@@ -96,8 +98,8 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
     }
 
     context.read<TaxRulesBloc>().add(
-      LoadTaxRules(ownerProjectId: widget.ownerProjectId, token: _token!),
-    );
+          LoadTaxRules(token: _token!), // ✅ token-only
+        );
   }
 
   // ✅ PRO bottom sheet wrapper (no overflow when keyboard opens)
@@ -142,6 +144,7 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
       return;
     }
 
+    // ✅ Keep ownerProjectId only if your sheet needs it.
     final body = await _showProSheet<Map<String, dynamic>>(
       TaxRuleFormSheet(ownerProjectId: widget.ownerProjectId),
     );
@@ -149,12 +152,11 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
     if (body == null) return;
 
     context.read<TaxRulesBloc>().add(
-      CreateTaxRuleEvent(
-        body: body,
-        token: _token!,
-        ownerProjectId: widget.ownerProjectId,
-      ),
-    );
+          CreateTaxRuleEvent(
+            body: body,
+            token: _token!,
+          ),
+        );
 
     final l = AppLocalizations.of(context)!;
     AppToast.show(context, l.adminCreated ?? 'Created');
@@ -175,13 +177,12 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
     if (body == null) return;
 
     context.read<TaxRulesBloc>().add(
-      UpdateTaxRuleEvent(
-        id: rule.id,
-        body: body,
-        token: _token!,
-        ownerProjectId: widget.ownerProjectId,
-      ),
-    );
+          UpdateTaxRuleEvent(
+            id: rule.id,
+            body: body,
+            token: _token!,
+          ),
+        );
 
     final l = AppLocalizations.of(context)!;
     AppToast.show(context, l.adminUpdated ?? 'Updated');
@@ -223,12 +224,11 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
     if (ok != true) return;
 
     context.read<TaxRulesBloc>().add(
-      DeleteTaxRuleEvent(
-        id: rule.id,
-        token: _token!,
-        ownerProjectId: widget.ownerProjectId,
-      ),
-    );
+          DeleteTaxRuleEvent(
+            id: rule.id,
+            token: _token!,
+          ),
+        );
 
     AppToast.show(context, l.adminDeleted ?? 'Deleted');
   }
@@ -271,75 +271,75 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
       body: _loadingToken
           ? Center(child: CircularProgressIndicator(color: c.primary))
           : (_token == null || _token!.isEmpty)
-          ? Center(
-              child: Padding(
-                padding: EdgeInsets.all(spacing.lg),
-                child: Text(
-                  l.adminSessionExpired,
-                  style: text.bodyMedium.copyWith(color: c.danger),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            )
-          : BlocBuilder<TaxRulesBloc, TaxRulesState>(
-              builder: (context, state) {
-                if (state.loading) {
-                  return Center(
-                    child: CircularProgressIndicator(color: c.primary),
-                  );
-                }
-
-                if (state.error != null) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    AppToast.show(context, state.error!, isError: true);
-                  });
-
-                  return Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(spacing.lg),
-                      child: Text(
-                        state.error!,
-                        style: text.bodyMedium.copyWith(color: c.danger),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  );
-                }
-
-                final all = state.rules;
-                final filtered = _showAll
-                    ? all
-                    : all.where((r) => r.enabled).toList();
-
-                return RefreshIndicator(
-                  onRefresh: _refresh,
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
+              ? Center(
+                  child: Padding(
                     padding: EdgeInsets.all(spacing.lg),
-                    children: [
-                      AdminTaxFiltersBar(
-                        showAll: _showAll,
-                        onChangedShowAll: (v) => setState(() => _showAll = v),
-                      ),
-                      SizedBox(height: spacing.md),
-                      if (filtered.isEmpty)
-                        AdminTaxEmptyState(onAdd: _openCreateSheet)
-                      else
-                        ...filtered.map(
-                          (r) => Padding(
-                            padding: EdgeInsets.only(bottom: spacing.sm),
-                            child: AdminTaxRuleCard(
-                              rule: r,
-                              onEdit: () => _openEditSheet(r),
-                              onDelete: () => _confirmAndDelete(r),
-                            ),
+                    child: Text(
+                      l.adminSessionExpired,
+                      style: text.bodyMedium.copyWith(color: c.danger),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                )
+              : BlocBuilder<TaxRulesBloc, TaxRulesState>(
+                  builder: (context, state) {
+                    if (state.loading) {
+                      return Center(
+                        child: CircularProgressIndicator(color: c.primary),
+                      );
+                    }
+
+                    if (state.error != null) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        AppToast.show(context, state.error!, isError: true);
+                      });
+
+                      return Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(spacing.lg),
+                          child: Text(
+                            state.error!,
+                            style: text.bodyMedium.copyWith(color: c.danger),
+                            textAlign: TextAlign.center,
                           ),
                         ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                      );
+                    }
+
+                    final all = state.rules;
+                    final filtered =
+                        _showAll ? all : all.where((r) => r.enabled).toList();
+
+                    return RefreshIndicator(
+                      onRefresh: _refresh,
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: EdgeInsets.all(spacing.lg),
+                        children: [
+                          AdminTaxFiltersBar(
+                            showAll: _showAll,
+                            onChangedShowAll: (v) =>
+                                setState(() => _showAll = v),
+                          ),
+                          SizedBox(height: spacing.md),
+                          if (filtered.isEmpty)
+                            AdminTaxEmptyState(onAdd: _openCreateSheet)
+                          else
+                            ...filtered.map(
+                              (r) => Padding(
+                                padding: EdgeInsets.only(bottom: spacing.sm),
+                                child: AdminTaxRuleCard(
+                                  rule: r,
+                                  onEdit: () => _openEditSheet(r),
+                                  onDelete: () => _confirmAndDelete(r),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
     );
   }
 }

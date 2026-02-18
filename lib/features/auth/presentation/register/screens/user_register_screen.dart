@@ -97,20 +97,22 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
                     isError: true,
                   );
                 }
+if (state.codeSent &&
+    state.errorCode == null &&
+    state.contact != null &&
+    state.method != null) {
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => UserVerifyCodeScreen(
+        contact: state.contact!,
+        method: state.method!,
+        appConfig: widget.appConfig,
+      ),
+    ),
+  );
+}
 
-                if (state.codeSent &&
-                    state.contact != null &&
-                    state.method != null) {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => UserVerifyCodeScreen(
-                        contact: state.contact!,
-                        method: state.method!,
-                        appConfig: widget.appConfig,
-                      ),
-                    ),
-                  );
-                }
+                  
               },
               builder: (context, state) {
                 return Column(
@@ -470,10 +472,19 @@ class _PhoneFieldIntlRegister extends StatelessWidget {
 
 String _l10nFromCode(AppLocalizations l10n, String code) {
   switch (code) {
-    case 'EMAIL_ALREADY_EXISTS':
-      return l10n.authEmailAlreadyExists;
-    case 'PHONE_ALREADY_EXISTS':
-      return l10n.authPhoneAlreadyExists;
+   case 'EMAIL_ALREADY_EXISTS':
+case 'EMAIL_ALREADY_IN_USE':
+case 'EMAIL_EXISTS':
+case 'EMAIL_IN_USE':
+  return l10n.authEmailAlreadyExists;
+
+case 'PHONE_ALREADY_EXISTS':
+case 'PHONE_ALREADY_IN_USE':
+case 'PHONE_EXISTS':
+case 'PHONE_IN_USE':
+  return l10n.authPhoneAlreadyExists;
+
+    
     case 'USERNAME_TAKEN':
       return l10n.authUsernameTaken;
 

@@ -1,7 +1,9 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../domain/usecases/get_user_by_id.dart';
 import '../../domain/usecases/update_user_profile.dart';
 import '../../domain/usecases/delete_user.dart';
+
 import 'edit_profile_event.dart';
 import 'edit_profile_state.dart';
 
@@ -24,13 +26,22 @@ class EditProfileBloc extends Bloc<EditProfileEvent, EditProfileState> {
     LoadEditProfile e,
     Emitter<EditProfileState> emit,
   ) async {
-    emit(state.copyWith(loading: true, error: null, success: null));
+    emit(
+      state.copyWith(
+        loading: true,
+        error: null,
+        success: null,
+        didDelete: false, // ✅ reset
+      ),
+    );
+
     try {
       final user = await getUserById(
         token: e.token,
         userId: e.userId,
         ownerProjectLinkId: e.ownerProjectLinkId,
       );
+
       emit(state.copyWith(loading: false, user: user));
     } catch (err) {
       emit(state.copyWith(loading: false, error: err.toString()));
@@ -41,7 +52,15 @@ class EditProfileBloc extends Bloc<EditProfileEvent, EditProfileState> {
     SaveEditProfile e,
     Emitter<EditProfileState> emit,
   ) async {
-    emit(state.copyWith(saving: true, error: null, success: null));
+    emit(
+      state.copyWith(
+        saving: true,
+        error: null,
+        success: null,
+        didDelete: false, // ✅ reset
+      ),
+    );
+
     try {
       final updated = await updateUserProfile(
         token: e.token,
@@ -71,10 +90,30 @@ class EditProfileBloc extends Bloc<EditProfileEvent, EditProfileState> {
     DeleteAccount e,
     Emitter<EditProfileState> emit,
   ) async {
-    emit(state.copyWith(deleting: true, error: null, success: null));
+    emit(
+      state.copyWith(
+        deleting: true,
+        error: null,
+        success: null,
+        didDelete: false, // ✅ reset
+      ),
+    );
+
     try {
-      await deleteUser(token: e.token, userId: e.userId, password: e.password);
-      emit(state.copyWith(deleting: false, success: "Account deleted"));
+      await deleteUser(
+        token: e.token,
+        userId: e.userId,
+        password: e.password,
+      );
+
+      // ✅ IMPORTANT: mark didDelete true so UI triggers logout
+      emit(
+        state.copyWith(
+          deleting: false,
+          didDelete: true,
+          success: "Account deleted",
+        ),
+      );
     } catch (err) {
       emit(state.copyWith(deleting: false, error: err.toString()));
     }

@@ -232,6 +232,77 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
   }
 
   // ---------------- Helpers ----------------
+  DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  DateTime? _parseBackendDate(String text) {
+    final t = text.trim();
+    if (t.isEmpty) return null;
+    try {
+      return DateTime.parse(t);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _showSnack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  String? _validateSaleFields(AppLocalizations l,
+      {required double regularPrice}) {
+    final salePriceText = _salePriceCtrl.text.trim();
+    final hasSalePrice = salePriceText.isNotEmpty;
+
+    // Fallback parse (in case state vars are null but controllers have values)
+    final startRaw = _saleStartDate ?? _parseBackendDate(_saleStartCtrl.text);
+    final endRaw = _saleEndDate ?? _parseBackendDate(_saleEndCtrl.text);
+
+    final hasStart = startRaw != null;
+    final hasEnd = endRaw != null;
+
+    // ✅ On CREATE: if user sets one date, force both
+    if (!_isEdit && (hasStart != hasEnd)) {
+      return l.adminProductSaleDatesBothRequired;
+    }
+
+    // ✅ If both dates exist: order + (create) not past + salePrice required
+    if (hasStart && hasEnd) {
+      final start = _dateOnly(startRaw!);
+      final end = _dateOnly(endRaw!);
+
+      if (end.isBefore(start)) {
+        return l.adminProductSaleEndBeforeStart;
+      }
+
+      // Block past sale scheduling on CREATE (edit allowed)
+      if (!_isEdit) {
+        final today = _dateOnly(DateTime.now());
+        if (start.isBefore(today)) return l.adminProductSaleStartInPast;
+        if (end.isBefore(today)) return l.adminProductSaleEndInPast;
+      }
+
+      if (!hasSalePrice) {
+        return l.adminProductSalePriceRequiredForDates;
+      }
+    }
+
+    // ✅ If salePrice exists: validate number + compare with regular price
+    if (hasSalePrice) {
+      final v = double.tryParse(salePriceText);
+      if (v == null || v <= 0) return l.adminProductSalePriceInvalid;
+      if (v >= regularPrice) return l.adminProductSalePriceMustBeLess;
+    }
+
+    return null;
+  }
+
   String _formatDateForBackend(DateTime d) {
     final y = d.year.toString().padLeft(4, '0');
     final m = d.month.toString().padLeft(2, '0');
@@ -241,33 +312,63 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
   }
 
   Future<void> _pickSaleStartDate() async {
+    final l = AppLocalizations.of(context)!;
+
     final now = DateTime.now();
-    final initial = _saleStartDate ?? now;
+    final today = _dateOnly(now);
+
+    final first = _isEdit ? DateTime(now.year - 5, 1, 1) : today;
+    final last = DateTime(now.year + 5, 12, 31);
+
+    DateTime initial = _saleStartDate ?? today;
+    if (initial.isBefore(first)) initial = first;
+    if (initial.isAfter(last)) initial = last;
 
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate: DateTime(now.year - 5),
-      lastDate: DateTime(now.year + 5),
+      firstDate: first,
+      lastDate: last,
     );
 
     if (picked != null) {
       setState(() {
         _saleStartDate = picked;
         _saleStartCtrl.text = _formatDateForBackend(picked);
+
+        // ✅ If end date exists but becomes invalid, clear it.
+        if (_saleEndDate != null &&
+            _dateOnly(_saleEndDate!).isBefore(_dateOnly(picked))) {
+          _saleEndDate = null;
+          _saleEndCtrl.clear();
+          _showSnack(l.adminProductSaleEndAutoCleared);
+        }
       });
     }
   }
 
   Future<void> _pickSaleEndDate() async {
+    final l = AppLocalizations.of(context)!;
+
     final now = DateTime.now();
-    final initial = _saleEndDate ?? now;
+    final today = _dateOnly(now);
+
+    // ✅ If start exists: end cannot be before start
+    final first = _saleStartDate != null
+        ? _dateOnly(_saleStartDate!)
+        : (_isEdit ? DateTime(now.year - 5, 1, 1) : today);
+
+    final last = DateTime(now.year + 5, 12, 31);
+
+    DateTime initial = _saleEndDate ?? _saleStartDate ?? today;
+    if (initial.isBefore(first)) initial = first;
+    if (initial.isAfter(last)) initial = last;
 
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate: DateTime(now.year - 5),
-      lastDate: DateTime(now.year + 5),
+      firstDate: first,
+      lastDate: last,
     );
 
     if (picked != null) {
@@ -308,10 +409,6 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
     if (s.contains('ADMIN_TOKEN_MISSING')) {
       return l.adminMissingAdminToken;
     }
-
-    // If later you throw structured codes from backend, map them here.
-    // Example (optional):
-    // if (s.contains('ITEMTYPE_DELETE_HAS_ITEMS')) return l.adminItemTypeDeleteHasItems;
 
     return l.adminGenericError;
   }
@@ -385,10 +482,9 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       final api = CategoryApiService();
 
       await api.deleteCategory(
-  categoryId,
-  authToken: token,
-);
-
+        categoryId,
+        authToken: token,
+      );
 
       final nextCats = _categories.where((c) => c.id != categoryId).toList();
       final nextSelected = nextCats.isNotEmpty ? nextCats.first.id : null;
@@ -421,7 +517,8 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
     final typeName = _itemTypes
         .firstWhere(
           (t) => t.id == itemTypeId,
-          orElse: () => ItemType(id: itemTypeId, name: l.adminItemTypeFallbackName),
+          orElse: () =>
+              ItemType(id: itemTypeId, name: l.adminItemTypeFallbackName),
         )
         .name;
 
@@ -501,9 +598,9 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       final token = await _requireAdminToken();
       final api = CategoryApiService();
 
-     final rawList = await api.getCategoriesForTenant(
-  authToken: token,
-);
+      final rawList = await api.getCategoriesForTenant(
+        authToken: token,
+      );
 
       final cats = rawList.map(_CategoryOption.fromJson).toList();
 
@@ -554,10 +651,8 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       final token = await _requireAdminToken();
 
       final api = ItemTypeApiService();
-      final rawList = await api.getItemTypesByCategory(
-        categoryId,
-        authToken: token
-      );
+      final rawList =
+          await api.getItemTypesByCategory(categoryId, authToken: token);
 
       final types =
           rawList.map((m) => ItemTypeModel.fromJson(m).toEntity()).toList();
@@ -594,66 +689,63 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
   }
 
   // ---------------- Create Category / Type ----------------
-Future<void> _showCreateCategoryDialog() async {
-  final l = AppLocalizations.of(context)!;
-  final ctrl = TextEditingController();
-  String? errorText;
+  Future<void> _showCreateCategoryDialog() async {
+    final l = AppLocalizations.of(context)!;
+    final ctrl = TextEditingController();
+    String? errorText;
 
-  final result = await showDialog<String>(
-    context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setState) => AlertDialog(
-        title: Text(l.adminNewCategoryTitle),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          onChanged: (_) {
-            if (errorText != null && ctrl.text.trim().isNotEmpty) {
-              setState(() => errorText = null);
-            }
-          },
-          decoration: InputDecoration(
-            hintText: l.adminNewCategoryHint,
-            errorText: errorText,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(l.commonCancel),
-          ),
-          TextButton(
-            onPressed: () {
-              final v = ctrl.text.trim();
-              if (v.isEmpty) {
-                // ✅ no static text: reuse an existing key you already have
-                setState(() => errorText = l.adminProductNameRequired);
-                return;
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: Text(l.adminNewCategoryTitle),
+          content: TextField(
+            controller: ctrl,
+            autofocus: true,
+            onChanged: (_) {
+              if (errorText != null && ctrl.text.trim().isNotEmpty) {
+                setState(() => errorText = null);
               }
-              Navigator.of(ctx).pop(v);
             },
-            child: Text(l.commonSave),
+            decoration: InputDecoration(
+              hintText: l.adminNewCategoryHint,
+              errorText: errorText,
+            ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(l.commonCancel),
+            ),
+            TextButton(
+              onPressed: () {
+                final v = ctrl.text.trim();
+                if (v.isEmpty) {
+                  setState(() => errorText = l.adminProductNameRequired);
+                  return;
+                }
+                Navigator.of(ctx).pop(v);
+              },
+              child: Text(l.commonSave),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
 
-  if (result == null || result.trim().isEmpty) return;
-  await _createCategory(result.trim());
-}
-
+    if (result == null || result.trim().isEmpty) return;
+    await _createCategory(result.trim());
+  }
 
   Future<void> _createCategory(String name) async {
     try {
       final token = await _requireAdminToken();
       final api = CategoryApiService();
 
-     final data = await api.createCategory(
-  name: name,
-  authToken: token,
-);
-
+      final data = await api.createCategory(
+        name: name,
+        authToken: token,
+      );
 
       final cat = _CategoryOption.fromJson(data);
 
@@ -673,60 +765,59 @@ Future<void> _showCreateCategoryDialog() async {
   }
 
   Future<void> _showCreateItemTypeDialog() async {
-  final l = AppLocalizations.of(context)!;
+    final l = AppLocalizations.of(context)!;
 
-  final categoryId = _selectedCategoryId;
-  if (categoryId == null) {
-    setState(() => _metaError = l.adminSelectCategoryFirst);
-    return;
-  }
+    final categoryId = _selectedCategoryId;
+    if (categoryId == null) {
+      setState(() => _metaError = l.adminSelectCategoryFirst);
+      return;
+    }
 
-  final ctrl = TextEditingController();
-  String? errorText;
+    final ctrl = TextEditingController();
+    String? errorText;
 
-  final result = await showDialog<String>(
-    context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setState) => AlertDialog(
-        title: Text(l.adminNewItemTypeTitle),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          onChanged: (_) {
-            if (errorText != null && ctrl.text.trim().isNotEmpty) {
-              setState(() => errorText = null);
-            }
-          },
-          decoration: InputDecoration(
-            hintText: l.adminNewItemTypeHint,
-            errorText: errorText,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(l.commonCancel),
-          ),
-          TextButton(
-            onPressed: () {
-              final v = ctrl.text.trim();
-              if (v.isEmpty) {
-                setState(() => errorText = l.adminProductNameRequired);
-                return;
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: Text(l.adminNewItemTypeTitle),
+          content: TextField(
+            controller: ctrl,
+            autofocus: true,
+            onChanged: (_) {
+              if (errorText != null && ctrl.text.trim().isNotEmpty) {
+                setState(() => errorText = null);
               }
-              Navigator.of(ctx).pop(v);
             },
-            child: Text(l.commonSave),
+            decoration: InputDecoration(
+              hintText: l.adminNewItemTypeHint,
+              errorText: errorText,
+            ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(l.commonCancel),
+            ),
+            TextButton(
+              onPressed: () {
+                final v = ctrl.text.trim();
+                if (v.isEmpty) {
+                  setState(() => errorText = l.adminProductNameRequired);
+                  return;
+                }
+                Navigator.of(ctx).pop(v);
+              },
+              child: Text(l.commonSave),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
 
-  if (result == null || result.trim().isEmpty) return;
-  await _createItemType(result.trim(), categoryId);
-}
-
+    if (result == null || result.trim().isEmpty) return;
+    await _createItemType(result.trim(), categoryId);
+  }
 
   Future<void> _createItemType(String name, int categoryId) async {
     try {
@@ -736,7 +827,7 @@ Future<void> _showCreateCategoryDialog() async {
       final data = await api.createItemType(
         name: name,
         categoryId: categoryId,
-        authToken: token, 
+        authToken: token,
       );
 
       final newType = ItemTypeModel.fromJson(data).toEntity();
@@ -794,6 +885,14 @@ Future<void> _showCreateCategoryDialog() async {
 
     try {
       final price = double.parse(_priceCtrl.text.trim());
+
+      // ✅ NEW: strong sale date validation (blocks invalid dates)
+      final saleErr = _validateSaleFields(l, regularPrice: price);
+      if (saleErr != null) {
+        setState(() => _errorMessage = saleErr);
+        return;
+      }
+
       final stock = _stockCtrl.text.trim().isEmpty
           ? null
           : int.parse(_stockCtrl.text.trim());
@@ -1257,9 +1356,8 @@ class AdminProductBasicInfoSection extends StatelessWidget {
           TextFormField(
             controller: nameCtrl,
             decoration: InputDecoration(hintText: l.adminProductNameHint),
-            validator: (v) => v == null || v.trim().isEmpty
-                ? l.adminProductNameRequired
-                : null,
+            validator: (v) =>
+                v == null || v.trim().isEmpty ? l.adminProductNameRequired : null,
           ),
           SizedBox(height: spacing.md),
           Text(l.adminProductDescriptionLabel, style: text.titleMedium),
@@ -1334,7 +1432,6 @@ class AdminProductCategoryTypeSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Category
           Text(l.adminProductCategoryLabel, style: text.titleMedium),
           SizedBox(height: spacing.xs),
           if (loadingCategories)
@@ -1400,10 +1497,7 @@ class AdminProductCategoryTypeSection extends StatelessWidget {
                 ),
               ],
             ),
-
           SizedBox(height: spacing.md),
-
-          // Item type
           Text(l.adminProductItemTypeLabel, style: text.titleMedium),
           SizedBox(height: spacing.xs),
           if (selectedCategoryId == null)
@@ -1474,7 +1568,6 @@ class AdminProductCategoryTypeSection extends StatelessWidget {
                 ),
               ],
             ),
-
           if (metaError != null) ...[
             SizedBox(height: spacing.sm),
             Text(metaError!, style: text.bodySmall.copyWith(color: c.danger)),
@@ -1780,8 +1873,7 @@ class AdminProductConfigSection extends StatelessWidget {
             SizedBox(height: spacing.xs),
             TextFormField(
               controller: downloadUrlCtrl,
-              decoration:
-                  InputDecoration(hintText: l.adminProductDownloadUrlHint),
+              decoration: InputDecoration(hintText: l.adminProductDownloadUrlHint),
             ),
           ],
           if (selectedProductType == ProductTypeDto.external) ...[
@@ -1797,8 +1889,7 @@ class AdminProductConfigSection extends StatelessWidget {
             SizedBox(height: spacing.xs),
             TextFormField(
               controller: buttonTextCtrl,
-              decoration:
-                  InputDecoration(hintText: l.adminProductButtonTextHint),
+              decoration: InputDecoration(hintText: l.adminProductButtonTextHint),
             ),
           ],
         ],
@@ -1921,7 +2012,6 @@ class AdminProductAttributesSection extends StatelessWidget {
                 style: text.bodySmall.copyWith(color: c.muted),
               ),
             ),
-
           ...attributes.asMap().entries.map((entry) {
             final index = entry.key;
             final row = entry.value;
@@ -1961,7 +2051,6 @@ class AdminProductAttributesSection extends StatelessWidget {
                                   .toList(),
                               onChanged: (val) {
                                 if (val == null) return;
-                                // ✅ this rebuilds the dropdown immediately
                                 setLocalState(() => row.selectedCode = val);
                               },
                             );
@@ -1970,9 +2059,7 @@ class AdminProductAttributesSection extends StatelessWidget {
                       ),
                     ),
                   ),
-
                   SizedBox(width: spacing.sm),
-
                   Expanded(
                     flex: 3,
                     child: TextFormField(
@@ -1983,7 +2070,6 @@ class AdminProductAttributesSection extends StatelessWidget {
                       ),
                     ),
                   ),
-
                   IconButton(
                     onPressed: () => onRemoveAttribute(index),
                     icon: Icon(Icons.delete, color: c.danger),
@@ -1992,7 +2078,6 @@ class AdminProductAttributesSection extends StatelessWidget {
               ),
             );
           }).toList(),
-
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(

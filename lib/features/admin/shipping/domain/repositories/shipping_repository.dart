@@ -1,8 +1,8 @@
 import '../entities/shipping_method.dart';
 
 abstract class ShippingRepository {
+  // ✅ ownerProjectId removed: derived from token now
   Future<List<ShippingMethod>> listMethods({
-    required int ownerProjectId,
     required String authToken,
   });
 
@@ -23,4 +23,10 @@ abstract class ShippingRepository {
   });
 
   Future<void> deleteMethod({required int id, required String authToken});
+
+  // ✅ Keep public list (needs ownerProjectId)
+  Future<List<ShippingMethod>> listPublicMethods({
+    required int ownerProjectId,
+    required String authToken,
+  });
 }

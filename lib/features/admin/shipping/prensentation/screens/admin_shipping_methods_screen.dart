@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -64,11 +65,90 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
 
   bool _showAll = false;
 
+  // prevent repeating same error toast on rebuild
+  String? _lastShownError;
+
   @override
   void initState() {
     super.initState();
     _loadTokenAndData();
   }
+
+  // ----------------- Friendly errors -----------------
+
+  String _friendlyError(Object err) {
+    final l = AppLocalizations.of(context)!;
+
+    // If your bloc throws a plain message already
+    final msg = err.toString();
+
+    // DioException mapping
+    if (err is DioException) {
+      // Timeout / connection
+      if (err.type == DioExceptionType.connectionTimeout ||
+          err.type == DioExceptionType.sendTimeout ||
+          err.type == DioExceptionType.receiveTimeout) {
+        return l.networkTimeout ?? 'Connection timeout. Try again.';
+      }
+
+      if (err.type == DioExceptionType.connectionError) {
+        return l.networkNoInternet ??
+            'No internet / server unreachable. Check connection.';
+      }
+
+      // Server responded with status code
+      final res = err.response;
+      if (res != null) {
+        final status = res.statusCode;
+
+        // Try to read backend structured JSON: {error: "..."} or {message: "..."}
+        final data = res.data;
+        if (data is Map) {
+          final m = data.cast<String, dynamic>();
+          final serverErr = (m['error'] ?? m['message'])?.toString();
+          if (serverErr != null && serverErr.trim().isNotEmpty) {
+            return serverErr;
+          }
+        }
+
+        if (status == 401) {
+          return l.adminSessionExpired ??
+              'Session expired. Please login again.';
+        }
+        if (status == 403) {
+          return l.forbiddenLabel ??
+              'You don’t have permission to do this.';
+        }
+        if (status == 404) {
+          return l.notFoundLabel ?? 'Not found.';
+        }
+        if (status != null && status >= 500) {
+          return l.serverErrorLabel ??
+              'Server error. Please try again later.';
+        }
+
+        return 'Request failed (${status ?? 'unknown'}).';
+      }
+
+      // fallback
+      return l.networkErrorLabel ??
+          'Network error. Please try again.';
+    }
+
+    // If error contains DioException text anyway, clean it
+    if (msg.contains('DioException')) {
+      return l.networkErrorLabel ?? 'Network error. Please try again.';
+    }
+
+    return msg;
+  }
+
+  void _showNoTokenMessage() {
+    final l = AppLocalizations.of(context)!;
+    AppToast.show(context, l.adminSessionExpired, isError: true);
+  }
+
+  // ----------------- Load / refresh -----------------
 
   Future<void> _loadTokenAndData() async {
     final t = await _store.getToken();
@@ -81,14 +161,9 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
 
     if (t != null && t.isNotEmpty) {
       context.read<ShippingMethodsBloc>().add(
-        LoadShippingMethods(ownerProjectId: widget.ownerProjectId, token: t),
-      );
+            LoadShippingMethods(token: t),
+          );
     }
-  }
-
-  void _showNoTokenMessage() {
-    final l = AppLocalizations.of(context)!;
-    AppToast.show(context, l.adminSessionExpired, isError: true);
   }
 
   Future<void> _refresh() async {
@@ -98,11 +173,8 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
     }
 
     context.read<ShippingMethodsBloc>().add(
-      LoadShippingMethods(
-        ownerProjectId: widget.ownerProjectId,
-        token: _token!,
-      ),
-    );
+          LoadShippingMethods(token: _token!),
+        );
   }
 
   // ✅ PRO bottom sheet wrapper (no overflow when keyboard opens)
@@ -139,6 +211,8 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
     );
   }
 
+  // ----------------- Create / Edit / Delete -----------------
+
   Future<void> _openCreateSheet() async {
     if (_loadingToken) return;
 
@@ -154,12 +228,11 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
     if (body == null) return;
 
     context.read<ShippingMethodsBloc>().add(
-      CreateShippingMethodEvent(
-        body: body,
-        token: _token!,
-        ownerProjectId: widget.ownerProjectId,
-      ),
-    );
+          CreateShippingMethodEvent(
+            body: body,
+            token: _token!,
+          ),
+        );
 
     final l = AppLocalizations.of(context)!;
     AppToast.show(context, l.adminCreated ?? 'Created');
@@ -183,13 +256,12 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
     if (body == null) return;
 
     context.read<ShippingMethodsBloc>().add(
-      UpdateShippingMethodEvent(
-        id: method.id,
-        body: body,
-        token: _token!,
-        ownerProjectId: widget.ownerProjectId,
-      ),
-    );
+          UpdateShippingMethodEvent(
+            id: method.id,
+            body: body,
+            token: _token!,
+          ),
+        );
 
     final l = AppLocalizations.of(context)!;
     AppToast.show(context, l.adminUpdated ?? 'Updated');
@@ -231,15 +303,16 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
     if (ok != true) return;
 
     context.read<ShippingMethodsBloc>().add(
-      DeleteShippingMethodEvent(
-        id: method.id,
-        token: _token!,
-        ownerProjectId: widget.ownerProjectId,
-      ),
-    );
+          DeleteShippingMethodEvent(
+            id: method.id,
+            token: _token!,
+          ),
+        );
 
     AppToast.show(context, l.adminDeleted ?? 'Deleted');
   }
+
+  // ----------------- UI -----------------
 
   @override
   Widget build(BuildContext context) {
@@ -279,75 +352,83 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
       body: _loadingToken
           ? Center(child: CircularProgressIndicator(color: c.primary))
           : (_token == null || _token!.isEmpty)
-          ? Center(
-              child: Padding(
-                padding: EdgeInsets.all(spacing.lg),
-                child: Text(
-                  l.adminSessionExpired,
-                  style: text.bodyMedium.copyWith(color: c.danger),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            )
-          : BlocBuilder<ShippingMethodsBloc, ShippingMethodsState>(
-              builder: (context, state) {
-                if (state.loading) {
-                  return Center(
-                    child: CircularProgressIndicator(color: c.primary),
-                  );
-                }
-
-                if (state.error != null) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    AppToast.show(context, state.error!, isError: true);
-                  });
-
-                  return Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(spacing.lg),
-                      child: Text(
-                        state.error!,
-                        style: text.bodyMedium.copyWith(color: c.danger),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  );
-                }
-
-                final all = state.methods;
-                final filtered = _showAll
-                    ? all
-                    : all.where((m) => m.enabled).toList();
-
-                return RefreshIndicator(
-                  onRefresh: _refresh,
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
+              ? Center(
+                  child: Padding(
                     padding: EdgeInsets.all(spacing.lg),
-                    children: [
-                      AdminShippingFiltersBar(
-                        showAll: _showAll,
-                        onChangedShowAll: (v) => setState(() => _showAll = v),
-                      ),
-                      SizedBox(height: spacing.md),
-                      if (filtered.isEmpty)
-                        AdminShippingEmptyState(onAdd: _openCreateSheet)
-                      else
-                        ...filtered.map(
-                          (m) => Padding(
-                            padding: EdgeInsets.only(bottom: spacing.sm),
-                            child: AdminShippingMethodCard(
-                              method: m,
-                              onEdit: () => _openEditSheet(m),
-                              onDelete: () => _confirmAndDelete(m),
-                            ),
+                    child: Text(
+                      l.adminSessionExpired,
+                      style: text.bodyMedium.copyWith(color: c.danger),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                )
+              : BlocBuilder<ShippingMethodsBloc, ShippingMethodsState>(
+                  builder: (context, state) {
+                    if (state.loading) {
+                      return Center(
+                        child: CircularProgressIndicator(color: c.primary),
+                      );
+                    }
+
+                    if (state.error != null) {
+                      final friendly = _friendlyError(state.error!);
+
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (_lastShownError != friendly) {
+                          _lastShownError = friendly;
+                          AppToast.show(context, friendly, isError: true);
+                        }
+                      });
+
+                      return Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(spacing.lg),
+                          child: Text(
+                            friendly,
+                            style: text.bodyMedium.copyWith(color: c.danger),
+                            textAlign: TextAlign.center,
                           ),
                         ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                      );
+                    }
+
+                    // reset last error once we have success state
+                    _lastShownError = null;
+
+                    final all = state.methods;
+                    final filtered =
+                        _showAll ? all : all.where((m) => m.enabled).toList();
+
+                    return RefreshIndicator(
+                      onRefresh: _refresh,
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: EdgeInsets.all(spacing.lg),
+                        children: [
+                          AdminShippingFiltersBar(
+                            showAll: _showAll,
+                            onChangedShowAll: (v) =>
+                                setState(() => _showAll = v),
+                          ),
+                          SizedBox(height: spacing.md),
+                          if (filtered.isEmpty)
+                            AdminShippingEmptyState(onAdd: _openCreateSheet)
+                          else
+                            ...filtered.map(
+                              (m) => Padding(
+                                padding: EdgeInsets.only(bottom: spacing.sm),
+                                child: AdminShippingMethodCard(
+                                  method: m,
+                                  onEdit: () => _openEditSheet(m),
+                                  onDelete: () => _confirmAndDelete(m),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
     );
   }
 }

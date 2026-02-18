@@ -9,15 +9,18 @@ String money(
   int decimals = 2,
 }) {
   final apiSym = (symbolFromApi ?? '').trim();
-  if (apiSym.isNotEmpty) {
-    return '$apiSym${value.toDouble().toStringAsFixed(decimals)}';
-  }
-
-  //  select() makes UI rebuild when currency changes
-  final sym = context.select((CurrencyCubit c) => c.symbol).trim();
-
   final amount = value.toDouble().toStringAsFixed(decimals);
-  if (sym.isNotEmpty) return '$sym$amount';
+
+  // ✅ If admin/user passed symbol from API/cache → use it immediately
+  if (apiSym.isNotEmpty) return '$apiSym$amount';
+
+  // ✅ Safe: CurrencyCubit might not exist in this widget tree (admin screens)
+  try {
+    final sym = context.select((CurrencyCubit c) => c.symbol).trim();
+    if (sym.isNotEmpty) return '$sym$amount';
+  } catch (_) {
+    // CurrencyCubit not provided above this context -> ignore
+  }
 
   // last resort fallback
   return '\$$amount';

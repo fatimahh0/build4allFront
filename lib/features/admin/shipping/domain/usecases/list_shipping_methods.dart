@@ -6,12 +6,8 @@ class ListShippingMethods {
   ListShippingMethods(this.repo);
 
   Future<List<ShippingMethod>> call({
-    required int ownerProjectId,
     required String authToken,
   }) {
-    return repo.listMethods(
-      ownerProjectId: ownerProjectId,
-      authToken: authToken,
-    );
+    return repo.listMethods(authToken: authToken);
   }
 }

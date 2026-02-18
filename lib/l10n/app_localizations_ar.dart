@@ -351,7 +351,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get logout => 'تسجيل الخروج';
 
   @override
-  String get adminDashboardTitle => 'لوحة تحكم المدير';
+  String get adminDashboardTitle => 'لوحة تحكم الأدمن';
 
   @override
   String get adminDashboardSubtitle => 'إدارة محتوى التطبيق والإعدادات.';
@@ -2286,4 +2286,192 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get adminProductAttributeValueHint => 'مثال: سامسونج';
+
+  @override
+  String get adminDashboardHeroTitle => 'لوحة التحكم';
+
+  @override
+  String adminDashboardAup(Object id) {
+    return 'AUP $id';
+  }
+
+  @override
+  String get retryLabel => 'إعادة المحاولة';
+
+  @override
+  String get cancelLabel => 'إلغاء';
+
+  @override
+  String get sendRequestLabel => 'إرسال الطلب';
+
+  @override
+  String get upgradeLabel => 'ترقية';
+
+  @override
+  String get requestUpgradeLabel => 'طلب ترقية';
+
+  @override
+  String get licenseChecking => 'جارٍ التحقق من الترخيص…';
+
+  @override
+  String get licenseAccessGranted => 'تم السماح بالدخول ✅';
+
+  @override
+  String get licenseAccessBlocked => 'تم حظر الوصول';
+
+  @override
+  String licenseLimitReached(Object active, Object allowed) {
+    return 'تم الوصول للحد: $active/$allowed مستخدم';
+  }
+
+  @override
+  String get adminDashboardStatusChecking => 'جارٍ التحقق من الخطة…';
+
+  @override
+  String get adminDashboardStatusLicenseFailed => 'فشل التحقق من الترخيص';
+
+  @override
+  String get adminDashboardStatusLimitReached => 'تم الوصول للحد — مطلوب ترقية';
+
+  @override
+  String get adminDashboardStatusAccessBlocked => 'الوصول محظور';
+
+  @override
+  String get adminDashboardStatusOk => 'كل شي تمام ✅';
+
+  @override
+  String adminDashboardActionsCount(Object count) {
+    return '$count إجراءات';
+  }
+
+  @override
+  String get upgradeSheetTitle => 'طلب ترقية';
+
+  @override
+  String get upgradeSheetSubtitle => 'اختر الخطة لإرسال طلب الترقية.';
+
+  @override
+  String get noUpgradeAvailable => 'لا توجد ترقية متاحة.';
+
+  @override
+  String get upgradeRequestSent => 'تم إرسال الطلب ✅';
+
+  @override
+  String get planGeneric => 'خطة';
+
+  @override
+  String get planFree => 'مجاني';
+
+  @override
+  String get planProHostedDb => 'برو (استضافة قاعدة البيانات)';
+
+  @override
+  String get planDedicated => 'سيرفر مخصص';
+
+  @override
+  String get planProHostedDbDesc => 'مستخدمين غير محدودين (استضافة Build4All)';
+
+  @override
+  String get planDedicatedDesc => 'سيرفر مخصص (يحتاج إعداد/تخصيص)';
+
+  @override
+  String get adminActionProductsSubtitle => 'الكتالوج والأسعار';
+
+  @override
+  String get adminActionShippingSubtitle => 'طرق التوصيل والرسوم';
+
+  @override
+  String get adminActionPaymentSubtitle => 'Stripe والإعدادات';
+
+  @override
+  String get adminActionTaxesSubtitle => 'قواعد الضرائب';
+
+  @override
+  String get adminActionBannersSubtitle => 'بنرات الصفحة الرئيسية';
+
+  @override
+  String get adminActionCouponsSubtitle => 'كوبونات الخصم';
+
+  @override
+  String get adminActionOrdersSubtitle => 'إدارة وتتبع';
+
+  @override
+  String get adminActionExcelSubtitle => 'استيراد جماعي';
+
+  @override
+  String get adminProfileLoading => 'جارٍ تحميل الملف…';
+
+  @override
+  String get adminMyProfileTitle => 'ملفي';
+
+  @override
+  String adminMyProfileSubtitle(Object role) {
+    return 'مسجّل كـ $role';
+  }
+
+  @override
+  String get manageProfileLabel => 'إدارة';
+
+  @override
+  String get aupIdLabel => 'معرّف AUP';
+
+  @override
+  String get businessIdLabel => 'معرّف المتجر';
+
+  @override
+  String get profileLabel => 'Profile';
+
+  @override
+  String get adminIdLabel => 'Admin ID';
+
+  @override
+  String get copyLabel => 'Copy';
+
+  @override
+  String get copiedLabel => 'Copied ';
+
+  @override
+  String get closeLabel => 'Close';
+
+  @override
+  String get createdAtLabel => 'Created at';
+
+  @override
+  String get updatedAtLabel => 'Updated at';
+
+  @override
+  String get adminProductSaleDatesBothRequired => 'يرجى تحديد تاريخ بداية التخفيض وتاريخ نهاية التخفيض معًا.';
+
+  @override
+  String get adminProductSaleEndBeforeStart => 'يجب أن يكون تاريخ نهاية التخفيض بعد تاريخ بداية التخفيض.';
+
+  @override
+  String get adminProductSaleStartInPast => 'لا يمكن أن يكون تاريخ بداية التخفيض في الماضي.';
+
+  @override
+  String get adminProductSaleEndInPast => 'لا يمكن أن يكون تاريخ نهاية التخفيض في الماضي.';
+
+  @override
+  String get adminProductSalePriceRequiredForDates => 'يرجى إدخال سعر التخفيض عند تحديد تواريخ التخفيض.';
+
+  @override
+  String get adminProductSalePriceInvalid => 'يجب أن يكون سعر التخفيض رقمًا صالحًا أكبر من 0.';
+
+  @override
+  String get adminProductSalePriceMustBeLess => 'يجب أن يكون سعر التخفيض أقل من السعر الأساسي.';
+
+  @override
+  String get adminProductSaleEndAutoCleared => 'تم مسح تاريخ نهاية التخفيض لأنه كان قبل تاريخ البداية.';
+
+  @override
+  String get forbiddenLabel => 'ما عندك صلاحية تعمل هالشي.';
+
+  @override
+  String get notFoundLabel => 'غير موجود.';
+
+  @override
+  String get serverErrorLabel => 'خطأ بالسيرفر. جرّب مرة ثانية لاحقاً.';
+
+  @override
+  String get networkErrorLabel => 'خطأ بالشبكة. جرّب مرة ثانية.';
 }

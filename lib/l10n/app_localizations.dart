@@ -766,7 +766,7 @@ abstract class AppLocalizations {
   /// No description provided for @adminDashboardTitle.
   ///
   /// In en, this message translates to:
-  /// **'Admin dashboard'**
+  /// **'Admin Dashboard'**
   String get adminDashboardTitle;
 
   /// No description provided for @adminDashboardSubtitle.
@@ -4506,6 +4506,366 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Ex: Samsung'**
   String get adminProductAttributeValueHint;
+
+  /// No description provided for @adminDashboardHeroTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Dashboard'**
+  String get adminDashboardHeroTitle;
+
+  /// No description provided for @adminDashboardAup.
+  ///
+  /// In en, this message translates to:
+  /// **'AUP {id}'**
+  String adminDashboardAup(Object id);
+
+  /// No description provided for @retryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retryLabel;
+
+  /// No description provided for @cancelLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancelLabel;
+
+  /// No description provided for @sendRequestLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Send request'**
+  String get sendRequestLabel;
+
+  /// No description provided for @upgradeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade'**
+  String get upgradeLabel;
+
+  /// No description provided for @requestUpgradeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Request upgrade'**
+  String get requestUpgradeLabel;
+
+  /// No description provided for @licenseChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking license…'**
+  String get licenseChecking;
+
+  /// No description provided for @licenseAccessGranted.
+  ///
+  /// In en, this message translates to:
+  /// **'Access granted ✅'**
+  String get licenseAccessGranted;
+
+  /// No description provided for @licenseAccessBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Access blocked'**
+  String get licenseAccessBlocked;
+
+  /// No description provided for @licenseLimitReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Limit reached: {active}/{allowed} users'**
+  String licenseLimitReached(Object active, Object allowed);
+
+  /// No description provided for @adminDashboardStatusChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking plan…'**
+  String get adminDashboardStatusChecking;
+
+  /// No description provided for @adminDashboardStatusLicenseFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'License check failed'**
+  String get adminDashboardStatusLicenseFailed;
+
+  /// No description provided for @adminDashboardStatusLimitReached.
+  ///
+  /// In en, this message translates to:
+  /// **'User limit reached — upgrade required'**
+  String get adminDashboardStatusLimitReached;
+
+  /// No description provided for @adminDashboardStatusAccessBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Access blocked'**
+  String get adminDashboardStatusAccessBlocked;
+
+  /// No description provided for @adminDashboardStatusOk.
+  ///
+  /// In en, this message translates to:
+  /// **'All systems go ✅'**
+  String get adminDashboardStatusOk;
+
+  /// No description provided for @adminDashboardActionsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} actions'**
+  String adminDashboardActionsCount(Object count);
+
+  /// No description provided for @upgradeSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade request'**
+  String get upgradeSheetTitle;
+
+  /// No description provided for @upgradeSheetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a plan to send a request.'**
+  String get upgradeSheetSubtitle;
+
+  /// No description provided for @noUpgradeAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No upgrade available.'**
+  String get noUpgradeAvailable;
+
+  /// No description provided for @upgradeRequestSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Request sent ✅'**
+  String get upgradeRequestSent;
+
+  /// No description provided for @planGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan'**
+  String get planGeneric;
+
+  /// No description provided for @planFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Free'**
+  String get planFree;
+
+  /// No description provided for @planProHostedDb.
+  ///
+  /// In en, this message translates to:
+  /// **'Pro Hosted DB'**
+  String get planProHostedDb;
+
+  /// No description provided for @planDedicated.
+  ///
+  /// In en, this message translates to:
+  /// **'Dedicated'**
+  String get planDedicated;
+
+  /// No description provided for @planProHostedDbDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlimited users (hosted by Build4All)'**
+  String get planProHostedDbDesc;
+
+  /// No description provided for @planDedicatedDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Dedicated server (needs setup/assignment)'**
+  String get planDedicatedDesc;
+
+  /// No description provided for @adminActionProductsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Catalog & pricing'**
+  String get adminActionProductsSubtitle;
+
+  /// No description provided for @adminActionShippingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Methods & fees'**
+  String get adminActionShippingSubtitle;
+
+  /// No description provided for @adminActionPaymentSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stripe & setup'**
+  String get adminActionPaymentSubtitle;
+
+  /// No description provided for @adminActionTaxesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tax rules'**
+  String get adminActionTaxesSubtitle;
+
+  /// No description provided for @adminActionBannersSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Homepage banners'**
+  String get adminActionBannersSubtitle;
+
+  /// No description provided for @adminActionCouponsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discount codes'**
+  String get adminActionCouponsSubtitle;
+
+  /// No description provided for @adminActionOrdersSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage & track'**
+  String get adminActionOrdersSubtitle;
+
+  /// No description provided for @adminActionExcelSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bulk import'**
+  String get adminActionExcelSubtitle;
+
+  /// No description provided for @adminProfileLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading profile…'**
+  String get adminProfileLoading;
+
+  /// No description provided for @adminMyProfileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My profile'**
+  String get adminMyProfileTitle;
+
+  /// No description provided for @adminMyProfileSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in as {role}'**
+  String adminMyProfileSubtitle(Object role);
+
+  /// No description provided for @manageProfileLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get manageProfileLabel;
+
+  /// No description provided for @aupIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'AUP ID'**
+  String get aupIdLabel;
+
+  /// No description provided for @businessIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Business ID'**
+  String get businessIdLabel;
+
+  /// No description provided for @profileLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get profileLabel;
+
+  /// No description provided for @adminIdLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin ID'**
+  String get adminIdLabel;
+
+  /// No description provided for @copyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get copyLabel;
+
+  /// No description provided for @copiedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied '**
+  String get copiedLabel;
+
+  /// No description provided for @closeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get closeLabel;
+
+  /// No description provided for @createdAtLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Created at'**
+  String get createdAtLabel;
+
+  /// No description provided for @updatedAtLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated at'**
+  String get updatedAtLabel;
+
+  /// No description provided for @adminProductSaleDatesBothRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select both sale start and sale end dates.'**
+  String get adminProductSaleDatesBothRequired;
+
+  /// No description provided for @adminProductSaleEndBeforeStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Sale end date must be after the sale start date.'**
+  String get adminProductSaleEndBeforeStart;
+
+  /// No description provided for @adminProductSaleStartInPast.
+  ///
+  /// In en, this message translates to:
+  /// **'Sale start date cannot be in the past.'**
+  String get adminProductSaleStartInPast;
+
+  /// No description provided for @adminProductSaleEndInPast.
+  ///
+  /// In en, this message translates to:
+  /// **'Sale end date cannot be in the past.'**
+  String get adminProductSaleEndInPast;
+
+  /// No description provided for @adminProductSalePriceRequiredForDates.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a sale price when sale dates are set.'**
+  String get adminProductSalePriceRequiredForDates;
+
+  /// No description provided for @adminProductSalePriceInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Sale price must be a valid number greater than 0.'**
+  String get adminProductSalePriceInvalid;
+
+  /// No description provided for @adminProductSalePriceMustBeLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Sale price must be less than the regular price.'**
+  String get adminProductSalePriceMustBeLess;
+
+  /// No description provided for @adminProductSaleEndAutoCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Sale end date was cleared because it was before the start date.'**
+  String get adminProductSaleEndAutoCleared;
+
+  /// No description provided for @forbiddenLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'You don’t have permission to do this.'**
+  String get forbiddenLabel;
+
+  /// No description provided for @notFoundLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Not found.'**
+  String get notFoundLabel;
+
+  /// No description provided for @serverErrorLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Server error. Please try again later.'**
+  String get serverErrorLabel;
+
+  /// No description provided for @networkErrorLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Network error. Please try again.'**
+  String get networkErrorLabel;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

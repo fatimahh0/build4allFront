@@ -28,54 +28,126 @@ class ProductModel extends Product {
     required super.attributes,
   });
 
-  factory ProductModel.fromJson(Map<String, dynamic> json) {
-    final attrsList =
-        (json['attributes'] as List<dynamic>?)
-            ?.map((e) => (e as Map).cast<String, dynamic>())
-            .toList() ??
-        [];
+  // ---------------- helpers ----------------
 
-    final attrsMap = <String, String>{};
-    for (final attr in attrsList) {
-      final code = attr['code']?.toString();
-      final value = attr['value']?.toString();
-      if (code != null && value != null) {
-        attrsMap[code] = value;
+  static int? _toInt(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v.toString().trim());
+  }
+
+  static double? _toDouble(dynamic v) {
+    if (v == null) return null;
+    if (v is double) return v;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString().trim());
+  }
+
+  static bool _toBool(dynamic v, {bool fallback = false}) {
+    if (v == null) return fallback;
+    if (v is bool) return v;
+    final s = v.toString().trim().toLowerCase();
+    if (s == 'true' || s == '1' || s == 'yes') return true;
+    if (s == 'false' || s == '0' || s == 'no') return false;
+    return fallback;
+  }
+
+  static DateTime? _toDate(dynamic v) {
+    if (v == null) return null;
+    if (v is DateTime) return v;
+    final s = v.toString().trim();
+    if (s.isEmpty) return null;
+    return DateTime.tryParse(s);
+  }
+
+  static Map<String, String> _parseAttrs(dynamic raw) {
+    // supports list [{code,value}] OR map {code:value}
+    final out = <String, String>{};
+
+    if (raw == null) return out;
+
+    if (raw is Map) {
+      raw.forEach((k, v) {
+        final key = k.toString().trim();
+        final val = (v ?? '').toString().trim();
+        if (key.isNotEmpty && val.isNotEmpty) out[key] = val;
+      });
+      return out;
+    }
+
+    if (raw is List) {
+      for (final e in raw) {
+        if (e is Map) {
+          final code = (e['code'] ?? e['key'] ?? '').toString().trim();
+          final value = (e['value'] ?? '').toString().trim();
+          if (code.isNotEmpty && value.isNotEmpty) out[code] = value;
+        }
       }
     }
 
+    return out;
+  }
+
+  factory ProductModel.fromJson(Map<String, dynamic> json) {
+    // ✅ handle nested currency object if backend sends it
+    final nestedCurrency = json['currency'];
+    final nestedCurrencyId =
+        (nestedCurrency is Map) ? _toInt(nestedCurrency['id']) : null;
+
+    // ✅ accept multiple key names
+    final parsedCurrencyId =
+        _toInt(json['currencyId']) ??
+        _toInt(json['currency_id']) ??
+        nestedCurrencyId;
+
+    final price = _toDouble(json['price']) ?? 0.0;
+    final salePrice = _toDouble(json['salePrice']);
+    final effectivePrice =
+        _toDouble(json['effectivePrice']) ?? salePrice ?? price;
+
     return ProductModel(
-      id: (json['id'] as num).toInt(),
-      ownerProjectId: (json['ownerProjectId'] as num).toInt(),
-      itemTypeId: (json['itemTypeId'] as num?)?.toInt(),
-      currencyId: (json['currencyId'] as num?)?.toInt(),
-      categoryId: (json['categoryId'] as num?)?.toInt(),
-      name: (json['name'] ?? '').toString(),
-      description: json['description'] as String?,
-      price: (json['price'] as num?)?.toDouble() ?? 0.0,
-      stock: (json['stock'] as num?)?.toInt(),
+      id: _toInt(json['id']) ?? 0,
+
+      // ✅ sometimes backends return ownerProjectLinkId instead (seen in your codebase)
+      ownerProjectId:
+          _toInt(json['ownerProjectId']) ??
+          _toInt(json['ownerProjectLinkId']) ??
+          0,
+
+      itemTypeId: _toInt(json['itemTypeId']),
+      currencyId: parsedCurrencyId,
+      categoryId: _toInt(json['categoryId']),
+
+      name: (json['name'] ?? json['itemName'] ?? '').toString(),
+      description: json['description']?.toString(),
+
+      price: price,
+      stock: _toInt(json['stock']),
       status: (json['status'] ?? 'Upcoming').toString(),
-      imageUrl: json['imageUrl'] as String?,
-      sku: json['sku'] as String?,
+
+      imageUrl: json['imageUrl']?.toString(),
+      sku: json['sku']?.toString(),
+
       productType: (json['productType'] ?? 'SIMPLE').toString(),
-      virtualProduct: json['virtualProduct'] as bool? ?? false,
-      downloadable: json['downloadable'] as bool? ?? false,
-      downloadUrl: json['downloadUrl'] as String?,
-      externalUrl: json['externalUrl'] as String?,
-      buttonText: json['buttonText'] as String?,
-      salePrice: (json['salePrice'] as num?)?.toDouble(),
-      saleStart: json['saleStart'] != null
-          ? DateTime.tryParse(json['saleStart'].toString())
-          : null,
-      saleEnd: json['saleEnd'] != null
-          ? DateTime.tryParse(json['saleEnd'].toString())
-          : null,
-      effectivePrice:
-          (json['effectivePrice'] as num?)?.toDouble() ??
-          (json['price'] as num?)?.toDouble() ??
-          0.0,
-      onSale: json['onSale'] as bool? ?? false,
-      attributes: attrsMap,
+
+      // ✅ safer than `as bool?` (backend might send "true"/1)
+      virtualProduct: _toBool(json['virtualProduct'], fallback: false),
+      downloadable: _toBool(json['downloadable'], fallback: false),
+
+      downloadUrl: json['downloadUrl']?.toString(),
+      externalUrl: json['externalUrl']?.toString(),
+      buttonText: json['buttonText']?.toString(),
+
+      salePrice: salePrice,
+      saleStart: _toDate(json['saleStart']),
+      saleEnd: _toDate(json['saleEnd']),
+
+      effectivePrice: effectivePrice,
+
+      onSale: _toBool(json['onSale'], fallback: false),
+
+      attributes: _parseAttrs(json['attributes']),
     );
   }
 }

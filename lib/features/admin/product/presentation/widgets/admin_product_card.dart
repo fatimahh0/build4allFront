@@ -6,11 +6,15 @@ import 'package:build4front/core/theme/theme_cubit.dart';
 
 import '../../domain/entities/product.dart';
 
-class AdminProductCard extends StatelessWidget {
+class AdminProductCard extends StatefulWidget {
   final Product product;
 
-  /// ✅ currency symbol from API cache (resolved by currencyId in list screen)
+  /// ✅ Provided by list screen (from CurrencySymbolCache warmed up).
+  /// If null/empty => card shows placeholder "…16.00" until list updates.
   final String? currencySymbol;
+
+  /// ✅ Optional: show tiny loader pill while list is warming currencies
+  final bool currencyLoading;
 
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
@@ -19,10 +23,16 @@ class AdminProductCard extends StatelessWidget {
     super.key,
     required this.product,
     this.currencySymbol,
+    this.currencyLoading = false,
     this.onEdit,
     this.onDelete,
   });
 
+  @override
+  State<AdminProductCard> createState() => _AdminProductCardState();
+}
+
+class _AdminProductCardState extends State<AdminProductCard> {
   String? _resolveImageUrl(String? url) {
     if (url == null || url.trim().isEmpty) return null;
 
@@ -33,14 +43,16 @@ class AdminProductCard extends StatelessWidget {
     return '${Env.apiBaseUrl}$trimmed';
   }
 
-  /// ✅ Strict money display:
-  /// - If symbol not ready yet → show placeholder "…16.00" (NOT "$16.00")
   String _moneyStrict(num value, {int decimals = 2}) {
-    final s = (currencySymbol ?? '').trim();
+    final sym = (widget.currencySymbol ?? '').trim();
     final amount = value.toDouble().toStringAsFixed(decimals);
 
-    if (s.isEmpty) return '…$amount';
-    return '$s$amount';
+    // ✅ If symbol is ready
+    if (sym.isNotEmpty) return '$sym$amount';
+
+    // ✅ If not ready yet -> show placeholder
+    // (so admin sees it’s loading, not wrong currency)
+    return '…$amount';
   }
 
   Future<void> _showActionsSheet(BuildContext context) async {
@@ -89,10 +101,10 @@ class AdminProductCard extends StatelessWidget {
       },
     );
 
-    if (action == 'edit' && onEdit != null) {
-      onEdit!();
-    } else if (action == 'delete' && onDelete != null) {
-      onDelete!();
+    if (action == 'edit' && widget.onEdit != null) {
+      widget.onEdit!();
+    } else if (action == 'delete' && widget.onDelete != null) {
+      widget.onDelete!();
     }
   }
 
@@ -104,12 +116,13 @@ class AdminProductCard extends StatelessWidget {
     final card = tokens.card;
     final text = tokens.typography;
 
-    final showDiscountBadge = product.onSale;
-    final imageUrl = _resolveImageUrl(product.imageUrl);
+    final showDiscountBadge = widget.product.onSale;
+    final imageUrl = _resolveImageUrl(widget.product.imageUrl);
 
     Widget imagePlaceholder() {
       return Container(
         color: colors.muted.withOpacity(0.08),
+        alignment: Alignment.center,
         child: Icon(
           Icons.image_outlined,
           color: colors.muted.withOpacity(0.7),
@@ -129,13 +142,37 @@ class AdminProductCard extends StatelessWidget {
             children: [
               AspectRatio(
                 aspectRatio: 4 / 3,
-                child: imageUrl != null
-                    ? Image.network(
-                        imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => imagePlaceholder(),
-                      )
-                    : imagePlaceholder(),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    imageUrl != null
+                        ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => imagePlaceholder(),
+                          )
+                        : imagePlaceholder(),
+
+                    // ✅ show loader only when list is warming AND this product has currencyId
+                    if (widget.currencyLoading && widget.product.currencyId != null)
+                      Positioned(
+                        top: spacing.xs,
+                        right: spacing.xs,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.45),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
               Expanded(
                 child: Padding(
@@ -164,7 +201,7 @@ class AdminProductCard extends StatelessWidget {
                       if (showDiscountBadge) SizedBox(height: spacing.xs),
 
                       Text(
-                        product.name,
+                        widget.product.name,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: text.bodyMedium.copyWith(
@@ -175,20 +212,19 @@ class AdminProductCard extends StatelessWidget {
 
                       const Spacer(),
 
-                      /// ✅ NO MORE "$" fallback here.
                       Row(
                         children: [
                           Text(
-                            _moneyStrict(product.effectivePrice),
+                            _moneyStrict(widget.product.effectivePrice),
                             style: text.bodyMedium.copyWith(
                               color: colors.primary,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          if (product.onSale) SizedBox(width: spacing.xs),
-                          if (product.onSale)
+                          if (widget.product.onSale) SizedBox(width: spacing.xs),
+                          if (widget.product.onSale)
                             Text(
-                              _moneyStrict(product.price),
+                              _moneyStrict(widget.product.price),
                               style: text.bodySmall.copyWith(
                                 color: colors.muted,
                                 decoration: TextDecoration.lineThrough,
@@ -199,7 +235,7 @@ class AdminProductCard extends StatelessWidget {
 
                       SizedBox(height: spacing.xs),
                       Text(
-                        product.status,
+                        widget.product.status,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: text.bodySmall.copyWith(color: colors.muted),

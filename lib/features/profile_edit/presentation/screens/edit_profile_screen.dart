@@ -18,6 +18,7 @@ import '../../data/repositories/user_profile_repository_impl.dart';
 import '../../domain/usecases/get_user_by_id.dart';
 import '../../domain/usecases/update_user_profile.dart';
 import '../../domain/usecases/delete_user.dart';
+
 import '../bloc/edit_profile_bloc.dart';
 import '../bloc/edit_profile_event.dart';
 import '../bloc/edit_profile_state.dart';
@@ -56,7 +57,6 @@ class _EditProfileAuthDebugInterceptor extends Interceptor {
       o.headers['Authorization'] = o.headers['Authorization'] ?? 'Bearer $t';
     }
 
-    // Debug prints (keep them until it works)
     // ignore: avoid_print
     print(">>> URL: ${o.uri}");
     // ignore: avoid_print
@@ -82,11 +82,15 @@ class EditProfileScreen extends StatefulWidget {
   final String token;
   final int ownerProjectLinkId;
 
+  // ✅ NEW: parent passes logout handler (clear token + go login)
+  final VoidCallback onLogoutAfterDelete;
+
   const EditProfileScreen({
     super.key,
     required this.userId,
     required this.token,
     required this.ownerProjectLinkId,
+    required this.onLogoutAfterDelete,
   });
 
   @override
@@ -106,6 +110,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   bool _poppedAfterSave = false;
 
+  // ✅ guard so we don’t logout twice
+  bool _loggedOutAfterDelete = false;
+
   late final EditProfileBloc _bloc;
 
   @override
@@ -114,10 +121,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     final dio = g.appDio ?? Dio();
 
-    // ✅ DO NOT stack interceptors every time screen opens
-    final has = dio.interceptors.any(
-      (i) => i is _EditProfileAuthDebugInterceptor,
-    );
+    final has = dio.interceptors.any((i) => i is _EditProfileAuthDebugInterceptor);
     if (!has) {
       dio.interceptors.add(
         _EditProfileAuthDebugInterceptor(
@@ -158,20 +162,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
- Future<void> _pickImage() async {
-  final picker = ImagePicker();
-  final x = await picker.pickImage(
-    source: ImageSource.gallery,
-    maxWidth: 1400,
-    maxHeight: 1400,
-  );
-  if (x == null) return;
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final x = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1400,
+      maxHeight: 1400,
+    );
+    if (x == null) return;
 
-  setState(() {
-    _pickedImagePath = x.path;
-    _removeImage = false;
-  });
-}
+    setState(() {
+      _pickedImagePath = x.path;
+      _removeImage = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -187,10 +191,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             AppToast.show(context, state.error!, isError: true);
           }
 
+          // ✅ DELETE SUCCESS: logout immediately
+          if (state.didDelete && !_loggedOutAfterDelete) {
+            _loggedOutAfterDelete = true;
+
+            if (state.success != null) {
+              AppToast.show(context, state.success!);
+            }
+
+            Future.microtask(() {
+              if (mounted) widget.onLogoutAfterDelete();
+            });
+            return;
+          }
+
+          // ✅ SAVE SUCCESS: normal behavior (pop with updated user)
           if (state.success != null) {
             AppToast.show(context, state.success!);
 
-            // ✅ pop back with updated user once
             if (!_poppedAfterSave && state.user != null) {
               _poppedAfterSave = true;
               Future.microtask(() {
@@ -210,9 +228,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         },
         builder: (context, state) {
           final u = state.user;
-          final resolvedImageUrl = u == null
-              ? ''
-              : _resolveImageUrl(u.profileImageUrl);
+          final resolvedImageUrl = u == null ? '' : _resolveImageUrl(u.profileImageUrl);
 
           return Scaffold(
             appBar: AppBar(
@@ -225,91 +241,87 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             body: state.loading
                 ? const Center(child: CircularProgressIndicator())
                 : u == null
-                ? Center(
-                    child: Text(
-                      loc.profileLoadFailed,
-                      style: TextStyle(color: colors.label),
-                    ),
-                  )
-                : ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      _ProfileHeader(
-                        imageUrl: resolvedImageUrl,
-                        pickedPath: _pickedImagePath,
-                        removeImage: _removeImage,
-                        onPick: _pickImage,
-                        onRemove: () => setState(() {
-                          _pickedImagePath = null;
-                          _removeImage = true;
-                        }),
-                      ),
-                      const SizedBox(height: 16),
-                      AppTextField(controller: _userCtrl, label: loc.username),
-                      const SizedBox(height: 12),
-                      AppTextField(
-                        controller: _firstCtrl,
-                        label: loc.firstName,
-                      ),
-                      const SizedBox(height: 12),
-                      AppTextField(controller: _lastCtrl, label: loc.lastName),
-                      const SizedBox(height: 12),
-                      SwitchListTile(
-                        value: _public,
-                        onChanged: (v) => setState(() => _public = v),
-                        title: Text(
-                          loc.publicProfile,
+                    ? Center(
+                        child: Text(
+                          loc.profileLoadFailed,
                           style: TextStyle(color: colors.label),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: state.saving
-                            ? null
-                            : () {
-                                context.read<EditProfileBloc>().add(
-                                  SaveEditProfile(
-                                    token: widget.token,
-                                    userId: widget.userId,
-                                    ownerProjectLinkId:
-                                        widget.ownerProjectLinkId,
-                                    firstName: _firstCtrl.text.trim(),
-                                    lastName: _lastCtrl.text.trim(),
-                                    username: _userCtrl.text.trim().isEmpty
-                                        ? null
-                                        : _userCtrl.text.trim(),
-                                    isPublicProfile: _public,
-                                    imageFilePath: _pickedImagePath,
-                                    imageRemoved: _removeImage,
-                                  ),
-                                );
-                              },
-                        child: state.saving
-                            ? const SizedBox(
-                                height: 18,
-                                width: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Text(loc.save),
-                      ),
-                      const SizedBox(height: 24),
-                      Divider(color: colors.border),
-                      const SizedBox(height: 12),
-                      _DeleteSection(
-                        onDelete: (password) {
-                          context.read<EditProfileBloc>().add(
-                            DeleteAccount(
-                              token: widget.token,
-                              userId: widget.userId,
-                              password: password,
+                      )
+                    : ListView(
+                        padding: const EdgeInsets.all(16),
+                        children: [
+                          _ProfileHeader(
+                            imageUrl: resolvedImageUrl,
+                            pickedPath: _pickedImagePath,
+                            removeImage: _removeImage,
+                            onPick: _pickImage,
+                            onRemove: () => setState(() {
+                              _pickedImagePath = null;
+                              _removeImage = true;
+                            }),
+                          ),
+                          const SizedBox(height: 16),
+                          AppTextField(controller: _userCtrl, label: loc.username),
+                          const SizedBox(height: 12),
+                          AppTextField(controller: _firstCtrl, label: loc.firstName),
+                          const SizedBox(height: 12),
+                          AppTextField(controller: _lastCtrl, label: loc.lastName),
+                          const SizedBox(height: 12),
+                          SwitchListTile(
+                            value: _public,
+                            onChanged: (v) => setState(() => _public = v),
+                            title: Text(
+                              loc.publicProfile,
+                              style: TextStyle(color: colors.label),
                             ),
-                          );
-                        },
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: state.saving
+                                ? null
+                                : () {
+                                    context.read<EditProfileBloc>().add(
+                                          SaveEditProfile(
+                                            token: widget.token,
+                                            userId: widget.userId,
+                                            ownerProjectLinkId: widget.ownerProjectLinkId,
+                                            firstName: _firstCtrl.text.trim(),
+                                            lastName: _lastCtrl.text.trim(),
+                                            username: _userCtrl.text.trim().isEmpty
+                                                ? null
+                                                : _userCtrl.text.trim(),
+                                            isPublicProfile: _public,
+                                            imageFilePath: _pickedImagePath,
+                                            imageRemoved: _removeImage,
+                                          ),
+                                        );
+                                  },
+                            child: state.saving
+                                ? const SizedBox(
+                                    height: 18,
+                                    width: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : Text(loc.save),
+                          ),
+                          const SizedBox(height: 24),
+                          Divider(color: colors.border),
+                          const SizedBox(height: 12),
+
+                          _DeleteSection(
+                            deleting: state.deleting,
+                            onDelete: (password) {
+                              context.read<EditProfileBloc>().add(
+                                    DeleteAccount(
+                                      token: widget.token,
+                                      userId: widget.userId,
+                                      password: password,
+                                    ),
+                                  );
+                            },
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
           );
         },
       ),
@@ -340,9 +352,7 @@ class _ProfileHeader extends StatelessWidget {
     ImageProvider? provider;
     if (pickedPath != null) {
       provider = FileImage(File(pickedPath!));
-    } else if (!removeImage &&
-        imageUrl != null &&
-        imageUrl!.trim().isNotEmpty) {
+    } else if (!removeImage && imageUrl != null && imageUrl!.trim().isNotEmpty) {
       provider = NetworkImage(imageUrl!.trim());
     }
 
@@ -352,9 +362,7 @@ class _ProfileHeader extends StatelessWidget {
           radius: 44,
           backgroundColor: colors.surface,
           backgroundImage: provider,
-          child: provider == null
-              ? Icon(Icons.person, color: colors.label, size: 40)
-              : null,
+          child: provider == null ? Icon(Icons.person, color: colors.label, size: 40) : null,
         ),
         const SizedBox(height: 10),
         Wrap(
@@ -379,7 +387,12 @@ class _ProfileHeader extends StatelessWidget {
 
 class _DeleteSection extends StatefulWidget {
   final void Function(String password) onDelete;
-  const _DeleteSection({required this.onDelete});
+  final bool deleting;
+
+  const _DeleteSection({
+    required this.onDelete,
+    required this.deleting,
+  });
 
   @override
   State<_DeleteSection> createState() => _DeleteSectionState();
@@ -387,6 +400,7 @@ class _DeleteSection extends StatefulWidget {
 
 class _DeleteSectionState extends State<_DeleteSection> {
   final _passCtrl = TextEditingController();
+  String? _error;
 
   @override
   void dispose() {
@@ -401,21 +415,41 @@ class _DeleteSectionState extends State<_DeleteSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          loc.dangerZone,
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
+        Text(loc.dangerZone, style: const TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
+
         AppTextField(
           controller: _passCtrl,
           label: loc.password,
           obscureText: true,
         ),
+
+        if (_error != null) ...[
+          const SizedBox(height: 6),
+          Text(_error!, style: const TextStyle(color: Colors.red)),
+        ],
+
         const SizedBox(height: 10),
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-          onPressed: () => widget.onDelete(_passCtrl.text),
-          child: Text(loc.deleteAccount),
+          onPressed: widget.deleting
+              ? null
+              : () {
+                  final pwd = _passCtrl.text.trim();
+                  if (pwd.isEmpty) {
+                    setState(() => _error = loc.fieldRequired);
+                    return;
+                  }
+                  setState(() => _error = null);
+                  widget.onDelete(pwd);
+                },
+          child: widget.deleting
+              ? const SizedBox(
+                  height: 18,
+                  width: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(loc.deleteAccount),
         ),
       ],
     );

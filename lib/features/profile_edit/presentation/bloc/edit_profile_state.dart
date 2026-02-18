@@ -4,6 +4,10 @@ class EditProfileState {
   final bool loading;
   final bool saving;
   final bool deleting;
+
+  // ✅ NEW: tells UI that delete really happened
+  final bool didDelete;
+
   final UserProfile? user;
   final String? error;
   final String? success;
@@ -12,6 +16,7 @@ class EditProfileState {
     this.loading = false,
     this.saving = false,
     this.deleting = false,
+    this.didDelete = false,
     this.user,
     this.error,
     this.success,
@@ -21,6 +26,7 @@ class EditProfileState {
     bool? loading,
     bool? saving,
     bool? deleting,
+    bool? didDelete,
     UserProfile? user,
     String? error,
     String? success,
@@ -29,6 +35,7 @@ class EditProfileState {
       loading: loading ?? this.loading,
       saving: saving ?? this.saving,
       deleting: deleting ?? this.deleting,
+      didDelete: didDelete ?? this.didDelete,
       user: user ?? this.user,
       error: error,
       success: success,

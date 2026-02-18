@@ -8,42 +8,78 @@ class TaxApiService {
 
   String get _baseUrl => '${Env.apiBaseUrl}/api/tax';
 
-  Options _auth(String token) =>
-      Options(headers: {'Authorization': 'Bearer $token'});
+  Options _auth(String token) {
+    final t = token.trim();
+    // Avoid "Bearer Bearer xxx"
+    final value = t.toLowerCase().startsWith('bearer ') ? t : 'Bearer $t';
+    return Options(headers: {'Authorization': value});
+  }
 
-  Future<List<dynamic>> listRules({
-    required int ownerProjectId,
-    required String authToken,
-  }) async {
-    final resp = await _dio.get(
-      '$_baseUrl/rules',
-      queryParameters: {'ownerProjectId': ownerProjectId},
-      options: _auth(authToken),
-    );
-    return resp.data as List<dynamic>;
+  /// Extracts a clean backend message from:
+  /// {error: "..."} or {message: "..."} or plain string.
+  String _friendlyDioError(DioException e) {
+    final status = e.response?.statusCode;
+    final data = e.response?.data;
+
+    if (data is Map) {
+      final err = data['error'] ?? data['message'];
+      if (err != null) return err.toString();
+    }
+
+    if (data is String && data.trim().isNotEmpty) {
+      return data.trim();
+    }
+
+    if (status == 401) return 'Session expired. Please login again.';
+    if (status == 403) return 'You don’t have permission to do this.';
+    if (status == 404) return 'Not found.';
+    if (status != null) return 'Request failed ($status).';
+
+    // Network / timeout / etc
+    return e.message ?? 'Network error. Please try again.';
+  }
+
+  Future<List<dynamic>> listRules({required String authToken}) async {
+    try {
+      final resp = await _dio.get(
+        '$_baseUrl/rules',
+        options: _auth(authToken),
+      );
+      return resp.data as List<dynamic>;
+    } on DioException catch (e) {
+      throw _friendlyDioError(e); // ✅ throw string => UI gets clean message
+    }
   }
 
   Future<Map<String, dynamic>> getRule({
     required int id,
     required String authToken,
   }) async {
-    final resp = await _dio.get(
-      '$_baseUrl/rules/$id',
-      options: _auth(authToken),
-    );
-    return (resp.data as Map).cast<String, dynamic>();
+    try {
+      final resp = await _dio.get(
+        '$_baseUrl/rules/$id',
+        options: _auth(authToken),
+      );
+      return (resp.data as Map).cast<String, dynamic>();
+    } on DioException catch (e) {
+      throw _friendlyDioError(e);
+    }
   }
 
   Future<Map<String, dynamic>> createRule({
     required Map<String, dynamic> body,
     required String authToken,
   }) async {
-    final resp = await _dio.post(
-      '$_baseUrl/rules',
-      data: body,
-      options: _auth(authToken),
-    );
-    return (resp.data as Map).cast<String, dynamic>();
+    try {
+      final resp = await _dio.post(
+        '$_baseUrl/rules',
+        data: body,
+        options: _auth(authToken),
+      );
+      return (resp.data as Map).cast<String, dynamic>();
+    } on DioException catch (e) {
+      throw _friendlyDioError(e);
+    }
   }
 
   Future<Map<String, dynamic>> updateRule({
@@ -51,27 +87,54 @@ class TaxApiService {
     required Map<String, dynamic> body,
     required String authToken,
   }) async {
-    final resp = await _dio.put(
-      '$_baseUrl/rules/$id',
-      data: body,
-      options: _auth(authToken),
-    );
-    return (resp.data as Map).cast<String, dynamic>();
+    try {
+      final resp = await _dio.put(
+        '$_baseUrl/rules/$id',
+        data: body,
+        options: _auth(authToken),
+      );
+      return (resp.data as Map).cast<String, dynamic>();
+    } on DioException catch (e) {
+      throw _friendlyDioError(e);
+    }
   }
 
-  Future<void> deleteRule({required int id, required String authToken}) async {
-    await _dio.delete('$_baseUrl/rules/$id', options: _auth(authToken));
+  /// ✅ Backend now returns {message:"Tax rule deleted"} (NOT empty 204).
+  Future<Map<String, dynamic>> deleteRule({
+    required int id,
+    required String authToken,
+  }) async {
+    try {
+      final resp = await _dio.delete(
+        '$_baseUrl/rules/$id',
+        options: _auth(authToken),
+      );
+
+      // If backend returns JSON message:
+      if (resp.data is Map) {
+        return (resp.data as Map).cast<String, dynamic>();
+      }
+
+      // Fallback:
+      return {'message': 'Deleted'};
+    } on DioException catch (e) {
+      throw _friendlyDioError(e);
+    }
   }
 
   Future<Map<String, dynamic>> previewTax({
     required Map<String, dynamic> body,
     required String authToken,
   }) async {
-    final res = await _dio.post(
-      '$_baseUrl/preview',
-      data: body,
-      options: Options(headers: {'Authorization': 'Bearer $authToken'}),
-    );
-    return (res.data as Map).cast<String, dynamic>();
+    try {
+      final res = await _dio.post(
+        '$_baseUrl/preview',
+        data: body,
+        options: _auth(authToken),
+      );
+      return (res.data as Map).cast<String, dynamic>();
+    } on DioException catch (e) {
+      throw _friendlyDioError(e);
+    }
   }
 }

@@ -2,7 +2,6 @@ import '../entities/tax_rule.dart';
 
 abstract class TaxRepository {
   Future<List<TaxRule>> listRules({
-    required int ownerProjectId,
     required String authToken,
   });
 

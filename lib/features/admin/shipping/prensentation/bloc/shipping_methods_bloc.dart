@@ -32,10 +32,7 @@ class ShippingMethodsBloc
   ) async {
     emit(state.copyWith(loading: true, error: null));
     try {
-      final methods = await listMethods(
-        ownerProjectId: e.ownerProjectId,
-        authToken: e.token,
-      );
+      final methods = await listMethods(authToken: e.token);
       emit(state.copyWith(loading: false, methods: methods));
     } catch (err) {
       emit(state.copyWith(loading: false, error: err.toString()));
@@ -49,10 +46,8 @@ class ShippingMethodsBloc
     emit(state.copyWith(loading: true, error: null));
     try {
       await createMethod(body: e.body, authToken: e.token);
-      final methods = await listMethods(
-        ownerProjectId: e.ownerProjectId,
-        authToken: e.token,
-      );
+
+      final methods = await listMethods(authToken: e.token);
       emit(state.copyWith(loading: false, methods: methods));
     } catch (err) {
       emit(state.copyWith(loading: false, error: err.toString()));
@@ -66,10 +61,8 @@ class ShippingMethodsBloc
     emit(state.copyWith(loading: true, error: null));
     try {
       await updateMethod(id: e.id, body: e.body, authToken: e.token);
-      final methods = await listMethods(
-        ownerProjectId: e.ownerProjectId,
-        authToken: e.token,
-      );
+
+      final methods = await listMethods(authToken: e.token);
       emit(state.copyWith(loading: false, methods: methods));
     } catch (err) {
       emit(state.copyWith(loading: false, error: err.toString()));
@@ -83,10 +76,8 @@ class ShippingMethodsBloc
     emit(state.copyWith(loading: true, error: null));
     try {
       await deleteMethod(id: e.id, authToken: e.token);
-      final methods = await listMethods(
-        ownerProjectId: e.ownerProjectId,
-        authToken: e.token,
-      );
+
+      final methods = await listMethods(authToken: e.token);
       emit(state.copyWith(loading: false, methods: methods));
     } catch (err) {
       emit(state.copyWith(loading: false, error: err.toString()));

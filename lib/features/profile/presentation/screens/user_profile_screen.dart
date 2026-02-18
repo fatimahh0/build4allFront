@@ -193,11 +193,13 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => EditProfileScreen(
-          userId: _effectiveUserId,
-          token: _effectiveToken,
-          ownerProjectLinkId: ownerProjectLinkId,
-        ),
+       builder: (_) => EditProfileScreen(
+  userId: _effectiveUserId,
+  token: _effectiveToken,
+  ownerProjectLinkId: ownerProjectLinkId,
+  onLogoutAfterDelete: () => _goToLogin(context), // does logout + clear token
+),
+
       ),
     );
 

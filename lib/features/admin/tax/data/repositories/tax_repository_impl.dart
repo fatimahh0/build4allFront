@@ -8,14 +8,8 @@ class TaxRepositoryImpl implements TaxRepository {
   TaxRepositoryImpl(this.api);
 
   @override
-  Future<List<TaxRule>> listRules({
-    required int ownerProjectId,
-    required String authToken,
-  }) async {
-    final data = await api.listRules(
-      ownerProjectId: ownerProjectId,
-      authToken: authToken,
-    );
+  Future<List<TaxRule>> listRules({required String authToken}) async {
+    final data = await api.listRules(authToken: authToken);
     return data
         .map((e) => TaxRuleModel.fromJson((e as Map).cast<String, dynamic>()))
         .map((m) => m.toEntity())
@@ -48,7 +42,7 @@ class TaxRepositoryImpl implements TaxRepository {
   }
 
   @override
-  Future<void> deleteRule({required int id, required String authToken}) {
-    return api.deleteRule(id: id, authToken: authToken);
+  Future<void> deleteRule({required int id, required String authToken}) async {
+    await api.deleteRule(id: id, authToken: authToken);
   }
 }

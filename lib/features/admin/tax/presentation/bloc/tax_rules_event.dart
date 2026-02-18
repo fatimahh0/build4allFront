@@ -8,64 +8,40 @@ abstract class TaxRulesEvent extends Equatable {
 }
 
 class LoadTaxRules extends TaxRulesEvent {
-  final int ownerProjectId;
   final String token;
-  const LoadTaxRules({required this.ownerProjectId, required this.token});
-
+  const LoadTaxRules({required this.token});
   @override
-  List<Object?> get props => [ownerProjectId, token];
+  List<Object?> get props => [token];
 }
 
 class CreateTaxRuleEvent extends TaxRulesEvent {
   final Map<String, dynamic> body;
   final String token;
-  final int ownerProjectId;
-  const CreateTaxRuleEvent({
-    required this.body,
-    required this.token,
-    required this.ownerProjectId,
-  });
-
+  const CreateTaxRuleEvent({required this.body, required this.token});
   @override
-  List<Object?> get props => [body, token, ownerProjectId];
+  List<Object?> get props => [body, token];
 }
 
 class UpdateTaxRuleEvent extends TaxRulesEvent {
   final int id;
   final Map<String, dynamic> body;
   final String token;
-  final int ownerProjectId;
-
-  const UpdateTaxRuleEvent({
-    required this.id,
-    required this.body,
-    required this.token,
-    required this.ownerProjectId,
-  });
-
+  const UpdateTaxRuleEvent({required this.id, required this.body, required this.token});
   @override
-  List<Object?> get props => [id, body, token, ownerProjectId];
+  List<Object?> get props => [id, body, token];
 }
 
 class DeleteTaxRuleEvent extends TaxRulesEvent {
   final int id;
   final String token;
-  final int ownerProjectId;
-
-  const DeleteTaxRuleEvent({
-    required this.id,
-    required this.token,
-    required this.ownerProjectId,
-  });
-
+  const DeleteTaxRuleEvent({required this.id, required this.token});
   @override
-  List<Object?> get props => [id, token, ownerProjectId];
+  List<Object?> get props => [id, token];
 }
 
 class LocalReplaceRules extends TaxRulesEvent {
   final List<TaxRule> rules;
   const LocalReplaceRules(this.rules);
-
   @override
   List<Object?> get props => [rules];
 }

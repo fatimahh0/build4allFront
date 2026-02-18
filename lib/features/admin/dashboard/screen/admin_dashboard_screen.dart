@@ -2,7 +2,13 @@
 
 import 'package:build4front/features/admin/licensing/data/models/owner_app_access_response.dart';
 import 'package:build4front/features/admin/licensing/data/services/licensing_api_service.dart';
+
+import 'package:build4front/features/admin/profile/data/repository/admin_profile_repository_impl.dart';
+import 'package:build4front/features/admin/profile/data/servcies/admin_user_api_service.dart';
+
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:build4front/core/theme/theme_cubit.dart';
@@ -29,22 +35,31 @@ import 'package:build4front/features/admin/coupons/domain/usecases/delete_coupon
 import 'package:build4front/common/widgets/app_toast.dart';
 import 'package:build4front/core/exceptions/exception_mapper.dart';
 
+// ✅ Profile (clean arch)
+import 'package:build4front/features/admin/profile/domain/usecases/get_my_admin_profile.dart';
+import 'package:build4front/features/admin/profile/presentation/cubit/admin_profile_cubit.dart';
+
 String _planCodeToString(dynamic v) {
   if (v == null) return '';
   if (v is String) return v;
-  return v.toString().split('.').last; // supports enum too
+  return v.toString().split('.').last;
 }
 
-String _nicePlanName(String code) {
+double _d(dynamic v, {double fallback = 0}) {
+  if (v is num) return v.toDouble();
+  return fallback;
+}
+
+String _nicePlanNameL10n(AppLocalizations l10n, String code) {
   switch (code) {
     case 'FREE':
-      return 'Free';
+      return l10n.planFree;
     case 'PRO_HOSTEDB':
-      return 'Pro Hosted DB';
+      return l10n.planProHostedDb;
     case 'DEDICATED':
-      return 'Dedicated';
+      return l10n.planDedicated;
     default:
-      return code.isEmpty ? 'Plan' : code;
+      return code.isEmpty ? l10n.planGeneric : code;
   }
 }
 
@@ -66,15 +81,33 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   late final LicensingApiService _licensingApi =
       LicensingApiService(getToken: () => _store.getToken());
 
+  late final AdminProfileCubit _profileCubit;
+
   @override
   void initState() {
     super.initState();
+
+    // ✅ profile wiring (clean arch)
+    final api = AdminUserApiService(getToken: () => _store.getToken());
+    final repo = AdminProfileRepositoryImpl(api: api);
+    final getMe = GetMyAdminProfile(repo);
+    _profileCubit = AdminProfileCubit(getMe: getMe);
+
     _init();
   }
 
+  @override
+  void dispose() {
+    _profileCubit.close();
+    super.dispose();
+  }
+
   Future<void> _init() async {
-    await _loadRole();
-    await _loadLicense();
+    await Future.wait([
+      _loadRole(),
+      _loadLicense(),
+      _profileCubit.load(),
+    ]);
   }
 
   Future<void> _loadRole() async {
@@ -99,7 +132,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         _licenseLoading = false;
       });
 
-      // ✅ if user limit reached, we can optionally auto-open upgrade sheet
       if (access.blockingReason == 'USER_LIMIT_REACHED') {
         // ignore: use_build_context_synchronously
         _showUpgradeSheet(access);
@@ -108,7 +140,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       if (!mounted) return;
       setState(() {
         _licenseLoading = false;
-        // ✅ simple message (not essay)
         _licenseError = ExceptionMapper.toMessage(e);
       });
     }
@@ -120,39 +151,59 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
   }
 
+  Future<void> _openProfilePopup() async {
+    // ensure latest-ish info
+    if (_profileCubit.state is! AdminProfileLoaded) {
+      await _profileCubit.load();
+    }
+
+    if (!mounted) return;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return BlocProvider.value(
+          value: _profileCubit,
+          child: _ProfileBottomSheet(
+            aupId: Env.ownerProjectLinkId,
+            fallbackRole: (_role ?? 'ADMIN'),
+            onReload: () => _profileCubit.load(),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _showUpgradeSheet(OwnerAppAccessResponse access) async {
+    final l10n = AppLocalizations.of(context)!;
     final current = access.planCode;
 
-    // hardcoded options (because /api/licensing/plans is SUPER_ADMIN only)
     final options = <_UpgradeOption>[];
 
     if (current == PlanCode.FREE) {
-      options.add(
-        const _UpgradeOption(
-          code: 'PRO_HOSTEDB',
-          title: 'Pro Hosted DB',
-          desc: 'Unlimited users (hosted by Build4All)',
-        ),
-      );
-      options.add(
-        const _UpgradeOption(
-          code: 'DEDICATED',
-          title: 'Dedicated',
-          desc: 'Dedicated server (needs setup/assignment)',
-        ),
-      );
+      options.add(_UpgradeOption(
+        code: 'PRO_HOSTEDB',
+        title: l10n.planProHostedDb,
+        desc: l10n.planProHostedDbDesc,
+      ));
+      options.add(_UpgradeOption(
+        code: 'DEDICATED',
+        title: l10n.planDedicated,
+        desc: l10n.planDedicatedDesc,
+      ));
     } else if (current == PlanCode.PRO_HOSTEDB) {
-      options.add(
-        const _UpgradeOption(
-          code: 'DEDICATED',
-          title: 'Dedicated',
-          desc: 'Dedicated server (needs setup/assignment)',
-        ),
-      );
+      options.add(_UpgradeOption(
+        code: 'DEDICATED',
+        title: l10n.planDedicated,
+        desc: l10n.planDedicatedDesc,
+      ));
     }
 
     if (options.isEmpty) {
-      AppToast.show(context, 'No upgrade available.');
+      AppToast.show(context, l10n.noUpgradeAvailable);
       return;
     }
 
@@ -160,8 +211,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     final sent = await showModalBottomSheet<bool>(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
       builder: (ctx) {
         final tokens = ctx.watch<ThemeCubit>().state.tokens;
@@ -171,29 +223,52 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         return StatefulBuilder(
           builder: (ctx2, setModalState) {
             return Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 14,
+                bottom: 20 + MediaQuery.of(ctx2).padding.bottom,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
                     height: 4,
-                    width: 36,
+                    width: 40,
                     decoration: BoxDecoration(
                       color: colors.border.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Upgrade request',
-                    style: t.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: colors.label,
-                    ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: colors.primary.withOpacity(.10),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: colors.primary.withOpacity(.18),
+                          ),
+                        ),
+                        child: Icon(Icons.upgrade, color: colors.primary),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          l10n.upgradeSheetTitle,
+                          style: t.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: colors.label,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Choose a plan to send a request.',
+                    l10n.upgradeSheetSubtitle,
                     style: t.bodyMedium?.copyWith(color: colors.body),
                     textAlign: TextAlign.center,
                   ),
@@ -201,18 +276,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   for (final o in options)
                     InkWell(
                       onTap: () => setModalState(() => selected = o.code),
-                      child: Container(
+                      borderRadius: BorderRadius.circular(16),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOut,
                         margin: const EdgeInsets.only(bottom: 10),
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
                           color: selected == o.code
                               ? colors.primary.withOpacity(.08)
                               : colors.surface,
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(
                             color: selected == o.code
                                 ? colors.primary.withOpacity(.35)
-                                : colors.border.withOpacity(.2),
+                                : colors.border.withOpacity(.20),
                           ),
                         ),
                         child: Row(
@@ -234,14 +312,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                     o.title,
                                     style: t.bodyLarge?.copyWith(
                                       color: colors.label,
-                                      fontWeight: FontWeight.w700,
+                                      fontWeight: FontWeight.w800,
                                     ),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
                                     o.desc,
-                                    style: t.bodySmall
-                                        ?.copyWith(color: colors.body),
+                                    style:
+                                        t.bodySmall?.copyWith(color: colors.body),
                                   ),
                                 ],
                               ),
@@ -253,17 +331,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
-                    child: ElevatedButton(
+                    child: ElevatedButton.icon(
                       onPressed: () => Navigator.pop(ctx2, true),
-                      child: const Text('Send request'),
+                      icon: const Icon(Icons.send),
+                      label: Text(l10n.sendRequestLabel),
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(ctx2, false),
-                      child: const Text('Cancel'),
+                      child: Text(l10n.cancelLabel),
                     ),
                   ),
                 ],
@@ -278,14 +357,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     try {
       final aupId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
-
-      await _licensingApi.requestUpgrade(
-        aupId: aupId,
-        planCode: selected,
-      );
+      await _licensingApi.requestUpgrade(aupId: aupId, planCode: selected);
 
       if (!mounted) return;
-      AppToast.show(context, 'Request sent ✅');
+      AppToast.show(context, l10n.upgradeRequestSent);
       await _loadLicense();
     } catch (e) {
       if (!mounted) return;
@@ -299,24 +374,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final tokens = context.watch<ThemeCubit>().state.tokens;
     final colors = tokens.colors;
     final card = tokens.card;
-    final role = _role ?? 'ADMIN';
 
     final blockingReason = (_license?.blockingReason ?? '').trim();
     final bool isBlockedByLicense = _license != null &&
         ((_license!.canAccessDashboard == false) || blockingReason.isNotEmpty);
 
-    // ✅ if blocked (limit/expired/etc) => NO ACCESS to tiles
     final bool lockActions =
         _licenseLoading || _licenseError != null || isBlockedByLicense;
 
     final bool isLimit = blockingReason == 'USER_LIMIT_REACHED';
+
     final String lockMsg = _licenseLoading
-        ? 'Checking license…'
+        ? l10n.adminDashboardStatusChecking
         : (_licenseError != null
-            ? 'License check failed'
+            ? l10n.adminDashboardStatusLicenseFailed
             : (isLimit
-                ? 'Limit reached — upgrade required'
-                : 'Access blocked'));
+                ? l10n.adminDashboardStatusLimitReached
+                : l10n.adminDashboardStatusAccessBlocked));
 
     VoidCallback guarded(VoidCallback realAction) {
       return () {
@@ -328,182 +402,220 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       };
     }
 
-    return Scaffold(
-      backgroundColor: colors.background,
-      appBar: AppBar(
-        backgroundColor: colors.surface,
-        elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: _logout,
-            icon: Icon(Icons.logout, color: colors.body),
-            tooltip: l10n.logoutLabel,
-          ),
-        ],
+    final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+
+    final actions = <_DashAction>[
+      _DashAction(
+        icon: Icons.shopping_bag_outlined,
+        title: l10n.adminProductsTitle,
+        subtitle: l10n.adminActionProductsSubtitle,
+        onTap: guarded(() {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => AdminProductsListScreen(ownerProjectId: ownerId),
+            ),
+          );
+        }),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _RoleBanner(role: role),
-            const SizedBox(height: 12),
-
-            // ✅ License banner always visible
-            _LicenseBanner(
-              loading: _licenseLoading,
-              error: _licenseError,
-              access: _license,
-              onRetry: _loadLicense,
-              onRequestUpgrade: () {
-                if (_license != null) _showUpgradeSheet(_license!);
-              },
+      _DashAction(
+        icon: Icons.local_shipping_outlined,
+        title: l10n.adminShippingTitle,
+        subtitle: l10n.adminActionShippingSubtitle,
+        onTap: guarded(() {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  AdminShippingMethodsScreen(ownerProjectId: ownerId),
             ),
-
-            const SizedBox(height: 20),
-            Text(
-              l10n.adminDashboardQuickActions,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: colors.label,
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-            const SizedBox(height: 12),
-
-            // ✅ visually dim when locked (but we still show toast on tap via guarded())
-            Opacity(
-              opacity: lockActions ? 0.45 : 1,
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  _AdminTile(
-                    icon: Icons.shopping_bag_outlined,
-                    title: l10n.adminProductsTitle,
-                    colors: colors,
-                    card: card,
-                    onTap: guarded(() {
-                      final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              AdminProductsListScreen(ownerProjectId: ownerId),
-                        ),
-                      );
-                    }),
-                  ),
-                  _AdminTile(
-                    icon: Icons.local_shipping_outlined,
-                    title: l10n.adminShippingTitle,
-                    colors: colors,
-                    card: card,
-                    onTap: guarded(() {
-                      final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => AdminShippingMethodsScreen(
-                              ownerProjectId: ownerId),
-                        ),
-                      );
-                    }),
-                  ),
-                  _AdminTile(
-                    icon: Icons.credit_card_outlined,
-                    title: l10n.adminPaymentConfigTitle,
-                    colors: colors,
-                    card: card,
-                    onTap: guarded(() {
-                      final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => OwnerPaymentConfigScreen(
-                            ownerProjectId: ownerId,
-                            getToken: () => _store.getToken(),
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                  _AdminTile(
-                    icon: Icons.receipt_long_outlined,
-                    title: l10n.adminTaxesTitle,
-                    colors: colors,
-                    card: card,
-                    onTap: guarded(() {
-                      final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              AdminTaxRulesScreen(ownerProjectId: ownerId),
-                        ),
-                      );
-                    }),
-                  ),
-                  _AdminTile(
-                    icon: Icons.view_carousel_outlined,
-                    title: l10n.adminHomeBannersTitle,
-                    colors: colors,
-                    card: card,
-                    onTap: guarded(() {
-                      final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              AdminHomeBannersScreen(ownerProjectId: ownerId),
-                        ),
-                      );
-                    }),
-                  ),
-                  _AdminTile(
-                    icon: Icons.card_giftcard_outlined,
-                    title: l10n.adminCouponsTitle,
-                    colors: colors,
-                    card: card,
-                    onTap: guarded(() {
-                      final api = CouponApiService();
-                      final repo = CouponRepositoryImpl(
-                        api: api,
-                        getToken: () => _store.getToken(),
-                      );
-
-                      final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
-
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => BlocProvider<CouponBloc>(
-                            create: (_) => CouponBloc(
-                              getCouponsUc: GetCoupons(repo),
-                              saveCouponUc: SaveCoupon(repo),
-                              deleteCouponUc: DeleteCoupon(repo),
-                              ownerProjectId: ownerId,
-                            ),
-                            child: const AdminCouponsScreen(),
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                  _AdminTile(
-                    icon: Icons.receipt_long_outlined,
-                    title: 'Orders',
-                    colors: colors,
-                    card: card,
-                    onTap: guarded(() {
-                      Navigator.of(context).pushNamed('/admin/orders');
-                    }),
-                  ),
-                  _AdminTile(
-                    icon: Icons.upload_file_outlined,
-                    title: l10n.adminExcelImportTitle,
-                    colors: colors,
-                    card: card,
-                    onTap: guarded(() {
-                      Navigator.of(context).pushNamed('/admin/excel-import');
-                    }),
-                  ),
-                ],
+          );
+        }),
+      ),
+      _DashAction(
+        icon: Icons.credit_card_outlined,
+        title: l10n.adminPaymentConfigTitle,
+        subtitle: l10n.adminActionPaymentSubtitle,
+        onTap: guarded(() {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => OwnerPaymentConfigScreen(
+                ownerProjectId: ownerId,
+                getToken: () => _store.getToken(),
               ),
             ),
+          );
+        }),
+      ),
+      _DashAction(
+        icon: Icons.receipt_long_outlined,
+        title: l10n.adminTaxesTitle,
+        subtitle: l10n.adminActionTaxesSubtitle,
+        onTap: guarded(() {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => AdminTaxRulesScreen(ownerProjectId: ownerId),
+            ),
+          );
+        }),
+      ),
+      _DashAction(
+        icon: Icons.view_carousel_outlined,
+        title: l10n.adminHomeBannersTitle,
+        subtitle: l10n.adminActionBannersSubtitle,
+        onTap: guarded(() {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => AdminHomeBannersScreen(ownerProjectId: ownerId),
+            ),
+          );
+        }),
+      ),
+      _DashAction(
+        icon: Icons.card_giftcard_outlined,
+        title: l10n.adminCouponsTitle,
+        subtitle: l10n.adminActionCouponsSubtitle,
+        onTap: guarded(() {
+          final api = CouponApiService();
+          final repo = CouponRepositoryImpl(
+            api: api,
+            getToken: () => _store.getToken(),
+          );
+
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => BlocProvider<CouponBloc>(
+                create: (_) => CouponBloc(
+                  getCouponsUc: GetCoupons(repo),
+                  saveCouponUc: SaveCoupon(repo),
+                  deleteCouponUc: DeleteCoupon(repo),
+                  ownerProjectId: ownerId,
+                ),
+                child: const AdminCouponsScreen(),
+              ),
+            ),
+          );
+        }),
+      ),
+      _DashAction(
+        icon: Icons.receipt_long_outlined,
+        title: l10n.adminOrdersTitle,
+        subtitle: l10n.adminActionOrdersSubtitle,
+        onTap: guarded(() => Navigator.of(context).pushNamed('/admin/orders')),
+      ),
+      _DashAction(
+        icon: Icons.upload_file_outlined,
+        title: l10n.adminExcelImportTitle,
+        subtitle: l10n.adminActionExcelSubtitle,
+        onTap: guarded(() => Navigator.of(context).pushNamed('/admin/excel-import')),
+      ),
+    ];
+
+    return BlocProvider.value(
+      value: _profileCubit,
+      child: Scaffold(
+        backgroundColor: colors.background,
+        body: CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              pinned: true,
+              elevation: 0,
+              backgroundColor: colors.surface,
+              title: Text(
+                l10n.adminDashboardTitle,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: colors.label,
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              actions: [
+                // ✅ Profile button -> popup
+                IconButton(
+                  onPressed: _openProfilePopup,
+                  icon: Icon(Icons.person_outline, color: colors.body),
+                  tooltip: l10n.profileLabel,
+                ),
+                IconButton(
+                  onPressed: () async {
+                    await Future.wait([_loadLicense(), _profileCubit.load()]);
+                  },
+                  icon: Icon(Icons.refresh, color: colors.body),
+                  tooltip: l10n.refreshLabel,
+                ),
+                IconButton(
+                  onPressed: _logout,
+                  icon: Icon(Icons.logout, color: colors.body),
+                  tooltip: l10n.logoutLabel,
+                ),
+              ],
+            ),
+
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _LicenseBanner(
+                      loading: _licenseLoading,
+                      error: _licenseError,
+                      access: _license,
+                      onRetry: _loadLicense,
+                      onRequestUpgrade: () {
+                        if (_license != null) _showUpgradeSheet(_license!);
+                      },
+                      l10n: l10n,
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      l10n.adminDashboardQuickActions,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: colors.label,
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                ),
+              ),
+            ),
+
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              sliver: SliverToBoxAdapter(
+                child: Opacity(
+                  opacity: lockActions ? 0.55 : 1,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isNarrow = constraints.maxWidth < 360;
+
+                      return GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: actions.length,
+                        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 230,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: isNarrow ? 0.98 : 1.05,
+                        ),
+                        itemBuilder: (_, i) {
+                          final a = actions[i];
+                          return _AdminActionCard(
+                            icon: a.icon,
+                            title: a.title,
+                            subtitle: a.subtitle,
+                            onTap: a.onTap,
+                            colors: colors,
+                            card: card,
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 18)),
           ],
         ),
       ),
@@ -511,123 +623,534 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 }
 
-class _RoleBanner extends StatelessWidget {
-  final String role;
-  const _RoleBanner({required this.role});
+class _ProfileBottomSheet extends StatelessWidget {
+  final String aupId;
+  final String fallbackRole;
+  final VoidCallback onReload;
 
-  Color _roleColor(dynamic c) {
-    switch (role) {
-      case 'SUPER_ADMIN':
-        return c.error;
-      case 'OWNER':
-        return c.primary;
-      case 'MANAGER':
-        return c.body;
-      default:
-        return c.primary;
-    }
+  const _ProfileBottomSheet({
+    required this.aupId,
+    required this.fallbackRole,
+    required this.onReload,
+  });
+
+  String _initials(String first, String last, String username) {
+    final f = first.trim();
+    final l = last.trim();
+    final u = username.trim();
+    final i1 = f.isNotEmpty ? f[0] : (u.isNotEmpty ? u[0] : '?');
+    final i2 = l.isNotEmpty ? l[0] : '';
+    return (i1 + i2).toUpperCase();
+  }
+
+  Future<void> _copy(BuildContext context, String text, String toast) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!context.mounted) return;
+    AppToast.show(context, toast);
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final tokens = context.watch<ThemeCubit>().state.tokens;
     final colors = tokens.colors;
-    final rColor = _roleColor(colors);
-    final l10n = AppLocalizations.of(context)!;
+    final t = Theme.of(context).textTheme;
 
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: rColor.withOpacity(.08),
+        color: colors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 10,
+            bottom: 14 + MediaQuery.of(context).padding.bottom,
+          ),
+          child: BlocBuilder<AdminProfileCubit, AdminProfileState>(
+            builder: (context, state) {
+              Widget body;
+
+              if (state is AdminProfileLoading || state is AdminProfileInitial) {
+                body = Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 12),
+                    const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      l10n.adminProfileLoading,
+                      style: t.bodyMedium?.copyWith(color: colors.body),
+                    ),
+                  ],
+                );
+              } else if (state is AdminProfileError) {
+                body = Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 8),
+                    Icon(Icons.error_outline, color: colors.error, size: 28),
+                    const SizedBox(height: 8),
+                    Text(
+                      state.message,
+                      textAlign: TextAlign.center,
+                      style: t.bodyMedium?.copyWith(color: colors.label),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: onReload,
+                            child: Text(l10n.retryLabel),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              } else {
+                final p = (state as AdminProfileLoaded).profile;
+
+                final name = p.fullName.isNotEmpty
+                    ? p.fullName
+                    : (p.username.trim().isNotEmpty
+                        ? p.username
+                        : l10n.adminMyProfileTitle);
+
+                final role = (p.role.trim().isNotEmpty ? p.role : fallbackRole)
+                    .toUpperCase();
+
+                final email = p.email.trim();
+                final phone = p.phoneNumber.trim();
+                final businessId =
+                    p.businessId == null ? '' : p.businessId.toString();
+                final adminId = p.adminId.toString();
+
+                body = Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      height: 4,
+                      width: 44,
+                      decoration: BoxDecoration(
+                        color: colors.border.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    Row(
+                      children: [
+                        Container(
+                          height: 52,
+                          width: 52,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: colors.primary.withOpacity(.12),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: colors.primary.withOpacity(.18),
+                            ),
+                          ),
+                          child: Text(
+                            _initials(p.firstName, p.lastName, p.username),
+                            style: t.titleMedium?.copyWith(
+                              color: colors.primary,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: t.titleMedium?.copyWith(
+                                  color: colors.label,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: colors.background,
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: colors.border.withOpacity(.18),
+                                  ),
+                                ),
+                                child: Text(
+                                  l10n.adminMyProfileSubtitle(role),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: t.bodySmall?.copyWith(
+                                    color: colors.body,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: Icon(Icons.close, color: colors.body),
+                          tooltip: l10n.closeLabel,
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    Flexible(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            _ProfileRow(
+                              label: l10n.adminIdLabel,
+                              value: adminId,
+                              icon: Icons.badge_outlined,
+                              colors: colors,
+                              onCopy: () => _copy(
+                                context,
+                                adminId,
+                                l10n.copiedLabel,
+                              ),
+                            ),
+                            _ProfileRow(
+                              label: l10n.aupIdLabel,
+                              value: aupId,
+                              icon: Icons.link_outlined,
+                              colors: colors,
+                              onCopy: () => _copy(
+                                context,
+                                aupId,
+                                l10n.copiedLabel,
+                              ),
+                            ),
+                            _ProfileRow(
+                              label: l10n.usernameLabel,
+                              value: p.username,
+                              icon: Icons.person_outline,
+                              colors: colors,
+                              onCopy: p.username.trim().isEmpty
+                                  ? null
+                                  : () => _copy(
+                                        context,
+                                        p.username,
+                                        l10n.copiedLabel,
+                                      ),
+                            ),
+                            if (businessId.isNotEmpty)
+                              _ProfileRow(
+                                label: l10n.businessIdLabel,
+                                value: businessId,
+                                icon: Icons.store_outlined,
+                                colors: colors,
+                                onCopy: () => _copy(
+                                  context,
+                                  businessId,
+                                  l10n.copiedLabel,
+                                ),
+                              ),
+                            if (email.isNotEmpty)
+                              _ProfileRow(
+                                label: l10n.emailLabel,
+                                value: email,
+                                icon: Icons.email_outlined,
+                                colors: colors,
+                                onCopy: () => _copy(
+                                  context,
+                                  email,
+                                  l10n.copiedLabel,
+                                ),
+                              ),
+                            if (phone.isNotEmpty)
+                              _ProfileRow(
+                                label: l10n.phoneLabel,
+                                value: phone,
+                                icon: Icons.phone_outlined,
+                                colors: colors,
+                                onCopy: () => _copy(
+                                  context,
+                                  phone,
+                                  l10n.copiedLabel,
+                                ),
+                              ),
+                            if ((p.createdAt ?? '').trim().isNotEmpty)
+                              _ProfileRow(
+                                label: l10n.createdAtLabel,
+                                value: (p.createdAt ?? '').toString(),
+                                icon: Icons.schedule_outlined,
+                                colors: colors,
+                                onCopy: () => _copy(
+                                  context,
+                                  (p.createdAt ?? '').toString(),
+                                  l10n.copiedLabel,
+                                ),
+                              ),
+                            if ((p.updatedAt ?? '').trim().isNotEmpty)
+                              _ProfileRow(
+                                label: l10n.updatedAtLabel,
+                                value: (p.updatedAt ?? '').toString(),
+                                icon: Icons.update_outlined,
+                                colors: colors,
+                                onCopy: () => _copy(
+                                  context,
+                                  (p.updatedAt ?? '').toString(),
+                                  l10n.copiedLabel,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: onReload,
+                        icon: const Icon(Icons.refresh),
+                        label: Text(l10n.refreshLabel),
+                      ),
+                    ),
+                  ],
+                );
+              }
+
+              return AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                child: body,
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final dynamic colors;
+  final VoidCallback? onCopy;
+
+  const _ProfileRow({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.colors,
+    required this.onCopy,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: colors.background,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: rColor.withOpacity(.3)),
+        border: Border.all(color: colors.border.withOpacity(.18)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: rColor.withOpacity(0.12),
+              color: colors.primary.withOpacity(.10),
               shape: BoxShape.circle,
+              border: Border.all(color: colors.primary.withOpacity(.16)),
             ),
-            child: Icon(Icons.verified_user_outlined, color: rColor, size: 24),
+            child: Icon(icon, size: 18, color: colors.primary),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              l10n.adminSignedInAs(role),
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colors.label,
-                    fontWeight: FontWeight.w600,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodySmall?.copyWith(
+                    color: colors.body,
+                    fontWeight: FontWeight.w800,
                   ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  value.trim().isEmpty ? '—' : value,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodyMedium?.copyWith(
+                    color: colors.label,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
           ),
+          if (onCopy != null)
+            IconButton(
+              onPressed: onCopy,
+              icon: Icon(Icons.copy_rounded, color: colors.body.withOpacity(.8)),
+              tooltip: AppLocalizations.of(context)!.copyLabel,
+            ),
         ],
       ),
     );
   }
 }
 
-class _AdminTile extends StatelessWidget {
+class _DashAction {
   final IconData icon;
   final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _DashAction({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+}
+
+class _AdminActionCard extends StatefulWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
   final VoidCallback onTap;
   final dynamic colors;
   final dynamic card;
 
-  const _AdminTile({
+  const _AdminActionCard({
     required this.icon,
     required this.title,
+    required this.subtitle,
     required this.onTap,
     required this.colors,
     required this.card,
   });
 
   @override
+  State<_AdminActionCard> createState() => _AdminActionCardState();
+}
+
+class _AdminActionCardState extends State<_AdminActionCard> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final colors = widget.colors;
+    final card = widget.card;
+
+    final double radius = _d(card.radius, fallback: 16);
+    final double basePadding = _d(card.padding, fallback: 14);
+    final double elev = _d(card.elevation, fallback: 0);
+
     final width = MediaQuery.of(context).size.width;
+    final double pad = width < 360 ? 12.0 : basePadding;
 
-    // ✅ better mobile: 1 column on small screens
-    final cols = width < 420 ? 1 : 2;
-    final tileWidth = (width - 16 * 2 - 12 * (cols - 1)) / cols;
-
-    return SizedBox(
-      width: tileWidth,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(card.radius),
-        onTap: onTap,
-        child: Ink(
-          padding: EdgeInsets.all(card.padding),
-          decoration: BoxDecoration(
-            color: colors.surface,
-            borderRadius: BorderRadius.circular(card.radius),
-            border: card.showBorder
-                ? Border.all(color: colors.border.withOpacity(0.2))
-                : null,
-            boxShadow: card.showShadow
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
-                      blurRadius: card.elevation * 1.5,
-                      offset: Offset(0, card.elevation.toDouble()),
+    return AnimatedScale(
+      scale: _pressed ? 0.985 : 1,
+      duration: const Duration(milliseconds: 130),
+      curve: Curves.easeOut,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(radius),
+          onTap: widget.onTap,
+          onTapDown: (_) => setState(() => _pressed = true),
+          onTapCancel: () => setState(() => _pressed = false),
+          onTapUp: (_) => setState(() => _pressed = false),
+          child: Ink(
+            padding: EdgeInsets.all(pad),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(radius),
+              border: (card.showBorder == true)
+                  ? Border.all(color: colors.border.withOpacity(0.20))
+                  : null,
+              boxShadow: (card.showShadow == true && elev > 0)
+                  ? [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: elev * 2.0,
+                        offset: Offset(0, elev),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: colors.primary.withOpacity(.10),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: colors.primary.withOpacity(.18),
+                        ),
+                      ),
+                      child: Icon(widget.icon, color: colors.primary, size: 24),
                     ),
-                  ]
-                : null,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, color: colors.primary, size: 24),
-              const SizedBox(height: 10),
-              Text(
-                title,
-                style: t.bodyMedium?.copyWith(
-                  color: colors.label,
-                  fontWeight: FontWeight.w600,
+                    const Spacer(),
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 16,
+                      color: colors.body.withOpacity(.65),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 10),
+                Text(
+                  widget.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodyLarge?.copyWith(
+                    color: colors.label,
+                    fontWeight: FontWeight.w800,
+                    height: 1.10,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  widget.subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodySmall?.copyWith(
+                    color: colors.body,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -641,6 +1164,7 @@ class _LicenseBanner extends StatelessWidget {
   final OwnerAppAccessResponse? access;
   final VoidCallback onRetry;
   final VoidCallback onRequestUpgrade;
+  final AppLocalizations l10n;
 
   const _LicenseBanner({
     required this.loading,
@@ -648,6 +1172,7 @@ class _LicenseBanner extends StatelessWidget {
     required this.access,
     required this.onRetry,
     required this.onRequestUpgrade,
+    required this.l10n,
   });
 
   @override
@@ -672,9 +1197,13 @@ class _LicenseBanner extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
             const SizedBox(width: 10),
-            Text(
-              'Checking license…',
-              style: t.bodyMedium?.copyWith(color: colors.body),
+            Expanded(
+              child: Text(
+                l10n.licenseChecking,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: t.bodyMedium?.copyWith(color: colors.body),
+              ),
             ),
           ],
         ),
@@ -696,10 +1225,12 @@ class _LicenseBanner extends StatelessWidget {
             Expanded(
               child: Text(
                 error!,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: t.bodyMedium?.copyWith(color: colors.label),
               ),
             ),
-            TextButton(onPressed: onRetry, child: const Text('Retry')),
+            TextButton(onPressed: onRetry, child: Text(l10n.retryLabel)),
           ],
         ),
       );
@@ -723,18 +1254,18 @@ class _LicenseBanner extends StatelessWidget {
 
     final planCodeStr = _planCodeToString(access!.planCode);
     final planName = (access!.planName ?? '').trim().isEmpty
-        ? _nicePlanName(planCodeStr)
+        ? _nicePlanNameL10n(l10n, planCodeStr)
         : access!.planName!;
 
     String subtitle;
     if (isOk) {
-      subtitle = 'Access granted ✅';
+      subtitle = l10n.licenseAccessGranted;
     } else if (isLimit) {
       final active = access!.activeUsers ?? 0;
       final allowed = access!.usersAllowed ?? 0;
-      subtitle = 'Limit reached: $active/$allowed users';
+      subtitle = l10n.licenseLimitReached(active, allowed);
     } else {
-      subtitle = 'Access blocked';
+      subtitle = l10n.licenseAccessBlocked;
     }
 
     return Container(
@@ -760,14 +1291,18 @@ class _LicenseBanner extends StatelessWidget {
               children: [
                 Text(
                   planName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: t.bodyLarge?.copyWith(
                     color: colors.label,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: t.bodySmall?.copyWith(color: colors.body),
                 ),
               ],
@@ -776,7 +1311,7 @@ class _LicenseBanner extends StatelessWidget {
           if (isLimit)
             ElevatedButton(
               onPressed: onRequestUpgrade,
-              child: const Text('Request upgrade'),
+              child: Text(l10n.requestUpgradeLabel),
             ),
         ],
       ),

@@ -1,19 +1,16 @@
 abstract class ShippingMethodsEvent {}
 
 class LoadShippingMethods extends ShippingMethodsEvent {
-  final int ownerProjectId;
   final String token;
-  LoadShippingMethods({required this.ownerProjectId, required this.token});
+  LoadShippingMethods({required this.token});
 }
 
 class CreateShippingMethodEvent extends ShippingMethodsEvent {
   final Map<String, dynamic> body;
-  final int ownerProjectId;
   final String token;
 
   CreateShippingMethodEvent({
     required this.body,
-    required this.ownerProjectId,
     required this.token,
   });
 }
@@ -21,25 +18,21 @@ class CreateShippingMethodEvent extends ShippingMethodsEvent {
 class UpdateShippingMethodEvent extends ShippingMethodsEvent {
   final int id;
   final Map<String, dynamic> body;
-  final int ownerProjectId;
   final String token;
 
   UpdateShippingMethodEvent({
     required this.id,
     required this.body,
-    required this.ownerProjectId,
     required this.token,
   });
 }
 
 class DeleteShippingMethodEvent extends ShippingMethodsEvent {
   final int id;
-  final int ownerProjectId;
   final String token;
 
   DeleteShippingMethodEvent({
     required this.id,
-    required this.ownerProjectId,
     required this.token,
   });
 }

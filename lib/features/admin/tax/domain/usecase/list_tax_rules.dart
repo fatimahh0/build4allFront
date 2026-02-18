@@ -5,10 +5,7 @@ class ListTaxRules {
   final TaxRepository repo;
   ListTaxRules(this.repo);
 
-  Future<List<TaxRule>> call({
-    required int ownerProjectId,
-    required String authToken,
-  }) {
-    return repo.listRules(ownerProjectId: ownerProjectId, authToken: authToken);
+  Future<List<TaxRule>> call({required String authToken}) {
+    return repo.listRules(authToken: authToken);
   }
 }

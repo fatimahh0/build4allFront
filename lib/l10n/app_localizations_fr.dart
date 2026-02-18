@@ -2286,4 +2286,192 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get adminProductAttributeValueHint => 'Ex : Samsung';
+
+  @override
+  String get adminDashboardHeroTitle => 'Tableau de bord';
+
+  @override
+  String adminDashboardAup(Object id) {
+    return 'AUP $id';
+  }
+
+  @override
+  String get retryLabel => 'Réessayer';
+
+  @override
+  String get cancelLabel => 'Annuler';
+
+  @override
+  String get sendRequestLabel => 'Envoyer la demande';
+
+  @override
+  String get upgradeLabel => 'Upgrade';
+
+  @override
+  String get requestUpgradeLabel => 'Demander l’upgrade';
+
+  @override
+  String get licenseChecking => 'Vérification de la licence…';
+
+  @override
+  String get licenseAccessGranted => 'Accès autorisé ✅';
+
+  @override
+  String get licenseAccessBlocked => 'Accès bloqué';
+
+  @override
+  String licenseLimitReached(Object active, Object allowed) {
+    return 'Limite atteinte : $active/$allowed utilisateurs';
+  }
+
+  @override
+  String get adminDashboardStatusChecking => 'Vérification du plan…';
+
+  @override
+  String get adminDashboardStatusLicenseFailed => 'Échec de vérification de la licence';
+
+  @override
+  String get adminDashboardStatusLimitReached => 'Limite utilisateurs — upgrade requis';
+
+  @override
+  String get adminDashboardStatusAccessBlocked => 'Accès bloqué';
+
+  @override
+  String get adminDashboardStatusOk => 'Tout est OK ✅';
+
+  @override
+  String adminDashboardActionsCount(Object count) {
+    return '$count actions';
+  }
+
+  @override
+  String get upgradeSheetTitle => 'Demande d’upgrade';
+
+  @override
+  String get upgradeSheetSubtitle => 'Choisissez un plan pour envoyer une demande.';
+
+  @override
+  String get noUpgradeAvailable => 'Aucune option d’upgrade disponible.';
+
+  @override
+  String get upgradeRequestSent => 'Demande envoyée ✅';
+
+  @override
+  String get planGeneric => 'Plan';
+
+  @override
+  String get planFree => 'Gratuit';
+
+  @override
+  String get planProHostedDb => 'Pro DB hébergée';
+
+  @override
+  String get planDedicated => 'Dédié';
+
+  @override
+  String get planProHostedDbDesc => 'Utilisateurs illimités (hébergé par Build4All)';
+
+  @override
+  String get planDedicatedDesc => 'Serveur dédié (mise en place nécessaire)';
+
+  @override
+  String get adminActionProductsSubtitle => 'Catalogue & prix';
+
+  @override
+  String get adminActionShippingSubtitle => 'Méthodes & frais';
+
+  @override
+  String get adminActionPaymentSubtitle => 'Stripe & config';
+
+  @override
+  String get adminActionTaxesSubtitle => 'Règles de taxe';
+
+  @override
+  String get adminActionBannersSubtitle => 'Bannières accueil';
+
+  @override
+  String get adminActionCouponsSubtitle => 'Codes promo';
+
+  @override
+  String get adminActionOrdersSubtitle => 'Gérer & suivre';
+
+  @override
+  String get adminActionExcelSubtitle => 'Import en masse';
+
+  @override
+  String get adminProfileLoading => 'Chargement du profil…';
+
+  @override
+  String get adminMyProfileTitle => 'Mon profil';
+
+  @override
+  String adminMyProfileSubtitle(Object role) {
+    return 'Connecté en tant que $role';
+  }
+
+  @override
+  String get manageProfileLabel => 'Gérer';
+
+  @override
+  String get aupIdLabel => 'ID AUP';
+
+  @override
+  String get businessIdLabel => 'ID Business';
+
+  @override
+  String get profileLabel => 'Profile';
+
+  @override
+  String get adminIdLabel => 'Admin ID';
+
+  @override
+  String get copyLabel => 'Copy';
+
+  @override
+  String get copiedLabel => 'Copied ';
+
+  @override
+  String get closeLabel => 'Close';
+
+  @override
+  String get createdAtLabel => 'Created at';
+
+  @override
+  String get updatedAtLabel => 'Updated at';
+
+  @override
+  String get adminProductSaleDatesBothRequired => 'Veuillez sélectionner la date de début et la date de fin de la promotion.';
+
+  @override
+  String get adminProductSaleEndBeforeStart => 'La date de fin de la promotion doit être après la date de début.';
+
+  @override
+  String get adminProductSaleStartInPast => 'La date de début de la promotion ne peut pas être dans le passé.';
+
+  @override
+  String get adminProductSaleEndInPast => 'La date de fin de la promotion ne peut pas être dans le passé.';
+
+  @override
+  String get adminProductSalePriceRequiredForDates => 'Veuillez saisir un prix promo lorsque des dates de promotion sont définies.';
+
+  @override
+  String get adminProductSalePriceInvalid => 'Le prix promo doit être un nombre valide supérieur à 0.';
+
+  @override
+  String get adminProductSalePriceMustBeLess => 'Le prix promo doit être inférieur au prix normal.';
+
+  @override
+  String get adminProductSaleEndAutoCleared => 'La date de fin a été effacée car elle était avant la date de début.';
+
+  @override
+  String get forbiddenLabel => 'Vous n’avez pas l’autorisation de faire ça.';
+
+  @override
+  String get notFoundLabel => 'Introuvable.';
+
+  @override
+  String get serverErrorLabel => 'Erreur serveur. Veuillez réessayer plus tard.';
+
+  @override
+  String get networkErrorLabel => 'Erreur réseau. Veuillez réessayer.';
 }

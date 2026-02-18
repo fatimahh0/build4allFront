@@ -351,7 +351,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get logout => 'Log out';
 
   @override
-  String get adminDashboardTitle => 'Admin dashboard';
+  String get adminDashboardTitle => 'Admin Dashboard';
 
   @override
   String get adminDashboardSubtitle => 'Manage your app content and settings.';
@@ -2286,4 +2286,192 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get adminProductAttributeValueHint => 'Ex: Samsung';
+
+  @override
+  String get adminDashboardHeroTitle => 'Dashboard';
+
+  @override
+  String adminDashboardAup(Object id) {
+    return 'AUP $id';
+  }
+
+  @override
+  String get retryLabel => 'Retry';
+
+  @override
+  String get cancelLabel => 'Cancel';
+
+  @override
+  String get sendRequestLabel => 'Send request';
+
+  @override
+  String get upgradeLabel => 'Upgrade';
+
+  @override
+  String get requestUpgradeLabel => 'Request upgrade';
+
+  @override
+  String get licenseChecking => 'Checking license…';
+
+  @override
+  String get licenseAccessGranted => 'Access granted ✅';
+
+  @override
+  String get licenseAccessBlocked => 'Access blocked';
+
+  @override
+  String licenseLimitReached(Object active, Object allowed) {
+    return 'Limit reached: $active/$allowed users';
+  }
+
+  @override
+  String get adminDashboardStatusChecking => 'Checking plan…';
+
+  @override
+  String get adminDashboardStatusLicenseFailed => 'License check failed';
+
+  @override
+  String get adminDashboardStatusLimitReached => 'User limit reached — upgrade required';
+
+  @override
+  String get adminDashboardStatusAccessBlocked => 'Access blocked';
+
+  @override
+  String get adminDashboardStatusOk => 'All systems go ✅';
+
+  @override
+  String adminDashboardActionsCount(Object count) {
+    return '$count actions';
+  }
+
+  @override
+  String get upgradeSheetTitle => 'Upgrade request';
+
+  @override
+  String get upgradeSheetSubtitle => 'Choose a plan to send a request.';
+
+  @override
+  String get noUpgradeAvailable => 'No upgrade available.';
+
+  @override
+  String get upgradeRequestSent => 'Request sent ✅';
+
+  @override
+  String get planGeneric => 'Plan';
+
+  @override
+  String get planFree => 'Free';
+
+  @override
+  String get planProHostedDb => 'Pro Hosted DB';
+
+  @override
+  String get planDedicated => 'Dedicated';
+
+  @override
+  String get planProHostedDbDesc => 'Unlimited users (hosted by Build4All)';
+
+  @override
+  String get planDedicatedDesc => 'Dedicated server (needs setup/assignment)';
+
+  @override
+  String get adminActionProductsSubtitle => 'Catalog & pricing';
+
+  @override
+  String get adminActionShippingSubtitle => 'Methods & fees';
+
+  @override
+  String get adminActionPaymentSubtitle => 'Stripe & setup';
+
+  @override
+  String get adminActionTaxesSubtitle => 'Tax rules';
+
+  @override
+  String get adminActionBannersSubtitle => 'Homepage banners';
+
+  @override
+  String get adminActionCouponsSubtitle => 'Discount codes';
+
+  @override
+  String get adminActionOrdersSubtitle => 'Manage & track';
+
+  @override
+  String get adminActionExcelSubtitle => 'Bulk import';
+
+  @override
+  String get adminProfileLoading => 'Loading profile…';
+
+  @override
+  String get adminMyProfileTitle => 'My profile';
+
+  @override
+  String adminMyProfileSubtitle(Object role) {
+    return 'Signed in as $role';
+  }
+
+  @override
+  String get manageProfileLabel => 'Manage';
+
+  @override
+  String get aupIdLabel => 'AUP ID';
+
+  @override
+  String get businessIdLabel => 'Business ID';
+
+  @override
+  String get profileLabel => 'Profile';
+
+  @override
+  String get adminIdLabel => 'Admin ID';
+
+  @override
+  String get copyLabel => 'Copy';
+
+  @override
+  String get copiedLabel => 'Copied ';
+
+  @override
+  String get closeLabel => 'Close';
+
+  @override
+  String get createdAtLabel => 'Created at';
+
+  @override
+  String get updatedAtLabel => 'Updated at';
+
+  @override
+  String get adminProductSaleDatesBothRequired => 'Please select both sale start and sale end dates.';
+
+  @override
+  String get adminProductSaleEndBeforeStart => 'Sale end date must be after the sale start date.';
+
+  @override
+  String get adminProductSaleStartInPast => 'Sale start date cannot be in the past.';
+
+  @override
+  String get adminProductSaleEndInPast => 'Sale end date cannot be in the past.';
+
+  @override
+  String get adminProductSalePriceRequiredForDates => 'Please enter a sale price when sale dates are set.';
+
+  @override
+  String get adminProductSalePriceInvalid => 'Sale price must be a valid number greater than 0.';
+
+  @override
+  String get adminProductSalePriceMustBeLess => 'Sale price must be less than the regular price.';
+
+  @override
+  String get adminProductSaleEndAutoCleared => 'Sale end date was cleared because it was before the start date.';
+
+  @override
+  String get forbiddenLabel => 'You don’t have permission to do this.';
+
+  @override
+  String get notFoundLabel => 'Not found.';
+
+  @override
+  String get serverErrorLabel => 'Server error. Please try again later.';
+
+  @override
+  String get networkErrorLabel => 'Network error. Please try again.';
 }

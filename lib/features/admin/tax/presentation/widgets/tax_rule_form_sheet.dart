@@ -62,7 +62,7 @@ class _TaxRuleFormSheetState extends State<TaxRuleFormSheet> {
   final List<_RulePreset> _presets = const [
     _RulePreset(key: 'VAT_11', name: 'VAT 11%', rate: 11.0),
     _RulePreset(key: 'VAT_5', name: 'VAT 5%', rate: 5.0),
-    _RulePreset(key: 'VAT_0', name: 'VAT 0%', rate: 0.0),
+    
   ];
 
   String _selectedPresetKey = _customRuleKey;

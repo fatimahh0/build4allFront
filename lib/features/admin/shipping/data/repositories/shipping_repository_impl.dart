@@ -9,18 +9,11 @@ class ShippingRepositoryImpl implements ShippingRepository {
 
   @override
   Future<List<ShippingMethod>> listMethods({
-    required int ownerProjectId,
     required String authToken,
   }) async {
-    final list = await api.listMethods(
-      ownerProjectId: ownerProjectId,
-      authToken: authToken,
-    );
+    final list = await api.listMethods(authToken: authToken);
     return list
-        .map(
-          (e) =>
-              ShippingMethodModel.fromJson((e as Map).cast<String, dynamic>()),
-        )
+        .map((e) => ShippingMethodModel.fromJson((e as Map).cast<String, dynamic>()))
         .toList();
   }
 
@@ -48,16 +41,26 @@ class ShippingRepositoryImpl implements ShippingRepository {
     required Map<String, dynamic> body,
     required String authToken,
   }) async {
-    final json = await api.updateMethod(
-      id: id,
-      body: body,
-      authToken: authToken,
-    );
+    final json = await api.updateMethod(id: id, body: body, authToken: authToken);
     return ShippingMethodModel.fromJson(json);
   }
 
   @override
   Future<void> deleteMethod({required int id, required String authToken}) {
     return api.deleteMethod(id: id, authToken: authToken);
+  }
+
+  @override
+  Future<List<ShippingMethod>> listPublicMethods({
+    required int ownerProjectId,
+    required String authToken,
+  }) async {
+    final list = await api.listPublicMethods(
+      ownerProjectId: ownerProjectId,
+      authToken: authToken,
+    );
+    return list
+        .map((e) => ShippingMethodModel.fromJson((e as Map).cast<String, dynamic>()))
+        .toList();
   }
 }

@@ -30,10 +30,15 @@ class ProductRepositoryImpl implements ProductRepository {
       categoryId: categoryId,
       authToken: token,
     );
-    return list
-        .cast<Map<String, dynamic>>()
-        .map(ProductModel.fromJson)
-        .toList();
+   return list
+  .cast<Map<String, dynamic>>()
+  .map((j) {
+    final p = ProductModel.fromJson(j);
+    print("DBG product=${p.id} currencyId_raw=${j['currencyId']} parsed=${p.currencyId}");
+    return p;
+  })
+  .toList();
+
   }
 
   @override
@@ -47,10 +52,15 @@ class ProductRepositoryImpl implements ProductRepository {
       days: days,
       authToken: token,
     );
-    return list
-        .cast<Map<String, dynamic>>()
-        .map(ProductModel.fromJson)
-        .toList();
+   return list
+  .cast<Map<String, dynamic>>()
+  .map((j) {
+    final p = ProductModel.fromJson(j);
+    print("DBG product=${p.id} currencyId_raw=${j['currencyId']} parsed=${p.currencyId}");
+    return p;
+  })
+  .toList();
+
   }
 
   @override
@@ -64,10 +74,15 @@ class ProductRepositoryImpl implements ProductRepository {
       limit: limit,
       authToken: token,
     );
-    return list
-        .cast<Map<String, dynamic>>()
-        .map(ProductModel.fromJson)
-        .toList();
+   return list
+  .cast<Map<String, dynamic>>()
+  .map((j) {
+    final p = ProductModel.fromJson(j);
+    print("DBG product=${p.id} currencyId_raw=${j['currencyId']} parsed=${p.currencyId}");
+    return p;
+  })
+  .toList();
+
   }
 
   @override
@@ -77,10 +92,15 @@ class ProductRepositoryImpl implements ProductRepository {
       ownerProjectId: ownerProjectId,
       authToken: token,
     );
-    return list
-        .cast<Map<String, dynamic>>()
-        .map(ProductModel.fromJson)
-        .toList();
+  return list
+  .cast<Map<String, dynamic>>()
+  .map((j) {
+    final p = ProductModel.fromJson(j);
+    print("DBG product=${p.id} currencyId_raw=${j['currencyId']} parsed=${p.currencyId}");
+    return p;
+  })
+  .toList();
+
   }
 
   @override
