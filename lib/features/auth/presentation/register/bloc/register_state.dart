@@ -29,20 +29,21 @@ class RegisterState extends Equatable {
     );
   }
 
+  static const Object _unset = Object();
+
   RegisterState copyWith({
     bool? isLoading,
-    String? errorCode,
-    bool clearErrorCode = false,
+    Object? errorCode = _unset,
     bool? codeSent,
-    String? contact,
-    RegisterMethod? method,
+    Object? contact = _unset,
+    Object? method = _unset,
   }) {
     return RegisterState(
       isLoading: isLoading ?? this.isLoading,
-      errorCode: clearErrorCode ? null : (errorCode ?? this.errorCode),
+      errorCode: identical(errorCode, _unset) ? this.errorCode : errorCode as String?,
       codeSent: codeSent ?? this.codeSent,
-      contact: contact ?? this.contact,
-      method: method ?? this.method,
+      contact: identical(contact, _unset) ? this.contact : contact as String?,
+      method: identical(method, _unset) ? this.method : method as RegisterMethod?,
     );
   }
 

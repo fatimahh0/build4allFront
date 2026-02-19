@@ -2474,4 +2474,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get networkErrorLabel => 'Erreur réseau. Veuillez réessayer.';
+
+  @override
+  String get errPasswordLen6to8 => 'Le mot de passe doit contenir entre 6 et 8 caractères.';
+
+  @override
+  String get errPasswordNeedSpecial => 'Le mot de passe doit contenir au moins 1 caractère spécial (ex: !@#).';
+
+  @override
+  String get hintPasswordRuleOwner => 'Mot de passe : 6–8 caractères + au moins 1 caractère spécial.';
 }

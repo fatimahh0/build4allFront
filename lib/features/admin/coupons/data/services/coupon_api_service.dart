@@ -14,13 +14,12 @@ class CouponApiService {
   Options _auth(String token) =>
       Options(headers: {'Authorization': 'Bearer $token'});
 
+  /// ✅ Backend extracts ownerProjectId from token => NO query params
   Future<List<CouponModel>> listCoupons({
-    required int ownerProjectId,
     required String authToken,
   }) async {
     final resp = await _dio.get(
       _baseUrl,
-      queryParameters: {'ownerProjectId': ownerProjectId},
       options: _auth(authToken),
     );
 
@@ -55,6 +54,9 @@ class CouponApiService {
   }
 
   Future<void> deleteCoupon(int id, {required String authToken}) async {
-    await _dio.delete('$_baseUrl/$id', options: _auth(authToken));
+    await _dio.delete(
+      '$_baseUrl/$id',
+      options: _auth(authToken),
+    );
   }
 }

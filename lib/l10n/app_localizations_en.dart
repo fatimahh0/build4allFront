@@ -2474,4 +2474,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get networkErrorLabel => 'Network error. Please try again.';
+
+  @override
+  String get errPasswordLen6to8 => 'Password must be 6 to 8 characters.';
+
+  @override
+  String get errPasswordNeedSpecial => 'Password must include at least 1 special character (e.g. !@#).';
+
+  @override
+  String get hintPasswordRuleOwner => 'Password: 6–8 chars + at least 1 special character.';
 }

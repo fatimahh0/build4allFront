@@ -1144,6 +1144,9 @@
   "forbiddenLabel": "You don’t have permission to do this.",
   "notFoundLabel": "Not found.",
   "serverErrorLabel": "Server error. Please try again later.",
-  "networkErrorLabel": "Network error. Please try again."
+  "networkErrorLabel": "Network error. Please try again.",
+ "errPasswordLen6to8": "Password must be 6 to 8 characters.",
+  "errPasswordNeedSpecial": "Password must include at least 1 special character (e.g. !@#).",
+  "hintPasswordRuleOwner": "Password: 6–8 chars + at least 1 special character."
 
 }

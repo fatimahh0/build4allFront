@@ -1,7 +1,5 @@
-// lib/features/auth/presentation/bloc/register_event.dart
 import 'package:equatable/equatable.dart';
 
-/// Registration method (email OR phone)
 enum RegisterMethod { email, phone }
 
 abstract class RegisterEvent extends Equatable {
@@ -11,7 +9,6 @@ abstract class RegisterEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-/// Step 1: send verification code (email OR phone + password)
 class RegisterSendCodeSubmitted extends RegisterEvent {
   final RegisterMethod method;
   final String? email;

@@ -483,12 +483,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => BlocProvider<CouponBloc>(
-                create: (_) => CouponBloc(
-                  getCouponsUc: GetCoupons(repo),
-                  saveCouponUc: SaveCoupon(repo),
-                  deleteCouponUc: DeleteCoupon(repo),
-                  ownerProjectId: ownerId,
-                ),
+               create: (_) => CouponBloc(
+  getCouponsUc: GetCoupons(repo),
+  saveCouponUc: SaveCoupon(repo),
+  deleteCouponUc: DeleteCoupon(repo),
+),
+
                 child: const AdminCouponsScreen(),
               ),
             ),

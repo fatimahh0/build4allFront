@@ -27,8 +27,10 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
     emit(
       state.copyWith(
         isLoading: true,
-        clearErrorCode: true,
+        errorCode: null,
         codeSent: false,
+        contact: null,
+        method: null,
       ),
     );
 
@@ -51,7 +53,7 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
 
       // ✅ If the usecase returns Either => handle Left/Right properly
       if (result is Either) {
-        return result.fold(
+        result.fold(
           (failure) {
             final code = _mapFailureToCode(failure);
             emit(
@@ -59,6 +61,8 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
                 isLoading: false,
                 errorCode: code,
                 codeSent: false,
+                contact: null,
+                method: null,
               ),
             );
           },
@@ -66,7 +70,7 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
             emit(
               state.copyWith(
                 isLoading: false,
-                clearErrorCode: true,
+                errorCode: null,
                 codeSent: true,
                 contact: email ?? phone,
                 method: event.method,
@@ -74,13 +78,14 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
             );
           },
         );
+        return;
       }
 
       // ✅ If the usecase returns "void"/success directly
       emit(
         state.copyWith(
           isLoading: false,
-          clearErrorCode: true,
+          errorCode: null,
           codeSent: true,
           contact: email ?? phone,
           method: event.method,
@@ -93,6 +98,8 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
           isLoading: false,
           errorCode: code,
           codeSent: false,
+          contact: null,
+          method: null,
         ),
       );
     }
@@ -103,27 +110,22 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
   // ---------------------------------------------------------------------------
 
   String _mapFailureToCode(dynamic failure) {
-    // If it's already one of your exceptions (some apps use exception as failure)
     if (failure is AuthException) return failure.code ?? 'AUTH_ERROR';
     if (failure is NetworkException) return _mapNetworkFailure(failure);
     if (failure is AppException) {
       final code = _tryReadDynamicCode(failure);
-      if (code != null) return code;
+      if (code != null) return _normalizeCode(code);
       final msg = _tryReadDynamicMessage(failure) ?? failure.toString();
       return _mapMessageToAuthCode(msg) ?? 'GENERIC';
     }
 
-    // Try to read common fields from Failure objects: failure.code / failure.message
     final rawCode = _tryReadDynamicCode(failure);
     final rawMsg = _tryReadDynamicMessage(failure) ?? failure.toString();
 
     if (rawCode != null) {
-      // If backend-like code exists, normalize it
       final normalized = _normalizeCode(rawCode);
-      // If it's a generic code but message is specific, prefer message mapping
       final byMsg = _mapMessageToAuthCode(rawMsg);
-      if (byMsg != null) return byMsg;
-      return normalized;
+      return byMsg ?? normalized;
     }
 
     return _mapMessageToAuthCode(rawMsg) ?? 'GENERIC';
@@ -141,11 +143,9 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
   // ---------------------------------------------------------------------------
 
   String _mapErrorToCode(Object e) {
-    // ✅ AuthException already has a stable code
     if (e is AuthException) return e.code ?? 'AUTH_ERROR';
-
-    // ✅ Your custom exceptions
     if (e is NetworkException) return _mapNetworkFailure(e);
+
     if (e is AppException) {
       final code = _tryReadDynamicCode(e);
       if (code != null) return _normalizeCode(code);
@@ -154,36 +154,28 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
       return _mapMessageToAuthCode(msg) ?? 'GENERIC';
     }
 
-    // ✅ DioException (your backend response is here)
     if (e is DioException) {
       final parsed = _parseBackendErrorFromDio(e);
 
-      // 1) prefer message mapping (most precise)
       final byMsg =
           parsed.message != null ? _mapMessageToAuthCode(parsed.message!) : null;
       if (byMsg != null) return byMsg;
 
-      // 2) backend code if present (BAD_REQUEST etc)
       final byCode =
           parsed.code != null ? _normalizeCode(parsed.code!) : null;
       if (byCode != null && byCode != 'BAD_REQUEST') return byCode;
 
-      // 3) HTTP status fallback
       final s = parsed.status;
       if (s == 401) return 'UNAUTHORIZED';
       if (s == 403) return 'FORBIDDEN';
       if (s == 404) return 'NOT_FOUND';
       if (s != null && s >= 500) return 'SERVER_ERROR';
-
-      // 400-ish -> show validation instead of generic
       if (s == 400) return 'VALIDATION_ERROR';
 
       return 'NETWORK_ERROR';
     }
 
-    // last fallback: map by any text
-    final mapped = _mapMessageToAuthCode(e.toString());
-    return mapped ?? 'GENERIC';
+    return _mapMessageToAuthCode(e.toString()) ?? 'GENERIC';
   }
 
   // ---------------------------------------------------------------------------
@@ -200,7 +192,6 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
       final data = e.response?.data;
 
       if (data is Map) {
-        // ✅ YOUR BACKEND USES "error"
         message = (data['error'] ??
                 data['message'] ??
                 data['details'] ??
@@ -211,7 +202,6 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
 
         code = data['code']?.toString().trim();
 
-        // sometimes backend repeats status
         final s = data['status'];
         if (s is int) status = s;
         if (s is String) status = int.tryParse(s);
@@ -234,7 +224,6 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
   String? _mapMessageToAuthCode(String msg) {
     final m = msg.toLowerCase();
 
-    // ✅ matches: "Email already in use in this app"
     if (m.contains('email') && m.contains('already') && m.contains('in use')) {
       return 'EMAIL_ALREADY_EXISTS';
     }
@@ -255,7 +244,7 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
   }
 
   // ---------------------------------------------------------------------------
-  // Dynamic readers (works with many Failure/Exception shapes)
+  // Dynamic readers
   // ---------------------------------------------------------------------------
 
   String? _tryReadDynamicCode(dynamic obj) {
@@ -283,7 +272,6 @@ class RegisterBloc extends Bloc<RegisterEvent, RegisterState> {
   }
 
   String _normalizeCode(String code) {
-    // normalize: "bad-request" / "Bad Request" -> "BAD_REQUEST"
     return code
         .trim()
         .replaceAll(' ', '_')

@@ -1,4 +1,3 @@
-// lib/features/auth/presentation/screens/user_register_screen.dart
 import 'package:build4front/core/config/app_config.dart';
 import 'package:build4front/core/theme/theme_cubit.dart';
 
@@ -42,6 +41,29 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
     super.dispose();
   }
 
+  bool _hasSpecialChar(String s) {
+    return RegExp(r'[!@#$%^&*()_\+\-=\{\}\[\]:;"\|\\<>,\.\?\/]')
+        .hasMatch(s);
+  }
+
+  String? _passwordValidator(String? value, AppLocalizations l10n) {
+    final v = (value ?? '').trim();
+
+    if (v.isEmpty) return l10n.fieldRequired;
+
+    // ✅ length 6..8
+    if (v.length < 6 || v.length > 8) {
+      return l10n.errPasswordLen6to8; // NEW KEY
+    }
+
+    // ✅ must include special character
+    if (!_hasSpecialChar(v)) {
+      return l10n.errPasswordNeedSpecial; // NEW KEY
+    }
+
+    return null;
+  }
+
   void _onContinuePressed(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
@@ -60,6 +82,8 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
       AppToast.show(context, l10n.loginMissingIdentifier, isError: true);
       return;
     }
+
+    FocusScope.of(context).unfocus();
 
     context.read<RegisterBloc>().add(
           RegisterSendCodeSubmitted(
@@ -87,38 +111,44 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: BlocConsumer<RegisterBloc, RegisterState>(
+              // ✅ only react when it matters
+              listenWhen: (p, c) =>
+                  p.errorCode != c.errorCode || p.codeSent != c.codeSent,
               listener: (context, state) {
                 final l10n = AppLocalizations.of(context)!;
 
+                // ✅ show error toast only when error appears/changes
                 if (state.errorCode != null) {
                   AppToast.show(
                     context,
                     _l10nFromCode(l10n, state.errorCode!),
                     isError: true,
                   );
+                  return;
                 }
-if (state.codeSent &&
-    state.errorCode == null &&
-    state.contact != null &&
-    state.method != null) {
-  Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (_) => UserVerifyCodeScreen(
-        contact: state.contact!,
-        method: state.method!,
-        appConfig: widget.appConfig,
-      ),
-    ),
-  );
-}
 
-                  
+                // ✅ navigate ONLY once: when codeSent flips false -> true
+                final prev = context.read<RegisterBloc>().state; // current (after emit)
+                // We can't access previous directly here, so rely on listenWhen + codeSent change:
+                // If we're here and codeSent == true and no error => proceed.
+                if (state.codeSent &&
+                    state.contact != null &&
+                    state.method != null) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => UserVerifyCodeScreen(
+                        contact: state.contact!,
+                        method: state.method!,
+                        appConfig: widget.appConfig,
+                      ),
+                    ),
+                  );
+                }
               },
               builder: (context, state) {
                 return Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Top avatar / logo
                     CircleAvatar(
                       radius: 28,
                       backgroundColor: colors.primary.withOpacity(0.1),
@@ -145,7 +175,6 @@ if (state.codeSent &&
                     ),
                     const SizedBox(height: 24),
 
-                    // Card wrapper
                     Container(
                       width: double.infinity,
                       padding: EdgeInsets.all(card.padding),
@@ -170,7 +199,6 @@ if (state.codeSent &&
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Small step indicator (TikTok style)
                             Text(
                               l10n.registerStep1Of3, // add in l10n
                               style: t.labelLarge?.copyWith(
@@ -188,7 +216,6 @@ if (state.codeSent &&
                             ),
                             const SizedBox(height: 16),
 
-                            // Toggle: email / phone
                             _RegisterMethodToggle(
                               method: _method,
                               onChanged: (m) {
@@ -206,7 +233,6 @@ if (state.codeSent &&
 
                             const SizedBox(height: 20),
 
-                            // Email OR Phone
                             if (!isPhone)
                               AppTextField(
                                 label: l10n.emailLabel,
@@ -214,12 +240,10 @@ if (state.codeSent &&
                                 keyboardType: TextInputType.emailAddress,
                                 validator: (value) {
                                   final v = value?.trim() ?? '';
-                                  if (v.isEmpty) {
-                                    return l10n.fieldRequired;
-                                  }
-                                  if (!v.contains('@')) {
-                                    return l10n.invalidEmail;
-                                  }
+                                  if (v.isEmpty) return l10n.fieldRequired;
+                                  final ok = RegExp(r'^[^@]+@[^@]+\.[^@]+$')
+                                      .hasMatch(v);
+                                  if (!ok) return l10n.invalidEmail;
                                   return null;
                                 },
                               )
@@ -236,20 +260,19 @@ if (state.codeSent &&
 
                             const SizedBox(height: 16),
 
-                            // Password
+                            // Password (✅ 6-8 + special char)
                             AppTextField(
                               label: l10n.passwordLabel,
                               controller: _passwordCtrl,
                               obscureText: true,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return l10n.fieldRequired;
-                                }
-                                if (value.length < 6) {
-                                  return l10n.passwordTooShort;
-                                }
-                                return null;
-                              },
+                              validator: (value) =>
+                                  _passwordValidator(value, l10n),
+                            ),
+
+                            const SizedBox(height: 6),
+                            Text(
+                              l10n.hintPasswordRuleOwner, // NEW KEY
+                              style: t.bodySmall?.copyWith(color: colors.body),
                             ),
 
                             const SizedBox(height: 12),
@@ -260,12 +283,10 @@ if (state.codeSent &&
                               controller: _confirmPasswordCtrl,
                               obscureText: true,
                               validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return l10n.fieldRequired;
-                                }
-                                if (value != _passwordCtrl.text) {
-                                  return l10n
-                                      .passwordsDoNotMatch; // add in l10n
+                                final v = (value ?? '').trim();
+                                if (v.isEmpty) return l10n.fieldRequired;
+                                if (v != _passwordCtrl.text.trim()) {
+                                  return l10n.passwordsDoNotMatch; // add in l10n
                                 }
                                 return null;
                               },
@@ -276,7 +297,9 @@ if (state.codeSent &&
                             PrimaryButton(
                               label: l10n.registerContinueButton, // add in l10n
                               isLoading: state.isLoading,
-                              onPressed: () => _onContinuePressed(context),
+                              onPressed: state.isLoading
+                                  ? null
+                                  : () => _onContinuePressed(context),
                             ),
                           ],
                         ),
@@ -285,7 +308,6 @@ if (state.codeSent &&
 
                     const SizedBox(height: 16),
 
-                    // Already have account → Go to login
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -294,11 +316,9 @@ if (state.codeSent &&
                           style: t.bodyMedium?.copyWith(color: colors.body),
                         ),
                         TextButton(
-                          onPressed: () {
-                            Navigator.of(context).pop(); // back to login
-                          },
+                          onPressed: () => Navigator.of(context).pop(),
                           child: Text(
-                            l10n.loginButton, // reuse
+                            l10n.loginButton,
                             style: t.bodyMedium?.copyWith(
                               color: colors.primary,
                               fontWeight: FontWeight.w600,
@@ -454,9 +474,7 @@ class _PhoneFieldIntlRegister extends StatelessWidget {
       dropdownTextStyle: textTheme.bodyMedium?.copyWith(color: colors.label),
       style: textTheme.bodyMedium?.copyWith(color: colors.label),
       flagsButtonPadding: const EdgeInsets.only(left: 8),
-      onChanged: (phone) {
-        onChanged(phone.completeNumber);
-      },
+      onChanged: (phone) => onChanged(phone.completeNumber),
       validator: (phone) {
         if (phone == null || phone.number.trim().isEmpty) {
           return l10n.fieldRequired;
@@ -472,19 +490,18 @@ class _PhoneFieldIntlRegister extends StatelessWidget {
 
 String _l10nFromCode(AppLocalizations l10n, String code) {
   switch (code) {
-   case 'EMAIL_ALREADY_EXISTS':
-case 'EMAIL_ALREADY_IN_USE':
-case 'EMAIL_EXISTS':
-case 'EMAIL_IN_USE':
-  return l10n.authEmailAlreadyExists;
+    case 'EMAIL_ALREADY_EXISTS':
+    case 'EMAIL_ALREADY_IN_USE':
+    case 'EMAIL_EXISTS':
+    case 'EMAIL_IN_USE':
+      return l10n.authEmailAlreadyExists;
 
-case 'PHONE_ALREADY_EXISTS':
-case 'PHONE_ALREADY_IN_USE':
-case 'PHONE_EXISTS':
-case 'PHONE_IN_USE':
-  return l10n.authPhoneAlreadyExists;
+    case 'PHONE_ALREADY_EXISTS':
+    case 'PHONE_ALREADY_IN_USE':
+    case 'PHONE_EXISTS':
+    case 'PHONE_IN_USE':
+      return l10n.authPhoneAlreadyExists;
 
-    
     case 'USERNAME_TAKEN':
       return l10n.authUsernameTaken;
 
@@ -496,6 +513,9 @@ case 'PHONE_IN_USE':
       return l10n.authInvalidCredentials;
     case 'INACTIVE':
       return l10n.authAccountInactive;
+
+    case 'INVALID_CODE':
+      return l10n.invalidVerificationCode; // add if not exists
 
     case 'NO_INTERNET':
       return l10n.networkNoInternet;
@@ -521,4 +541,3 @@ case 'PHONE_IN_USE':
       return l10n.authErrorGeneric;
   }
 }
-

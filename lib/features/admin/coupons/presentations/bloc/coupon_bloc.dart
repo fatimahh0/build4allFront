@@ -1,7 +1,8 @@
-import 'package:build4front/features/admin/coupons/domain/usecases/delete_coupon.dart';
-import 'package:build4front/features/admin/coupons/domain/usecases/get_coupons.dart';
-import 'package:build4front/features/admin/coupons/domain/usecases/save_coupon.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../domain/usecases/delete_coupon.dart';
+import '../../domain/usecases/get_coupons.dart';
+import '../../domain/usecases/save_coupon.dart';
 
 import 'coupon_event.dart';
 import 'coupon_state.dart';
@@ -10,13 +11,11 @@ class CouponBloc extends Bloc<CouponEvent, CouponState> {
   final GetCoupons getCouponsUc;
   final SaveCoupon saveCouponUc;
   final DeleteCoupon deleteCouponUc;
-  final int ownerProjectId;
 
   CouponBloc({
     required this.getCouponsUc,
     required this.saveCouponUc,
     required this.deleteCouponUc,
-    required this.ownerProjectId,
   }) : super(CouponState.initial()) {
     on<CouponsStarted>(_onStarted);
     on<CouponsRefreshed>(_onRefreshed);
@@ -39,17 +38,16 @@ class CouponBloc extends Bloc<CouponEvent, CouponState> {
           ),
         );
       }
-      final list = await getCouponsUc(ownerProjectId: ownerProjectId);
+
+      // ✅ backend uses tenant from token
+      final list = await getCouponsUc();
       emit(state.copyWith(isLoading: false, coupons: list));
     } catch (e) {
       emit(state.copyWith(isLoading: false, errorMessage: e.toString()));
     }
   }
 
-  Future<void> _onStarted(
-    CouponsStarted event,
-    Emitter<CouponState> emit,
-  ) async {
+  Future<void> _onStarted(CouponsStarted event, Emitter<CouponState> emit) async {
     await _load(emit);
   }
 
@@ -66,13 +64,15 @@ class CouponBloc extends Bloc<CouponEvent, CouponState> {
   ) async {
     try {
       emit(
-        state.copyWith(isSaving: true, errorMessage: null, lastMessage: null),
+        state.copyWith(
+          isSaving: true,
+          errorMessage: null,
+          lastMessage: null,
+        ),
       );
 
-      // ensure ownerProjectId is set from environment / config
-      final withOwner = event.coupon.copyWith(ownerProjectId: ownerProjectId);
-
-      final saved = await saveCouponUc(withOwner);
+      // ✅ no ownerProjectId injection anymore
+      final saved = await saveCouponUc(event.coupon);
 
       final updatedList = [
         ...state.coupons.where((c) => c.id != saved.id),
@@ -97,7 +97,11 @@ class CouponBloc extends Bloc<CouponEvent, CouponState> {
   ) async {
     try {
       emit(
-        state.copyWith(isSaving: true, errorMessage: null, lastMessage: null),
+        state.copyWith(
+          isSaving: true,
+          errorMessage: null,
+          lastMessage: null,
+        ),
       );
 
       await deleteCouponUc(event.couponId);

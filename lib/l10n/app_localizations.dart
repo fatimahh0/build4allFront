@@ -4866,6 +4866,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Network error. Please try again.'**
   String get networkErrorLabel;
+
+  /// No description provided for @errPasswordLen6to8.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must be 6 to 8 characters.'**
+  String get errPasswordLen6to8;
+
+  /// No description provided for @errPasswordNeedSpecial.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must include at least 1 special character (e.g. !@#).'**
+  String get errPasswordNeedSpecial;
+
+  /// No description provided for @hintPasswordRuleOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Password: 6–8 chars + at least 1 special character.'**
+  String get hintPasswordRuleOwner;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

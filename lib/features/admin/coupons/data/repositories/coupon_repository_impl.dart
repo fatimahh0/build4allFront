@@ -19,12 +19,10 @@ class CouponRepositoryImpl implements CouponRepository {
   }
 
   @override
-  Future<List<Coupon>> listCoupons({required int ownerProjectId}) async {
+  Future<List<Coupon>> listCoupons() async {
     final token = await _requireToken();
-    final models = await api.listCoupons(
-      ownerProjectId: ownerProjectId,
-      authToken: token,
-    );
+
+    final models = await api.listCoupons(authToken: token); // ✅ no ownerProjectId
     return models.map((m) => m.toEntity()).toList();
   }
 

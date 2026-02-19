@@ -243,37 +243,39 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
     );
   }
 
-  void _onSubmit() {
-    if (!_formKey.currentState!.validate()) return;
+ void _onSubmit() {
+  if (!_formKey.currentState!.validate()) return;
 
-    final existing = widget.existing;
-    final bloc = context.read<CouponBloc>();
+  final existing = widget.existing;
+  final bloc = context.read<CouponBloc>();
 
-    double? parseDouble(String? v) =>
-        (v == null || v.trim().isEmpty) ? null : double.tryParse(v.trim());
+  double? parseDouble(String? v) =>
+      (v == null || v.trim().isEmpty) ? null : double.tryParse(v.trim());
 
-    int? parseInt(String? v) =>
-        (v == null || v.trim().isEmpty) ? null : int.tryParse(v.trim());
+  int? parseInt(String? v) =>
+      (v == null || v.trim().isEmpty) ? null : int.tryParse(v.trim());
 
-    // ✅ Make sure ownerProjectId is set for new coupons
-    final ownerProjectId = existing?.ownerProjectId ?? bloc.ownerProjectId;
+  // ✅ Tenant should come from token (backend).
+  // Keep existing ownerProjectId when editing, otherwise send 0 (backend overrides).
+  final safeOwnerProjectId = existing?.ownerProjectId ?? 0;
 
-    final coupon = Coupon(
-      id: existing?.id ?? 0,
-      ownerProjectId: ownerProjectId,
-      code: _codeCtrl.text.trim(),
-      description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
-      discountType: _type,
-      discountValue: double.parse(_valueCtrl.text.trim()),
-      maxUses: parseInt(_maxUsesCtrl.text),
-      minOrderAmount: parseDouble(_minOrderCtrl.text),
-      maxDiscountAmount: parseDouble(_maxDiscountCtrl.text),
-      startsAt: existing?.startsAt,
-      expiresAt: existing?.expiresAt,
-      active: _active,
-    );
+  final coupon = Coupon(
+    id: existing?.id ?? 0,
+    ownerProjectId: safeOwnerProjectId,
+    code: _codeCtrl.text.trim(),
+    description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+    discountType: _type,
+    discountValue: double.parse(_valueCtrl.text.trim()),
+    maxUses: parseInt(_maxUsesCtrl.text),
+    minOrderAmount: parseDouble(_minOrderCtrl.text),
+    maxDiscountAmount: parseDouble(_maxDiscountCtrl.text),
+    startsAt: existing?.startsAt,
+    expiresAt: existing?.expiresAt,
+    active: _active,
+  );
 
-    bloc.add(CouponSaveRequested(coupon: coupon));
-    Navigator.of(context).maybePop();
-  }
+  bloc.add(CouponSaveRequested(coupon: coupon));
+  Navigator.of(context).maybePop();
+}
+
 }
