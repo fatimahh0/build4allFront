@@ -3,6 +3,11 @@ name: Owner App Build (iOS) - External Testing Auto
 on:
   repository_dispatch:
     types: [owner_app_build_ios]
+    
+concurrency:
+  group: ios-${{ github.event.client_payload.CONFIG.OWNER_PROJECT_LINK_ID || github.event.client_payload.OWNER_PROJECT_LINK_ID || github.event.client_payload.ownerProjectLinkId || github.event.client_payload.CONFIG.ownerProjectLinkId || 'unknown' }}
+  cancel-in-progress: false
+    
 
 permissions:
   contents: write
@@ -845,6 +850,33 @@ jobs:
           print(f"   ✅ Info.plist & ci_env.json updated to build number {new_bn}")
           PY
 
+      - name: Sync Flutter version/build (pubspec + env vars)
+        shell: bash
+        run: |
+          set -euo pipefail
+      
+          VN="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['IOS_VERSION_NAME'])")"
+          BN="$(python3 -c "import json; print(json.load(open('lib/env/ci_env.json'))['IOS_BUILD_NUMBER'])")"
+      
+          echo "IOS_VERSION_NAME=$VN" >> "$GITHUB_ENV"
+          echo "IOS_BUILD_NUMBER=$BN" >> "$GITHUB_ENV"
+      
+          python3 - <<PY
+          import re
+          vn="$VN".strip()
+          bn="$BN".strip()
+          path="pubspec.yaml"
+          s=open(path,"r",encoding="utf-8").read()
+          if re.search(r"^version:\s*.+$", s, flags=re.M):
+              s=re.sub(r"^version:\s*.+$", f"version: {vn}+{bn}", s, flags=re.M)
+          else:
+              s="version: "+f"{vn}+{bn}\n"+s
+          open(path,"w",encoding="utf-8").write(s)
+          print("✅ pubspec.yaml version set to:", f"{vn}+{bn}")
+          PY
+      
+          grep -n "^version:" pubspec.yaml
+
       # ════════════════════════════════════════════════════════════════════
       # BETA APP REVIEW – uses $DEMO_EMAIL / $DEMO_PASSWORD from GITHUB_ENV
       # ════════════════════════════════════════════════════════════════════
@@ -1166,7 +1198,10 @@ jobs:
         run: |
           set -euo pipefail
           flutter build ios --release --no-codesign \
+            --build-name "$IOS_VERSION_NAME" \
+            --build-number "$IOS_BUILD_NUMBER" \
             --dart-define-from-file=lib/env/ci_env.json
+
 
       - name: Force Pods = no signing
         shell: bash
@@ -1204,6 +1239,24 @@ jobs:
             -archivePath ../build/ios/archive/Runner.xcarchive \
             OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}" \
             archive
+
+
+      - name: Verify built version/build (must be unique)
+        shell: bash
+        run: |
+          set -euo pipefail
+      
+          PLIST="build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app/Info.plist"
+      
+          BUILT_VN=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST")
+          BUILT_BN=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$PLIST")
+      
+          echo "Built:    $BUILT_VN ($BUILT_BN)"
+          echo "Expected: $IOS_VERSION_NAME ($IOS_BUILD_NUMBER)"
+      
+          [ "$BUILT_VN" = "$IOS_VERSION_NAME" ] || { echo "❌ Version mismatch"; exit 1; }
+          [ "$BUILT_BN" = "$IOS_BUILD_NUMBER" ] || { echo "❌ Build mismatch"; exit 1; }
+      
 
       - name: Export IPA
         shell: bash
