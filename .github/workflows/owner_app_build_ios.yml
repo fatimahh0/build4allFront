@@ -830,8 +830,17 @@ jobs:
               next_url = body.get("links", {}).get("next")
               pages += 1
 
-          new_bn = max_bn + 1
+          import time as _t
+          # If max_bn is 0, the ASC API found no builds — but one may already
+          # exist (e.g. the first upload that triggered this run). Use a
+          # timestamp-based floor so we never collide with low numbers like 1.
+          TIMESTAMP_FLOOR = int(_t.time()) % 100000
+          if max_bn == 0:
+              new_bn = TIMESTAMP_FLOOR
+          else:
+              new_bn = max_bn + 1
           print(f"   Max existing build number: {max_bn}")
+          print(f"   Timestamp floor (safety):  {TIMESTAMP_FLOOR}")
           print(f"   ✅ New build number:        {new_bn}")
 
           # ── 3. Patch ci_env.json ────────────────────────────────────────
