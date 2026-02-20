@@ -11,6 +11,8 @@ import 'package:build4front/common/widgets/primary_button.dart';
 import 'package:build4front/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:build4front/features/cart/presentation/bloc/cart_event.dart';
 
+import 'package:build4front/features/checkout/domain/entities/checkout_entities.dart';
+
 import '../bloc/checkout_bloc.dart';
 import '../bloc/checkout_event.dart';
 import '../bloc/checkout_state.dart';
@@ -41,6 +43,10 @@ class CheckoutScreen extends StatefulWidget {
 class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _started = false;
 
+  // ✅ NEW: validate checkout form
+  final _addressFormKey = GlobalKey<FormState>();
+  bool _showAddressPickerErrors = false;
+
   Future<bool> _confirmCartWillBeCleared(int itemCount) async {
     final l10n = AppLocalizations.of(context)!;
 
@@ -66,6 +72,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
 
     return res == true;
+  }
+
+  // ✅ NEW: extra guard for pickers + address/phone
+  String? _addressError(AppLocalizations l10n, ShippingAddress a) {
+    if (a.countryId == null) {
+      return '${l10n.adminTaxCountryLabel}: ${l10n.fieldRequired}';
+    }
+    if (a.regionId == null) {
+      return '${l10n.adminTaxRegionLabel}: ${l10n.fieldRequired}';
+    }
+    if ((a.addressLine ?? '').trim().isEmpty) {
+      return '${l10n.checkoutAddressLineLabel}: ${l10n.fieldRequired}';
+    }
+    if ((a.city ?? '').trim().isEmpty) {
+      return '${l10n.checkoutCityLabel}: ${l10n.fieldRequired}';
+    }
+
+    final ph = (a.phone ?? '').trim();
+    if (ph.isEmpty) {
+      return '${l10n.checkoutPhoneLabel}: ${l10n.fieldRequired}';
+    }
+    final digits = ph.replaceAll(RegExp(r'\D'), '');
+    if (digits.length < 6) return l10n.invalidPhone;
+
+    return null;
   }
 
   @override
@@ -127,9 +158,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         SizedBox(height: spacing.md),
                         Text(
                           l10n.checkoutLoading,
-                          style: Theme.of(
-                            context,
-                          ).textTheme.bodyMedium?.copyWith(color: colors.body),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(color: colors.body),
                         ),
                       ],
                     ),
@@ -153,7 +185,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         SizedBox(height: spacing.sm),
                         Text(
                           l10n.checkoutEmptyCart,
-                          style: Theme.of(context).textTheme.titleMedium
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
                               ?.copyWith(color: colors.label),
                           textAlign: TextAlign.center,
                         ),
@@ -171,8 +205,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               return RefreshIndicator(
                 onRefresh: () async {
                   context.read<CheckoutBloc>().add(
-                    const CheckoutRefreshRequested(),
-                  );
+                        const CheckoutRefreshRequested(),
+                      );
                 },
                 child: ListView(
                   keyboardDismissBehavior:
@@ -189,11 +223,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     CheckoutSectionCard(
                       title: l10n.checkoutAddressTitle,
                       child: CheckoutAddressForm(
+                        formKey: _addressFormKey,
+                        showPickerErrors: _showAddressPickerErrors,
                         initial: state.address,
                         onApply: (addr) {
                           context.read<CheckoutBloc>().add(
-                            CheckoutAddressChanged(addr),
-                          );
+                                CheckoutAddressChanged(addr),
+                              );
                         },
                       ),
                     ),
@@ -205,8 +241,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         initial: state.coupon,
                         onChanged: (v) {
                           context.read<CheckoutBloc>().add(
-                            CheckoutCouponChanged(v),
-                          );
+                                CheckoutCouponChanged(v),
+                              );
                         },
                       ),
                     ),
@@ -218,11 +254,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         quotes: state.shippingQuotes,
                         selectedMethodId: state.selectedShippingMethodId,
                         onSelect: (id) => context.read<CheckoutBloc>().add(
-                          CheckoutShippingSelected(id),
-                        ),
+                              CheckoutShippingSelected(id),
+                            ),
                         onRefresh: () => context.read<CheckoutBloc>().add(
-                          const CheckoutRefreshRequested(),
-                        ),
+                              const CheckoutRefreshRequested(),
+                            ),
                       ),
                     ),
                     SizedBox(height: spacing.md),
@@ -233,8 +269,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         methods: state.paymentMethods,
                         selectedIndex: state.selectedPaymentIndex,
                         onSelectIndex: (i) => context.read<CheckoutBloc>().add(
-                          CheckoutPaymentSelected(i),
-                        ),
+                              CheckoutPaymentSelected(i),
+                            ),
                       ),
                     ),
                     SizedBox(height: spacing.md),
@@ -273,27 +309,34 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
                   if (s.placing) return;
 
+                  // ✅ 1) Validate address form first
+                  final formOk = _addressFormKey.currentState?.validate() ?? false;
+                  final addrErr = _addressError(l10n, s.address);
+
+                  if (!formOk || addrErr != null) {
+                    setState(() => _showAddressPickerErrors = true);
+                    AppToast.show(
+                      context,
+                      addrErr ?? l10n.fieldRequired,
+                      isError: true,
+                    );
+                    return;
+                  }
+
+                  // ✅ 2) Payment validation
                   if (s.selectedPaymentIndex == null) {
-                    AppToast.show(
-                      context,
-                      l10n.checkoutSelectPayment,
-                      isError: true,
-                    );
+                    AppToast.show(context, l10n.checkoutSelectPayment, isError: true);
                     return;
                   }
 
-                  if (s.shippingQuotes.isNotEmpty &&
-                      s.selectedShippingMethodId == null) {
-                    AppToast.show(
-                      context,
-                      l10n.checkoutSelectShipping,
-                      isError: true,
-                    );
+                  // ✅ 3) Shipping method validation (if needed)
+                  if (s.shippingQuotes.isNotEmpty && s.selectedShippingMethodId == null) {
+                    AppToast.show(context, l10n.checkoutSelectShipping, isError: true);
                     return;
                   }
 
+                  // ✅ 4) Confirm dialog
                   final itemCount = s.cart?.items.length ?? 0;
-
                   final ok = await _confirmCartWillBeCleared(itemCount);
                   if (!ok) return;
                   if (!mounted) return;
@@ -302,8 +345,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   if (latest.placing) return;
 
                   context.read<CheckoutBloc>().add(
-                    const CheckoutPlaceOrderPressed(),
-                  );
+                        const CheckoutPlaceOrderPressed(),
+                      );
                 },
               ),
             );

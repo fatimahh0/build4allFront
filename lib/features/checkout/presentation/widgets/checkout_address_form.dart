@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl_phone_field/intl_phone_field.dart';
 
 import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/l10n/app_localizations.dart';
@@ -15,11 +16,16 @@ import 'package:build4front/features/auth/data/services/auth_token_store.dart';
 import 'package:build4front/features/checkout/domain/entities/checkout_entities.dart';
 
 class CheckoutAddressForm extends StatefulWidget {
+  final GlobalKey<FormState> formKey;
+  final bool showPickerErrors;
+
   final ShippingAddress initial;
   final ValueChanged<ShippingAddress> onApply;
 
   const CheckoutAddressForm({
     super.key,
+    required this.formKey,
+    required this.showPickerErrors,
     required this.initial,
     required this.onApply,
   });
@@ -45,9 +51,12 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
   late final TextEditingController _postalCtrl;
 
   late final TextEditingController _addressCtrl;
-  late final TextEditingController _phoneCtrl;
   late final TextEditingController _nameCtrl;
   late final TextEditingController _notesCtrl;
+
+  // ✅ Phone like register
+  String _phoneInitialValue = '';
+  String? _fullPhone; // completeNumber e.g. +96170123456
 
   Timer? _debounce;
 
@@ -61,16 +70,16 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
     _cityCtrl = TextEditingController(text: widget.initial.city ?? '');
     _postalCtrl = TextEditingController(text: widget.initial.postalCode ?? '');
 
-    _addressCtrl =
-        TextEditingController(text: widget.initial.addressLine ?? '');
-    _phoneCtrl = TextEditingController(text: widget.initial.phone ?? '');
+    _addressCtrl = TextEditingController(text: widget.initial.addressLine ?? '');
     _nameCtrl = TextEditingController(text: widget.initial.fullName ?? '');
     _notesCtrl = TextEditingController(text: widget.initial.notes ?? '');
+
+    _phoneInitialValue = (widget.initial.phone ?? '').trim();
+    _fullPhone = _emptyToNull(_phoneInitialValue);
 
     _cityCtrl.addListener(_debouncedNotify);
     _postalCtrl.addListener(_debouncedNotify);
     _addressCtrl.addListener(_debouncedNotify);
-    _phoneCtrl.addListener(_debouncedNotify);
     _nameCtrl.addListener(_debouncedNotify);
     _notesCtrl.addListener(_debouncedNotify);
 
@@ -86,7 +95,6 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
     _cityCtrl.dispose();
     _postalCtrl.dispose();
     _addressCtrl.dispose();
-    _phoneCtrl.dispose();
     _nameCtrl.dispose();
     _notesCtrl.dispose();
     super.dispose();
@@ -105,7 +113,7 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
         city: _emptyToNull(_cityCtrl.text),
         postalCode: _emptyToNull(_postalCtrl.text),
         addressLine: _emptyToNull(_addressCtrl.text),
-        phone: _emptyToNull(_phoneCtrl.text),
+        phone: _emptyToNull(_fullPhone),
         fullName: _emptyToNull(_nameCtrl.text),
         notes: _emptyToNull(_notesCtrl.text),
       ),
@@ -119,7 +127,7 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
 
   // ✅ Only set controller if incoming is NOT null (null => do nothing)
   void _applyIfNotNull(TextEditingController ctrl, String? incoming) {
-    if (incoming == null) return; // keep user text / keep empty
+    if (incoming == null) return;
     final v = incoming.trim();
     if (v == ctrl.text) return;
 
@@ -132,31 +140,26 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
 
   // ✅ Lebanon default helper
   CountryModel? _findLebanon(List<CountryModel> countries) {
-    return countries
-            .where((c) => (c.iso2Code).toUpperCase() == 'LB')
-            .firstOrNull ??
-        countries
-            .where((c) => c.name.toLowerCase().trim() == 'lebanon')
-            .firstOrNull ??
-        countries
-            .where((c) => c.name.toLowerCase().contains('lebanon'))
-            .firstOrNull;
+    return countries.where((c) => (c.iso2Code).toUpperCase() == 'LB').firstOrNull ??
+        countries.where((c) => c.name.toLowerCase().trim() == 'lebanon').firstOrNull ??
+        countries.where((c) => c.name.toLowerCase().contains('lebanon')).firstOrNull;
   }
 
-  // ✅ Apply widget.initial into the UI (controllers + pickers) but ONLY when fields are not null
+  // ✅ Apply widget.initial into the UI but only once per incoming object
   void _applyInitialToUi(ShippingAddress s) {
-    // Important: don’t keep re-applying and overriding user edits.
-    // We allow ONE auto-prefill when new data arrives.
     if (_prefillAppliedOnce) return;
 
     _applyIfNotNull(_cityCtrl, s.city);
     _applyIfNotNull(_postalCtrl, s.postalCode);
     _applyIfNotNull(_addressCtrl, s.addressLine);
-    _applyIfNotNull(_phoneCtrl, s.phone);
     _applyIfNotNull(_nameCtrl, s.fullName);
     _applyIfNotNull(_notesCtrl, s.notes);
 
-    // Update selected country / region if ids are present and catalog loaded
+    if (s.phone != null) {
+      _phoneInitialValue = s.phone!.trim();
+      _fullPhone = _emptyToNull(_phoneInitialValue);
+    }
+
     if (s.countryId != null && _countries.isNotEmpty) {
       final found = _countries.where((c) => c.id == s.countryId).firstOrNull;
       if (found != null) _selectedCountry = found;
@@ -165,9 +168,7 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
     if (s.regionId != null && _allRegions.isNotEmpty) {
       final found = _allRegions.where((r) => r.id == s.regionId).firstOrNull;
       if (found != null) {
-        // ensure region belongs to selected country
-        if (_selectedCountry == null ||
-            found.countryId == _selectedCountry!.id) {
+        if (_selectedCountry == null || found.countryId == _selectedCountry!.id) {
           _selectedRegion = found;
         }
       }
@@ -182,13 +183,10 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
   void didUpdateWidget(covariant CheckoutAddressForm oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // If parent gave a new instance (like after API last shipping)
     if (identical(widget.initial, oldWidget.initial)) return;
 
-    // allow prefill again for brand new incoming address
     _prefillAppliedOnce = false;
 
-    // If catalog already loaded, apply immediately. Otherwise it will apply after bootstrap.
     if (!_loadingCatalog && _countries.isNotEmpty) {
       _applyInitialToUi(widget.initial);
     }
@@ -220,21 +218,19 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
 
       // 1) try saved IDs
       if (initialCountryId != null) {
-        initCountry =
-            countries.where((c) => c.id == initialCountryId).firstOrNull;
+        initCountry = countries.where((c) => c.id == initialCountryId).firstOrNull;
       }
       if (initialRegionId != null) {
         initRegion = regions.where((r) => r.id == initialRegionId).firstOrNull;
       }
       if (initCountry == null && initRegion != null) {
-        initCountry =
-            countries.where((c) => c.id == initRegion!.countryId).firstOrNull;
+        initCountry = countries.where((c) => c.id == initRegion!.countryId).firstOrNull;
       }
 
-      // 2) default to Lebanon if still null
+      // 2) default to Lebanon
       initCountry ??= _findLebanon(countries);
 
-      // 3) if region doesn't match selected country, reset it
+      // 3) if region doesn't match country, reset
       if (initRegion != null && initCountry != null) {
         if (initRegion.countryId != initCountry.id) {
           initRegion = null;
@@ -250,7 +246,7 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
         _catalogError = null;
       });
 
-      // ✅ Apply last shipping address values AFTER catalog exists
+      // ✅ Apply last shipping address AFTER catalog exists
       _applyInitialToUi(widget.initial);
 
       _notifyParent();
@@ -319,82 +315,146 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(l10n.adminTaxCountryLabel),
-        SizedBox(height: spacing.xs),
-        _SearchablePicker<CountryModel>(
-          items: _countries,
-          value: _selectedCountry,
-          label: (x) => '${x.name} (${x.iso2Code})',
-          hintText: l10n.adminTaxSelectCountryFirst,
-          onChanged: (picked) {
-            setState(() {
-              _selectedCountry = picked;
-              _selectedRegion = null;
-            });
-            _notifyParent();
-          },
-        ),
-        SizedBox(height: spacing.md),
-        Text(l10n.adminTaxRegionLabel),
-        SizedBox(height: spacing.xs),
-        _SearchablePicker<RegionModel>(
-          items: _filteredRegions,
-          value: _selectedRegion,
-          enabled: _selectedCountry != null,
-          label: (x) => x.name,
-          hintText: l10n.adminShippingRegionHint,
-          onChanged: (picked) {
-            setState(() => _selectedRegion = picked);
-            _notifyParent();
-          },
-        ),
-        SizedBox(height: spacing.md),
-        AppTextField(
-          label: l10n.checkoutFullNameLabel,
-          controller: _nameCtrl,
-          hintText: l10n.checkoutFullNameHint,
-          textInputAction: TextInputAction.next,
-        ),
-        SizedBox(height: spacing.sm),
-        AppTextField(
-          label: l10n.checkoutAddressLineLabel,
-          controller: _addressCtrl,
-          hintText: l10n.checkoutAddressLineHint,
-          textInputAction: TextInputAction.next,
-        ),
-        SizedBox(height: spacing.sm),
-        AppTextField(
-          label: l10n.checkoutCityLabel,
-          controller: _cityCtrl,
-          hintText: l10n.checkoutCityHint,
-          textInputAction: TextInputAction.next,
-        ),
-        SizedBox(height: spacing.sm),
-        AppTextField(
-          label: l10n.checkoutPostalCodeLabel,
-          controller: _postalCtrl,
-          hintText: l10n.checkoutPostalCodeHint,
-          textInputAction: TextInputAction.next,
-        ),
-        SizedBox(height: spacing.sm),
-        AppTextField(
-          label: l10n.checkoutPhoneLabel,
-          controller: _phoneCtrl,
-          hintText: l10n.checkoutPhoneHint,
-          keyboardType: TextInputType.phone,
-          textInputAction: TextInputAction.next,
-        ),
-        SizedBox(height: spacing.sm),
-        AppTextField(
-          label: l10n.checkoutNotesLabel,
-          controller: _notesCtrl,
-          hintText: l10n.checkoutNotesHint,
-          textInputAction: TextInputAction.done,
-        ),
-      ],
+    final countryIso = (_selectedCountry?.iso2Code ?? 'LB').toUpperCase();
+
+    return Form(
+      key: widget.formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.adminTaxCountryLabel),
+          SizedBox(height: spacing.xs),
+          _SearchablePicker<CountryModel>(
+            items: _countries,
+            value: _selectedCountry,
+            label: (x) => '${x.name} (${x.iso2Code})',
+            hintText: l10n.adminTaxSelectCountryFirst,
+            onChanged: (picked) {
+              setState(() {
+                _selectedCountry = picked;
+                _selectedRegion = null;
+              });
+              _notifyParent();
+            },
+          ),
+
+          if (widget.showPickerErrors && _selectedCountry == null) ...[
+            SizedBox(height: spacing.xs),
+            Text(
+              l10n.fieldRequired,
+              style: text.bodySmall.copyWith(color: c.danger),
+            ),
+          ],
+
+          SizedBox(height: spacing.md),
+          Text(l10n.adminTaxRegionLabel),
+          SizedBox(height: spacing.xs),
+          _SearchablePicker<RegionModel>(
+            items: _filteredRegions,
+            value: _selectedRegion,
+            enabled: _selectedCountry != null,
+            label: (x) => x.name,
+            hintText: l10n.adminShippingRegionHint,
+            onChanged: (picked) {
+              setState(() => _selectedRegion = picked);
+              _notifyParent();
+            },
+          ),
+
+          if (widget.showPickerErrors && _selectedRegion == null) ...[
+            SizedBox(height: spacing.xs),
+            Text(
+              l10n.fieldRequired,
+              style: text.bodySmall.copyWith(color: c.danger),
+            ),
+          ],
+
+          SizedBox(height: spacing.md),
+          AppTextField(
+            label: l10n.checkoutFullNameLabel,
+            controller: _nameCtrl,
+            hintText: l10n.checkoutFullNameHint,
+            textInputAction: TextInputAction.next,
+          ),
+          SizedBox(height: spacing.sm),
+
+          AppTextField(
+            label: l10n.checkoutAddressLineLabel,
+            controller: _addressCtrl,
+            hintText: l10n.checkoutAddressLineHint,
+            textInputAction: TextInputAction.next,
+            validator: (v) {
+              if ((v ?? '').trim().isEmpty) return l10n.fieldRequired;
+              return null;
+            },
+          ),
+          SizedBox(height: spacing.sm),
+
+          AppTextField(
+            label: l10n.checkoutCityLabel,
+            controller: _cityCtrl,
+            hintText: l10n.checkoutCityHint,
+            textInputAction: TextInputAction.next,
+            validator: (v) {
+              if ((v ?? '').trim().isEmpty) return l10n.fieldRequired;
+              return null;
+            },
+          ),
+          SizedBox(height: spacing.sm),
+
+          AppTextField(
+            label: l10n.checkoutPostalCodeLabel,
+            controller: _postalCtrl,
+            hintText: l10n.checkoutPostalCodeHint,
+            textInputAction: TextInputAction.next,
+          ),
+          SizedBox(height: spacing.sm),
+
+          // ✅ PHONE (same style like register)
+          IntlPhoneField(
+            key: ValueKey('$countryIso|$_phoneInitialValue'),
+            initialCountryCode: countryIso,
+            initialValue: _phoneInitialValue,
+            decoration: InputDecoration(
+              labelText: l10n.checkoutPhoneLabel,
+              filled: true,
+              fillColor: c.surface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(tokens.card.radius),
+                borderSide: BorderSide(color: c.border.withOpacity(0.25)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(tokens.card.radius),
+                borderSide: BorderSide(color: c.border.withOpacity(0.25)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(tokens.card.radius),
+                borderSide: BorderSide(color: c.primary, width: 1.4),
+              ),
+            ),
+            onChanged: (phone) {
+              _fullPhone = phone.completeNumber; // ✅ +961...
+              _debouncedNotify();
+            },
+            validator: (phone) {
+              if (phone == null || phone.number.trim().isEmpty) {
+                return l10n.fieldRequired;
+              }
+              final digits = phone.completeNumber.replaceAll(RegExp(r'\D'), '');
+              if (digits.length < 6) return l10n.invalidPhone;
+              return null;
+            },
+          ),
+
+          SizedBox(height: spacing.sm),
+          AppTextField(
+            label: l10n.checkoutNotesLabel,
+            controller: _notesCtrl,
+            hintText: l10n.checkoutNotesHint,
+            textInputAction: TextInputAction.done,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -514,9 +574,7 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
     setState(() {
       _filtered = q.isEmpty
           ? widget.items
-          : widget.items
-              .where((i) => widget.label(i).toLowerCase().contains(q))
-              .toList();
+          : widget.items.where((i) => widget.label(i).toLowerCase().contains(q)).toList();
     });
   }
 
@@ -598,10 +656,7 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
                         itemBuilder: (_, i) {
                           final item = _filtered[i];
                           return ListTile(
-                            title: Text(
-                              widget.label(item),
-                              style: text.bodyMedium,
-                            ),
+                            title: Text(widget.label(item), style: text.bodyMedium),
                             onTap: () => Navigator.pop(context, item),
                           );
                         },
