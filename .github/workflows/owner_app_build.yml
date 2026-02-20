@@ -314,6 +314,62 @@ jobs:
               print(k, "=", "YES" if env.get(k) else "NO")
           PY
 
+      # ════════════════════════════════════════════════════════════════════
+      # 🔧 FIX: Sync menuType (BRANDING -> THEME) so hamburger stays hamburger
+      # ════════════════════════════════════════════════════════════════════
+      - name: 🔧 Sync menuType (BRANDING -> THEME) so drawer doesn't flip to bottom
+        run: |
+          python3 - <<'PY'
+          import json, base64, pathlib
+
+          p = pathlib.Path("lib/env/ci_env.json")
+          env = json.loads(p.read_text(encoding="utf-8"))
+
+          def b64decode(s: str) -> str:
+              s = (s or "").strip()
+              if not s:
+                  return ""
+              return base64.b64decode(s + "==="[: (4 - len(s) % 4) % 4]).decode("utf-8", "replace")
+
+          def b64encode(s: str) -> str:
+              return base64.b64encode(s.encode("utf-8")).decode("utf-8")
+
+          branding = {}
+          theme = {}
+
+          # read BRANDING
+          if env.get("BRANDING_JSON_B64"):
+              branding = json.loads(b64decode(env["BRANDING_JSON_B64"]) or "{}")
+          elif env.get("BRANDING_JSON"):
+              branding = json.loads(env["BRANDING_JSON"] or "{}")
+
+          # read THEME
+          if env.get("THEME_JSON_B64"):
+              theme = json.loads(b64decode(env["THEME_JSON_B64"]) or "{}")
+          elif env.get("THEME_JSON"):
+              theme = json.loads(env["THEME_JSON"] or "{}")
+
+          menu = (branding.get("menuType") or "").strip().lower()
+
+          # normalize drawer -> hamburger
+          if menu == "drawer":
+              menu = "hamburger"
+
+          if menu in ("hamburger", "bottom"):
+              theme["menuType"] = menu
+              theme_json = json.dumps(theme, separators=(",", ":"))
+              env["THEME_JSON"] = theme_json
+              env["THEME_JSON_B64"] = b64encode(theme_json)
+              print("✅ Forced THEME menuType =", menu)
+          else:
+              print("ℹ️ No valid branding menuType found, left THEME as-is. branding.menuType =", menu)
+
+          p.write_text(json.dumps(env, ensure_ascii=False, indent=2), encoding="utf-8")
+          PY
+
+          echo "----- ci_env.json AFTER sync -----"
+          cat lib/env/ci_env.json
+
       - name: Debug env (check currency + version)
         run: |
           echo "----- ci_env.json -----"
@@ -459,8 +515,6 @@ jobs:
                       return m.group(0)
               s = re.sub(r'\\u\{([0-9a-fA-F]+)\}', repl, s)
 
-             
-
               # If anything weird is still there, neutralize it
               s = re.sub(r'\\u\{[^}]*\}', '', s)
               return s
@@ -475,7 +529,7 @@ jobs:
                   return ""
           app_name_clean = re.sub(r'\\u\{([0-9a-fA-F]+)\}', repl, app_name_raw)
           
-          # remove any leftover \u{...} that isn't valid hex (مثل \u{str})
+          # remove any leftover \u{...} that isn't valid hex
           app_name_clean = re.sub(r'\\u\{[^}]*\}', '', app_name_clean)
           
           # 🔥 nuke backslashes completely (Android treats them as escapes)
@@ -491,8 +545,6 @@ jobs:
           app_name_clean = app_name_clean.replace("'", "\\'")
           
           app_name_xml = escape(app_name_clean)
-
-
 
           api_base = (cfg.get("API_BASE_URL") or "").rstrip("/")
           logo_url = (cfg.get("LOGO_URL") or "").strip()
@@ -554,8 +606,6 @@ jobs:
             echo "❌ Found invalid \\u{...} sequence in Android resources. Failing early."
             exit 1
           fi
-
-
 
       - name: Disable R8
         run: |
