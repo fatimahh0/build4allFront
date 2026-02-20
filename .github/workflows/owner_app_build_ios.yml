@@ -286,7 +286,11 @@ jobs:
               print(k, "=", "YES" if env.get(k) else "NO")
           PY
 
-      - name: 🔧 Sync menuType (BRANDING -> THEME) so drawer doesn’t flip to bottom
+      # ════════════════════════════════════════════════════════════════════
+      # 🔧 FIX: Sync menuType – reads BRANDING from PAYLOAD directly
+      #         because runtime-config may not return BRANDING_JSON_B64
+      # ════════════════════════════════════════════════════════════════════
+      - name: 🔧 Sync menuType (BRANDING -> THEME) so drawer doesn't flip to bottom
         shell: bash
         run: |
           set -euo pipefail
@@ -294,8 +298,13 @@ jobs:
           python3 - <<'PY'
           import json, base64, pathlib
 
+          # ── Read ci_env.json ────────────────────────────────────────────
           p = pathlib.Path("lib/env/ci_env.json")
           env = json.loads(p.read_text(encoding="utf-8"))
+
+          # ── Read raw payload (has BRANDING_JSON_B64 even when runtime doesn't) ──
+          payload = json.loads(r'''${{ toJson(github.event.client_payload) }}''') or {}
+          cfg = payload.get("CONFIG") or {}
 
           def b64decode(s: str) -> str:
               s = (s or "").strip()
@@ -306,35 +315,71 @@ jobs:
           def b64encode(s: str) -> str:
               return base64.b64encode(s.encode("utf-8")).decode("utf-8")
 
+          # ── Get BRANDING: payload first (most reliable), then env ───────
+          branding_b64 = (
+              cfg.get("BRANDING_JSON_B64")
+              or payload.get("BRANDING_JSON_B64")
+              or env.get("BRANDING_JSON_B64")
+              or ""
+          ).strip()
+
+          branding_json = (
+              cfg.get("BRANDING_JSON")
+              or payload.get("BRANDING_JSON")
+              or env.get("BRANDING_JSON")
+              or ""
+          ).strip()
+
           branding = {}
+          if branding_b64:
+              try:
+                  branding = json.loads(b64decode(branding_b64) or "{}")
+                  print("📦 BRANDING read from B64:", branding)
+              except Exception as e:
+                  print("⚠️ Failed to parse BRANDING_JSON_B64:", e)
+          elif branding_json:
+              try:
+                  branding = json.loads(branding_json)
+                  print("📦 BRANDING read from JSON:", branding)
+              except Exception as e:
+                  print("⚠️ Failed to parse BRANDING_JSON:", e)
+          else:
+              print("⚠️ No BRANDING found in payload or env")
+
+          # ── Get THEME from env ──────────────────────────────────────────
           theme = {}
-
-          # read BRANDING
-          if env.get("BRANDING_JSON_B64"):
-              branding = json.loads(b64decode(env["BRANDING_JSON_B64"]) or "{}")
-          elif env.get("BRANDING_JSON"):
-              branding = json.loads(env["BRANDING_JSON"] or "{}")
-
-          # read THEME
           if env.get("THEME_JSON_B64"):
-              theme = json.loads(b64decode(env["THEME_JSON_B64"]) or "{}")
+              try:
+                  theme = json.loads(b64decode(env["THEME_JSON_B64"]) or "{}")
+              except Exception as e:
+                  print("⚠️ Failed to parse THEME_JSON_B64:", e)
           elif env.get("THEME_JSON"):
-              theme = json.loads(env["THEME_JSON"] or "{}")
+              try:
+                  theme = json.loads(env["THEME_JSON"] or "{}")
+              except Exception as e:
+                  print("⚠️ Failed to parse THEME_JSON:", e)
 
+          # ── Determine menuType ──────────────────────────────────────────
           menu = (branding.get("menuType") or "").strip().lower()
 
-          # normalize
+          # normalize drawer -> hamburger
           if menu == "drawer":
               menu = "hamburger"
+
+          print(f"🎯 branding.menuType = '{menu}'")
+          print(f"🎨 theme.menuType (before) = '{theme.get('menuType', 'NOT SET')}'")
 
           if menu in ("hamburger", "bottom"):
               theme["menuType"] = menu
               theme_json = json.dumps(theme, separators=(",", ":"))
               env["THEME_JSON"] = theme_json
               env["THEME_JSON_B64"] = b64encode(theme_json)
-              print("✅ Forced THEME menuType =", menu)
+              # Also save BRANDING into env so it's available later
+              if branding_b64:
+                  env["BRANDING_JSON_B64"] = branding_b64
+              print(f"✅ Forced THEME menuType = {menu}")
           else:
-              print("ℹ️ No valid branding menuType found, left THEME as-is. branding.menuType =", menu)
+              print(f"ℹ️ No valid branding menuType (got: '{menu}'), left THEME as-is")
 
           p.write_text(json.dumps(env, ensure_ascii=False, indent=2), encoding="utf-8")
           PY
@@ -705,8 +750,6 @@ jobs:
 
       # ════════════════════════════════════════════════════════════════════
       # RUBY / GEMS
-      # FIX: Install fastlane FIRST (before cocoapods) to avoid the
-      #      "console" executable conflict with the `retriable` gem.
       # ════════════════════════════════════════════════════════════════════
       - uses: ruby/setup-ruby@v1
         with:
@@ -716,10 +759,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
-          # Install fastlane FIRST so it controls the `retriable` gem version
-          # and its `console` executable. Installing cocoapods first causes a
-          # conflict because retriable's `console` binary collides with fastlane's.
           gem install fastlane -N --force
           gem install cocoapods -N
           gem install xcodeproj -N
@@ -794,7 +833,7 @@ jobs:
           fi
 
       # ════════════════════════════════════════════════════════════════════
-      # PYTHON PACKAGES (consolidated – used by ASC scripts below)
+      # PYTHON PACKAGES
       # ════════════════════════════════════════════════════════════════════
       - name: Install required Python packages
         shell: bash
@@ -838,7 +877,6 @@ jobs:
               return {"Authorization": f"Bearer {token()}",
                       "Content-Type": "application/json"}
 
-          # ── 1. Find the app ─────────────────────────────────────────────
           print("🔎 Looking up app in ASC for bundle:", bundle)
           r = requests.get(
               f"https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]={bundle}",
@@ -865,7 +903,6 @@ jobs:
           app_id = apps[0]["id"]
           print(f"   App ID: {app_id}")
 
-          # ── 2. Page through builds, collect the max buildNumber ─────────
           max_bn = 0
           next_url = (
               f"https://api.appstoreconnect.apple.com/v1/builds"
@@ -888,9 +925,6 @@ jobs:
               pages += 1
 
           import time as _t
-          # If max_bn is 0, the ASC API found no builds — but one may already
-          # exist (e.g. the first upload that triggered this run). Use a
-          # timestamp-based floor so we never collide with low numbers like 1.
           TIMESTAMP_FLOOR = int(_t.time()) % 100000
           if max_bn == 0:
               new_bn = TIMESTAMP_FLOOR
@@ -900,12 +934,11 @@ jobs:
           print(f"   Timestamp floor (safety):  {TIMESTAMP_FLOOR}")
           print(f"   ✅ New build number:        {new_bn}")
 
-          # ── 3. Patch ci_env.json ────────────────────────────────────────
+          # ── Patch ci_env.json – preserve ALL existing keys ──────────────
           env = json.load(open(env_path))
           env["IOS_BUILD_NUMBER"] = new_bn
           json.dump(env, open(env_path, "w"), indent=2)
 
-          # ── 4. Patch Info.plist ─────────────────────────────────────────
           plist = "ios/Runner/Info.plist"
           content = open(plist).read()
           content = re.sub(
@@ -944,7 +977,7 @@ jobs:
           grep -n "^version:" pubspec.yaml
 
       # ════════════════════════════════════════════════════════════════════
-      # BETA APP REVIEW – uses $DEMO_EMAIL / $DEMO_PASSWORD from GITHUB_ENV
+      # BETA APP REVIEW
       # ════════════════════════════════════════════════════════════════════
       - name: Setup Beta App Review Info with Demo Credentials
         shell: bash
@@ -1089,15 +1122,6 @@ jobs:
           print()
           print("=" * 60)
           print("✅ Beta metadata setup complete!")
-          print("=" * 60)
-          print("   📋 Beta App Localization: Configured")
-          print("   👤 Beta Review Contact: Configured")
-          print("   🔐 Demo Credentials: Configured")
-          print("   📧 Feedback Email:", feedback_email)
-          print("   📱 Contact Phone:", contact_phone)
-          print("   🔑 Demo Email:", demo_email)
-          print()
-          print("🚀 Ready for external testing upload!")
           print("=" * 60)
           PYEOF
 
@@ -1268,7 +1292,6 @@ jobs:
             --build-number "$IOS_BUILD_NUMBER" \
             --dart-define-from-file=lib/env/ci_env.json
 
-
       - name: Force Pods = no signing
         shell: bash
         run: |
@@ -1306,7 +1329,6 @@ jobs:
             OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}" \
             archive
 
-
       - name: Verify built version/build (must be unique)
         shell: bash
         run: |
@@ -1322,7 +1344,6 @@ jobs:
       
           [ "$BUILT_VN" = "$IOS_VERSION_NAME" ] || { echo "❌ Version mismatch"; exit 1; }
           [ "$BUILT_BN" = "$IOS_BUILD_NUMBER" ] || { echo "❌ Build mismatch"; exit 1; }
-      
 
       - name: Export IPA
         shell: bash
@@ -1363,7 +1384,6 @@ jobs:
           IPA_PATH="$(find "$GITHUB_WORKSPACE/build/ios/ipa" -type f -name "*.ipa" | head -n 1)"
           
           echo "📤 Uploading to TestFlight for External Testing..."
-          echo "⚠️  Note: External builds require Apple's beta review (24-48 hours)"
           
           fastlane pilot upload \
             --ipa "$IPA_PATH" \
@@ -1375,7 +1395,6 @@ jobs:
             --changelog "Initial beta release for testing"
 
           echo "✅ Upload complete!"
-          echo "⏳ Build submitted for external beta review"
 
       - name: 🚀 Complete External TestFlight Setup (Dynamic)
         shell: bash
@@ -1443,9 +1462,6 @@ jobs:
           print("="*70)
           print("🚀 COMPLETE EXTERNAL TESTFLIGHT SETUP")
           print("="*70)
-          print(f"📧 Feedback Email: {feedback_email}")
-          print(f"📱 Contact Phone: {contact_phone}")
-          print()
           
           # Step 1: Find app
           print("📱 Step 1: Finding app in App Store Connect...")
@@ -1474,7 +1490,6 @@ jobs:
           
           if not tester_id:
               try:
-                  print("   ⚙️  Creating external beta tester...")
                   first = owner_name.split()[0] if owner_name.strip() else "Owner"
                   last  = " ".join(owner_name.split()[1:]) if len(owner_name.split()) > 1 else ""
                   r = requests.post(
@@ -1492,18 +1507,12 @@ jobs:
                           if data:
                               tester_id = data[0]["id"]
                               print(f"   ✅ Found existing tester: {tester_id}")
-                  else:
-                      print(f"   ⚠️  Beta tester creation: HTTP {r.status_code}")
-                      print(r.text[:300])
               except Exception as e:
                   print(f"   ⚠️  Error creating tester: {str(e)[:100]}")
-          
-          if not tester_id:
-              print("   ⚠️ Could not create/find beta tester — will continue without adding tester to group.")
           print()
           
-          # Step 3: Ensure external group exists + public link enabled
-          print("👥 Step 3: Setting up external testing group with public link...")
+          # Step 3: Ensure external group
+          print("👥 Step 3: Setting up external testing group...")
           r = requests.get(
               f"https://api.appstoreconnect.apple.com/v1/betaGroups?filter[app]={app_id}&filter[isInternalGroup]=false",
               headers=h()
@@ -1530,7 +1539,6 @@ jobs:
               print(f"   ✅ External group exists: '{group_name}'")
           
           if not group_id:
-              print("   ⚙️  Creating external testing group with public link...")
               r = requests.post(
                   "https://api.appstoreconnect.apple.com/v1/betaGroups",
                   headers=h(),
@@ -1544,11 +1552,9 @@ jobs:
                   print(f"   ✅ External group created: '{group_name}'")
               else:
                   print(f"   ❌ Could not create external group (HTTP {r.status_code})")
-                  print(r.text[:300])
                   sys.exit(1)
           
           if not public_link_enabled:
-              print(f"   ⚙️  Enabling public link on group '{group_name}'...")
               try:
                   r = requests.patch(
                       f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group_id}",
@@ -1557,10 +1563,6 @@ jobs:
                   )
                   if r.status_code == 200:
                       print("   ✅ Public link enabled")
-                      public_link_enabled = True
-                  else:
-                      print(f"   ⚠️  Could not enable public link: HTTP {r.status_code}")
-                      print(r.text[:300])
               except Exception as e:
                   print(f"   ⚠️  Error enabling public link: {str(e)[:100]}")
           print()
@@ -1573,14 +1575,9 @@ jobs:
               if r.status_code == 200:
                   public_testflight_link = r.json()["data"]["attributes"].get("publicLink")
                   if public_testflight_link:
-                      print("   ✅ Public TestFlight Link:")
-                      print(f"   🔗 {public_testflight_link}")
+                      print(f"   ✅ 🔗 {public_testflight_link}")
                       with open("testflight_public_link.txt", "w") as f:
                           f.write(public_testflight_link)
-                  else:
-                      print("   ⚠️  Public link not available yet")
-              else:
-                  print(f"   ⚠️  Could not retrieve group details: HTTP {r.status_code}")
           except Exception as e:
               print(f"   ⚠️  Error retrieving public link: {str(e)[:100]}")
           print()
@@ -1593,57 +1590,38 @@ jobs:
                   headers=h(),
                   json={"data":[{"type":"betaTesters","id":tester_id}]}
               )
-              if r.status_code in (200, 204):
-                  print("   ✅ Tester added to external group")
-              elif r.status_code == 409:
-                  print("   ✅ Tester already in external group")
-              else:
-                  print(f"   ⚠️  Add tester response: HTTP {r.status_code}")
-                  print(r.text[:300])
-          else:
-              print("   ⚠️ tester_id missing — skipping add-tester step.")
+              if r.status_code in (200, 204, 409):
+                  print("   ✅ Tester added (or already in group)")
           print()
           
-          # Step 6: Wait for latest build to be VALID
+          # Step 6: Wait for build
           print("⏳ Step 6: Waiting for build to finish processing...")
           build_id = version = build_num = None
-          max_retries = 20
-          
-          for attempt in range(max_retries):
+          for attempt in range(20):
               r = requests.get(
                   f"https://api.appstoreconnect.apple.com/v1/builds?filter[app]={app_id}&sort=-uploadedDate&limit=1",
                   headers=h()
               )
               r.raise_for_status()
               builds = r.json().get("data", [])
-          
               if builds:
                   b = builds[0]
                   build_id = b["id"]
                   version = b["attributes"].get("version")
                   build_num = b["attributes"].get("buildNumber", "")
                   state = b["attributes"].get("processingState", "PROCESSING")
-          
                   if state == "VALID":
                       print(f"   ✅ Build ready: {version} ({build_num})")
                       break
-                  print(f"   ⏳ Build {version} {state} - attempt {attempt+1}/{max_retries}")
+                  print(f"   ⏳ {version} {state} - attempt {attempt+1}/20")
               else:
-                  print(f"   ⏳ No builds found yet - attempt {attempt+1}/{max_retries}")
-          
-              if attempt < max_retries - 1:
+                  print(f"   ⏳ No builds yet - attempt {attempt+1}/20")
+              if attempt < 19:
                   time.sleep(30)
           
           if not build_id:
-              print("\n   ⚠️  Build not ready yet")
               with open("testflight_status.txt", "w") as f:
                   f.write("PENDING_BUILD")
-              if public_testflight_link:
-                  print("="*70)
-                  print("🔗 PUBLIC TESTFLIGHT LINK (Ready to share)")
-                  print("="*70)
-                  print(public_testflight_link)
-                  print("="*70)
               sys.exit(0)
           print()
           
@@ -1655,14 +1633,9 @@ jobs:
                   headers=h(),
                   json={"data":{"type":"builds","id":build_id,"attributes":{"usesNonExemptEncryption":False}}}
               )
-              if r.status_code == 200:
+              if r.status_code in (200, 409):
                   print("   ✅ Export compliance set")
                   time.sleep(5)
-              elif r.status_code == 409:
-                  print("   ✅ Export compliance already set")
-              else:
-                  print(f"   ℹ️  Export compliance: HTTP {r.status_code}")
-                  print(r.text[:200])
           except Exception as e:
               print(f"   ⚠️  {str(e)[:80]}")
           print()
@@ -1670,19 +1643,13 @@ jobs:
           # Step 8: Beta build localization
           print("📝 Step 8: Adding beta build localization...")
           try:
-              whats_new_text = f"Welcome to {app_name} beta! Please test all features and provide feedback."
               r = requests.post(
                   "https://api.appstoreconnect.apple.com/v1/betaBuildLocalizations",
                   headers=h(),
-                  json={"data":{"type":"betaBuildLocalizations","attributes":{"locale":"en-US","whatsNew":whats_new_text},"relationships":{"build":{"data":{"type":"builds","id":build_id}}}}}
+                  json={"data":{"type":"betaBuildLocalizations","attributes":{"locale":"en-US","whatsNew":f"Welcome to {app_name} beta!"},"relationships":{"build":{"data":{"type":"builds","id":build_id}}}}}
               )
-              if r.status_code in (200, 201):
-                  print("   ✅ Beta build localization added")
-              elif r.status_code == 409:
-                  print("   ✅ Beta build localization already exists")
-              else:
-                  print(f"   ℹ️  Beta localization response: HTTP {r.status_code}")
-                  print(r.text[:200])
+              if r.status_code in (200, 201, 409):
+                  print("   ✅ Beta build localization set")
           except Exception as e:
               print(f"   ⚠️  {str(e)[:80]}")
           print()
@@ -1697,20 +1664,18 @@ jobs:
                   json={"data":[{"type":"builds","id":build_id}]}
               )
               if r.status_code in (200, 204, 409):
-                  print("   ✅ Build added (or already present)")
+                  print("   ✅ Build added")
                   build_added = True
                   break
               if r.status_code == 422:
-                  print(f"   ⏳ Not ready yet - attempt {attempt+1}/15")
+                  print(f"   ⏳ Not ready - attempt {attempt+1}/15")
                   time.sleep(30)
                   continue
-              print(f"   ⚠️  Add build response: HTTP {r.status_code}")
-              print(r.text[:200])
               time.sleep(30)
           print()
           
           # Step 10: Submit for beta review
-          print("📋 Step 10: Submitting build for Beta App Review...")
+          print("📋 Step 10: Submitting for Beta App Review...")
           review_submitted = False
           try:
               r = requests.post(
@@ -1719,33 +1684,21 @@ jobs:
                   json={"data":{"type":"betaAppReviewSubmissions","relationships":{"build":{"data":{"type":"builds","id":build_id}}}}}
               )
               if r.status_code in (200, 201, 409):
-                  print("   ✅ Submitted (or already submitted)")
+                  print("   ✅ Submitted")
                   review_submitted = True
               else:
-                  print(f"   ⚠️  Submit response: HTTP {r.status_code}")
-                  print(r.text[:300])
+                  print(f"   ⚠️  HTTP {r.status_code}: {r.text[:200]}")
           except Exception as e:
-              print(f"   ⚠️  Error submitting for review: {str(e)[:100]}")
-          print()
+              print(f"   ⚠️  {str(e)[:100]}")
           
           status = "SUBMITTED_FOR_REVIEW" if review_submitted else "BUILD_ADDED"
           with open("testflight_status.txt", "w") as f:
               f.write(status)
           
           print("="*70)
-          if build_added and review_submitted:
-              print("🎉 ✅ EXTERNAL TESTING FULLY CONFIGURED!")
-              print(f"📧 Owner: {owner_email}")
-              print(f"📱 App: {app_name}")
-              print(f"📦 Build: {version} ({build_num})")
-              print(f"👥 Group: {group_name}")
-              if public_testflight_link:
-                  print(f"🔗 Public Link: {public_testflight_link}")
-                  print("⏳ Link typically becomes usable after Apple beta review approval (24-48h).")
-          else:
-              print("⚠️  SETUP PARTIALLY COMPLETE")
-              if public_testflight_link:
-                  print(f"🔗 Public Link (if available): {public_testflight_link}")
+          print("🎉 EXTERNAL TESTING CONFIGURED!")
+          if public_testflight_link:
+              print(f"🔗 {public_testflight_link}")
           print("="*70)
           PYEOF
 
@@ -1779,15 +1732,6 @@ jobs:
 
           if [ -z "${TESTFLIGHT_LINK:-}" ]; then
             echo "⚠️ No TestFlight public link available yet -> skipping ipaUrl save"
-            {
-              echo "## ℹ️ TestFlight Link Not Available Yet"
-              echo ""
-              echo "- Bundle: \`$BUNDLE_ID\`"
-              echo "- App: \`$APP_NAME\`"
-              echo "- Version: \`$VERSION_NAME ($BUILD_NUMBER)\`"
-              echo ""
-              echo "> Public link is often generated only after Apple processes the first build / review settings are complete."
-            } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
@@ -1798,9 +1742,6 @@ jobs:
 
           CALLBACK_URL="$API_BASE/api/ci/owner-project-links/$LINK_ID/ipa-url"
 
-          echo ""
-          echo "📡 Saving ipaUrl via: $CALLBACK_URL"
-
           export TESTFLIGHT_LINK
 
           PAYLOAD="$(python3 - <<'PY'
@@ -1808,8 +1749,6 @@ jobs:
           print(json.dumps({"ipaUrl": os.environ["TESTFLIGHT_LINK"]}))
           PY
           )"
-
-          echo "$PAYLOAD"
 
           RESPONSE="$(curl -sS -w "\n%{http_code}" -X PUT "$CALLBACK_URL" \
             -H "Content-Type: application/json" \
@@ -1819,142 +1758,20 @@ jobs:
           HTTP_CODE="$(echo "$RESPONSE" | tail -n1)"
           BODY="$(echo "$RESPONSE" | sed '$d')"
 
-          echo ""
           echo "HTTP $HTTP_CODE"
           echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
 
           if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
             echo "⚠️ Failed to save ipaUrl (NON-BLOCKING)"
-            {
-              echo "## ⚠️ Failed to save TestFlight link to DB (non-blocking)"
-              echo ""
-              echo "- Endpoint: \`$CALLBACK_URL\`"
-              echo "- HTTP: \`$HTTP_CODE\`"
-              echo ""
-              echo "Response:"
-              echo "\`\`\`"
-              echo "$BODY"
-              echo "\`\`\`"
-            } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
           echo "✅ Saved TestFlight link into ipaUrl column"
-
-          if [ -f "testflight_status.txt" ]; then
-            BUILD_STATUS="$(cat testflight_status.txt)"
-          else
-            BUILD_STATUS="UNKNOWN"
-          fi
-
-          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "201" ]; then
-            SUCCESS="true"
-          else
-            SUCCESS="false"
-          fi
-
           echo ""
-          echo "════════════════════════════════════════════════════════════════════"
-          echo "                    🎉 BUILD COMPLETE 🎉"
-          echo "════════════════════════════════════════════════════════════════════"
-          echo ""
-          echo "📱 App Name:       $APP_NAME"
-          echo "🆔 Bundle ID:      $BUNDLE_ID"
-          echo "📦 Version:        $VERSION_NAME ($BUILD_NUMBER)"
-          echo "📋 Status:         $BUILD_STATUS"
-          echo "💾 Saved to DB:    $([ "$SUCCESS" = "true" ] && echo "✅ YES" || echo "❌ NO")"
-          echo ""
-
-          if [ -n "$TESTFLIGHT_LINK" ]; then
-            echo "════════════════════════════════════════════════════════════════════"
-            echo "           🔗 PUBLIC TESTFLIGHT LINK (Ready to Share)"
-            echo "════════════════════════════════════════════════════════════════════"
-            echo ""
-            echo "$TESTFLIGHT_LINK"
-            echo ""
-            echo "════════════════════════════════════════════════════════════════════"
-            echo ""
-            echo "📲 SHARE THIS LINK WITH BETA TESTERS"
-            echo ""
-            echo "⏳ IMPORTANT NOTES:"
-            echo "   • Link is active immediately"
-            echo "   • Build requires Apple Beta Review (24-48 hours)"
-            echo "   • Testers will receive email when build is approved"
-            echo "   • Testers need TestFlight app installed"
-            echo ""
-            echo "🔐 DEMO CREDENTIALS (from endpoint):"
-            echo "   📧 Email:    $DEMO_EMAIL"
-            echo "   🔑 Password: $DEMO_PASSWORD"
-            echo ""
-            echo "📧 WHAT TESTERS SHOULD DO:"
-            echo "   1. Install TestFlight app from App Store"
-            echo "   2. Click the public link above (or received via email)"
-            echo "   3. Accept the invitation"
-            echo "   4. Wait for Apple approval notification"
-            echo "   5. Download and test the app"
-            echo ""
-          else
-            echo "ℹ️  TestFlight Link: Will be available after first build approval"
-            echo ""
-          fi
-
-          echo "════════════════════════════════════════════════════════════════════"
-          echo ""
-
-          {
-            echo "## 🎉 iOS Build Complete"
-            echo ""
-            echo "| Field | Value |"
-            echo "|---|---|"
-            echo "| App Name | $APP_NAME |"
-            echo "| Bundle ID | $BUNDLE_ID |"
-            echo "| Version | $VERSION_NAME ($BUILD_NUMBER) |"
-            echo "| Status | $BUILD_STATUS |"
-            echo "| Saved to DB | $([ "$SUCCESS" = "true" ] && echo '✅ Yes' || echo '❌ No') |"
-            echo ""
-
-            if [ -n "$TESTFLIGHT_LINK" ]; then
-              echo "### 🔗 Public TestFlight Link"
-              echo ""
-              echo "\`\`\`"
-              echo "$TESTFLIGHT_LINK"
-              echo "\`\`\`"
-              echo ""
-              echo "**Demo Credentials (from endpoint):**"
-              echo "- Email: \`$DEMO_EMAIL\`"
-              echo "- Password: \`$DEMO_PASSWORD\`"
-              echo ""
-              echo "### 📲 Next Steps"
-              echo ""
-              echo "1. ✅ Share the TestFlight link with beta testers"
-              echo "2. ⏳ Apple will review the build (24-48 hours)"
-              echo "3. 📧 Testers will receive email notification when approved"
-              echo "4. 📱 Testers install TestFlight app and access the build"
-              echo ""
-
-              if [ "$SUCCESS" = "true" ]; then
-                echo "### ✅ Database Status"
-                echo ""
-                echo "TestFlight public link has been successfully saved to your database."
-                echo ""
-              else
-                echo "### ⚠️ Database Status"
-                echo ""
-                echo "**Warning:** Failed to save TestFlight link to database."
-                echo ""
-                echo "**Troubleshooting:**"
-                echo "- Check if backend endpoint is accessible: \`$CALLBACK_URL\`"
-                echo "- Verify \`CI_CALLBACK_TOKEN\` secret is set correctly"
-                echo "- Review backend logs for errors"
-                echo ""
-              fi
-            else
-              echo "> ℹ️ Public TestFlight link will be available after Apple approves the first build."
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+          echo "🔗 $TESTFLIGHT_LINK"
 
       # ════════════════════════════════════════════════════════════════════
-      # FINAL STATUS UPDATE (runs always, reports SUCCESS or FAILED)
+      # FINAL STATUS UPDATE
       # ════════════════════════════════════════════════════════════════════
       - name: 📡 Report final status to backend
         if: always()
