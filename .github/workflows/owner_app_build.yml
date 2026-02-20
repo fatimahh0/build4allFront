@@ -283,10 +283,9 @@ jobs:
               ("ENABLED_FEATURES_JSON_B64", "enabledFeaturesJsonB64"),
               ("BRANDING_JSON_B64", "brandingJsonB64"),
           ]:
-          v = clean_b64(pick_any(env_key, alt_key))
-          if v:
-              env[env_key] = v
-
+              v = clean_b64(pick_any(env_key, alt_key))
+              if v:
+                  env[env_key] = v
           logo_url = (pick("LOGO_URL") or pick("LOGO_PATH") or "").strip()
           if not logo_url:
               logo_url = (runtime.get("logoUrl") or cfg.get("logoUrl") or payload.get("logoUrl") or "").strip()
