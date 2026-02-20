@@ -255,16 +255,37 @@ jobs:
           if currency_id not in (None, "", []):
               env["CURRENCY_ID"] = str(currency_id).strip()
 
-          for key in [
-              "THEME_JSON_B64",
-              "NAV_JSON_B64",
-              "HOME_JSON_B64",
-              "ENABLED_FEATURES_JSON_B64",
-              "BRANDING_JSON_B64",
+          import re
+          
+          def pick_any(*keys, default=None):
+              for k in keys:
+                  v = runtime.get(k)
+                  if v not in (None, "", []):
+                      return v
+                  v = cfg.get(k)
+                  if v not in (None, "", []):
+                      return v
+                  v = payload.get(k)
+                  if v not in (None, "", []):
+                      return v
+              return default
+          
+          def clean_b64(v):
+              if not v:
+                  return None
+              return re.sub(r"\s+", "", str(v))  # removes spaces/newlines that break base64
+          
+          # ✅ only set the key if it exists (no nulls)
+          for env_key, alt_key in [
+              ("THEME_JSON_B64", "themeJsonB64"),
+              ("NAV_JSON_B64", "navJsonB64"),
+              ("HOME_JSON_B64", "homeJsonB64"),
+              ("ENABLED_FEATURES_JSON_B64", "enabledFeaturesJsonB64"),
+              ("BRANDING_JSON_B64", "brandingJsonB64"),
           ]:
-              v = pick(key)
-              if v:
-                  env[key] = v
+          v = clean_b64(pick_any(env_key, alt_key))
+          if v:
+              env[env_key] = v
 
           logo_url = (pick("LOGO_URL") or pick("LOGO_PATH") or "").strip()
           if not logo_url:
