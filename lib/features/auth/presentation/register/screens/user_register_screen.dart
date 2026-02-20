@@ -52,7 +52,7 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
     if (v.isEmpty) return l10n.fieldRequired;
 
     // ✅ length 6..8
-    if (v.length < 6 || v.length > 8) {
+    if (v.length < 8) {
       return l10n.errPasswordLen6to8; // NEW KEY
     }
 
