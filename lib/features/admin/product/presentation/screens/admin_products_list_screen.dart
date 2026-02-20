@@ -1,9 +1,11 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/l10n/app_localizations.dart';
 import 'package:build4front/features/auth/data/services/admin_token_store.dart';
+import 'package:build4front/common/widgets/app_toast.dart';
 
 import '../../data/repositories/product_repository_impl.dart';
 import '../../data/services/product_api_service.dart';
@@ -101,7 +103,48 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
     });
   }
 
+  String _friendlyDeleteErrorFromResponse(
+    AppLocalizations l10n,
+    DioException e,
+  ) {
+    final status = e.response?.statusCode;
+    final data = e.response?.data;
+
+    // structured backend format (recommended):
+    // { code: "PRODUCT_IN_CART", error: "PRODUCT_IN_CART" }
+    String? code;
+    String? err;
+
+    if (data is Map) {
+      code = data['code']?.toString();
+      err = data['error']?.toString();
+    } else if (data is String) {
+      err = data;
+    }
+
+    final errLower = (err ?? '').toLowerCase();
+
+    // ✅ Most important cases: product is referenced in cart/order
+    final isCart =
+        code == 'PRODUCT_IN_CART' || errLower.contains('cart_items') || errLower.contains('cart');
+    final isOrders =
+        code == 'PRODUCT_IN_ORDERS' || errLower.contains('order_items') || errLower.contains('order');
+
+    if (status == 409 || status == 500) {
+      if (isCart) return l10n.adminProductDeleteBlockedCart;
+      if (isOrders) return l10n.adminProductDeleteBlockedOrders;
+      return l10n.adminProductDeleteBlockedGeneric;
+    }
+
+    if (status == 401) return l10n.errSessionExpired;
+    if (status == 403) return l10n.errForbidden;
+    if (status == 404) return l10n.errNotFound;
+
+    return l10n.adminProductDeleteFailed;
+  }
+
   Future<void> _confirmDelete(BuildContext context, Product product) async {
+    final l10n = AppLocalizations.of(context)!;
     final tokens = context.read<ThemeCubit>().state.tokens;
     final colors = tokens.colors;
     final text = tokens.typography;
@@ -109,19 +152,22 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete product'),
+        title: Text(l10n.adminProductDeleteDialogTitle),
         content: Text(
-          'Are you sure you want to delete "${product.name}"?',
+          l10n.adminProductDeleteDialogBody(product.name),
           style: text.bodyMedium.copyWith(color: colors.label),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.commonCancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text('Delete', style: TextStyle(color: colors.danger)),
+            child: Text(
+              l10n.commonDelete,
+              style: TextStyle(color: colors.danger),
+            ),
           ),
         ],
       ),
@@ -138,28 +184,43 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
     try {
       final token = await AdminTokenStore().getToken();
       if (token == null || token.isEmpty) {
-        throw Exception('Missing admin token – please log in again.');
+        throw DioException(
+          requestOptions: RequestOptions(path: ''),
+          response: Response(
+            requestOptions: RequestOptions(path: ''),
+            statusCode: 401,
+            data: {'error': 'SESSION_EXPIRED'},
+          ),
+          type: DioExceptionType.badResponse,
+        );
       }
 
       final api = ProductApiService();
       await api.delete(id: product.id, authToken: token);
 
-      if (context.mounted) {
-        Navigator.of(context).pop(); // close loader
-        context.read<ProductListBloc>().add(
-              LoadProductsForOwner(widget.ownerProjectId),
-            );
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Product deleted successfully')),
-        );
-      }
+      if (!context.mounted) return;
+
+      Navigator.of(context).pop(); // close loader
+
+      context.read<ProductListBloc>().add(
+            LoadProductsForOwner(widget.ownerProjectId),
+          );
+
+      AppToast.show(context, l10n.adminProductDeleteSuccess);
     } catch (e) {
-      if (context.mounted) {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete product: $e')),
-        );
+      if (!context.mounted) return;
+
+      Navigator.of(context).pop(); // close loader
+
+      final l10n = AppLocalizations.of(context)!;
+
+      String msg = l10n.adminProductDeleteFailed;
+
+      if (e is DioException) {
+        msg = _friendlyDeleteErrorFromResponse(l10n, e);
       }
+
+      AppToast.show(context, msg, isError: true);
     }
   }
 
@@ -232,8 +293,9 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
             if (state.error != null) {
               return Center(
                 child: Text(
-                  state.error!,
+                  l10n.adminProductsLoadFailed(state.error!),
                   style: text.bodyMedium.copyWith(color: colors.danger),
+                  textAlign: TextAlign.center,
                 ),
               );
             }
@@ -286,9 +348,8 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
                     itemBuilder: (context, index) {
                       final product = filtered[index];
 
-                      final sym = product.currencyId != null
-                          ? _symbolByCurrencyId[product.currencyId!]
-                          : null;
+                      final sym =
+                          product.currencyId != null ? _symbolByCurrencyId[product.currencyId!] : null;
 
                       final bool showCurrencyLoading = _warmingCurrency &&
                           product.currencyId != null &&
@@ -400,7 +461,7 @@ class _AdminProductsHeaderBar extends StatelessWidget {
                   borderRadius: BorderRadius.circular(99),
                 ),
                 child: Text(
-                  '$filteredCount / $totalCount',
+                  l10n.adminProductsCountPill(filteredCount, totalCount),
                   style: text.bodySmall.copyWith(color: c.primary),
                 ),
               ),

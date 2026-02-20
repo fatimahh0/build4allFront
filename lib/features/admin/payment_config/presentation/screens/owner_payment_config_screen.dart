@@ -170,19 +170,18 @@ class _OwnerPaymentConfigViewState extends State<_OwnerPaymentConfigView> {
                             if (saving) return;
 
                             // ✅ DISABLE: save immediately
-                            if (val == false) {
-                              context.read<OwnerPaymentConfigBloc>().add(
-                                OwnerPaymentConfigSave(
-                                  ownerProjectId: widget.ownerProjectId,
-                                  methodName: it.name,
-                                  enabled: false,
-                                  configValues: Map<String, Object?>.from(
-                                    it.configValues,
-                                  ),
-                                ),
-                              );
-                              return;
-                            }
+                          // ✅ DISABLE: save immediately
+if (val == false) {
+  context.read<OwnerPaymentConfigBloc>().add(
+    OwnerPaymentConfigSave(
+      ownerProjectId: widget.ownerProjectId,
+      methodName: it.name,
+      enabled: false,
+      configValues: const {}, // ✅ IMPORTANT: don't send old configValues
+    ),
+  );
+  return;
+}
 
                             // ✅ ENABLE => configure
                             final result =

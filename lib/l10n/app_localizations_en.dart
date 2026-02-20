@@ -264,7 +264,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get explore_title => 'Explore';
 
   @override
-  String get explore_search_hint => 'Search  places...';
+  String get explore_search_hint => 'Search ..';
 
   @override
   String get explore_items_title => 'All activities';
@@ -2314,7 +2314,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get licenseChecking => 'Checking license…';
 
   @override
-  String get licenseAccessGranted => 'Access granted ✅';
+  String get licenseAccessGranted => 'Access granted ';
 
   @override
   String get licenseAccessBlocked => 'Access blocked';
@@ -2337,7 +2337,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminDashboardStatusAccessBlocked => 'Access blocked';
 
   @override
-  String get adminDashboardStatusOk => 'All systems go ✅';
+  String get adminDashboardStatusOk => 'All systems go ';
 
   @override
   String adminDashboardActionsCount(Object count) {
@@ -2354,7 +2354,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noUpgradeAvailable => 'No upgrade available.';
 
   @override
-  String get upgradeRequestSent => 'Request sent ✅';
+  String get upgradeRequestSent => 'Request sent ';
 
   @override
   String get planGeneric => 'Plan';
@@ -2476,11 +2476,98 @@ class AppLocalizationsEn extends AppLocalizations {
   String get networkErrorLabel => 'Network error. Please try again.';
 
   @override
-  String get errPasswordLen6to8 => 'Password must be 6 to 8 characters.';
+  String get errPasswordLen6to8 => 'Password must be at least 8 characters';
 
   @override
   String get errPasswordNeedSpecial => 'Password must include at least 1 special character (e.g. !@#).';
 
   @override
-  String get hintPasswordRuleOwner => 'Password: 6–8 chars + at least 1 special character.';
+  String get hintPasswordRuleOwner => 'Password: 8 chars + at least 1 special character.';
+
+  @override
+  String get msgProductDeleted => 'Product deleted successfully.';
+
+  @override
+  String get adminProductDeleteDialogTitle => 'Delete product';
+
+  @override
+  String adminProductDeleteDialogBody(Object name) {
+    return 'Are you sure you want to delete \"$name\"?';
+  }
+
+  @override
+  String get commonDelete => 'Delete';
+
+  @override
+  String get adminProductDeleteSuccess => 'Product deleted successfully.';
+
+  @override
+  String get adminProductDeleteFailed => 'Failed to delete product.';
+
+  @override
+  String get adminProductDeleteBlockedCart => 'You can’t delete this product because it’s currently in customers’ carts. ';
+
+  @override
+  String get adminProductDeleteBlockedOrders => 'You can’t delete this product because it’s linked to existing orders. ';
+
+  @override
+  String get adminProductDeleteBlockedGeneric => 'You can’t delete this product because it’s linked to other records (orders or carts). ';
+
+  @override
+  String get errSessionExpired => 'Session expired. Please log in again.';
+
+  @override
+  String get errForbidden => 'You don’t have permission to perform this action.';
+
+  @override
+  String get errNotFound => 'Not found.';
+
+  @override
+  String adminProductsLoadFailed(Object details) {
+    return 'Failed to load products.\n$details';
+  }
+
+  @override
+  String adminProductsCountPill(Object filtered, Object total) {
+    return '$filtered / $total';
+  }
+
+  @override
+  String get adminCategoryDeleteSuccess => 'Category deleted successfully.';
+
+  @override
+  String get adminItemTypeDeleteSuccess => 'Item type deleted successfully.';
+
+  @override
+  String adminCategoryDeleteBlockedItems(Object count) {
+    return 'You can’t delete this category because it’s used by $count item(s).';
+  }
+
+  @override
+  String adminItemTypeDeleteBlockedItems(Object count) {
+    return 'You can’t delete this item type because it’s used by $count item(s).';
+  }
+
+  @override
+  String get adminCategoryDeleteBlockedGeneric => 'You can’t delete this category because it’s still being used.';
+
+  @override
+  String get adminItemTypeDeleteBlockedGeneric => 'You can’t delete this item type because it’s still being used.';
+
+  @override
+  String get adminConflictGeneric => 'This action can’t be completed right now.';
+
+  @override
+  String adminCategoryDeleteBlockedTypes(Object count) {
+    return 'You can’t delete this category because it still has $count item type(s). Delete/move the types first.';
+  }
+
+  @override
+  String get adminRejectOrderTitle => 'Reject order?';
+
+  @override
+  String get adminRejectOrderBody => 'This will mark the order as rejected. Continue?';
+
+  @override
+  String get adminRejectOrderButton => 'Reject Order';
 }

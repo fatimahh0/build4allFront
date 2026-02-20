@@ -264,7 +264,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get explore_title => 'Explorer';
 
   @override
-  String get explore_search_hint => 'Rechercher des lieux...';
+  String get explore_search_hint => 'Rechercher ....';
 
   @override
   String get explore_items_title => 'Toutes les activités';
@@ -2314,7 +2314,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get licenseChecking => 'Vérification de la licence…';
 
   @override
-  String get licenseAccessGranted => 'Accès autorisé ✅';
+  String get licenseAccessGranted => 'Accès autorisé ';
 
   @override
   String get licenseAccessBlocked => 'Accès bloqué';
@@ -2337,7 +2337,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get adminDashboardStatusAccessBlocked => 'Accès bloqué';
 
   @override
-  String get adminDashboardStatusOk => 'Tout est OK ✅';
+  String get adminDashboardStatusOk => 'Tout est OK ';
 
   @override
   String adminDashboardActionsCount(Object count) {
@@ -2354,7 +2354,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get noUpgradeAvailable => 'Aucune option d’upgrade disponible.';
 
   @override
-  String get upgradeRequestSent => 'Demande envoyée ✅';
+  String get upgradeRequestSent => 'Demande envoyée ';
 
   @override
   String get planGeneric => 'Plan';
@@ -2476,11 +2476,98 @@ class AppLocalizationsFr extends AppLocalizations {
   String get networkErrorLabel => 'Erreur réseau. Veuillez réessayer.';
 
   @override
-  String get errPasswordLen6to8 => 'Le mot de passe doit contenir entre 6 et 8 caractères.';
+  String get errPasswordLen6to8 => 'Le mot de passe doit contenir  8 caractères.';
 
   @override
   String get errPasswordNeedSpecial => 'Le mot de passe doit contenir au moins 1 caractère spécial (ex: !@#).';
 
   @override
-  String get hintPasswordRuleOwner => 'Mot de passe : 6–8 caractères + au moins 1 caractère spécial.';
+  String get hintPasswordRuleOwner => 'Mot de passe : 8 caractères + au moins 1 caractère spécial.';
+
+  @override
+  String get msgProductDeleted => 'Produit supprimé avec succès.';
+
+  @override
+  String get adminProductDeleteDialogTitle => 'Supprimer le produit';
+
+  @override
+  String adminProductDeleteDialogBody(Object name) {
+    return 'Êtes-vous sûr(e) de vouloir supprimer « $name » ?';
+  }
+
+  @override
+  String get commonDelete => 'Supprimer';
+
+  @override
+  String get adminProductDeleteSuccess => 'Produit supprimé avec succès.';
+
+  @override
+  String get adminProductDeleteFailed => 'Échec de la suppression du produit.';
+
+  @override
+  String get adminProductDeleteBlockedCart => 'Impossible de supprimer ce produit car il se trouve dans des paniers clients. ';
+
+  @override
+  String get adminProductDeleteBlockedOrders => 'Impossible de supprimer ce produit car il est lié à des commandes existantes. ';
+
+  @override
+  String get adminProductDeleteBlockedGeneric => 'Impossible de supprimer ce produit car il est lié à d’autres enregistrements (commandes ou paniers). ';
+
+  @override
+  String get errSessionExpired => 'Session expirée. Veuillez vous reconnecter.';
+
+  @override
+  String get errForbidden => 'Vous n’avez pas la permission d’effectuer cette action.';
+
+  @override
+  String get errNotFound => 'Introuvable.';
+
+  @override
+  String adminProductsLoadFailed(Object details) {
+    return 'Échec du chargement des produits.\n$details';
+  }
+
+  @override
+  String adminProductsCountPill(Object filtered, Object total) {
+    return '$filtered / $total';
+  }
+
+  @override
+  String get adminCategoryDeleteSuccess => 'Catégorie supprimée avec succès.';
+
+  @override
+  String get adminItemTypeDeleteSuccess => 'Type d’article supprimé avec succès.';
+
+  @override
+  String adminCategoryDeleteBlockedItems(Object count) {
+    return 'Impossible de supprimer cette catégorie car elle est utilisée par $count article(s).';
+  }
+
+  @override
+  String adminItemTypeDeleteBlockedItems(Object count) {
+    return 'Impossible de supprimer ce type car il est utilisé par $count article(s).';
+  }
+
+  @override
+  String get adminCategoryDeleteBlockedGeneric => 'Impossible de supprimer cette catégorie car elle est encore utilisée.';
+
+  @override
+  String get adminItemTypeDeleteBlockedGeneric => 'Impossible de supprimer ce type car il est encore utilisé.';
+
+  @override
+  String get adminConflictGeneric => 'Cette action ne peut pas être effectuée pour le moment.';
+
+  @override
+  String adminCategoryDeleteBlockedTypes(Object count) {
+    return 'Impossible de supprimer cette catégorie car elle contient encore $count type(s) d’article. Supprimez/déplacez d’abord les types.';
+  }
+
+  @override
+  String get adminRejectOrderTitle => 'Rejeter la commande ?';
+
+  @override
+  String get adminRejectOrderBody => 'Cette action marquera la commande comme rejetée. Continuer ?';
+
+  @override
+  String get adminRejectOrderButton => 'Rejeter la commande';
 }

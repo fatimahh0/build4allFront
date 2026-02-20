@@ -106,7 +106,7 @@
   "connection_issue": "مشكلة في الاتصال",
 
   "explore_title": "استكشاف",
-  "explore_search_hint": "ابحث عن أماكن...",
+  "explore_search_hint": "ابحث ..",
   "explore_items_title": "كل الأنشطة",
   "explore_empty_message": "لا توجد نتائج. جرّب كلمة أخرى.",
   "explore_category_all": "الكل",
@@ -866,7 +866,7 @@
   "requestUpgradeLabel": "طلب ترقية",
 
   "licenseChecking": "جارٍ التحقق من الترخيص…",
-  "licenseAccessGranted": "تم السماح بالدخول ✅",
+  "licenseAccessGranted": "تم السماح بالدخول ",
   "licenseAccessBlocked": "تم حظر الوصول",
   "licenseLimitReached": "تم الوصول للحد: {active}/{allowed} مستخدم",
   "@licenseLimitReached": { "placeholders": { "active": {}, "allowed": {} } },
@@ -875,7 +875,7 @@
   "adminDashboardStatusLicenseFailed": "فشل التحقق من الترخيص",
   "adminDashboardStatusLimitReached": "تم الوصول للحد — مطلوب ترقية",
   "adminDashboardStatusAccessBlocked": "الوصول محظور",
-  "adminDashboardStatusOk": "كل شي تمام ✅",
+  "adminDashboardStatusOk": "كل شي تمام ",
 
   "adminDashboardActionsCount": "{count} إجراءات",
   "@adminDashboardActionsCount": { "placeholders": { "count": {} } },
@@ -883,7 +883,7 @@
   "upgradeSheetTitle": "طلب ترقية",
   "upgradeSheetSubtitle": "اختر الخطة لإرسال طلب الترقية.",
   "noUpgradeAvailable": "لا توجد ترقية متاحة.",
-  "upgradeRequestSent": "تم إرسال الطلب ✅",
+  "upgradeRequestSent": "تم إرسال الطلب ",
 
   "planGeneric": "خطة",
   "planFree": "مجاني",
@@ -922,7 +922,69 @@
   "networkErrorLabel": "خطأ بالشبكة. جرّب مرة ثانية.",
    "errPasswordLen6to8": "كلمة المرور يجب أن تكون 8 أحرف.",
   "errPasswordNeedSpecial": "كلمة المرور يجب أن تحتوي على حرف خاص واحد على الأقل (مثل !@#).",
-  "hintPasswordRuleOwner": "كلمة المرور: 8 أحرف + حرف خاص واحد على الأقل."
+  "hintPasswordRuleOwner": "كلمة المرور: 8 أحرف + حرف خاص واحد على الأقل.",
+   "msgProductDeleted": "تم حذف المنتج بنجاح.",
+   "adminProductDeleteDialogTitle": "حذف المنتج",
+  "adminProductDeleteDialogBody": "هل أنت متأكد أنك تريد حذف \"{name}\"؟",
+  "@adminProductDeleteDialogBody": {
+    "placeholders": {
+      "name": {}
+    }
+  },
 
+  "commonCancel": "إلغاء",
+  "commonDelete": "حذف",
+
+  "adminProductDeleteSuccess": "تم حذف المنتج بنجاح.",
+  "adminProductDeleteFailed": "فشل حذف المنتج.",
+
+  "adminProductDeleteBlockedCart": "لا يمكنك حذف هذا المنتج لأنه موجود في سلة العملاء.",
+  "adminProductDeleteBlockedOrders": "لا يمكنك حذف هذا المنتج لأنه مرتبط بطلبات موجودة..",
+  "adminProductDeleteBlockedGeneric": "لا يمكنك حذف هذا المنتج لأنه مرتبط بسجلات أخرى (طلبات أو سلات)..",
+
+  "errSessionExpired": "انتهت الجلسة. الرجاء تسجيل الدخول من جديد.",
+  "errForbidden": "ليس لديك صلاحية لتنفيذ هذا الإجراء.",
+  "errNotFound": "غير موجود.",
+
+  "adminProductsLoadFailed": "فشل تحميل المنتجات.\n{details}",
+  "@adminProductsLoadFailed": {
+    "placeholders": {
+      "details": {}
+    }
+  },
+
+  "adminProductsCountPill": "{filtered} / {total}",
+  "@adminProductsCountPill": {
+    "placeholders": {
+      "filtered": {},
+      "total": {}
+    }
+  },
+  "adminCategoryDeleteSuccess": "تم حذف الفئة بنجاح.",
+  "adminItemTypeDeleteSuccess": "تم حذف نوع العنصر بنجاح.",
+
+  "adminCategoryDeleteBlockedItems": "لا يمكنك حذف هذه الفئة لأنها مستخدمة من قبل {count} عنصر/منتج.",
+  "@adminCategoryDeleteBlockedItems": {
+    "placeholders": { "count": {} }
+  },
+
+  "adminItemTypeDeleteBlockedItems": "لا يمكنك حذف هذا النوع لأنه مستخدم من قبل {count} عنصر/منتج.",
+  "@adminItemTypeDeleteBlockedItems": {
+    "placeholders": { "count": {} }
+  },
+
+  "adminCategoryDeleteBlockedGeneric": "لا يمكنك حذف هذه الفئة لأنها ما زالت قيد الاستخدام.",
+  "adminItemTypeDeleteBlockedGeneric": "لا يمكنك حذف هذا النوع لأنه ما زال قيد الاستخدام.",
+
+  "adminConflictGeneric": "لا يمكن تنفيذ هذا الإجراء حالياً.",
+  "errSessionExpired": "انتهت الجلسة. الرجاء تسجيل الدخول من جديد.",
+  "errForbidden": "ليس لديك صلاحية لتنفيذ هذا الإجراء.",
+  "errNotFound": "غير موجود.",
+
+   "adminRejectOrderTitle": "رفض الطلب؟",
+  "adminRejectOrderBody": "سيتم وضع الطلب بحالة مرفوض. هل تريد المتابعة؟",
+  "adminRejectOrderButton": "رفض الطلب",
+  "adminCategoryDeleteBlockedTypes": "لا يمكنك حذف هذه الفئة لأنها تحتوي على {count} نوع/أنواع من العناصر. قم بحذف أو نقل هذه الأنواع أولاً.",
+  "@adminCategoryDeleteBlockedTypes": { "placeholders": { "count": {} } }
 
 }

@@ -1,7 +1,11 @@
 // lib/features/admin/product/presentation/screens/admin_create_product_screen.dart
 
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:build4front/common/widgets/app_toast.dart';
+import 'package:build4front/core/exceptions/app_exception.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
@@ -403,15 +407,78 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
     return token;
   }
 
-  String _localizeError(Object e, AppLocalizations l) {
-    final s = e.toString();
-
-    if (s.contains('ADMIN_TOKEN_MISSING')) {
-      return l.adminMissingAdminToken;
+String _localizeError(Object e, AppLocalizations l) {
+  // ✅ 1) Unwrap AppException -> original (usually DioException)
+  if (e is AppException) {
+    final dynamic ex = e; // avoid compile issues if fields differ
+    final Object? orig = ex.original;
+    if (orig != null) {
+      return _localizeError(orig, l);
     }
+
+    // if no original, try message
+    final String msg = (ex.message ?? e.toString()).toString();
+    if (msg.trim().isNotEmpty) return msg;
 
     return l.adminGenericError;
   }
+
+  // ✅ 2) Handle DioException (409 payload comes here)
+  if (e is DioException) {
+    final status = e.response?.statusCode;
+    final data = e.response?.data;
+
+    Map<String, dynamic>? m;
+
+    // data can be Map OR String JSON
+    if (data is Map) {
+      m = Map<String, dynamic>.from(data);
+    } else if (data is String) {
+      try {
+        final decoded = jsonDecode(data);
+        if (decoded is Map) m = Map<String, dynamic>.from(decoded);
+      } catch (_) {}
+    }
+
+    final code = m?['code']?.toString();
+    final rawError = (m?['error'] ?? m?['message'])?.toString();
+
+    final countRaw = m?['count'];
+    final int? count = (countRaw is num)
+        ? countRaw.toInt()
+        : int.tryParse(countRaw?.toString() ?? '');
+
+    if (status == 409) {
+      if (code == 'CATEGORY_DELETE_HAS_ITEMS') {
+        return l.adminCategoryDeleteBlockedItems(count ?? 0);
+      }
+      if (code == 'ITEMTYPE_DELETE_HAS_ITEMS') {
+        return l.adminItemTypeDeleteBlockedItems(count ?? 0);
+      }
+      if (code == 'CATEGORY_DELETE_HAS_TYPES') {
+        return l.adminCategoryDeleteBlockedTypes(count ?? 0);
+      }
+
+      // fallback if code missing
+      if (rawError != null && rawError.trim().isNotEmpty) return rawError;
+      return l.adminConflictGeneric;
+    }
+
+    if (status == 401) return l.errSessionExpired;
+    if (status == 403) return l.errForbidden;
+    if (status == 404) return l.errNotFound;
+
+    if (rawError != null && rawError.trim().isNotEmpty) return rawError;
+
+    return l.adminGenericError;
+  }
+
+  // ✅ 3) Non-dio fallback
+  final s = e.toString();
+  if (s.contains('ADMIN_TOKEN_MISSING')) return l.adminMissingAdminToken;
+
+  return l.adminGenericError;
+}
 
   String? _resolveImageUrl(String? url) {
     if (url == null || url.trim().isEmpty) return null;
@@ -501,9 +568,16 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
         await _loadItemTypesForCategory(nextSelected);
       }
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _metaError = _localizeError(e, l));
-    } finally {
+  if (!mounted) return;
+
+  final msg = _localizeError(e, l);
+
+  // ✅ toast
+  AppToast.show(context, msg, isError: true);
+
+  // ✅ optional: show under dropdown too
+  setState(() => _metaError = msg);
+} finally {
       if (mounted) setState(() => _loadingCategories = false);
     }
   }
@@ -548,9 +622,12 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
         _selectedItemTypeId = nextSelected;
       });
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _metaError = _localizeError(e, l));
-    } finally {
+  if (!mounted) return;
+
+  final msg = _localizeError(e, l);
+  AppToast.show(context, msg, isError: true);
+  setState(() => _metaError = msg);
+} finally {
       if (mounted) setState(() => _loadingItemTypes = false);
     }
   }

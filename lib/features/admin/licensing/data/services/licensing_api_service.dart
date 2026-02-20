@@ -15,7 +15,7 @@ class LicensingApiService {
       ),
     );
 
-    // optional: helps you see the exact URL in debug console
+    // Optional debug:
     // _dio.interceptors.add(LogInterceptor(
     //   request: true,
     //   requestHeader: true,
@@ -45,12 +45,11 @@ class LicensingApiService {
     }
 
     try {
-      // ✅ IMPORTANT: no leading "/" here, so it appends to baseUrl (/api stays)
+      // ✅ IMPORTANT:
+      // DO NOT start with "/" otherwise Dio will drop "/api" from baseUrl.
       final res = await _dio.get(
         '/licensing/apps/$aupId/access',
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
-        ),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
       return OwnerAppAccessResponse.fromJson(
@@ -61,13 +60,15 @@ class LicensingApiService {
       final data = e.response?.data;
 
       String msg = 'HTTP $code';
-      if (data is Map && data['message'] != null)
+      if (data is Map && data['message'] != null) {
         msg += ' | ${data['message']}';
-      else if (data is Map && data['error'] != null)
+      } else if (data is Map && data['error'] != null) {
         msg += ' | ${data['error']}';
-      else if (data != null)
+      } else if (data != null) {
         msg += ' | $data';
-      else if (e.message != null) msg += ' | ${e.message}';
+      } else if (e.message != null) {
+        msg += ' | ${e.message}';
+      }
 
       throw Exception('Licensing getAccess failed: $msg');
     }
@@ -91,22 +92,22 @@ class LicensingApiService {
           'planCode': planCode,
           'usersAllowedOverride': usersAllowedOverride,
         },
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
-        ),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
     } on DioException catch (e) {
       final code = e.response?.statusCode;
       final data = e.response?.data;
 
       String msg = 'HTTP $code';
-      if (data is Map && data['message'] != null)
+      if (data is Map && data['message'] != null) {
         msg += ' | ${data['message']}';
-      else if (data is Map && data['error'] != null)
+      } else if (data is Map && data['error'] != null) {
         msg += ' | ${data['error']}';
-      else if (data != null)
+      } else if (data != null) {
         msg += ' | $data';
-      else if (e.message != null) msg += ' | ${e.message}';
+      } else if (e.message != null) {
+        msg += ' | ${e.message}';
+      }
 
       throw Exception('Licensing requestUpgrade failed: $msg');
     }

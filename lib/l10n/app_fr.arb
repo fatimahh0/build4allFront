@@ -106,7 +106,7 @@
   "connection_issue": "Problème de connexion",
 
   "explore_title": "Explorer",
-  "explore_search_hint": "Rechercher des lieux...",
+  "explore_search_hint": "Rechercher ....",
   "explore_items_title": "Toutes les activités",
   "explore_empty_message": "Aucun résultat. Essayez un autre mot-clé.",
   "explore_category_all": "Tous",
@@ -946,7 +946,7 @@
   "requestUpgradeLabel": "Demander l’upgrade",
 
   "licenseChecking": "Vérification de la licence…",
-  "licenseAccessGranted": "Accès autorisé ✅",
+  "licenseAccessGranted": "Accès autorisé ",
   "licenseAccessBlocked": "Accès bloqué",
   "licenseLimitReached": "Limite atteinte : {active}/{allowed} utilisateurs",
   "@licenseLimitReached": { "placeholders": { "active": {}, "allowed": {} } },
@@ -955,7 +955,7 @@
   "adminDashboardStatusLicenseFailed": "Échec de vérification de la licence",
   "adminDashboardStatusLimitReached": "Limite utilisateurs — upgrade requis",
   "adminDashboardStatusAccessBlocked": "Accès bloqué",
-  "adminDashboardStatusOk": "Tout est OK ✅",
+  "adminDashboardStatusOk": "Tout est OK ",
 
   "adminDashboardActionsCount": "{count} actions",
   "@adminDashboardActionsCount": { "placeholders": { "count": {} } },
@@ -963,7 +963,7 @@
   "upgradeSheetTitle": "Demande d’upgrade",
   "upgradeSheetSubtitle": "Choisissez un plan pour envoyer une demande.",
   "noUpgradeAvailable": "Aucune option d’upgrade disponible.",
-  "upgradeRequestSent": "Demande envoyée ✅",
+  "upgradeRequestSent": "Demande envoyée ",
 
   "planGeneric": "Plan",
   "planFree": "Gratuit",
@@ -1002,7 +1002,70 @@
   "networkErrorLabel": "Erreur réseau. Veuillez réessayer.",
    "errPasswordLen6to8": "Le mot de passe doit contenir  8 caractères.",
   "errPasswordNeedSpecial": "Le mot de passe doit contenir au moins 1 caractère spécial (ex: !@#).",
-  "hintPasswordRuleOwner": "Mot de passe : 8 caractères + au moins 1 caractère spécial."
+  "hintPasswordRuleOwner": "Mot de passe : 8 caractères + au moins 1 caractère spécial.",
+   "msgProductDeleted": "Produit supprimé avec succès.",
+ "adminProductDeleteDialogTitle": "Supprimer le produit",
+  "adminProductDeleteDialogBody": "Êtes-vous sûr(e) de vouloir supprimer « {name} » ?",
+  "@adminProductDeleteDialogBody": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+
+  "commonCancel": "Annuler",
+  "commonDelete": "Supprimer",
+
+  "adminProductDeleteSuccess": "Produit supprimé avec succès.",
+  "adminProductDeleteFailed": "Échec de la suppression du produit.",
+
+  "adminProductDeleteBlockedCart": "Impossible de supprimer ce produit car il se trouve dans des paniers clients. ",
+  "adminProductDeleteBlockedOrders": "Impossible de supprimer ce produit car il est lié à des commandes existantes. ",
+  "adminProductDeleteBlockedGeneric": "Impossible de supprimer ce produit car il est lié à d’autres enregistrements (commandes ou paniers). ",
+
+  "errSessionExpired": "Session expirée. Veuillez vous reconnecter.",
+  "errForbidden": "Vous n’avez pas la permission d’effectuer cette action.",
+  "errNotFound": "Introuvable.",
+
+  "adminProductsLoadFailed": "Échec du chargement des produits.\n{details}",
+  "@adminProductsLoadFailed": {
+    "placeholders": {
+      "details": {}
+    }
+  },
+
+  "adminProductsCountPill": "{filtered} / {total}",
+  "@adminProductsCountPill": {
+    "placeholders": {
+      "filtered": {},
+      "total": {}
+    }
+  },
+  "adminCategoryDeleteSuccess": "Catégorie supprimée avec succès.",
+  "adminItemTypeDeleteSuccess": "Type d’article supprimé avec succès.",
+
+  "adminCategoryDeleteBlockedItems": "Impossible de supprimer cette catégorie car elle est utilisée par {count} article(s).",
+  "@adminCategoryDeleteBlockedItems": {
+    "placeholders": { "count": {} }
+  },
+
+  "adminItemTypeDeleteBlockedItems": "Impossible de supprimer ce type car il est utilisé par {count} article(s).",
+  "@adminItemTypeDeleteBlockedItems": {
+    "placeholders": { "count": {} }
+  },
+
+  "adminCategoryDeleteBlockedGeneric": "Impossible de supprimer cette catégorie car elle est encore utilisée.",
+  "adminItemTypeDeleteBlockedGeneric": "Impossible de supprimer ce type car il est encore utilisé.",
+
+  "adminConflictGeneric": "Cette action ne peut pas être effectuée pour le moment.",
+  "errSessionExpired": "Session expirée. Veuillez vous reconnecter.",
+  "errForbidden": "Vous n’avez pas la permission d’effectuer cette action.",
+  "errNotFound": "Introuvable.",
+  "adminCategoryDeleteBlockedTypes": "Impossible de supprimer cette catégorie car elle contient encore {count} type(s) d’article. Supprimez/déplacez d’abord les types.",
+  "@adminCategoryDeleteBlockedTypes": { "placeholders": { "count": {} } },
+  "adminRejectOrderTitle": "Rejeter la commande ?",
+  "adminRejectOrderBody": "Cette action marquera la commande comme rejetée. Continuer ?",
+  "adminRejectOrderButton": "Rejeter la commande"
+
 
 
 }

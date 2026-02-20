@@ -264,7 +264,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get explore_title => 'استكشاف';
 
   @override
-  String get explore_search_hint => 'ابحث عن أماكن...';
+  String get explore_search_hint => 'ابحث ..';
 
   @override
   String get explore_items_title => 'كل الأنشطة';
@@ -2314,7 +2314,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get licenseChecking => 'جارٍ التحقق من الترخيص…';
 
   @override
-  String get licenseAccessGranted => 'تم السماح بالدخول ✅';
+  String get licenseAccessGranted => 'تم السماح بالدخول ';
 
   @override
   String get licenseAccessBlocked => 'تم حظر الوصول';
@@ -2337,7 +2337,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get adminDashboardStatusAccessBlocked => 'الوصول محظور';
 
   @override
-  String get adminDashboardStatusOk => 'كل شي تمام ✅';
+  String get adminDashboardStatusOk => 'كل شي تمام ';
 
   @override
   String adminDashboardActionsCount(Object count) {
@@ -2354,7 +2354,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get noUpgradeAvailable => 'لا توجد ترقية متاحة.';
 
   @override
-  String get upgradeRequestSent => 'تم إرسال الطلب ✅';
+  String get upgradeRequestSent => 'تم إرسال الطلب ';
 
   @override
   String get planGeneric => 'خطة';
@@ -2476,11 +2476,98 @@ class AppLocalizationsAr extends AppLocalizations {
   String get networkErrorLabel => 'خطأ بالشبكة. جرّب مرة ثانية.';
 
   @override
-  String get errPasswordLen6to8 => 'كلمة المرور يجب أن تكون بين 6 و8 أحرف.';
+  String get errPasswordLen6to8 => 'كلمة المرور يجب أن تكون 8 أحرف.';
 
   @override
   String get errPasswordNeedSpecial => 'كلمة المرور يجب أن تحتوي على حرف خاص واحد على الأقل (مثل !@#).';
 
   @override
-  String get hintPasswordRuleOwner => 'كلمة المرور: من 6 إلى 8 أحرف + حرف خاص واحد على الأقل.';
+  String get hintPasswordRuleOwner => 'كلمة المرور: 8 أحرف + حرف خاص واحد على الأقل.';
+
+  @override
+  String get msgProductDeleted => 'تم حذف المنتج بنجاح.';
+
+  @override
+  String get adminProductDeleteDialogTitle => 'حذف المنتج';
+
+  @override
+  String adminProductDeleteDialogBody(Object name) {
+    return 'هل أنت متأكد أنك تريد حذف \"$name\"؟';
+  }
+
+  @override
+  String get commonDelete => 'حذف';
+
+  @override
+  String get adminProductDeleteSuccess => 'تم حذف المنتج بنجاح.';
+
+  @override
+  String get adminProductDeleteFailed => 'فشل حذف المنتج.';
+
+  @override
+  String get adminProductDeleteBlockedCart => 'لا يمكنك حذف هذا المنتج لأنه موجود في سلة العملاء.';
+
+  @override
+  String get adminProductDeleteBlockedOrders => 'لا يمكنك حذف هذا المنتج لأنه مرتبط بطلبات موجودة..';
+
+  @override
+  String get adminProductDeleteBlockedGeneric => 'لا يمكنك حذف هذا المنتج لأنه مرتبط بسجلات أخرى (طلبات أو سلات)..';
+
+  @override
+  String get errSessionExpired => 'انتهت الجلسة. الرجاء تسجيل الدخول من جديد.';
+
+  @override
+  String get errForbidden => 'ليس لديك صلاحية لتنفيذ هذا الإجراء.';
+
+  @override
+  String get errNotFound => 'غير موجود.';
+
+  @override
+  String adminProductsLoadFailed(Object details) {
+    return 'فشل تحميل المنتجات.\n$details';
+  }
+
+  @override
+  String adminProductsCountPill(Object filtered, Object total) {
+    return '$filtered / $total';
+  }
+
+  @override
+  String get adminCategoryDeleteSuccess => 'تم حذف الفئة بنجاح.';
+
+  @override
+  String get adminItemTypeDeleteSuccess => 'تم حذف نوع العنصر بنجاح.';
+
+  @override
+  String adminCategoryDeleteBlockedItems(Object count) {
+    return 'لا يمكنك حذف هذه الفئة لأنها مستخدمة من قبل $count عنصر/منتج.';
+  }
+
+  @override
+  String adminItemTypeDeleteBlockedItems(Object count) {
+    return 'لا يمكنك حذف هذا النوع لأنه مستخدم من قبل $count عنصر/منتج.';
+  }
+
+  @override
+  String get adminCategoryDeleteBlockedGeneric => 'لا يمكنك حذف هذه الفئة لأنها ما زالت قيد الاستخدام.';
+
+  @override
+  String get adminItemTypeDeleteBlockedGeneric => 'لا يمكنك حذف هذا النوع لأنه ما زال قيد الاستخدام.';
+
+  @override
+  String get adminConflictGeneric => 'لا يمكن تنفيذ هذا الإجراء حالياً.';
+
+  @override
+  String adminCategoryDeleteBlockedTypes(Object count) {
+    return 'لا يمكنك حذف هذه الفئة لأنها تحتوي على $count نوع/أنواع من العناصر. قم بحذف أو نقل هذه الأنواع أولاً.';
+  }
+
+  @override
+  String get adminRejectOrderTitle => 'رفض الطلب؟';
+
+  @override
+  String get adminRejectOrderBody => 'سيتم وضع الطلب بحالة مرفوض. هل تريد المتابعة؟';
+
+  @override
+  String get adminRejectOrderButton => 'رفض الطلب';
 }

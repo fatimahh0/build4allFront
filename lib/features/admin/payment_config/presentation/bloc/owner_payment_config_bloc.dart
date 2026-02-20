@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/usecases/get_owner_payment_methods.dart';
@@ -46,13 +47,16 @@ class OwnerPaymentConfigBloc
       );
 
       // update local state (optimistic)
-      final updated = state.items.map((it) {
-        if (it.name.toUpperCase() != code) return it;
-        return it.copyWith(
-          projectEnabled: event.enabled,
-          configValues: Map<String, dynamic>.from(event.configValues),
-        );
-      }).toList();
+     final updated = state.items.map((it) {
+  if (it.name.toUpperCase() != code) return it;
+
+  return it.copyWith(
+    projectEnabled: event.enabled,
+    configValues: event.enabled
+        ? Map<String, dynamic>.from(event.configValues)
+        : it.configValues, // ✅ keep previous config when disabling
+  );
+}).toList();
 
       final afterSaving = {...state.savingCodes}..remove(code);
       emit(state.copyWith(items: updated, savingCodes: afterSaving));
@@ -61,4 +65,18 @@ class OwnerPaymentConfigBloc
       emit(state.copyWith(savingCodes: afterSaving, error: e.toString()));
     }
   }
+
+  String _prettyError(Object e) {
+  if (e is DioException) {
+    final data = e.response?.data;
+    if (data is Map) {
+      final msg = data['error'] ?? data['message'];
+      if (msg != null) return msg.toString();
+    }
+    return e.message ?? 'Request failed';
+  }
+  return e.toString();
 }
+}
+
+

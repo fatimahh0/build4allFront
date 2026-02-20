@@ -7,8 +7,12 @@ import 'package:build4front/l10n/app_localizations.dart';
 
 class CartSummaryCard extends StatelessWidget {
   final double itemsTotal;
+
+  // Kept for compatibility with existing callers (CartScreen),
+  // but we won't display them in the UI anymore.
   final double shippingTotal;
   final double taxTotal;
+
   final double? discountTotal;
   final double grandTotal;
 
@@ -30,8 +34,6 @@ class CartSummaryCard extends StatelessWidget {
     required this.grandTotal,
     required this.currencySymbol,
     required this.isUpdating,
-
-    // ✅ NEW
     required this.canCheckout,
     required this.blockingErrors,
     required this.checkoutLabel,
@@ -48,7 +50,6 @@ class CartSummaryCard extends StatelessWidget {
     final t = Theme.of(context).textTheme;
 
     final hasDiscount = (discountTotal ?? 0) > 0;
-
     final bool checkoutEnabled = !isUpdating && canCheckout;
 
     return Container(
@@ -108,15 +109,9 @@ class CartSummaryCard extends StatelessWidget {
           SizedBox(height: spacing.md),
 
           _SummaryRow(
-              label: l10n.itemsSubtotalLabel,
-              value: money(context, itemsTotal)),
-          SizedBox(height: spacing.xs),
-
-          _SummaryRow(
-              label: l10n.shippingLabel, value: money(context, shippingTotal)),
-          SizedBox(height: spacing.xs),
-
-          _SummaryRow(label: l10n.taxLabel, value: money(context, taxTotal)),
+            label: l10n.itemsSubtotalLabel,
+            value: money(context, itemsTotal),
+          ),
 
           if (hasDiscount) ...[
             SizedBox(height: spacing.xs),
@@ -198,13 +193,7 @@ class CartSummaryCard extends StatelessWidget {
             ),
           ),
 
-          SizedBox(height: spacing.sm),
-
-          Text(
-            l10n.taxesShippingNote,
-            textAlign: TextAlign.center,
-            style: t.bodySmall?.copyWith(color: c.onSurface.withOpacity(0.6)),
-          ),
+          // ❌ removed taxes/shipping note (since we removed those lines)
         ],
       ),
     );

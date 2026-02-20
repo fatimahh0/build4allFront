@@ -83,6 +83,10 @@ class ItemDetailsPage extends StatelessWidget {
           final curPrice = d.displayPrice;
           final oldPrice = d.oldPriceIfDiscounted;
 
+          // ✅ STOCK GUARD (FIX)
+          final bool isStockTracked = d.stock != null;
+          final bool outOfStock = isStockTracked && (d.stock! <= 0);
+
           // sale tag
           String? tag;
           if (d.isSaleActiveNow &&
@@ -185,6 +189,38 @@ class ItemDetailsPage extends StatelessWidget {
                   ],
                 ),
 
+                // ✅ optional: show a small out-of-stock hint
+                if (outOfStock) ...[
+                  SizedBox(height: spacing.sm),
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: spacing.md,
+                      vertical: spacing.sm,
+                    ),
+                    decoration: BoxDecoration(
+                      color: c.errorContainer.withOpacity(0.25),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: c.error.withOpacity(0.25)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning_amber_rounded,
+                            color: c.error, size: 18),
+                        SizedBox(width: spacing.sm),
+                        Expanded(
+                          child: Text(
+                            l10n.outOfStock,
+                            style: t.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: c.error,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 SizedBox(height: spacing.md),
 
                 // ✅ ASK AI BUTTON (Details)
@@ -231,7 +267,7 @@ class ItemDetailsPage extends StatelessWidget {
                           ),
                           icon: const Icon(Icons.auto_awesome, size: 18),
                           label: Text(
-                            l10n.ai_ask_button, // ✅ l10n
+                            l10n.ai_ask_button,
                             style: t.labelLarge?.copyWith(
                               fontWeight: FontWeight.w800,
                             ),
@@ -308,29 +344,41 @@ class ItemDetailsPage extends StatelessWidget {
 
                 SizedBox(height: spacing.xl),
 
-                // CTA (Add to cart)
+                // ✅ CTA (Add to cart) — FIXED
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      final auth = context.read<AuthBloc>().state;
+                    // ✅ DISABLE when out of stock
+                    onPressed: outOfStock
+                        ? null
+                        : () {
+                            final auth = context.read<AuthBloc>().state;
 
-                      if (!auth.isLoggedIn) {
-                        AppToast.show(
-                          context,
-                          l10n.cart_login_required_message,
-                          isError: true,
-                        );
-                        return;
-                      }
+                            if (!auth.isLoggedIn) {
+                              AppToast.show(
+                                context,
+                                l10n.cart_login_required_message,
+                                isError: true,
+                              );
+                              return;
+                            }
 
-                      context.read<CartBloc>().add(
-                            CartAddItemRequested(itemId: d.id, quantity: 1),
-                          );
+                            // ✅ extra safety (even though button is enabled)
+                            if (outOfStock) {
+                              AppToast.show(context, l10n.outOfStock,
+                                  isError: true);
+                              return;
+                            }
 
-                      AppToast.show(context, l10n.cart_item_added_snackbar);
-                    },
-                    child: Text(l10n.cart_add_button),
+                            context.read<CartBloc>().add(
+                                  CartAddItemRequested(
+                                      itemId: d.id, quantity: 1),
+                                );
+
+                            AppToast.show(
+                                context, l10n.cart_item_added_snackbar);
+                          },
+                    child: Text(outOfStock ? l10n.outOfStock : l10n.cart_add_button),
                   ),
                 ),
               ],

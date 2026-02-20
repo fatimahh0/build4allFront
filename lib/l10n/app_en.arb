@@ -120,7 +120,7 @@
   "profile_login_required": "Please log in to view your profile.",
   "connection_issue": "Connection issue",
  "explore_title": "Explore",
-  "explore_search_hint": "Search  places...",
+  "explore_search_hint": "Search ..",
   "explore_items_title": "All activities",
   "explore_empty_message": "No results found. Try another keyword.",
   "explore_category_all": "All",
@@ -1083,7 +1083,7 @@
   "requestUpgradeLabel": "Request upgrade",
 
   "licenseChecking": "Checking license…",
-  "licenseAccessGranted": "Access granted ✅",
+  "licenseAccessGranted": "Access granted ",
   "licenseAccessBlocked": "Access blocked",
   "licenseLimitReached": "Limit reached: {active}/{allowed} users",
   "@licenseLimitReached": { "placeholders": { "active": {}, "allowed": {} } },
@@ -1092,7 +1092,7 @@
   "adminDashboardStatusLicenseFailed": "License check failed",
   "adminDashboardStatusLimitReached": "User limit reached — upgrade required",
   "adminDashboardStatusAccessBlocked": "Access blocked",
-  "adminDashboardStatusOk": "All systems go ✅",
+  "adminDashboardStatusOk": "All systems go ",
 
   "adminDashboardActionsCount": "{count} actions",
   "@adminDashboardActionsCount": { "placeholders": { "count": {} } },
@@ -1100,7 +1100,7 @@
   "upgradeSheetTitle": "Upgrade request",
   "upgradeSheetSubtitle": "Choose a plan to send a request.",
   "noUpgradeAvailable": "No upgrade available.",
-  "upgradeRequestSent": "Request sent ✅",
+  "upgradeRequestSent": "Request sent ",
 
   "planGeneric": "Plan",
   "planFree": "Free",
@@ -1147,6 +1147,68 @@
   "networkErrorLabel": "Network error. Please try again.",
  "errPasswordLen6to8": "Password must be at least 8 characters",
   "errPasswordNeedSpecial": "Password must include at least 1 special character (e.g. !@#).",
-  "hintPasswordRuleOwner": "Password: 8 chars + at least 1 special character."
+  "hintPasswordRuleOwner": "Password: 8 chars + at least 1 special character.",
+   "msgProductDeleted": "Product deleted successfully.",
+  "adminProductDeleteDialogTitle": "Delete product",
+  "adminProductDeleteDialogBody": "Are you sure you want to delete \"{name}\"?",
+  "@adminProductDeleteDialogBody": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+
+  "commonCancel": "Cancel",
+  "commonDelete": "Delete",
+
+  "adminProductDeleteSuccess": "Product deleted successfully.",
+  "adminProductDeleteFailed": "Failed to delete product.",
+
+  "adminProductDeleteBlockedCart": "You can’t delete this product because it’s currently in customers’ carts. ",
+  "adminProductDeleteBlockedOrders": "You can’t delete this product because it’s linked to existing orders. ",
+  "adminProductDeleteBlockedGeneric": "You can’t delete this product because it’s linked to other records (orders or carts). ",
+
+  "errSessionExpired": "Session expired. Please log in again.",
+  "errForbidden": "You don’t have permission to perform this action.",
+  "errNotFound": "Not found.",
+
+  "adminProductsLoadFailed": "Failed to load products.\n{details}",
+  "@adminProductsLoadFailed": {
+    "placeholders": {
+      "details": {}
+    }
+  },
+
+  "adminProductsCountPill": "{filtered} / {total}",
+  "@adminProductsCountPill": {
+    "placeholders": {
+      "filtered": {},
+      "total": {}
+    }
+  },
+   "adminCategoryDeleteSuccess": "Category deleted successfully.",
+  "adminItemTypeDeleteSuccess": "Item type deleted successfully.",
+
+  "adminCategoryDeleteBlockedItems": "You can’t delete this category because it’s used by {count} item(s).",
+  "@adminCategoryDeleteBlockedItems": {
+    "placeholders": { "count": {} }
+  },
+
+  "adminItemTypeDeleteBlockedItems": "You can’t delete this item type because it’s used by {count} item(s).",
+  "@adminItemTypeDeleteBlockedItems": {
+    "placeholders": { "count": {} }
+  },
+
+  "adminCategoryDeleteBlockedGeneric": "You can’t delete this category because it’s still being used.",
+  "adminItemTypeDeleteBlockedGeneric": "You can’t delete this item type because it’s still being used.",
+
+  "adminConflictGeneric": "This action can’t be completed right now.",
+  "errSessionExpired": "Session expired. Please log in again.",
+  "errForbidden": "You don’t have permission to perform this action.",
+  "errNotFound": "Not found.",
+  "adminCategoryDeleteBlockedTypes": "You can’t delete this category because it still has {count} item type(s). Delete/move the types first.",
+  "@adminCategoryDeleteBlockedTypes": { "placeholders": { "count": {} } },
+  "adminRejectOrderTitle": "Reject order?",
+  "adminRejectOrderBody": "This will mark the order as rejected. Continue?",
+  "adminRejectOrderButton": "Reject Order"
 
 }

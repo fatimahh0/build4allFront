@@ -610,7 +610,7 @@ abstract class AppLocalizations {
   /// No description provided for @explore_search_hint.
   ///
   /// In en, this message translates to:
-  /// **'Search  places...'**
+  /// **'Search ..'**
   String get explore_search_hint;
 
   /// No description provided for @explore_items_title.
@@ -4558,7 +4558,7 @@ abstract class AppLocalizations {
   /// No description provided for @licenseAccessGranted.
   ///
   /// In en, this message translates to:
-  /// **'Access granted ✅'**
+  /// **'Access granted '**
   String get licenseAccessGranted;
 
   /// No description provided for @licenseAccessBlocked.
@@ -4600,7 +4600,7 @@ abstract class AppLocalizations {
   /// No description provided for @adminDashboardStatusOk.
   ///
   /// In en, this message translates to:
-  /// **'All systems go ✅'**
+  /// **'All systems go '**
   String get adminDashboardStatusOk;
 
   /// No description provided for @adminDashboardActionsCount.
@@ -4630,7 +4630,7 @@ abstract class AppLocalizations {
   /// No description provided for @upgradeRequestSent.
   ///
   /// In en, this message translates to:
-  /// **'Request sent ✅'**
+  /// **'Request sent '**
   String get upgradeRequestSent;
 
   /// No description provided for @planGeneric.
@@ -4870,7 +4870,7 @@ abstract class AppLocalizations {
   /// No description provided for @errPasswordLen6to8.
   ///
   /// In en, this message translates to:
-  /// **'Password must be 6 to 8 characters.'**
+  /// **'Password must be at least 8 characters'**
   String get errPasswordLen6to8;
 
   /// No description provided for @errPasswordNeedSpecial.
@@ -4882,8 +4882,158 @@ abstract class AppLocalizations {
   /// No description provided for @hintPasswordRuleOwner.
   ///
   /// In en, this message translates to:
-  /// **'Password: 6–8 chars + at least 1 special character.'**
+  /// **'Password: 8 chars + at least 1 special character.'**
   String get hintPasswordRuleOwner;
+
+  /// No description provided for @msgProductDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Product deleted successfully.'**
+  String get msgProductDeleted;
+
+  /// No description provided for @adminProductDeleteDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete product'**
+  String get adminProductDeleteDialogTitle;
+
+  /// No description provided for @adminProductDeleteDialogBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete \"{name}\"?'**
+  String adminProductDeleteDialogBody(Object name);
+
+  /// No description provided for @commonDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get commonDelete;
+
+  /// No description provided for @adminProductDeleteSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Product deleted successfully.'**
+  String get adminProductDeleteSuccess;
+
+  /// No description provided for @adminProductDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete product.'**
+  String get adminProductDeleteFailed;
+
+  /// No description provided for @adminProductDeleteBlockedCart.
+  ///
+  /// In en, this message translates to:
+  /// **'You can’t delete this product because it’s currently in customers’ carts. '**
+  String get adminProductDeleteBlockedCart;
+
+  /// No description provided for @adminProductDeleteBlockedOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'You can’t delete this product because it’s linked to existing orders. '**
+  String get adminProductDeleteBlockedOrders;
+
+  /// No description provided for @adminProductDeleteBlockedGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'You can’t delete this product because it’s linked to other records (orders or carts). '**
+  String get adminProductDeleteBlockedGeneric;
+
+  /// No description provided for @errSessionExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Session expired. Please log in again.'**
+  String get errSessionExpired;
+
+  /// No description provided for @errForbidden.
+  ///
+  /// In en, this message translates to:
+  /// **'You don’t have permission to perform this action.'**
+  String get errForbidden;
+
+  /// No description provided for @errNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Not found.'**
+  String get errNotFound;
+
+  /// No description provided for @adminProductsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load products.\n{details}'**
+  String adminProductsLoadFailed(Object details);
+
+  /// No description provided for @adminProductsCountPill.
+  ///
+  /// In en, this message translates to:
+  /// **'{filtered} / {total}'**
+  String adminProductsCountPill(Object filtered, Object total);
+
+  /// No description provided for @adminCategoryDeleteSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Category deleted successfully.'**
+  String get adminCategoryDeleteSuccess;
+
+  /// No description provided for @adminItemTypeDeleteSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Item type deleted successfully.'**
+  String get adminItemTypeDeleteSuccess;
+
+  /// No description provided for @adminCategoryDeleteBlockedItems.
+  ///
+  /// In en, this message translates to:
+  /// **'You can’t delete this category because it’s used by {count} item(s).'**
+  String adminCategoryDeleteBlockedItems(Object count);
+
+  /// No description provided for @adminItemTypeDeleteBlockedItems.
+  ///
+  /// In en, this message translates to:
+  /// **'You can’t delete this item type because it’s used by {count} item(s).'**
+  String adminItemTypeDeleteBlockedItems(Object count);
+
+  /// No description provided for @adminCategoryDeleteBlockedGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'You can’t delete this category because it’s still being used.'**
+  String get adminCategoryDeleteBlockedGeneric;
+
+  /// No description provided for @adminItemTypeDeleteBlockedGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'You can’t delete this item type because it’s still being used.'**
+  String get adminItemTypeDeleteBlockedGeneric;
+
+  /// No description provided for @adminConflictGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'This action can’t be completed right now.'**
+  String get adminConflictGeneric;
+
+  /// No description provided for @adminCategoryDeleteBlockedTypes.
+  ///
+  /// In en, this message translates to:
+  /// **'You can’t delete this category because it still has {count} item type(s). Delete/move the types first.'**
+  String adminCategoryDeleteBlockedTypes(Object count);
+
+  /// No description provided for @adminRejectOrderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject order?'**
+  String get adminRejectOrderTitle;
+
+  /// No description provided for @adminRejectOrderBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This will mark the order as rejected. Continue?'**
+  String get adminRejectOrderBody;
+
+  /// No description provided for @adminRejectOrderButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject Order'**
+  String get adminRejectOrderButton;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

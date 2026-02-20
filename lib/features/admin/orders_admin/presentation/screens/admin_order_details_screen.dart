@@ -1,3 +1,5 @@
+// lib/features/admin/orders_admin/presentation/screens/admin_order_details_screen.dart
+
 import 'package:build4front/features/admin/orders_admin/domain/entities/admin_order_entities.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -137,6 +139,74 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
         false;
   }
 
+  // ✅ NEW: Reject confirmation dialog
+  Future<bool> _confirmRejectOrder({
+    required BuildContext context,
+    required AppLocalizations l10n,
+    required dynamic tokens,
+    required dynamic colors,
+    required dynamic spacing,
+  }) async {
+    return (await showDialog<bool>(
+          context: context,
+          barrierDismissible: true,
+          builder: (_) {
+            return AlertDialog(
+              backgroundColor: colors.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              title: Text(
+                l10n.adminRejectOrderTitle, // ✅ NEW KEY
+                style: tokens.typography.titleMedium.copyWith(
+                  color: colors.label,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              content: Text(
+                l10n.adminRejectOrderBody, // ✅ NEW KEY
+                style: tokens.typography.bodyMedium.copyWith(
+                  color: colors.body,
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text(
+                    l10n.cancel,
+                    style: tokens.typography.bodyMedium.copyWith(
+                      color: colors.muted,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colors.danger,
+                    foregroundColor: colors.onPrimary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: spacing.md,
+                      vertical: spacing.sm,
+                    ),
+                  ),
+                  child: Text(
+                    l10n.confirm,
+                    style: tokens.typography.bodyMedium.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        )) ??
+        false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.watch<ThemeCubit>().state.tokens;
@@ -173,8 +243,7 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
           ),
           body: SafeArea(
             child: BlocConsumer<AdminOrderDetailsBloc, AdminOrderDetailsState>(
-              listenWhen: (p, c) =>
-                  p.error != c.error || p.message != c.message,
+              listenWhen: (p, c) => p.error != c.error || p.message != c.message,
               listener: (context, state) {
                 final err = (state.error ?? '').trim();
                 if (err.isNotEmpty) {
@@ -211,12 +280,10 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
 
                 final o = data.order;
 
-                final total = (o.payment.orderTotal <= 0)
-                    ? o.totalPrice
-                    : o.payment.orderTotal;
+                final total =
+                    (o.payment.orderTotal <= 0) ? o.totalPrice : o.payment.orderTotal;
                 final paid = o.payment.paidAmount;
-                final progress =
-                    total <= 0 ? 0.0 : (paid / total).clamp(0.0, 1.0);
+                final progress = total <= 0 ? 0.0 : (paid / total).clamp(0.0, 1.0);
 
                 final currencySymbol = (o.currency?.symbol ?? '').trim();
                 String money(double v) {
@@ -236,6 +303,16 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                 final paymentMethod = (o.paymentMethod ?? '').toUpperCase();
                 final isCash = paymentMethod == 'CASH';
                 final canMarkCashPaid = isCash && paymentState != 'PAID';
+
+                // ✅ NEW: reject rules (safe defaults)
+                final rawStatus = (o.status).toUpperCase();
+                final isPaid = paymentState == 'PAID' || o.fullyPaid == true;
+
+                // Allow reject only before money is received + only for early statuses.
+                final canReject = !isPaid &&
+                    (rawStatus == 'PENDING' || rawStatus == 'CANCEL_REQUESTED') &&
+                    !['REJECTED', 'CANCELED', 'REFUNDED', 'COMPLETED']
+                        .contains(rawStatus);
 
                 Widget paymentCard() {
                   return Container(
@@ -294,8 +371,7 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                         ),
                         SizedBox(height: spacing.sm),
                         _kv(tokens, colors, l10n.adminOrderTotal, money(total)),
-                        _kv(tokens, colors, l10n.adminPaid,
-                            money(o.payment.paidAmount)),
+                        _kv(tokens, colors, l10n.adminPaid, money(o.payment.paidAmount)),
                         if (!o.fullyPaid)
                           _kv(tokens, colors, l10n.adminRemaining,
                               money(o.payment.remainingAmount)),
@@ -319,9 +395,7 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                                           );
                                           if (!ok) return;
 
-                                          context
-                                              .read<AdminOrderDetailsBloc>()
-                                              .add(
+                                          context.read<AdminOrderDetailsBloc>().add(
                                                 AdminOrderPaymentStateUpdateRequested(
                                                   orderId: o.id,
                                                   paymentState: 'PAID',
@@ -342,8 +416,7 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                                   icon: const Icon(Icons.check_circle_outline),
                                   label: Text(
                                     l10n.adminMarkCashPaidButton,
-                                    style:
-                                        tokens.typography.bodyMedium.copyWith(
+                                    style: tokens.typography.bodyMedium.copyWith(
                                       fontWeight: FontWeight.w900,
                                     ),
                                   ),
@@ -354,8 +427,7 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                                 const SizedBox(
                                   width: 18,
                                   height: 18,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(strokeWidth: 2),
                                 ),
                               ],
                             ],
@@ -379,7 +451,6 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Title
                         Text(
                           l10n.adminOrderInfo,
                           style: tokens.typography.titleMedium.copyWith(
@@ -387,10 +458,9 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-
                         SizedBox(height: spacing.sm),
 
-                        // 🔹 Read-only status with pill style
+                        // Status pill
                         Row(
                           children: [
                             Text(
@@ -413,7 +483,7 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                                 ),
                               ),
                               child: Text(
-                                o.statusUi, // already pretty / localized from backend
+                                o.statusUi,
                                 style: tokens.typography.bodySmall.copyWith(
                                   color: colors.primary,
                                   fontWeight: FontWeight.w800,
@@ -423,7 +493,63 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                           ],
                         ),
 
-                        // 👉 If you want more info later (date, id, etc.), add here with more SizedBox + Text
+                        // ✅ NEW: Reject button (safe: only for not-paid early statuses)
+                        if (canReject) ...[
+                          SizedBox(height: spacing.md),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: state.updating
+                                      ? null
+                                      : () async {
+                                          final ok = await _confirmRejectOrder(
+                                            context: context,
+                                            l10n: l10n,
+                                            tokens: tokens,
+                                            colors: colors,
+                                            spacing: spacing,
+                                          );
+                                          if (!ok) return;
+
+                                          context.read<AdminOrderDetailsBloc>().add(
+                                                AdminOrderStatusUpdateRequested(
+                                                  orderId: o.id,
+                                                  status: 'REJECTED',
+                                                ),
+                                              );
+                                        },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: colors.danger,
+                                    foregroundColor: colors.onPrimary,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: spacing.md,
+                                      vertical: spacing.sm,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.block),
+                                  label: Text(
+                                    l10n.adminRejectOrderButton, // ✅ NEW KEY
+                                    style: tokens.typography.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              if (state.updating) ...[
+                                SizedBox(width: spacing.sm),
+                                const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   );
@@ -447,8 +573,7 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                     decoration: BoxDecoration(
                       color: colors.surface,
                       borderRadius: BorderRadius.circular(tokens.card.radius),
-                      border:
-                          Border.all(color: colors.border.withOpacity(0.22)),
+                      border: Border.all(color: colors.border.withOpacity(0.22)),
                     ),
                     child: Row(
                       children: [
@@ -458,8 +583,7 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                             width: 56,
                             height: 56,
                             child: (it.item.imageUrl == null)
-                                ? Container(
-                                    color: colors.border.withOpacity(0.2))
+                                ? Container(color: colors.border.withOpacity(0.2))
                                 : Image.network(
                                     it.item.imageUrl!,
                                     fit: BoxFit.cover,
@@ -494,8 +618,7 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Text(
-                                l10n.adminQtyPriceLine(
-                                    it.quantity, money(it.price)),
+                                l10n.adminQtyPriceLine(it.quantity, money(it.price)),
                                 style: tokens.typography.bodySmall
                                     .copyWith(color: colors.muted),
                                 maxLines: 1,
@@ -536,8 +659,7 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
 
                       const cardHeight = 92.0;
                       final cardWidth =
-                          (w - (crossAxisCount - 1) * spacing.sm) /
-                              crossAxisCount;
+                          (w - (crossAxisCount - 1) * spacing.sm) / crossAxisCount;
                       final aspect = cardWidth / cardHeight;
 
                       return GridView.builder(
