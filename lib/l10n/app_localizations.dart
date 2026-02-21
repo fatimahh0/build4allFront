@@ -4870,7 +4870,7 @@ abstract class AppLocalizations {
   /// No description provided for @errPasswordLen6to8.
   ///
   /// In en, this message translates to:
-  /// **'Password must be at least 8 characters'**
+  /// **'Password must be at least 6 characters'**
   String get errPasswordLen6to8;
 
   /// No description provided for @errPasswordNeedSpecial.
@@ -4882,7 +4882,7 @@ abstract class AppLocalizations {
   /// No description provided for @hintPasswordRuleOwner.
   ///
   /// In en, this message translates to:
-  /// **'Password: 8 chars + at least 1 special character.'**
+  /// **'Password must be at least 6 characters'**
   String get hintPasswordRuleOwner;
 
   /// No description provided for @msgProductDeleted.

@@ -41,28 +41,19 @@ class _UserRegisterScreenState extends State<UserRegisterScreen> {
     super.dispose();
   }
 
-  bool _hasSpecialChar(String s) {
-    return RegExp(r'[!@#$%^&*()_\+\-=\{\}\[\]:;"\|\\<>,\.\?\/]')
-        .hasMatch(s);
+
+String? _passwordValidator(String? value, AppLocalizations l10n) {
+  final v = (value ?? '').trim();
+
+  if (v.isEmpty) return l10n.fieldRequired;
+
+  // ✅ ONLY RULE: at least 6 characters
+  if (v.length < 6) {
+    return l10n.hintPasswordRuleOwner; // NEW KEY
   }
 
-  String? _passwordValidator(String? value, AppLocalizations l10n) {
-    final v = (value ?? '').trim();
-
-    if (v.isEmpty) return l10n.fieldRequired;
-
-    // ✅ length 6..8
-    if (v.length < 8) {
-      return l10n.errPasswordLen6to8; // NEW KEY
-    }
-
-    // ✅ must include special character
-    if (!_hasSpecialChar(v)) {
-      return l10n.errPasswordNeedSpecial; // NEW KEY
-    }
-
-    return null;
-  }
+  return null;
+}
 
   void _onContinuePressed(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;

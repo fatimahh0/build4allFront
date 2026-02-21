@@ -2476,13 +2476,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get networkErrorLabel => 'خطأ بالشبكة. جرّب مرة ثانية.';
 
   @override
-  String get errPasswordLen6to8 => 'كلمة المرور يجب أن تكون 8 أحرف.';
+  String get errPasswordLen6to8 => 'كلمة المرور يجب أن تكون 6 أحرف على الأقل.';
 
   @override
   String get errPasswordNeedSpecial => 'كلمة المرور يجب أن تحتوي على حرف خاص واحد على الأقل (مثل !@#).';
 
   @override
-  String get hintPasswordRuleOwner => 'كلمة المرور: 8 أحرف + حرف خاص واحد على الأقل.';
+  String get hintPasswordRuleOwner => 'كلمة المرور: 6 أحرف على الأقل.';
 
   @override
   String get msgProductDeleted => 'تم حذف المنتج بنجاح.';
