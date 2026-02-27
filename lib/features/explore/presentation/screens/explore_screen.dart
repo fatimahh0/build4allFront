@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:build4front/core/network/globals.dart' as authState;
+import 'package:build4front/features/ai_feature/ai_feature_bootstrap.dart';
 import 'package:build4front/features/itemsDetails/presentation/screens/item_details_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -80,6 +81,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
       final token = raw.isEmpty ? null : raw;
 
       homeBloc.add(HomeStarted(token: token));
+       WidgetsBinding.instance.addPostFrameCallback((_) async {
+    await AiFeatureBootstrap().refresh(minInterval: Duration.zero);
+  });
     }
   }
 
@@ -218,6 +222,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 context
                     .read<HomeBloc>()
                     .add(HomeRefreshRequested(token: token));
+
+                await AiFeatureBootstrap().refresh(minInterval: Duration.zero);    
 
                 setState(() => _resetToFirstPage());
               },

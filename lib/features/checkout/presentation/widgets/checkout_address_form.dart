@@ -15,6 +15,30 @@ import 'package:build4front/features/catalog/data/services/catalog_api_service.d
 import 'package:build4front/features/auth/data/services/auth_token_store.dart';
 import 'package:build4front/features/checkout/domain/entities/checkout_entities.dart';
 
+/// ✅ Controller so CheckoutScreen can:
+/// - force-flush latest form values into bloc before submit
+/// - get the real first error message (instead of generic "required")
+class CheckoutAddressFormController {
+  VoidCallback? _flush;
+  String? Function(AppLocalizations l10n)? _firstError;
+
+  void _bind({
+    required VoidCallback flush,
+    required String? Function(AppLocalizations l10n) firstError,
+  }) {
+    _flush = flush;
+    _firstError = firstError;
+  }
+
+  void _unbind() {
+    _flush = null;
+    _firstError = null;
+  }
+
+  void flush() => _flush?.call();
+  String? firstError(AppLocalizations l10n) => _firstError?.call(l10n);
+}
+
 class CheckoutAddressForm extends StatefulWidget {
   final GlobalKey<FormState> formKey;
   final bool showPickerErrors;
@@ -22,12 +46,16 @@ class CheckoutAddressForm extends StatefulWidget {
   final ShippingAddress initial;
   final ValueChanged<ShippingAddress> onApply;
 
+  // ✅ NEW
+  final CheckoutAddressFormController? controller;
+
   const CheckoutAddressForm({
     super.key,
     required this.formKey,
     required this.showPickerErrors,
     required this.initial,
     required this.onApply,
+    this.controller,
   });
 
   @override
@@ -59,7 +87,7 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
   late final FocusNode _phoneFocus;
 
   // ✅ Phone state
-  String _phoneInitialValue = ''; // original raw stored value
+  String _phoneInitialValue = '';
   String _phoneDisplayValue = ''; // local digits shown in IntlPhoneField
   String? _fullPhone; // full international e.g. +96170123456
   String _phoneLocalDigits = ''; // local digits only (e.g. 70123456)
@@ -104,6 +132,12 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
     _postalCtrl.addListener(_debouncedNotify);
     _addressCtrl.addListener(_debouncedNotify);
 
+    // ✅ bind controller (CheckoutScreen will call flush / firstError)
+    widget.controller?._bind(
+      flush: _notifyParent,
+      firstError: _firstValidationError,
+    );
+
     _bootstrapCatalog(
       initialCountryId: widget.initial.countryId,
       initialRegionId: widget.initial.regionId,
@@ -111,8 +145,40 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
   }
 
   @override
+  void didUpdateWidget(covariant CheckoutAddressForm oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // ✅ rebind if controller changed
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller?._unbind();
+      widget.controller?._bind(
+        flush: _notifyParent,
+        firstError: _firstValidationError,
+      );
+    }
+
+    // ✅ Ignore parent "echo" rebuilds if incoming == current local form data
+    final incomingSig = _signatureOf(widget.initial);
+    final localSig = _signatureOf(_buildAddress());
+    if (incomingSig == localSig) return;
+
+    // ✅ Ignore if parent didn't actually change anything meaningful
+    final oldSig = _signatureOf(oldWidget.initial);
+    if (incomingSig == oldSig) return;
+
+    // ✅ Apply only true external updates (screen reload / backend prefill / etc.)
+    _prefillAppliedOnce = false;
+
+    if (!_loadingCatalog && _countries.isNotEmpty) {
+      _applyInitialToUi(widget.initial);
+    }
+  }
+
+  @override
   void dispose() {
     _debounce?.cancel();
+
+    widget.controller?._unbind();
 
     _cityCtrl.dispose();
     _postalCtrl.dispose();
@@ -240,27 +306,6 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
     if (mounted) setState(() {});
   }
 
-  @override
-  void didUpdateWidget(covariant CheckoutAddressForm oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    // ✅ Ignore parent "echo" rebuilds if incoming == current local form data
-    final incomingSig = _signatureOf(widget.initial);
-    final localSig = _signatureOf(_buildAddress());
-    if (incomingSig == localSig) return;
-
-    // ✅ Ignore if parent didn't actually change anything meaningful
-    final oldSig = _signatureOf(oldWidget.initial);
-    if (incomingSig == oldSig) return;
-
-    // ✅ Apply only true external updates (screen reload / backend prefill / etc.)
-    _prefillAppliedOnce = false;
-
-    if (!_loadingCatalog && _countries.isNotEmpty) {
-      _applyInitialToUi(widget.initial);
-    }
-  }
-
   Future<void> _bootstrapCatalog({
     int? initialCountryId,
     int? initialRegionId,
@@ -332,6 +377,52 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
     final c = _selectedCountry;
     if (c == null) return [];
     return _allRegions.where((r) => r.countryId == c.id).toList();
+  }
+
+  bool _isValidPhone({
+    required String iso,
+    required String localDigits,
+  }) {
+    final d = localDigits.replaceAll(RegExp(r'\D'), '');
+    if (d.isEmpty) return false;
+
+    final upper = iso.toUpperCase();
+
+    // ✅ Lebanon: strict 8 digits (your current expected behavior)
+    if (upper == 'LB') {
+      return d.length == 8;
+    }
+
+    // ✅ Other countries: basic sanity
+    return d.length >= 6 && d.length <= 15;
+  }
+
+  /// ✅ FIRST error message for better toast
+  String? _firstValidationError(AppLocalizations l10n) {
+    if (_selectedCountry == null) {
+      return '${l10n.adminTaxCountryLabel}: ${l10n.fieldRequired}';
+    }
+    if (_selectedRegion == null) {
+      return '${l10n.adminTaxRegionLabel}: ${l10n.fieldRequired}';
+    }
+    if (_addressCtrl.text.trim().isEmpty) {
+      return '${l10n.checkoutAddressLineLabel}: ${l10n.fieldRequired}';
+    }
+    if (_cityCtrl.text.trim().isEmpty) {
+      return '${l10n.checkoutCityLabel}: ${l10n.fieldRequired}';
+    }
+
+    final iso = (_selectedCountry?.iso2Code ?? 'LB').toUpperCase();
+    final localDigits = _phoneLocalDigits.replaceAll(RegExp(r'\D'), '');
+
+    if (localDigits.isEmpty) {
+      return '${l10n.checkoutPhoneLabel}: ${l10n.fieldRequired}';
+    }
+    if (!_isValidPhone(iso: iso, localDigits: localDigits)) {
+      return '${l10n.checkoutPhoneLabel}: ${l10n.invalidPhone}';
+    }
+
+    return null;
   }
 
   InputDecoration _decor({
@@ -412,7 +503,6 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
 
     final countryIso = (_selectedCountry?.iso2Code ?? 'LB').toUpperCase();
 
-    // ✅ FIX: No validation while scrolling / unfocusing unless Place Order pressed
     final autoMode = widget.showPickerErrors
         ? AutovalidateMode.onUserInteraction
         : AutovalidateMode.disabled;
@@ -438,7 +528,6 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
               _notifyParent();
             },
           ),
-
           if (widget.showPickerErrors && _selectedCountry == null) ...[
             SizedBox(height: spacing.xs),
             Text(
@@ -461,7 +550,6 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
               _notifyParent();
             },
           ),
-
           if (widget.showPickerErrors && _selectedRegion == null) ...[
             SizedBox(height: spacing.xs),
             Text(
@@ -472,7 +560,7 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
 
           SizedBox(height: spacing.md),
 
-          // ✅ Full name (optional)
+          // Full name (optional)
           TextFormField(
             controller: _nameCtrl,
             focusNode: _nameFocus,
@@ -499,7 +587,7 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
 
           SizedBox(height: spacing.sm),
 
-          // ✅ Address line (required)
+          // Address line (required)
           TextFormField(
             controller: _addressCtrl,
             textInputAction: TextInputAction.next,
@@ -521,7 +609,7 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
 
           SizedBox(height: spacing.sm),
 
-          // ✅ City (required)
+          // City (required)
           TextFormField(
             controller: _cityCtrl,
             textInputAction: TextInputAction.next,
@@ -543,7 +631,7 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
 
           SizedBox(height: spacing.sm),
 
-          // ✅ Postal Code (optional)
+          // Postal Code (optional)
           TextFormField(
             controller: _postalCtrl,
             textInputAction: TextInputAction.next,
@@ -562,9 +650,9 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
 
           SizedBox(height: spacing.sm),
 
-          // ✅ PHONE (no parent sync on every digit)
+          // ✅ PHONE (strict validation)
           IntlPhoneField(
-            key: ValueKey(countryIso), // remount only when country changes
+            key: ValueKey(countryIso),
             focusNode: _phoneFocus,
             initialCountryCode: countryIso,
             initialValue: _phoneDisplayValue, // local digits only
@@ -582,28 +670,26 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
               final localDigits = phone.number.replaceAll(RegExp(r'\D'), '');
               _phoneLocalDigits = localDigits;
               _fullPhone = _emptyToNull(phone.completeNumber);
-              // ✅ DO NOT notify parent here (sync happens on blur)
+              // ✅ do NOT notify on every digit (we flush on submit / blur)
             },
             onCountryChanged: (_) {
               _debouncedNotify();
             },
             validator: (phone) {
-              final rawLocal =
-                  (phone?.number ?? '').replaceAll(RegExp(r'\D'), '');
+              final iso = (_selectedCountry?.iso2Code ?? countryIso).toUpperCase();
               final localDigits =
-                  rawLocal.isNotEmpty ? rawLocal : _phoneLocalDigits;
+                  (phone?.number ?? '').replaceAll(RegExp(r'\D'), '');
 
-              if (localDigits.isEmpty) return l10n.fieldRequired;
+              // keep latest values
+              if (phone?.completeNumber != null) {
+                _fullPhone = _emptyToNull(phone!.completeNumber);
+              }
+              _phoneLocalDigits = localDigits.isNotEmpty ? localDigits : _phoneLocalDigits;
 
-              if (!widget.showPickerErrors) return null;
+              if (_phoneLocalDigits.trim().isEmpty) return l10n.fieldRequired;
 
-              final selectedIso =
-                  (_selectedCountry?.iso2Code ?? countryIso).toUpperCase();
-
-              if (selectedIso == 'LB') {
-                if (localDigits.length != 8) return l10n.invalidPhone;
-              } else {
-                if (localDigits.length < 6) return l10n.invalidPhone;
+              if (!_isValidPhone(iso: iso, localDigits: _phoneLocalDigits)) {
+                return l10n.invalidPhone; // ✅ real phone validation message
               }
 
               return null;
@@ -612,7 +698,7 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
 
           SizedBox(height: spacing.sm),
 
-          // ✅ Notes (optional)
+          // Notes (optional)
           TextFormField(
             controller: _notesCtrl,
             focusNode: _notesFocus,

@@ -44,6 +44,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _started = false;
 
   final _addressFormKey = GlobalKey<FormState>();
+  final _addressFormController = CheckoutAddressFormController(); // ✅ NEW
   bool _showAddressPickerErrors = false;
 
   Future<bool> _confirmCartWillBeCleared(int itemCount) async {
@@ -71,31 +72,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
 
     return res == true;
-  }
-
-  // NOTE:
-  // Phone format is validated in CheckoutAddressForm (IntlPhoneField validator).
-  // Here we only guard "presence" + picker selections.
-  String? _addressError(AppLocalizations l10n, ShippingAddress a) {
-    if (a.countryId == null) {
-      return '${l10n.adminTaxCountryLabel}: ${l10n.fieldRequired}';
-    }
-    if (a.regionId == null) {
-      return '${l10n.adminTaxRegionLabel}: ${l10n.fieldRequired}';
-    }
-    if ((a.addressLine ?? '').trim().isEmpty) {
-      return '${l10n.checkoutAddressLineLabel}: ${l10n.fieldRequired}';
-    }
-    if ((a.city ?? '').trim().isEmpty) {
-      return '${l10n.checkoutCityLabel}: ${l10n.fieldRequired}';
-    }
-
-    final ph = (a.phone ?? '').trim();
-    if (ph.isEmpty) {
-      return '${l10n.checkoutPhoneLabel}: ${l10n.fieldRequired}';
-    }
-
-    return null;
   }
 
   @override
@@ -223,6 +199,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       title: l10n.checkoutAddressTitle,
                       child: CheckoutAddressForm(
                         formKey: _addressFormKey,
+                        controller: _addressFormController, // ✅ NEW
                         showPickerErrors: _showAddressPickerErrors,
                         initial: state.address,
                         onApply: (addr) {
@@ -305,42 +282,40 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 isPlacing: state.placing,
                 onPlaceOrder: () async {
                   FocusScope.of(context).unfocus();
-
                   if (!mounted) return;
+
                   final bloc = context.read<CheckoutBloc>();
-                  final current = bloc.state;
+                  if (bloc.state.placing) return;
 
-                  if (current.placing) return;
-
-                  // ✅ Turn on inline picker errors BEFORE validating
+                  // ✅ show inline picker errors before validating
                   if (!_showAddressPickerErrors) {
                     setState(() => _showAddressPickerErrors = true);
                   }
 
-                  // ✅ Let blur/debounce callbacks flush (address/city/phone sync to bloc)
-                  await Future<void>.delayed(const Duration(milliseconds: 380));
+                  // ✅ FORCE: push latest form state into bloc (even if still focused)
+                  _addressFormController.flush();
+
+                  // small tick for state/event to land
+                  await Future<void>.delayed(const Duration(milliseconds: 25));
                   if (!mounted) return;
 
-                  // ✅ Validate form fields
+                  // ✅ validate form
                   final formState = _addressFormKey.currentState;
                   final formOk = formState?.validate() ?? false;
                   formState?.save();
 
-                  // Let CheckoutAddressChanged event process
-                  await Future<void>.delayed(const Duration(milliseconds: 10));
-                  if (!mounted) return;
-
-                  final s = bloc.state;
-                  final addrErr = _addressError(l10n, s.address);
-
-                  if (!formOk || addrErr != null) {
+                  // ✅ show the REAL first error message (phone/city/address/region…)
+                  final firstErr = _addressFormController.firstError(l10n);
+                  if (!formOk || firstErr != null) {
                     AppToast.show(
                       context,
-                      addrErr ?? l10n.fieldRequired,
+                      firstErr ?? l10n.fieldRequired,
                       isError: true,
                     );
                     return;
                   }
+
+                  final s = bloc.state;
 
                   // ✅ Payment validation
                   if (s.selectedPaymentIndex == null) {
@@ -368,9 +343,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   final ok = await _confirmCartWillBeCleared(itemCount);
                   if (!ok || !mounted) return;
 
-                  final latest = bloc.state;
-                  if (latest.placing) return;
-
+                  if (bloc.state.placing) return;
                   bloc.add(const CheckoutPlaceOrderPressed());
                 },
               ),

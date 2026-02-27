@@ -37,6 +37,7 @@ import 'package:build4front/core/exceptions/exception_mapper.dart';
 // ✅ Profile (clean arch)
 import 'package:build4front/features/admin/profile/domain/usecases/get_my_admin_profile.dart';
 import 'package:build4front/features/admin/profile/presentation/cubit/admin_profile_cubit.dart';
+import 'package:http/http.dart' as http;
 
 String _planCodeToString(dynamic v) {
   if (v == null) return '';
@@ -165,11 +166,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
-  Future<void> _logout() async {
-    await _store.clear();
-    if (!mounted) return;
-    Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+ Future<void> _logout() async {
+  final token = (await _store.getToken())?.trim() ?? '';
+  if (token.isNotEmpty) {
+    final auth = token.toLowerCase().startsWith('bearer ')
+        ? token
+        : 'Bearer $token';
+
+    final uri = Uri.parse('${Env.apiBaseUrl}/api/auth/logout');
+    try {
+      await http.post(uri, headers: {'Authorization': auth, 'Accept': 'application/json'});
+    } catch (_) {}
   }
+
+  await _store.clear();
+  if (!mounted) return;
+  Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+}
 
   Future<void> _openProfilePopup() async {
     if (_profileCubit.state is! AdminProfileLoaded) {

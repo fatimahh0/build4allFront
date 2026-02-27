@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:build4front/features/ai_feature/ai_feature_bootstrap.dart';
 import 'package:build4front/features/support/data/services/support_api_service.dart';
 import 'package:build4front/features/support/domain/support_info.dart';
 import 'package:flutter/material.dart';
@@ -272,17 +273,17 @@ class _HomeScreenState extends State<HomeScreen>
     return set;
   }
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // ✅ Ensure home data loads even if tab is cached / opened later
-      _ensureHomeDataLoaded();
+ @override
+void initState() {
+  super.initState();
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    _ensureHomeDataLoaded();
+    _loadSupportInfo(silent: true, reason: 'init');
 
-      // Existing support info load
-      _loadSupportInfo(silent: true, reason: 'init');
-    });
-  }
+    //  refresh AI flag once
+    await AiFeatureBootstrap().refresh(minInterval: Duration.zero);
+  });
+}
 
   @override
   void dispose() {
@@ -396,10 +397,13 @@ class _HomeScreenState extends State<HomeScreen>
                     final raw = (authState.token ?? '').trim();
                     final token = raw.isEmpty ? null : raw;
 
+
                     context
                         .read<HomeBloc>()
                         .add(HomeRefreshRequested(token: token));
 
+
+await AiFeatureBootstrap().refresh(minInterval: Duration.zero);
                     await _loadSupportInfo(
                       silent: false,
                       reason: 'pull-to-refresh',

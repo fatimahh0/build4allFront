@@ -190,6 +190,30 @@ return (id as num).toInt();
     }
   }
 
+
+
+Future<void> logoutRemote() async {
+  final saved = (await _tokenStore.getToken())?.trim() ?? '';
+  if (saved.isEmpty) return;
+
+  final auth = saved.toLowerCase().startsWith('bearer ')
+      ? saved
+      : 'Bearer $saved';
+
+  final uri = _uri('/api/auth/logout');
+
+  try {
+    await _safePost(
+      uri,
+      headers: {
+        'Authorization': auth,
+        'Accept': 'application/json',
+      },
+    );
+  } catch (_) {
+    // ignore network errors
+  }
+}
   // ======================= COMPLETE USER PROFILE ========================
 
   Future<UserModel> completeUserProfile({

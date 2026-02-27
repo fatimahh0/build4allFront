@@ -398,16 +398,16 @@ class _ProfileTabShell extends StatelessWidget {
   const _ProfileTabShell({required this.appConfig});
 
   Future<void> _handleLogout(BuildContext context) async {
-    final authRepo = context.read<AuthRepositoryImpl>();
+  final authRepo = context.read<AuthRepositoryImpl>();
 
-    await authRepo.api.clearAuth();
-    debugPrint('🔓 Auth cleared: token removed from storage and globals');
+  await authRepo.api.logoutRemote(); //  kills token server-side
+  await authRepo.api.clearAuth();    //  clears local token
 
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => UserLoginScreen(appConfig: appConfig)),
-      (route) => false,
-    );
-  }
+  Navigator.of(context).pushAndRemoveUntil(
+    MaterialPageRoute(builder: (_) => UserLoginScreen(appConfig: appConfig)),
+    (route) => false,
+  );
+}
 
   @override
   Widget build(BuildContext context) {
