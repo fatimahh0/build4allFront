@@ -1,5 +1,7 @@
 // lib/features/admin/product/presentation/screens/admin_dashboard_screen.dart
 
+import 'dart:convert';
+
 import 'package:build4front/features/admin/licensing/data/models/owner_app_access_response.dart';
 import 'package:build4front/features/admin/licensing/data/services/licensing_api_service.dart';
 
@@ -167,21 +169,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
  Future<void> _logout() async {
-  final token = (await _store.getToken())?.trim() ?? '';
-  if (token.isNotEmpty) {
-    final auth = token.toLowerCase().startsWith('bearer ')
-        ? token
-        : 'Bearer $token';
+ final token = (await _store.getToken())?.trim() ?? '';
+final refresh = (await _store.getRefreshToken())?.trim() ?? '';
 
-    final uri = Uri.parse('${Env.apiBaseUrl}/api/auth/logout');
-    try {
-      await http.post(uri, headers: {'Authorization': auth, 'Accept': 'application/json'});
-    } catch (_) {}
-  }
+if (token.isNotEmpty) {
+  final auth = token.toLowerCase().startsWith('bearer ') ? token : 'Bearer $token';
+  final uri = Uri.parse('${Env.apiBaseUrl}/api/auth/logout');
 
-  await _store.clear();
-  if (!mounted) return;
-  Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+  await http.post(
+    uri,
+    headers: {
+      'Authorization': auth,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode({'refreshToken': refresh}),
+  );
+}
+
+await _store.clear();
+Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
 }
 
   Future<void> _openProfilePopup() async {

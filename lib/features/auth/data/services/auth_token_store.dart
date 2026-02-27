@@ -13,14 +13,28 @@ class AuthTokenStore {
 
   // ✅ NEW
   static const _keyUserId = 'auth_user_id';
+ // + add
+static const _keyRefreshToken = 'auth_refresh_token';
 
-  Future<void> saveToken({
-    required String token,
-    bool wasInactive = false,
-  }) async {
-    await _storage.write(key: _keyToken, value: token);
-    await _storage.write(key: _keyWasInactive, value: wasInactive.toString());
+Future<void> saveToken({
+  required String token,
+  bool wasInactive = false,
+  String? refreshToken, // ✅ NEW
+}) async {
+  await _storage.write(key: _keyToken, value: token);
+  await _storage.write(key: _keyWasInactive, value: wasInactive.toString());
+
+  if (refreshToken != null) {
+    final v = refreshToken.trim();
+    if (v.isEmpty) {
+      await _storage.delete(key: _keyRefreshToken);
+    } else {
+      await _storage.write(key: _keyRefreshToken, value: v);
+    }
   }
+}
+
+
 
   Future<String?> getToken() => _storage.read(key: _keyToken);
 
@@ -52,10 +66,13 @@ class AuthTokenStore {
     return v.toLowerCase() == 'true';
   }
 
-  Future<void> clear() async {
-    await _storage.delete(key: _keyToken);
-    await _storage.delete(key: _keyWasInactive);
-    await _storage.delete(key: _keyUserJson);
-    await _storage.delete(key: _keyUserId); 
-  }
+Future<String?> getRefreshToken() => _storage.read(key: _keyRefreshToken);
+
+Future<void> clear() async {
+  await _storage.delete(key: _keyToken);
+  await _storage.delete(key: _keyWasInactive);
+  await _storage.delete(key: _keyUserJson);
+  await _storage.delete(key: _keyUserId);
+  await _storage.delete(key: _keyRefreshToken); // ✅ NEW
+}
 }

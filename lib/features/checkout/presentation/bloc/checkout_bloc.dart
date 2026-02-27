@@ -61,6 +61,13 @@ List<CartLine> _linesFromCart(CheckoutCart cart) {
   }
 
 
+bool _addressReadyForQuotes(ShippingAddress a) {
+  return a.countryId != null &&
+      a.regionId != null &&
+      (a.city ?? '').trim().isNotEmpty &&
+      (a.addressLine ?? '').trim().isNotEmpty;
+}
+
   String? _stripeAccountIdFromPaymentMethod(PaymentMethod pm) {
     final cfg = pm.configMap;
     if (cfg == null) return null;
@@ -164,24 +171,33 @@ List<CartLine> _linesFromCart(CheckoutCart cart) {
     }
   }
 
-  Future<void> _onAddressChanged(
-    CheckoutAddressChanged e,
-    Emitter<CheckoutState> emit,
-  ) async {
-    emit(state.copyWith(address: e.address, clearError: true));
+ Future<void> _onAddressChanged(
+  CheckoutAddressChanged e,
+  Emitter<CheckoutState> emit,
+) async {
+  emit(state.copyWith(address: e.address, clearError: true));
 
-    final cart = state.cart;
-    if (cart == null || cart.isEmpty) return;
+  final cart = state.cart;
+  if (cart == null || cart.isEmpty) return;
 
-    try {
-      await _loadQuotesAndTax(
-        cart,
-        preferMethodId: state.selectedShippingMethodId,
-      );
-    } catch (err) {
-      emit(state.copyWith(error: err.toString()));
-    }
+  //  don't spam backend while user is still filling fields
+  if (!_addressReadyForQuotes(e.address)) {
+    emit(state.copyWith(
+      shippingQuotes: const [],
+      selectedShippingMethodId: null,
+      selectedQuote: null,
+      tax: null,
+      clearError: true,
+    ));
+    return;
   }
+
+  try {
+    await _loadQuotesAndTax(cart, preferMethodId: state.selectedShippingMethodId);
+  } catch (err) {
+    emit(state.copyWith(error: err.toString()));
+  }
+}
 
   Future<void> _onShippingSelected(
     CheckoutShippingSelected e,

@@ -104,7 +104,11 @@ class DualLoginOrchestrator {
       adminData = adminRes.admin;
 
       // Save admin token in dedicated store (NOT user token store)
-      await adminStore.save(token: adminToken!, role: adminRole!);
+      await adminStore.save(
+  token: adminToken!,
+  role: adminRole!,
+  refreshToken: adminRes.refreshToken, 
+);
     } catch (e) {
       adminErr = e is AppException ? e : AppException(e.toString());
     }

@@ -1,8 +1,8 @@
-import 'package:build4front/core/config/app_config.dart';
 import 'package:build4front/features/checkout/presentation/screens/order_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:build4front/core/config/app_config.dart';
 import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/l10n/app_localizations.dart';
 import 'package:build4front/common/widgets/app_toast.dart';
@@ -10,8 +10,6 @@ import 'package:build4front/common/widgets/primary_button.dart';
 
 import 'package:build4front/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:build4front/features/cart/presentation/bloc/cart_event.dart';
-
-import 'package:build4front/features/checkout/domain/entities/checkout_entities.dart';
 
 import '../bloc/checkout_bloc.dart';
 import '../bloc/checkout_event.dart';
@@ -44,8 +42,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _started = false;
 
   final _addressFormKey = GlobalKey<FormState>();
-  final _addressFormController = CheckoutAddressFormController(); // ✅ NEW
+  final _addressFormController = CheckoutAddressFormController();
   bool _showAddressPickerErrors = false;
+
+  // ✅ NEW: keys to scroll to problematic sections
+  final _itemsSectionKey = GlobalKey();
+  final _addressSectionKey = GlobalKey();
+  final _shippingSectionKey = GlobalKey();
+  final _paymentSectionKey = GlobalKey();
+
+  Future<void> _scrollTo(GlobalKey key) async {
+    final ctx = key.currentContext;
+    if (ctx == null) return;
+    await Scrollable.ensureVisible(
+      ctx,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOut,
+      alignment: 0.08,
+    );
+  }
 
   Future<bool> _confirmCartWillBeCleared(int itemCount) async {
     final l10n = AppLocalizations.of(context)!;
@@ -179,78 +194,93 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
               return RefreshIndicator(
                 onRefresh: () async {
-                  context.read<CheckoutBloc>().add(
-                        const CheckoutRefreshRequested(),
-                      );
+                  context.read<CheckoutBloc>().add(const CheckoutRefreshRequested());
                 },
                 child: ListView(
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  key: const PageStorageKey('checkout_list'),
+                  cacheExtent: MediaQuery.of(context).size.height * 3,
+                  addAutomaticKeepAlives: true,
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: EdgeInsets.all(spacing.md),
                   children: [
-                    CheckoutSectionCard(
-                      title: l10n.checkoutItemsTitle,
-                      child: CheckoutItemsPreview(cart: cart),
-                    ),
-                    SizedBox(height: spacing.md),
-
-                    CheckoutSectionCard(
-                      title: l10n.checkoutAddressTitle,
-                      child: CheckoutAddressForm(
-                        formKey: _addressFormKey,
-                        controller: _addressFormController, // ✅ NEW
-                        showPickerErrors: _showAddressPickerErrors,
-                        initial: state.address,
-                        onApply: (addr) {
-                          context.read<CheckoutBloc>().add(
-                                CheckoutAddressChanged(addr),
-                              );
-                        },
+                    // ✅ Items
+                    KeyedSubtree(
+                      key: _itemsSectionKey,
+                      child: CheckoutSectionCard(
+                        title: l10n.checkoutItemsTitle,
+                        child: CheckoutItemsPreview(cart: cart),
                       ),
                     ),
                     SizedBox(height: spacing.md),
 
+                    // ✅ Address
+                    KeyedSubtree(
+                      key: _addressSectionKey,
+                      child: CheckoutSectionCard(
+                        title: l10n.checkoutAddressTitle,
+                        child: CheckoutAddressForm(
+                          key: const PageStorageKey('checkout_address_form'),
+                          formKey: _addressFormKey,
+                          controller: _addressFormController,
+                          showPickerErrors: _showAddressPickerErrors,
+                          initial: state.address,
+                          onApply: (addr) {
+                            context.read<CheckoutBloc>().add(CheckoutAddressChanged(addr));
+                          },
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: spacing.md),
+
+                    // ✅ Coupon
                     CheckoutSectionCard(
                       title: l10n.checkoutCouponTitle,
                       child: CheckoutCouponField(
                         initial: state.coupon,
                         onChanged: (v) {
-                          context.read<CheckoutBloc>().add(
-                                CheckoutCouponChanged(v),
-                              );
+                          context.read<CheckoutBloc>().add(CheckoutCouponChanged(v));
                         },
                       ),
                     ),
                     SizedBox(height: spacing.md),
 
-                    CheckoutSectionCard(
-                      title: l10n.checkoutShippingTitle,
-                      child: CheckoutShippingMethods(
-                        quotes: state.shippingQuotes,
-                        selectedMethodId: state.selectedShippingMethodId,
-                        onSelect: (id) => context.read<CheckoutBloc>().add(
-                              CheckoutShippingSelected(id),
-                            ),
-                        onRefresh: () => context.read<CheckoutBloc>().add(
-                              const CheckoutRefreshRequested(),
-                            ),
+                    // ✅ Shipping
+                    KeyedSubtree(
+                      key: _shippingSectionKey,
+                      child: CheckoutSectionCard(
+                        title: l10n.checkoutShippingTitle,
+                        child: CheckoutShippingMethods(
+                          quotes: state.shippingQuotes,
+                          selectedMethodId: state.selectedShippingMethodId,
+                          onSelect: (id) => context.read<CheckoutBloc>().add(
+                                CheckoutShippingSelected(id),
+                              ),
+                          onRefresh: () => context.read<CheckoutBloc>().add(
+                                const CheckoutRefreshRequested(),
+                              ),
+                        ),
                       ),
                     ),
                     SizedBox(height: spacing.md),
 
-                    CheckoutSectionCard(
-                      title: l10n.checkoutPaymentTitle,
-                      child: CheckoutPaymentMethods(
-                        methods: state.paymentMethods,
-                        selectedIndex: state.selectedPaymentIndex,
-                        onSelectIndex: (i) => context.read<CheckoutBloc>().add(
-                              CheckoutPaymentSelected(i),
-                            ),
+                    // ✅ Payment
+                    KeyedSubtree(
+                      key: _paymentSectionKey,
+                      child: CheckoutSectionCard(
+                        title: l10n.checkoutPaymentTitle,
+                        child: CheckoutPaymentMethods(
+                          methods: state.paymentMethods,
+                          selectedIndex: state.selectedPaymentIndex,
+                          onSelectIndex: (i) => context.read<CheckoutBloc>().add(
+                                CheckoutPaymentSelected(i),
+                              ),
+                        ),
                       ),
                     ),
                     SizedBox(height: spacing.md),
 
+                    // ✅ Summary
                     CheckoutSectionCard(
                       title: l10n.checkoutSummaryTitle,
                       child: CheckoutOrderSummary(
@@ -287,15 +317,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   final bloc = context.read<CheckoutBloc>();
                   if (bloc.state.placing) return;
 
-                  // ✅ show inline picker errors before validating
+                  // ✅ show inline picker errors
                   if (!_showAddressPickerErrors) {
                     setState(() => _showAddressPickerErrors = true);
                   }
 
-                  // ✅ FORCE: push latest form state into bloc (even if still focused)
+                  // ✅ push latest form values to bloc
                   _addressFormController.flush();
-
-                  // small tick for state/event to land
                   await Future<void>.delayed(const Duration(milliseconds: 25));
                   if (!mounted) return;
 
@@ -304,12 +332,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   final formOk = formState?.validate() ?? false;
                   formState?.save();
 
-                  // ✅ show the REAL first error message (phone/city/address/region…)
+                  // ✅ best possible error message
                   final firstErr = _addressFormController.firstError(l10n);
+
+                  // ✅ If address invalid, SCROLL to address immediately
                   if (!formOk || firstErr != null) {
+                    await _scrollTo(_addressSectionKey);
                     AppToast.show(
                       context,
-                      firstErr ?? l10n.fieldRequired,
+                      firstErr ?? '${l10n.checkoutAddressTitle}: ${l10n.fieldRequired}',
                       isError: true,
                     );
                     return;
@@ -319,22 +350,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
                   // ✅ Payment validation
                   if (s.selectedPaymentIndex == null) {
-                    AppToast.show(
-                      context,
-                      l10n.checkoutSelectPayment,
-                      isError: true,
-                    );
+                    await _scrollTo(_paymentSectionKey);
+                    AppToast.show(context, l10n.checkoutSelectPayment, isError: true);
                     return;
                   }
 
-                  // ✅ Shipping validation (if required)
-                  if (s.shippingQuotes.isNotEmpty &&
-                      s.selectedShippingMethodId == null) {
-                    AppToast.show(
-                      context,
-                      l10n.checkoutSelectShipping,
-                      isError: true,
-                    );
+                  // ✅ Shipping validation
+                  if (s.shippingQuotes.isNotEmpty && s.selectedShippingMethodId == null) {
+                    await _scrollTo(_shippingSectionKey);
+                    AppToast.show(context, l10n.checkoutSelectShipping, isError: true);
                     return;
                   }
 

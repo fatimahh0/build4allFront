@@ -23,6 +23,8 @@ class AuthGate extends StatefulWidget {
   final AppConfig appConfig;
   const AuthGate({super.key, required this.appConfig});
 
+  
+
   @override
   State<AuthGate> createState() => _AuthGateState();
 }
@@ -31,6 +33,9 @@ class _AuthGateState extends State<AuthGate> {
   final _roleStore = SessionRoleStore();
   final _adminStore = AdminTokenStore();
   final _userStore = AuthTokenStore();
+
+
+  
 
   bool _loading = true;
 
@@ -102,6 +107,54 @@ class _AuthGateState extends State<AuthGate> {
     }
   }
 
+Future<String?> _tryRefreshUserIfNeeded(String? userToken, bool userWasInactive) async {
+  if (userWasInactive) return null;
+
+  final refresh = await _userStore.getRefreshToken();
+  if (refresh == null || refresh.isEmpty) return null;
+
+  if (userToken != null && userToken.isNotEmpty && !JwtUtils.isExpired(userToken)) {
+    return userToken; // still valid
+  }
+
+  try {
+    final res = await g.dio().post('/api/auth/refresh', data: {'refreshToken': refresh});
+    final newAccess = (res.data['token'] ?? '').toString();
+    final newRefresh = (res.data['refreshToken'] ?? '').toString();
+
+    if (newAccess.isEmpty || newRefresh.isEmpty) return null;
+
+    await _userStore.saveToken(token: newAccess, wasInactive: false, refreshToken: newRefresh);
+    g.setAuthToken(newAccess);
+    return newAccess;
+  } catch (_) {
+    await _userStore.clear();
+    return null;
+  }
+}
+
+Future<String?> _tryRefreshAdminIfNeeded(String? adminToken) async {
+  final refresh = await _adminStore.getRefreshToken();
+  if (refresh == null || refresh.isEmpty) return null;
+
+  if (adminToken != null && adminToken.isNotEmpty && !JwtUtils.isExpired(adminToken)) {
+    return adminToken;
+  }
+
+  try {
+    final res = await g.dio().post('/api/auth/refresh', data: {'refreshToken': refresh});
+    final newAccess = (res.data['token'] ?? '').toString();
+    final newRefresh = (res.data['refreshToken'] ?? '').toString();
+    if (newAccess.isEmpty || newRefresh.isEmpty) return null;
+
+    final role = (await _adminStore.getRole()) ?? '';
+    await _adminStore.save(token: newAccess, role: role, refreshToken: newRefresh);
+    return newAccess;
+  } catch (_) {
+    await _adminStore.clear();
+    return null;
+  }
+}
   Future<void> _boot() async {
     try {
       // ✅ FIRST: check public app access
@@ -110,26 +163,67 @@ class _AuthGateState extends State<AuthGate> {
 
       final lastRole = await _roleStore.getRole();
 
-      final adminToken = await _adminStore.getToken();
-      final userToken = await _userStore.getToken();
+      var adminToken = await _adminStore.getToken();
+      var userToken = await _userStore.getToken();
       final userWasInactive = await _userStore.getWasInactive();
 
-      final adminValid =
-          adminToken != null &&
-          adminToken.isNotEmpty &&
-          !JwtUtils.isExpired(adminToken);
 
-      final userValid =
-          userToken != null &&
-          userToken.isNotEmpty &&
-          !JwtUtils.isExpired(userToken);
+final adminTokenRefreshed = await _tryRefreshAdminIfNeeded(adminToken);
+final userTokenRefreshed = await _tryRefreshUserIfNeeded(userToken, userWasInactive);
 
-      // ✅ if wasInactive == true, do NOT auto-login
-      final userAutoValid = userValid && !userWasInactive;
+final adminValid = adminTokenRefreshed != null && adminTokenRefreshed.isNotEmpty && !JwtUtils.isExpired(adminTokenRefreshed);
+final userValid  = userTokenRefreshed  != null && userTokenRefreshed.isNotEmpty  && !JwtUtils.isExpired(userTokenRefreshed);
+
+final userAutoValid = userValid && !userWasInactive;
+
+if (userAutoValid) {
+  g.setAuthToken(userTokenRefreshed!);
+}
+
+     
+
+      var adminRefresh = await _adminStore.getRefreshToken();
+var userRefresh  = await _userStore.getRefreshToken();
+
+
+if ((userToken == null || userToken.isEmpty || JwtUtils.isExpired(userToken)) &&
+    (userRefresh != null && userRefresh.isNotEmpty) &&
+    !userWasInactive) {
+  try {
+    // call refresh
+    final res = await g.dio().post('/api/auth/refresh', data: {'refreshToken': userRefresh});
+    final newAccess = (res.data['token'] ?? '').toString();
+    final newRefresh = (res.data['refreshToken'] ?? '').toString();
+
+    await _userStore.saveToken(token: newAccess, wasInactive: false, refreshToken: newRefresh);
+    g.setAuthToken(newAccess);
+    userToken = newAccess; 
+  } catch (_) {
+    await _userStore.clear(); 
+  }
+}
+
+
+if ((adminToken == null || adminToken.isEmpty || JwtUtils.isExpired(adminToken)) &&
+    (adminRefresh != null && adminRefresh.isNotEmpty)) {
+  try {
+    final res = await g.dio().post('/api/auth/refresh', data: {'refreshToken': adminRefresh});
+    final newAccess = (res.data['token'] ?? '').toString();
+    final newRefresh = (res.data['refreshToken'] ?? '').toString();
+
+    final role = (await _adminStore.getRole()) ?? ''; // keep role
+    await _adminStore.save(token: newAccess, role: role, refreshToken: newRefresh);
+    adminToken = newAccess;
+  } catch (_) {
+    await _adminStore.clear();
+  }
+}
 
       // cleanup expired
       if (adminToken != null && !adminValid) await _adminStore.clear();
       if (userToken != null && !userValid) await _userStore.clear();
+
+      
 
       if (!mounted) return;
 
@@ -171,6 +265,7 @@ class _AuthGateState extends State<AuthGate> {
       _goLogin();
     }
   }
+
 
   Future<void> _askRoleAndGo(String adminToken, String userToken) async {
     final l10n = AppLocalizations.of(context)!;

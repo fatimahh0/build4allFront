@@ -2,6 +2,7 @@
 library globals;
 
 import 'dart:convert'; // for JWT decoding
+import 'package:build4front/core/network/interceptors/refresh_token_interceptor.dart';
 import 'package:dio/dio.dart';
 import 'package:build4front/core/config/env.dart';
 import 'package:build4front/core/network/interceptors/auth_body_injector.dart';
@@ -135,6 +136,9 @@ void makeDefaultDio(String baseUrl) {
   );
 
   d.interceptors.clear();
+
+d.interceptors.add(RefreshTokenInterceptor()); 
+
   d.interceptors.add(OwnerInjector());
   d.interceptors.add(
     LogInterceptor(

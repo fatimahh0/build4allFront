@@ -21,6 +21,7 @@ class AuthApiService {
   final http.Client _client;
   final AuthTokenStore _tokenStore;
 
+
   //  NEW
   bool _lastWasDeletedUser = false;
   bool _lastCanRestoreDeletedUser = false;
@@ -191,14 +192,14 @@ return (id as num).toInt();
   }
 
 
-
 Future<void> logoutRemote() async {
-  final saved = (await _tokenStore.getToken())?.trim() ?? '';
-  if (saved.isEmpty) return;
+  final access = (await _tokenStore.getToken())?.trim() ?? '';
+  final refresh = (await _tokenStore.getRefreshToken())?.trim() ?? '';
+  if (access.isEmpty) return;
 
-  final auth = saved.toLowerCase().startsWith('bearer ')
-      ? saved
-      : 'Bearer $saved';
+  final auth = access.toLowerCase().startsWith('bearer ')
+      ? access
+      : 'Bearer $access';
 
   final uri = _uri('/api/auth/logout');
 
@@ -208,11 +209,11 @@ Future<void> logoutRemote() async {
       headers: {
         'Authorization': auth,
         'Accept': 'application/json',
+        'Content-Type': 'application/json',
       },
+      body: jsonEncode({'refreshToken': refresh}), // ✅ NEW
     );
-  } catch (_) {
-    // ignore network errors
-  }
+  } catch (_) {}
 }
   // ======================= COMPLETE USER PROFILE ========================
 
@@ -439,27 +440,71 @@ _lastCanRestoreDeletedUser = false;
   }
 
   // ============================= TOKEN HELPERS ==========================
+Future<void> _storeAuthFromLogin(Map<String, dynamic> json) async {
+  final token = json['token'] as String?;
+  final refresh = (json['refreshToken'] ?? '').toString(); //  NEW
+  final wasInactive = json['wasInactive'] as bool? ?? false;
+  final wasDeleted = json['wasDeleted'] == true; //  NEW safety
 
-  Future<void> _storeAuthFromLogin(Map<String, dynamic> json) async {
-    final token = json['token'] as String?;
-    final wasInactive = json['wasInactive'] as bool? ?? false;
+  final user = (json['user'] as Map?)?.cast<String, dynamic>();
 
-    final user = (json['user'] as Map?)?.cast<String, dynamic>();
+  if (token != null && token.isNotEmpty) {
+   
+    final safeRefresh = (wasInactive || wasDeleted) ? '' : refresh;
 
-    if (token != null && token.isNotEmpty) {
-      await _tokenStore.saveToken(token: token, wasInactive: wasInactive);
-      g.setAuthToken(token);
-    }
+    await _tokenStore.saveToken(
+      token: token,
+      wasInactive: wasInactive,
+      refreshToken: safeRefresh,
+    );
 
-    if (user != null && user.isNotEmpty) {
-      await _tokenStore.saveUserJson(user);
-
-      final id = user['id'];
-      if (id is num) await _tokenStore.saveUserId(id.toInt());
-      if (id is String) await _tokenStore.saveUserId(int.tryParse(id) ?? 0);
-    }
+    g.setAuthToken(token);
   }
 
+  if (user != null && user.isNotEmpty) {
+    await _tokenStore.saveUserJson(user);
+    final id = user['id'];
+    if (id is num) await _tokenStore.saveUserId(id.toInt());
+    if (id is String) await _tokenStore.saveUserId(int.tryParse(id) ?? 0);
+  }
+}
+
+
+
+   
+
+Future<void> refreshSession() async {
+  final refresh = (await _tokenStore.getRefreshToken())?.trim() ?? '';
+  if (refresh.isEmpty) throw AppException('No refresh token');
+
+  final uri = _uri('/api/auth/refresh');
+
+  final resp = await _safePost(
+    uri,
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({'refreshToken': refresh}),
+  );
+
+  final decoded = _safeJson(resp.body);
+  if (resp.statusCode >= 400) {
+    throw AuthException('Refresh failed');
+  }
+
+  final newAccess = (decoded['token'] ?? '').toString();
+  final newRefresh = (decoded['refreshToken'] ?? '').toString();
+
+  if (newAccess.isEmpty || newRefresh.isEmpty) {
+    throw AuthException('Refresh response missing tokens');
+  }
+
+  await _tokenStore.saveToken(
+    token: newAccess,
+    wasInactive: false,
+    refreshToken: newRefresh,
+  );
+
+  g.setAuthToken(newAccess);
+}
   Future<String?> getSavedToken() => _tokenStore.getToken();
   Future<bool> getWasInactive() => _tokenStore.getWasInactive();
   Future<bool> getWasDeletedUser() async => _lastWasDeletedUser;
