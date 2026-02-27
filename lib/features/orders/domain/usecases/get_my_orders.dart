@@ -5,5 +5,5 @@ class GetMyOrders {
   final OrdersRepository repo;
   GetMyOrders(this.repo);
 
-  Future<List<OrderLine>> call() => repo.getMyOrders();
+  Future<List<OrderCard>> call() => repo.getMyOrders();
 }

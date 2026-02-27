@@ -20,6 +20,10 @@ class SaveEditProfile extends EditProfileEvent {
   final String firstName;
   final String lastName;
   final String? username;
+
+  // ✅ NEW: email (if changed -> backend sends OTP, doesn’t update immediately)
+  final String? email;
+
   final bool isPublicProfile;
 
   final String? imageFilePath;
@@ -33,6 +37,7 @@ class SaveEditProfile extends EditProfileEvent {
     required this.lastName,
     required this.isPublicProfile,
     this.username,
+    this.email, // ✅ NEW
     this.imageFilePath,
     this.imageRemoved = false,
   });

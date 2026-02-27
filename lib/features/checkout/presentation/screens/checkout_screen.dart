@@ -318,7 +318,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   }
 
                   // ✅ Let blur/debounce callbacks flush (address/city/phone sync to bloc)
-                  // This avoids false "required" when user taps Place Order immediately after typing.
                   await Future<void>.delayed(const Duration(milliseconds: 380));
                   if (!mounted) return;
 

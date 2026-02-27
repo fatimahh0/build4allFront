@@ -1494,28 +1494,28 @@ class AppLocalizationsFr extends AppLocalizations {
   String get ordersTitle => 'Mes commandes';
 
   @override
-  String get ordersLoading => 'Chargement des commandes…';
+  String get ordersLoading => 'Chargement de vos commandes...';
 
   @override
-  String get ordersEmptyTitle => 'Aucune commande';
+  String get ordersEmptyTitle => 'Aucune commande pour le moment';
 
   @override
-  String get ordersEmptyBody => 'Quand vous passerez une commande, elle apparaîtra ici.';
+  String get ordersEmptyBody => 'Lorsque vous passez une commande, elle s’affichera ici.';
 
   @override
   String get ordersReload => 'Recharger';
 
   @override
-  String get ordersFilterAll => 'Tout';
+  String get ordersFilterAll => 'Toutes';
 
   @override
   String get ordersFilterPending => 'En attente';
 
   @override
-  String get ordersFilterCompleted => 'Terminée';
+  String get ordersFilterCompleted => 'Terminées';
 
   @override
-  String get ordersFilterCanceled => 'Annulée';
+  String get ordersFilterCanceled => 'Annulées';
 
   @override
   String get ordersNoResultsForFilter => 'Aucune commande ne correspond à ce filtre.';
@@ -2618,4 +2618,75 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get accountAlreadyVerified => 'Votre compte est déjà vérifié. Veuillez vous connecter.';
+
+  @override
+  String ordersDetailsTitle(Object orderId) {
+    return 'Commande n°$orderId';
+  }
+
+  @override
+  String get ordersDetailsItemsTitle => 'Articles';
+
+  @override
+  String get ordersDetailsQty => 'Qté';
+
+  @override
+  String get ordersDetailsUnit => 'Prix unitaire';
+
+  @override
+  String get ordersDetailsLineTotal => 'Total';
+
+  @override
+  String get ordersDetailsStatus => 'Statut';
+
+  @override
+  String get ordersDetailsOrderTotal => 'Total de la commande';
+
+  @override
+  String get ordersDetailsPayment => 'Paiement';
+
+  @override
+  String get ordersDetailsPaidAmount => 'Payé';
+
+  @override
+  String get ordersDetailsRemaining => 'Restant';
+
+  @override
+  String get editProfile_emailLabel => 'Nouvel e-mail';
+
+  @override
+  String get editProfile_invalidEmail => 'Format d\'e-mail invalide';
+
+  @override
+  String get editProfile_usernameInvalid => 'Nom d\'utilisateur contient des caractères non autorisés';
+
+  @override
+  String get editProfile_codeSentTo => 'Nous avons envoyé un code à 6 chiffres à :';
+
+  @override
+  String get editProfile_verifyNewEmailTitle => 'Vérifier le nouvel e-mail';
+
+  @override
+  String get editProfile_codeLabel => 'Code';
+
+  @override
+  String get editProfile_codeRequired => 'Code requis';
+
+  @override
+  String get editProfile_resend => 'Renvoyer';
+
+  @override
+  String get editProfile_verify => 'Vérifier';
+
+  @override
+  String get editProfile_change => 'Changer';
+
+  @override
+  String get editProfile_remove => 'Supprimer';
+
+  @override
+  String get editProfile_codeSentToast => 'Code de vérification envoyé à votre nouvel e-mail';
+
+  @override
+  String get editProfile_emailUpdatedToast => 'E-mail mis à jour avec succès';
 }

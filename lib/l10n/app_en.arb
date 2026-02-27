@@ -1229,5 +1229,47 @@
 
 "codeReadyToVerifyHint": "Code ready to verify",
 "enterSixDigitCodeHint": "Enter 6-digit verification code",
-"accountAlreadyVerified": "Account already verified. Please log in."
+"accountAlreadyVerified": "Account already verified. Please log in.",
+ "ordersTitle": "My Orders",
+  "ordersLoading": "Loading your orders...",
+  "ordersEmptyTitle": "No orders yet",
+  "ordersEmptyBody": "When you place an order, it will show up here.",
+  "ordersReload": "Reload",
+  "ordersNoResultsForFilter": "No orders match this filter.",
+  "ordersFilterAll": "All",
+  "ordersFilterPending": "Pending",
+  "ordersFilterCompleted": "Completed",
+  "ordersFilterCanceled": "Canceled",
+  "ordersPaid": "Paid",
+  "ordersUnpaid": "Unpaid",
+
+  "ordersDetailsTitle": "Order #{orderId}",
+  "@ordersDetailsTitle": {
+    "placeholders": {
+      "orderId": {}
+    }
+  },
+
+  "ordersDetailsItemsTitle": "Items",
+  "ordersDetailsQty": "Qty",
+  "ordersDetailsUnit": "Unit",
+  "ordersDetailsLineTotal": "Total",
+  "ordersDetailsStatus": "Status",
+  "ordersDetailsOrderTotal": "Order Total",
+  "ordersDetailsPayment": "Payment",
+  "ordersDetailsPaidAmount": "Paid",
+   "ordersDetailsRemaining": "Remaining",
+   "editProfile_emailLabel": "Email",
+  "editProfile_invalidEmail": "Invalid email format",
+  "editProfile_usernameInvalid": "Username contains invalid characters",
+  "editProfile_codeSentTo": "We sent a 6-digit code to:",
+  "editProfile_verifyNewEmailTitle": "Verify new email",
+  "editProfile_codeLabel": "Code",
+  "editProfile_codeRequired": "Code required",
+  "editProfile_resend": "Resend",
+  "editProfile_verify": "Verify",
+  "editProfile_change": "Change",
+  "editProfile_remove": "Remove",
+  "editProfile_codeSentToast": "Verification code sent to your new email",
+  "editProfile_emailUpdatedToast": "Email updated successfully"
 }

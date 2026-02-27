@@ -2992,7 +2992,7 @@ abstract class AppLocalizations {
   /// No description provided for @ordersLoading.
   ///
   /// In en, this message translates to:
-  /// **'Loading orders…'**
+  /// **'Loading your orders...'**
   String get ordersLoading;
 
   /// No description provided for @ordersEmptyTitle.
@@ -5130,6 +5130,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Account already verified. Please log in.'**
   String get accountAlreadyVerified;
+
+  /// No description provided for @ordersDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Order #{orderId}'**
+  String ordersDetailsTitle(Object orderId);
+
+  /// No description provided for @ordersDetailsItemsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Items'**
+  String get ordersDetailsItemsTitle;
+
+  /// No description provided for @ordersDetailsQty.
+  ///
+  /// In en, this message translates to:
+  /// **'Qty'**
+  String get ordersDetailsQty;
+
+  /// No description provided for @ordersDetailsUnit.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit'**
+  String get ordersDetailsUnit;
+
+  /// No description provided for @ordersDetailsLineTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get ordersDetailsLineTotal;
+
+  /// No description provided for @ordersDetailsStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get ordersDetailsStatus;
+
+  /// No description provided for @ordersDetailsOrderTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Order Total'**
+  String get ordersDetailsOrderTotal;
+
+  /// No description provided for @ordersDetailsPayment.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment'**
+  String get ordersDetailsPayment;
+
+  /// No description provided for @ordersDetailsPaidAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid'**
+  String get ordersDetailsPaidAmount;
+
+  /// No description provided for @ordersDetailsRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining'**
+  String get ordersDetailsRemaining;
+
+  /// No description provided for @editProfile_emailLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get editProfile_emailLabel;
+
+  /// No description provided for @editProfile_invalidEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid email format'**
+  String get editProfile_invalidEmail;
+
+  /// No description provided for @editProfile_usernameInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Username contains invalid characters'**
+  String get editProfile_usernameInvalid;
+
+  /// No description provided for @editProfile_codeSentTo.
+  ///
+  /// In en, this message translates to:
+  /// **'We sent a 6-digit code to:'**
+  String get editProfile_codeSentTo;
+
+  /// No description provided for @editProfile_verifyNewEmailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify new email'**
+  String get editProfile_verifyNewEmailTitle;
+
+  /// No description provided for @editProfile_codeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Code'**
+  String get editProfile_codeLabel;
+
+  /// No description provided for @editProfile_codeRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Code required'**
+  String get editProfile_codeRequired;
+
+  /// No description provided for @editProfile_resend.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend'**
+  String get editProfile_resend;
+
+  /// No description provided for @editProfile_verify.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get editProfile_verify;
+
+  /// No description provided for @editProfile_change.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get editProfile_change;
+
+  /// No description provided for @editProfile_remove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get editProfile_remove;
+
+  /// No description provided for @editProfile_codeSentToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification code sent to your new email'**
+  String get editProfile_codeSentToast;
+
+  /// No description provided for @editProfile_emailUpdatedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Email updated successfully'**
+  String get editProfile_emailUpdatedToast;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

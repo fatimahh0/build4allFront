@@ -1080,7 +1080,51 @@
   "appAccessOwnerDisabledHint": "Cette application a été désactivée par le propriétaire ou n'est plus active.",
   "appAccessRetry": "Réessayer",
   "appAccessBlockedButton": "Accès bloqué",
-  "accountAlreadyVerified": "Votre compte est déjà vérifié. Veuillez vous connecter."
+  "accountAlreadyVerified": "Votre compte est déjà vérifié. Veuillez vous connecter.",
+    "ordersTitle": "Mes commandes",
+  "ordersLoading": "Chargement de vos commandes...",
+  "ordersEmptyTitle": "Aucune commande pour le moment",
+  "ordersEmptyBody": "Lorsque vous passez une commande, elle s’affichera ici.",
+  "ordersReload": "Recharger",
+  "ordersNoResultsForFilter": "Aucune commande ne correspond à ce filtre.",
+
+  "ordersFilterAll": "Toutes",
+  "ordersFilterPending": "En attente",
+  "ordersFilterCompleted": "Terminées",
+  "ordersFilterCanceled": "Annulées",
+
+  "ordersPaid": "Payée",
+  "ordersUnpaid": "Non payée",
+
+  "ordersDetailsTitle": "Commande n°{orderId}",
+  "@ordersDetailsTitle": {
+    "placeholders": {
+      "orderId": {}
+    }
+  },
+
+  "ordersDetailsItemsTitle": "Articles",
+  "ordersDetailsQty": "Qté",
+  "ordersDetailsUnit": "Prix unitaire",
+  "ordersDetailsLineTotal": "Total",
+  "ordersDetailsStatus": "Statut",
+  "ordersDetailsOrderTotal": "Total de la commande",
+  "ordersDetailsPayment": "Paiement",
+  "ordersDetailsPaidAmount": "Payé",
+  "ordersDetailsRemaining": "Restant",
+  "editProfile_emailLabel": "Nouvel e-mail",
+  "editProfile_invalidEmail": "Format d'e-mail invalide",
+  "editProfile_usernameInvalid": "Nom d'utilisateur contient des caractères non autorisés",
+  "editProfile_codeSentTo": "Nous avons envoyé un code à 6 chiffres à :",
+  "editProfile_verifyNewEmailTitle": "Vérifier le nouvel e-mail",
+  "editProfile_codeLabel": "Code",
+  "editProfile_codeRequired": "Code requis",
+  "editProfile_resend": "Renvoyer",
+  "editProfile_verify": "Vérifier",
+  "editProfile_change": "Changer",
+  "editProfile_remove": "Supprimer",
+  "editProfile_codeSentToast": "Code de vérification envoyé à votre nouvel e-mail",
+  "editProfile_emailUpdatedToast": "E-mail mis à jour avec succès"
 
 
 

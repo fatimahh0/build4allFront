@@ -1001,6 +1001,48 @@
   "appAccessOwnerDisabledHint": "تم تعطيل هذا التطبيق من قبل المالك أو أنه لم يعد نشطًا.",
   "appAccessRetry": "إعادة المحاولة",
   "appAccessBlockedButton": "الوصول محظور",
-  "accountAlreadyVerified": "تم التحقق من الحساب بالفعل. الرجاء تسجيل الدخول."
+  "accountAlreadyVerified": "تم التحقق من الحساب بالفعل. الرجاء تسجيل الدخول.",
+   "ordersTitle": "طلباتي",
+  "ordersLoading": "جاري تحميل الطلبات...",
+  "ordersEmptyTitle": "لا توجد طلبات بعد",
+  "ordersEmptyBody": "عند تنفيذ طلب، سيظهر هنا.",
+  "ordersReload": "إعادة تحميل",
+  "ordersNoResultsForFilter": "لا توجد نتائج لهذا الفلتر.",
+  "ordersFilterAll": "الكل",
+  "ordersFilterPending": "قيد الانتظار",
+  "ordersFilterCompleted": "مكتمل",
+  "ordersFilterCanceled": "ملغي",
+  "ordersPaid": "مدفوع",
+  "ordersUnpaid": "غير مدفوع",
+
+  "ordersDetailsTitle": "طلب رقم #{orderId}",
+  "@ordersDetailsTitle": {
+    "placeholders": {
+      "orderId": {}
+    }
+  },
+
+  "ordersDetailsItemsTitle": "العناصر",
+  "ordersDetailsQty": "الكمية",
+  "ordersDetailsUnit": "سعر الوحدة",
+  "ordersDetailsLineTotal": "المجموع",
+  "ordersDetailsStatus": "الحالة",
+  "ordersDetailsOrderTotal": "إجمالي الطلب",
+  "ordersDetailsPayment": "الدفع",
+  "ordersDetailsPaidAmount": "المدفوع",
+  "ordersDetailsRemaining": "المتبقي",
+  "editProfile_emailLabel": "البريد الإلكتروني",
+  "editProfile_invalidEmail": "صيغة البريد الإلكتروني غير صحيحة",
+  "editProfile_usernameInvalid": "اسم المستخدم يحتوي أحرف غير مسموحة",
+  "editProfile_codeSentTo": "تم إرسال رمز من 6 أرقام إلى:",
+  "editProfile_verifyNewEmailTitle": "تأكيد البريد الإلكتروني الجديد",
+  "editProfile_codeLabel": "الرمز",
+  "editProfile_codeRequired": "الرمز مطلوب",
+  "editProfile_resend": "إعادة إرسال",
+  "editProfile_verify": "تأكيد",
+  "editProfile_change": "تغيير",
+  "editProfile_remove": "حذف",
+  "editProfile_codeSentToast": "تم إرسال رمز التحقق إلى بريدك الجديد",
+  "editProfile_emailUpdatedToast": "تم تحديث البريد الإلكتروني بنجاح"
 
 }

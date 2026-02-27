@@ -1,3 +1,4 @@
+// lib/features/profile_edit/data/repositories/user_profile_repository_impl.dart
 import '../../domain/entities/user_profile.dart';
 import '../../domain/repositories/user_profile_repository.dart';
 import '../models/user_profile_model.dart';
@@ -37,6 +38,7 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
     required String firstName,
     required String lastName,
     String? username,
+    String? email,
     bool? isPublicProfile,
     String? imageFilePath,
     bool imageRemoved = false,
@@ -48,6 +50,7 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
       firstName: firstName,
       lastName: lastName,
       username: username,
+      email: email,
       isPublicProfile: isPublicProfile,
       imageFilePath: imageFilePath,
       imageRemoved: imageRemoved,
@@ -58,7 +61,6 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
     if (json['user'] is Map) {
       userJson = (json['user'] as Map).cast<String, dynamic>();
     } else if (json['data'] is Map) {
-      // some backends wrap payload in "data"
       final dataMap = (json['data'] as Map).cast<String, dynamic>();
       if (_looksLikeUserPayload(dataMap)) userJson = dataMap;
     } else if (_looksLikeUserPayload(json)) {
@@ -66,12 +68,46 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
     }
 
     if (userJson != null) {
-      return UserProfileModel.fromJson(userJson);
+      // ✅ KEEP: merge flags from envelope
+      final merged = <String, dynamic>{
+        ...userJson,
+        'emailVerificationRequired': json['emailVerificationRequired'],
+        'pendingEmail': json['pendingEmail'],
+      };
+      return UserProfileModel.fromJson(merged);
     }
 
-    // ✅ IMPORTANT: backend returned only message (or non-user envelope)
-    // refetch the updated profile so UI never gets null/empty fields
     return getById(
+      token: token,
+      userId: userId,
+      ownerProjectLinkId: ownerProjectLinkId,
+    );
+  }
+
+  // ✅ NEW
+  @override
+  Future<void> verifyEmailChange({
+    required String token,
+    required int userId,
+    required int ownerProjectLinkId,
+    required String code,
+  }) {
+    return api.verifyEmailChange(
+      token: token,
+      userId: userId,
+      ownerProjectLinkId: ownerProjectLinkId,
+      code: code,
+    );
+  }
+
+  // ✅ NEW
+  @override
+  Future<void> resendEmailChange({
+    required String token,
+    required int userId,
+    required int ownerProjectLinkId,
+  }) {
+    return api.resendEmailChange(
       token: token,
       userId: userId,
       ownerProjectLinkId: ownerProjectLinkId,

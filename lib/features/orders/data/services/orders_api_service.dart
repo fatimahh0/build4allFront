@@ -50,4 +50,18 @@ class OrdersApiService {
 
     return const [];
   }
+
+  Future<Map<String, dynamic>> getOrderDetailsRaw(int orderId) async {
+  final token = await tokenStore.getToken();
+  final bearer = token != null && token.startsWith('Bearer ') ? token : 'Bearer $token';
+
+  final res = await _dio.get(
+    '/api/orders/myorders/$orderId',
+    options: Options(headers: {'Authorization': bearer}),
+  );
+
+  final data = res.data;
+  if (data is Map) return data.cast<String, dynamic>();
+  return {};
+}
 }

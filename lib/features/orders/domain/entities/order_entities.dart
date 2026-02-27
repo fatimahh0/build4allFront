@@ -1,36 +1,48 @@
-class OrderItemMini {
-  final String itemName;
-  final String? imageUrl;
-  final DateTime? startDatetime;
-  final String? location;
+class PaymentSummary {
+  final double orderTotal;
+  final double paidAmount;
+  final double remainingAmount;
+  final bool fullyPaid;
+  final String paymentState; // UNPAID / PARTIAL / PAID ...
 
-  const OrderItemMini({
-    required this.itemName,
-    this.imageUrl,
-    this.startDatetime,
-    this.location,
+  const PaymentSummary({
+    required this.orderTotal,
+    required this.paidAmount,
+    required this.remainingAmount,
+    required this.fullyPaid,
+    required this.paymentState,
   });
 }
 
-class OrderMini {
-  final String? status; // ex: "PENDING"
-  const OrderMini({this.status});
-}
+class OrderCard {
+  final int orderId;
+  final DateTime? orderDate;
 
-class OrderLine {
-  final int id; // line id
-  final String orderStatus; // ex: "Pending"
-  final int quantity;
-  final bool wasPaid;
-  final OrderItemMini item;
-  final OrderMini order;
+  final String orderStatus; // raw: PENDING
+  final String? orderStatusUi; // pretty: Pending
 
-  const OrderLine({
-    required this.id,
+  final int itemsCount; // total qty
+  final int linesCount; // number of lines
+
+  final double totalPrice;
+
+  final String? previewItemName;
+  final String? previewImageUrl;
+
+  final bool fullyPaid;
+  final PaymentSummary? payment;
+
+  const OrderCard({
+    required this.orderId,
     required this.orderStatus,
-    required this.quantity,
-    required this.wasPaid,
-    required this.item,
-    required this.order,
+    required this.totalPrice,
+    required this.itemsCount,
+    required this.linesCount,
+    required this.fullyPaid,
+    this.payment,
+    this.orderDate,
+    this.orderStatusUi,
+    this.previewItemName,
+    this.previewImageUrl,
   });
 }

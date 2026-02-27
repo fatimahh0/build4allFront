@@ -2,92 +2,118 @@ import '../../domain/entities/order_entities.dart';
 
 DateTime? _tryParseDate(dynamic v) {
   if (v == null) return null;
-  if (v is String && v.trim().isNotEmpty) {
-    return DateTime.tryParse(v);
-  }
+  if (v is DateTime) return v;
+  if (v is String && v.trim().isNotEmpty) return DateTime.tryParse(v.trim());
   return null;
 }
 
-class OrderItemMiniModel {
-  final String itemName;
-  final String? imageUrl;
-  final DateTime? startDatetime;
-  final String? location;
+int _toInt(dynamic v, {int fallback = 0}) {
+  if (v == null) return fallback;
+  if (v is int) return v;
+  if (v is num) return v.toInt();
+  if (v is String) return int.tryParse(v.trim()) ?? fallback;
+  return fallback;
+}
 
-  OrderItemMiniModel({
-    required this.itemName,
-    this.imageUrl,
-    this.startDatetime,
-    this.location,
+double _toDouble(dynamic v, {double fallback = 0}) {
+  if (v == null) return fallback;
+  if (v is double) return v;
+  if (v is int) return v.toDouble();
+  if (v is num) return v.toDouble();
+  if (v is String) return double.tryParse(v.trim()) ?? fallback;
+  return fallback;
+}
+
+class PaymentSummaryModel {
+  final double orderTotal;
+  final double paidAmount;
+  final double remainingAmount;
+  final bool fullyPaid;
+  final String paymentState;
+
+  const PaymentSummaryModel({
+    required this.orderTotal,
+    required this.paidAmount,
+    required this.remainingAmount,
+    required this.fullyPaid,
+    required this.paymentState,
   });
 
-  factory OrderItemMiniModel.fromJson(Map<String, dynamic> json) {
-    return OrderItemMiniModel(
-      itemName: (json['itemName'] ?? '').toString(),
-      imageUrl: json['imageUrl']?.toString(),
-      startDatetime: _tryParseDate(json['startDatetime']),
-      location: json['location']?.toString(),
+  factory PaymentSummaryModel.fromJson(Map<String, dynamic> json) {
+    return PaymentSummaryModel(
+      orderTotal: _toDouble(json['orderTotal']),
+      paidAmount: _toDouble(json['paidAmount']),
+      remainingAmount: _toDouble(json['remainingAmount']),
+      fullyPaid: json['fullyPaid'] == true,
+      paymentState: (json['paymentState'] ?? '').toString(),
     );
   }
 
-  OrderItemMini toEntity() => OrderItemMini(
-    itemName: itemName,
-    imageUrl: imageUrl,
-    startDatetime: startDatetime,
-    location: location,
-  );
+  PaymentSummary toEntity() => PaymentSummary(
+        orderTotal: orderTotal,
+        paidAmount: paidAmount,
+        remainingAmount: remainingAmount,
+        fullyPaid: fullyPaid,
+        paymentState: paymentState,
+      );
 }
 
-class OrderMiniModel {
-  final String? status;
-
-  OrderMiniModel({this.status});
-
-  factory OrderMiniModel.fromJson(Map<String, dynamic> json) {
-    return OrderMiniModel(status: json['status']?.toString());
-  }
-
-  OrderMini toEntity() => OrderMini(status: status);
-}
-
-class OrderLineModel {
-  final int id;
+class OrderCardModel {
+  final int orderId;
+  final double totalPrice;
+  final int linesCount;
+  final int itemsCount;
   final String orderStatus;
-  final int quantity;
-  final bool wasPaid;
-  final OrderItemMiniModel item;
-  final OrderMiniModel order;
+  final String? orderStatusUi;
+  final DateTime? orderDate;
+  final String? previewItemName;
+  final String? previewImageUrl;
+  final bool fullyPaid;
+  final PaymentSummaryModel? payment;
 
-  OrderLineModel({
-    required this.id,
+  const OrderCardModel({
+    required this.orderId,
+    required this.totalPrice,
+    required this.linesCount,
+    required this.itemsCount,
     required this.orderStatus,
-    required this.quantity,
-    required this.wasPaid,
-    required this.item,
-    required this.order,
+    this.orderStatusUi,
+    this.orderDate,
+    this.previewItemName,
+    this.previewImageUrl,
+    required this.fullyPaid,
+    this.payment,
   });
 
-  factory OrderLineModel.fromJson(Map<String, dynamic> json) {
-    return OrderLineModel(
-      id: (json['id'] as num?)?.toInt() ?? 0,
+  factory OrderCardModel.fromJson(Map<String, dynamic> json) {
+    final pay = (json['payment'] as Map?)?.cast<String, dynamic>();
+
+    return OrderCardModel(
+      orderId: _toInt(json['orderId']),
+      totalPrice: _toDouble(json['totalPrice']),
+      linesCount: _toInt(json['linesCount']),
+      itemsCount: _toInt(json['itemsCount']),
       orderStatus: (json['orderStatus'] ?? '').toString(),
-      quantity: (json['quantity'] as num?)?.toInt() ?? 0,
-      wasPaid: json['wasPaid'] == true,
-      item: OrderItemMiniModel.fromJson(
-        (json['item'] as Map?)?.cast<String, dynamic>() ?? const {},
-      ),
-      order: OrderMiniModel.fromJson(
-        (json['order'] as Map?)?.cast<String, dynamic>() ?? const {},
-      ),
+      orderStatusUi: json['orderStatusUi']?.toString(),
+      orderDate: _tryParseDate(json['orderDate']),
+      previewItemName: json['previewItemName']?.toString(),
+      previewImageUrl: json['previewImageUrl']?.toString(),
+      fullyPaid: json['fullyPaid'] == true,
+      payment: pay == null ? null : PaymentSummaryModel.fromJson(pay),
     );
   }
 
-  OrderLine toEntity() => OrderLine(
-    id: id,
-    orderStatus: orderStatus,
-    quantity: quantity,
-    wasPaid: wasPaid,
-    item: item.toEntity(),
-    order: order.toEntity(),
-  );
+  OrderCard toEntity() => OrderCard(
+        orderId: orderId,
+        totalPrice: totalPrice,
+        linesCount: linesCount,
+        itemsCount: itemsCount,
+        orderStatus: orderStatus,
+        orderStatusUi: orderStatusUi,
+        orderDate: orderDate,
+        previewItemName: previewItemName,
+        previewImageUrl: previewImageUrl,
+        fullyPaid: fullyPaid,
+        payment: payment?.toEntity(),
+      );
 }

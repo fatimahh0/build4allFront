@@ -1494,7 +1494,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ordersTitle => 'My Orders';
 
   @override
-  String get ordersLoading => 'Loading orders…';
+  String get ordersLoading => 'Loading your orders...';
 
   @override
   String get ordersEmptyTitle => 'No orders yet';
@@ -2618,4 +2618,75 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get accountAlreadyVerified => 'Account already verified. Please log in.';
+
+  @override
+  String ordersDetailsTitle(Object orderId) {
+    return 'Order #$orderId';
+  }
+
+  @override
+  String get ordersDetailsItemsTitle => 'Items';
+
+  @override
+  String get ordersDetailsQty => 'Qty';
+
+  @override
+  String get ordersDetailsUnit => 'Unit';
+
+  @override
+  String get ordersDetailsLineTotal => 'Total';
+
+  @override
+  String get ordersDetailsStatus => 'Status';
+
+  @override
+  String get ordersDetailsOrderTotal => 'Order Total';
+
+  @override
+  String get ordersDetailsPayment => 'Payment';
+
+  @override
+  String get ordersDetailsPaidAmount => 'Paid';
+
+  @override
+  String get ordersDetailsRemaining => 'Remaining';
+
+  @override
+  String get editProfile_emailLabel => 'Email';
+
+  @override
+  String get editProfile_invalidEmail => 'Invalid email format';
+
+  @override
+  String get editProfile_usernameInvalid => 'Username contains invalid characters';
+
+  @override
+  String get editProfile_codeSentTo => 'We sent a 6-digit code to:';
+
+  @override
+  String get editProfile_verifyNewEmailTitle => 'Verify new email';
+
+  @override
+  String get editProfile_codeLabel => 'Code';
+
+  @override
+  String get editProfile_codeRequired => 'Code required';
+
+  @override
+  String get editProfile_resend => 'Resend';
+
+  @override
+  String get editProfile_verify => 'Verify';
+
+  @override
+  String get editProfile_change => 'Change';
+
+  @override
+  String get editProfile_remove => 'Remove';
+
+  @override
+  String get editProfile_codeSentToast => 'Verification code sent to your new email';
+
+  @override
+  String get editProfile_emailUpdatedToast => 'Email updated successfully';
 }

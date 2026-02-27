@@ -12,6 +12,10 @@ class UserProfileModel extends UserProfile {
     super.profileImageUrl,
     required super.publicProfile,
     super.statusName,
+
+    // ✅ NEW
+    super.emailVerificationRequired,
+    super.pendingEmail,
   });
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json) {
@@ -26,6 +30,12 @@ class UserProfileModel extends UserProfile {
             json['public_profile'] ??
             false) ==
         true;
+
+    // ✅ NEW
+    final emailVerificationRequired =
+        (json['emailVerificationRequired'] ?? false) == true;
+
+    final pendingEmail = json['pendingEmail']?.toString();
 
     return UserProfileModel(
       id: (json['id'] ?? json['userId'] ?? 0) as int,
@@ -42,6 +52,10 @@ class UserProfileModel extends UserProfile {
               ?.toString(),
       publicProfile: publicProfile,
       statusName: statusName,
+
+      // ✅ NEW
+      emailVerificationRequired: emailVerificationRequired,
+      pendingEmail: pendingEmail,
     );
   }
 }

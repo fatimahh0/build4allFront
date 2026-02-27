@@ -1,4 +1,3 @@
-// lib/features/orders/presentation/bloc/orders_state.dart
 import 'package:equatable/equatable.dart';
 
 import '../../domain/entities/order_entities.dart';
@@ -8,7 +7,7 @@ class OrdersState extends Equatable {
   final bool loading;
   final String? error;
 
-  final List<OrderLine> orders;
+  final List<OrderCard> orders;
   final OrdersFilter filter;
 
   const OrdersState({
@@ -19,16 +18,16 @@ class OrdersState extends Equatable {
   });
 
   factory OrdersState.initial() => const OrdersState(
-    loading: false,
-    orders: [],
-    filter: OrdersFilter.all,
-    error: null,
-  );
+        loading: false,
+        orders: [],
+        filter: OrdersFilter.all,
+        error: null,
+      );
 
   OrdersState copyWith({
     bool? loading,
     String? error,
-    List<OrderLine>? orders,
+    List<OrderCard>? orders,
     OrdersFilter? filter,
   }) {
     return OrdersState(
@@ -39,15 +38,13 @@ class OrdersState extends Equatable {
     );
   }
 
-  /// ✅ Correct filtering: use backend raw status in `order.status`
-  /// because `orderStatus` is already "Pending/Completed/..."
-  List<OrderLine> get filtered {
+  List<OrderCard> get filtered {
     if (filter == OrdersFilter.all) return orders;
 
     String norm(String? s) => (s ?? '').trim().toUpperCase();
 
-    bool match(OrderLine o) {
-      final raw = norm(o.order.status);
+    bool match(OrderCard o) {
+      final raw = norm(o.orderStatus);
 
       switch (filter) {
         case OrdersFilter.pending:

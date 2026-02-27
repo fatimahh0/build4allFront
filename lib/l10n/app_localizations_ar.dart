@@ -1494,16 +1494,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get ordersTitle => 'طلباتي';
 
   @override
-  String get ordersLoading => 'جارٍ تحميل الطلبات…';
+  String get ordersLoading => 'جاري تحميل الطلبات...';
 
   @override
   String get ordersEmptyTitle => 'لا توجد طلبات بعد';
 
   @override
-  String get ordersEmptyBody => 'عندما تقوم بإنشاء طلب، سيظهر هنا.';
+  String get ordersEmptyBody => 'عند تنفيذ طلب، سيظهر هنا.';
 
   @override
-  String get ordersReload => 'إعادة التحميل';
+  String get ordersReload => 'إعادة تحميل';
 
   @override
   String get ordersFilterAll => 'الكل';
@@ -1518,7 +1518,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get ordersFilterCanceled => 'ملغي';
 
   @override
-  String get ordersNoResultsForFilter => 'لا توجد طلبات مطابقة لهذا الفلتر.';
+  String get ordersNoResultsForFilter => 'لا توجد نتائج لهذا الفلتر.';
 
   @override
   String get ordersQtyLabel => 'الكمية';
@@ -2618,4 +2618,75 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get accountAlreadyVerified => 'تم التحقق من الحساب بالفعل. الرجاء تسجيل الدخول.';
+
+  @override
+  String ordersDetailsTitle(Object orderId) {
+    return 'طلب رقم #$orderId';
+  }
+
+  @override
+  String get ordersDetailsItemsTitle => 'العناصر';
+
+  @override
+  String get ordersDetailsQty => 'الكمية';
+
+  @override
+  String get ordersDetailsUnit => 'سعر الوحدة';
+
+  @override
+  String get ordersDetailsLineTotal => 'المجموع';
+
+  @override
+  String get ordersDetailsStatus => 'الحالة';
+
+  @override
+  String get ordersDetailsOrderTotal => 'إجمالي الطلب';
+
+  @override
+  String get ordersDetailsPayment => 'الدفع';
+
+  @override
+  String get ordersDetailsPaidAmount => 'المدفوع';
+
+  @override
+  String get ordersDetailsRemaining => 'المتبقي';
+
+  @override
+  String get editProfile_emailLabel => 'البريد الإلكتروني';
+
+  @override
+  String get editProfile_invalidEmail => 'صيغة البريد الإلكتروني غير صحيحة';
+
+  @override
+  String get editProfile_usernameInvalid => 'اسم المستخدم يحتوي أحرف غير مسموحة';
+
+  @override
+  String get editProfile_codeSentTo => 'تم إرسال رمز من 6 أرقام إلى:';
+
+  @override
+  String get editProfile_verifyNewEmailTitle => 'تأكيد البريد الإلكتروني الجديد';
+
+  @override
+  String get editProfile_codeLabel => 'الرمز';
+
+  @override
+  String get editProfile_codeRequired => 'الرمز مطلوب';
+
+  @override
+  String get editProfile_resend => 'إعادة إرسال';
+
+  @override
+  String get editProfile_verify => 'تأكيد';
+
+  @override
+  String get editProfile_change => 'تغيير';
+
+  @override
+  String get editProfile_remove => 'حذف';
+
+  @override
+  String get editProfile_codeSentToast => 'تم إرسال رمز التحقق إلى بريدك الجديد';
+
+  @override
+  String get editProfile_emailUpdatedToast => 'تم تحديث البريد الإلكتروني بنجاح';
 }

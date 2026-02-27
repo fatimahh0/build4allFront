@@ -7,7 +7,6 @@ import 'package:intl_phone_field/intl_phone_field.dart';
 
 import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/l10n/app_localizations.dart';
-import 'package:build4front/common/widgets/app_text_field.dart';
 import 'package:build4front/common/widgets/app_search_field.dart';
 
 import 'package:build4front/features/catalog/data/models/country_model.dart';
@@ -335,6 +334,32 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
     return _allRegions.where((r) => r.countryId == c.id).toList();
   }
 
+  InputDecoration _decor({
+    required String label,
+    String? hint,
+    required tokens,
+    required c,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      filled: true,
+      fillColor: c.surface,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.card.radius),
+        borderSide: BorderSide(color: c.border.withOpacity(0.25)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.card.radius),
+        borderSide: BorderSide(color: c.border.withOpacity(0.25)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.card.radius),
+        borderSide: BorderSide(color: c.primary, width: 1.4),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -387,8 +412,14 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
 
     final countryIso = (_selectedCountry?.iso2Code ?? 'LB').toUpperCase();
 
+    // ✅ FIX: No validation while scrolling / unfocusing unless Place Order pressed
+    final autoMode = widget.showPickerErrors
+        ? AutovalidateMode.onUserInteraction
+        : AutovalidateMode.disabled;
+
     return Form(
       key: widget.formKey,
+      autovalidateMode: autoMode,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -458,135 +489,120 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
                 RegExp(r"[A-Za-zÀ-ÿ\u0600-\u06FF\s'\-]"),
               ),
             ],
-            decoration: InputDecoration(
-              labelText: l10n.checkoutFullNameLabel,
-              hintText: l10n.checkoutFullNameHint,
-              filled: true,
-              fillColor: c.surface,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(tokens.card.radius),
-                borderSide: BorderSide(color: c.border.withOpacity(0.25)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(tokens.card.radius),
-                borderSide: BorderSide(color: c.border.withOpacity(0.25)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(tokens.card.radius),
-                borderSide: BorderSide(color: c.primary, width: 1.4),
-              ),
+            decoration: _decor(
+              label: l10n.checkoutFullNameLabel,
+              hint: l10n.checkoutFullNameHint,
+              tokens: tokens,
+              c: c,
             ),
           ),
 
           SizedBox(height: spacing.sm),
 
-          // ✅ Required
-          AppTextField(
-            label: l10n.checkoutAddressLineLabel,
+          // ✅ Address line (required)
+          TextFormField(
             controller: _addressCtrl,
-            hintText: l10n.checkoutAddressLineHint,
             textInputAction: TextInputAction.next,
+            decoration: _decor(
+              label: l10n.checkoutAddressLineLabel,
+              hint: l10n.checkoutAddressLineHint,
+              tokens: tokens,
+              c: c,
+            ),
             validator: (v) {
               if ((v ?? '').trim().isEmpty) return l10n.fieldRequired;
               return null;
             },
+            onEditingComplete: () {
+              _notifyParent();
+              FocusScope.of(context).nextFocus();
+            },
           ),
+
           SizedBox(height: spacing.sm),
 
-          // ✅ Required
-          AppTextField(
-            label: l10n.checkoutCityLabel,
+          // ✅ City (required)
+          TextFormField(
             controller: _cityCtrl,
-            hintText: l10n.checkoutCityHint,
             textInputAction: TextInputAction.next,
+            decoration: _decor(
+              label: l10n.checkoutCityLabel,
+              hint: l10n.checkoutCityHint,
+              tokens: tokens,
+              c: c,
+            ),
             validator: (v) {
               if ((v ?? '').trim().isEmpty) return l10n.fieldRequired;
               return null;
             },
+            onEditingComplete: () {
+              _notifyParent();
+              FocusScope.of(context).nextFocus();
+            },
           ),
+
           SizedBox(height: spacing.sm),
 
-          // ✅ Optional (force no validation in case AppTextField defaults to required)
-          AppTextField(
-            label: l10n.checkoutPostalCodeLabel,
+          // ✅ Postal Code (optional)
+          TextFormField(
             controller: _postalCtrl,
-            hintText: l10n.checkoutPostalCodeHint,
             textInputAction: TextInputAction.next,
+            decoration: _decor(
+              label: l10n.checkoutPostalCodeLabel,
+              hint: l10n.checkoutPostalCodeHint,
+              tokens: tokens,
+              c: c,
+            ),
             validator: (_) => null,
+            onEditingComplete: () {
+              _notifyParent();
+              FocusScope.of(context).nextFocus();
+            },
           ),
+
           SizedBox(height: spacing.sm),
 
-          // ✅ PHONE (fixed: no parent sync on every digit)
+          // ✅ PHONE (no parent sync on every digit)
           IntlPhoneField(
-            key: ValueKey(countryIso), // stable key; remount only when country changes
+            key: ValueKey(countryIso), // remount only when country changes
             focusNode: _phoneFocus,
             initialCountryCode: countryIso,
             initialValue: _phoneDisplayValue, // local digits only
-
             disableLengthCheck: true,
-
             autovalidateMode: widget.showPickerErrors
                 ? AutovalidateMode.onUserInteraction
                 : AutovalidateMode.disabled,
-
-            // If your package version doesn't support this property, remove it.
             invalidNumberMessage: '',
-
-            decoration: InputDecoration(
-              labelText: l10n.checkoutPhoneLabel,
-              filled: true,
-              fillColor: c.surface,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(tokens.card.radius),
-                borderSide: BorderSide(color: c.border.withOpacity(0.25)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(tokens.card.radius),
-                borderSide: BorderSide(color: c.border.withOpacity(0.25)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(tokens.card.radius),
-                borderSide: BorderSide(color: c.primary, width: 1.4),
-              ),
+            decoration: _decor(
+              label: l10n.checkoutPhoneLabel,
+              tokens: tokens,
+              c: c,
             ),
-
             onChanged: (phone) {
               final localDigits = phone.number.replaceAll(RegExp(r'\D'), '');
-
               _phoneLocalDigits = localDigits;
               _fullPhone = _emptyToNull(phone.completeNumber);
-
-              // ✅ DO NOT notify parent here
-              // (prevents bloc updates + rebuild + keyboard closing on each digit)
-              // Sync happens on blur via _phoneFocus listener.
+              // ✅ DO NOT notify parent here (sync happens on blur)
             },
-
             onCountryChanged: (_) {
-              // Country selection impacts final phone format; sync is okay here.
               _debouncedNotify();
             },
-
             validator: (phone) {
               final rawLocal =
                   (phone?.number ?? '').replaceAll(RegExp(r'\D'), '');
               final localDigits =
                   rawLocal.isNotEmpty ? rawLocal : _phoneLocalDigits;
 
-              if (localDigits.isEmpty) {
-                return l10n.fieldRequired;
-              }
+              if (localDigits.isEmpty) return l10n.fieldRequired;
 
-              // ✅ Before submit: don't validate aggressively while typing
               if (!widget.showPickerErrors) return null;
 
               final selectedIso =
                   (_selectedCountry?.iso2Code ?? countryIso).toUpperCase();
 
-              // LB rule = exactly 8 local digits
               if (selectedIso == 'LB') {
                 if (localDigits.length != 8) return l10n.invalidPhone;
               } else {
-                // generic fallback for non-LB
                 if (localDigits.length < 6) return l10n.invalidPhone;
               }
 
@@ -596,13 +612,22 @@ class _CheckoutAddressFormState extends State<CheckoutAddressForm> {
 
           SizedBox(height: spacing.sm),
 
-          // ✅ Optional (force no validation in case AppTextField defaults to required)
-          AppTextField(
-            label: l10n.checkoutNotesLabel,
+          // ✅ Notes (optional)
+          TextFormField(
             controller: _notesCtrl,
-            hintText: l10n.checkoutNotesHint,
+            focusNode: _notesFocus,
             textInputAction: TextInputAction.done,
+            decoration: _decor(
+              label: l10n.checkoutNotesLabel,
+              hint: l10n.checkoutNotesHint,
+              tokens: tokens,
+              c: c,
+            ),
             validator: (_) => null,
+            onEditingComplete: () {
+              _notifyParent();
+              FocusScope.of(context).unfocus();
+            },
           ),
         ],
       ),

@@ -18,6 +18,8 @@ import '../../data/repositories/user_profile_repository_impl.dart';
 import '../../domain/usecases/get_user_by_id.dart';
 import '../../domain/usecases/update_user_profile.dart';
 import '../../domain/usecases/delete_user.dart';
+import '../../domain/usecases/verify_email_change.dart';
+import '../../domain/usecases/resend_email_change.dart';
 
 import '../bloc/edit_profile_bloc.dart';
 import '../bloc/edit_profile_event.dart';
@@ -45,7 +47,7 @@ String _resolveImageUrl(String? url) {
   return '$root$path';
 }
 
-/// ✅ Custom interceptor type so we can avoid adding duplicates
+/// ✅ debug interceptor (optional)
 class _EditProfileAuthDebugInterceptor extends Interceptor {
   final String Function() tokenGetter;
   _EditProfileAuthDebugInterceptor({required this.tokenGetter});
@@ -56,24 +58,13 @@ class _EditProfileAuthDebugInterceptor extends Interceptor {
     if (t.isNotEmpty) {
       o.headers['Authorization'] = o.headers['Authorization'] ?? 'Bearer $t';
     }
-
     // ignore: avoid_print
     print(">>> URL: ${o.uri}");
     // ignore: avoid_print
     print(">>> AUTH: ${o.headers['Authorization']}");
     // ignore: avoid_print
     print(">>> CT: ${o.headers['Content-Type']}");
-
     h.next(o);
-  }
-
-  @override
-  void onError(DioException e, ErrorInterceptorHandler h) {
-    // ignore: avoid_print
-    print("xxx STATUS: ${e.response?.statusCode}");
-    // ignore: avoid_print
-    print("xxx BODY: ${e.response?.data}");
-    h.next(e);
   }
 }
 
@@ -82,7 +73,6 @@ class EditProfileScreen extends StatefulWidget {
   final String token;
   final int ownerProjectLinkId;
 
-  // ✅ parent passes logout handler (clear token + go login)
   final VoidCallback onLogoutAfterDelete;
 
   const EditProfileScreen({
@@ -102,37 +92,45 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _lastCtrl = TextEditingController();
   final _userCtrl = TextEditingController();
 
+  // ✅ email field
+  final _emailCtrl = TextEditingController();
+  String _originalEmail = '';
+
   bool _public = true;
 
   String? _pickedImagePath;
   bool _removeImage = false;
+
   bool _filledOnce = false;
-
-  bool _poppedAfterSave = false;
-
-  // ✅ guard so we don’t logout twice
   bool _loggedOutAfterDelete = false;
 
-  // ✅ validation errors (inline under fields)
+  // ✅ save + OTP flow guards (prevent dialog re-open loop)
+  bool _saveRequested = false;
+  bool _emailFlowActive = false;
+  bool _emailDialogOpen = false;
+  bool _awaitingVerifyReload = false;
+
+  // inline errors
   String? _firstError;
   String? _lastError;
   String? _userError;
+  String? _emailError;
 
   late final EditProfileBloc _bloc;
+
+  static final RegExp _usernameAllowed = RegExp(r'^[A-Za-z0-9_]+$');
 
   @override
   void initState() {
     super.initState();
 
-    // clear inline validation errors while typing
     _firstCtrl.addListener(_clearFieldErrorsIfNeeded);
     _lastCtrl.addListener(_clearFieldErrorsIfNeeded);
     _userCtrl.addListener(_clearFieldErrorsIfNeeded);
+    _emailCtrl.addListener(_clearFieldErrorsIfNeeded);
 
     final dio = g.appDio ?? Dio();
-
-    final has =
-        dio.interceptors.any((i) => i is _EditProfileAuthDebugInterceptor);
+    final has = dio.interceptors.any((i) => i is _EditProfileAuthDebugInterceptor);
     if (!has) {
       dio.interceptors.add(
         _EditProfileAuthDebugInterceptor(
@@ -148,6 +146,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       getUserById: GetUserById(repo),
       updateUserProfile: UpdateUserProfile(repo),
       deleteUser: DeleteUser(repo),
+      verifyEmailChange: VerifyEmailChange(repo),
+      resendEmailChange: ResendEmailChange(repo),
     );
 
     _bloc.add(
@@ -164,56 +164,78 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return t.toLowerCase().startsWith('bearer ') ? t.substring(7).trim() : t;
   }
 
+  bool _isUsernameValid(String username) => _usernameAllowed.hasMatch(username);
+
   bool _validateInputs(AppLocalizations loc) {
     final first = _firstCtrl.text.trim();
     final last = _lastCtrl.text.trim();
     final username = _userCtrl.text.trim();
+    final email = _emailCtrl.text.trim();
 
     String? firstError;
     String? lastError;
     String? userError;
+    String? emailError;
 
-    if (username.isEmpty) userError = loc.fieldRequired;
+    if (username.isEmpty) {
+      userError = loc.fieldRequired;
+    } else if (!_isUsernameValid(username)) {
+      userError = loc.editProfile_usernameInvalid;
+    }
+
     if (first.isEmpty) firstError = loc.fieldRequired;
     if (last.isEmpty) lastError = loc.fieldRequired;
+
+    if (email.isNotEmpty) {
+      final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
+      if (!ok) emailError = loc.editProfile_invalidEmail;
+    }
 
     setState(() {
       _userError = userError;
       _firstError = firstError;
       _lastError = lastError;
+      _emailError = emailError;
     });
 
-    return userError == null && firstError == null && lastError == null;
+    return userError == null && firstError == null && lastError == null && emailError == null;
   }
 
   void _clearFieldErrorsIfNeeded() {
     bool changed = false;
 
-    if (_userError != null && _userCtrl.text.trim().isNotEmpty) {
+    final username = _userCtrl.text.trim();
+    final email = _emailCtrl.text.trim();
+
+    if (_userError != null && username.isNotEmpty && _isUsernameValid(username)) {
       _userError = null;
       changed = true;
     }
+
     if (_firstError != null && _firstCtrl.text.trim().isNotEmpty) {
       _firstError = null;
       changed = true;
     }
+
     if (_lastError != null && _lastCtrl.text.trim().isNotEmpty) {
       _lastError = null;
       changed = true;
     }
 
-    if (changed && mounted) {
-      setState(() {});
+    if (_emailError != null) {
+      if (email.isEmpty) {
+        _emailError = null;
+        changed = true;
+      } else {
+        final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
+        if (ok) {
+          _emailError = null;
+          changed = true;
+        }
+      }
     }
-  }
 
-  @override
-  void dispose() {
-    _bloc.close();
-    _firstCtrl.dispose();
-    _lastCtrl.dispose();
-    _userCtrl.dispose();
-    super.dispose();
+    if (changed && mounted) setState(() {});
   }
 
   Future<void> _pickImage() async {
@@ -231,6 +253,49 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     });
   }
 
+  Future<bool> _showEmailOtpDialog({
+    required AppLocalizations loc,
+    required String pendingEmail,
+  }) async {
+    if (_emailDialogOpen) return false;
+    _emailDialogOpen = true;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) {
+        return _EmailOtpDialog(
+          loc: loc,
+          pendingEmail: pendingEmail,
+          onVerify: (code) => _bloc.verifyEmailChangeDirect(
+            token: widget.token,
+            userId: widget.userId,
+            ownerProjectLinkId: widget.ownerProjectLinkId,
+            code: code,
+          ),
+          onResend: () => _bloc.resendEmailChangeDirect(
+            token: widget.token,
+            userId: widget.userId,
+            ownerProjectLinkId: widget.ownerProjectLinkId,
+          ),
+        );
+      },
+    );
+
+    _emailDialogOpen = false;
+    return ok == true;
+  }
+
+  @override
+  void dispose() {
+    _bloc.close();
+    _firstCtrl.dispose();
+    _lastCtrl.dispose();
+    _userCtrl.dispose();
+    _emailCtrl.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context)!;
@@ -241,56 +306,118 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       value: _bloc,
       child: BlocConsumer<EditProfileBloc, EditProfileState>(
         listener: (context, state) {
+          // ✅ Errors -> toast (keep it clean)
           if (state.error != null) {
-            AppToast.show(context, state.error!, isError: true);
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              AppToast.show(this.context, state.error!, isError: true);
+            });
           }
 
-          // ✅ DELETE SUCCESS: logout immediately
+          // ✅ delete success -> logout
           if (state.didDelete && !_loggedOutAfterDelete) {
             _loggedOutAfterDelete = true;
-
-            if (state.success != null) {
-              AppToast.show(context, state.success!);
-            }
-
-            Future.microtask(() {
-              if (mounted) widget.onLogoutAfterDelete();
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              widget.onLogoutAfterDelete();
             });
             return;
           }
 
-          // ✅ SAVE SUCCESS: normal behavior (pop with updated user)
-          if (state.success != null && !state.didDelete) {
-            AppToast.show(context, state.success!);
-
-            if (!_poppedAfterSave && state.user != null) {
-              _poppedAfterSave = true;
-              Future.microtask(() {
-                if (mounted) Navigator.pop(context, state.user);
-              });
-            }
-          }
-
           final u = state.user;
+
+          // ✅ initial fill (safe post-frame)
           if (u != null && !_filledOnce) {
             _filledOnce = true;
-            _firstCtrl.text = u.firstName;
-            _lastCtrl.text = u.lastName;
-            _userCtrl.text = u.username ?? '';
-            _public = u.publicProfile;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
 
-            // clear stale inline errors after initial fill
-            _firstError = null;
-            _lastError = null;
-            _userError = null;
+              _firstCtrl.text = u.firstName;
+              _lastCtrl.text = u.lastName;
+              _userCtrl.text = u.username ?? '';
+              _public = u.publicProfile;
 
-            if (mounted) setState(() {});
+              _emailCtrl.text = u.email ?? '';
+              _originalEmail = (u.email ?? '').trim();
+
+              setState(() {});
+            });
+          }
+
+          // ✅ after verify reload: close flow + update email + close screen
+          if (_awaitingVerifyReload && u != null && !u.emailVerificationRequired) {
+            _awaitingVerifyReload = false;
+            _emailFlowActive = false;
+            _saveRequested = false;
+
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+
+              // update local original email so next save won't resend again
+              _emailCtrl.text = u.email ?? '';
+              _originalEmail = (u.email ?? '').trim();
+
+              // return updated user to previous screen
+              Navigator.pop(this.context, u);
+            });
+            return;
+          }
+
+          // ✅ after SAVE request:
+          // open OTP dialog ONLY ONCE, only if user asked save, and backend requires verification
+          if (_saveRequested && !state.saving && u != null) {
+            if (u.emailVerificationRequired) {
+              if (_emailFlowActive) return; // prevent reopen loop
+              _emailFlowActive = true;
+
+              WidgetsBinding.instance.addPostFrameCallback((_) async {
+                if (!mounted) return;
+
+                // clean info message
+                AppToast.show(this.context, loc.editProfile_codeSentToast);
+
+                final pending = (u.pendingEmail ?? '').trim();
+                final ok = await _showEmailOtpDialog(
+                  loc: loc,
+                  pendingEmail: pending.isNotEmpty ? pending : _emailCtrl.text.trim(),
+                );
+
+                if (!mounted) return;
+
+                if (ok) {
+                  // ✅ verified -> reload user then pop screen in the reload handler above
+                  _awaitingVerifyReload = true;
+                  _bloc.add(
+                    LoadEditProfile(
+                      token: widget.token,
+                      userId: widget.userId,
+                      ownerProjectLinkId: widget.ownerProjectLinkId,
+                    ),
+                  );
+                } else {
+                  // ✅ failed/canceled -> allow retry by pressing Save again
+                  _emailFlowActive = false;
+                  _saveRequested = false;
+                }
+              });
+
+              return;
+            } else {
+              // ✅ normal save (no email verification) -> pop back with updated user
+              if (state.error == null) {
+                _saveRequested = false;
+
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  Navigator.pop(this.context, u);
+                });
+              }
+            }
           }
         },
         builder: (context, state) {
           final u = state.user;
-          final resolvedImageUrl =
-              u == null ? '' : _resolveImageUrl(u.profileImageUrl);
+          final imageUrl = u == null ? '' : _resolveImageUrl(u.profileImageUrl);
 
           return Scaffold(
             appBar: AppBar(
@@ -313,7 +440,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         padding: const EdgeInsets.all(16),
                         children: [
                           _ProfileHeader(
-                            imageUrl: resolvedImageUrl,
+                            changeLabel: loc.editProfile_change,
+                            removeLabel: loc.editProfile_remove,
+                            imageUrl: imageUrl,
                             pickedPath: _pickedImagePath,
                             removeImage: _removeImage,
                             onPick: _pickImage,
@@ -324,47 +453,46 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Username (required)
+                          // Email
+                          AppTextField(
+                            controller: _emailCtrl,
+                            label: loc.editProfile_emailLabel,
+                            keyboardType: TextInputType.emailAddress,
+                          ),
+                          if (_emailError != null) ...[
+                            const SizedBox(height: 6),
+                            Text(_emailError!, style: const TextStyle(color: Colors.red)),
+                          ],
+                          const SizedBox(height: 12),
+
+                          // Username
                           AppTextField(controller: _userCtrl, label: loc.username),
                           if (_userError != null) ...[
                             const SizedBox(height: 6),
-                            Text(
-                              _userError!,
-                              style: const TextStyle(color: Colors.red),
-                            ),
+                            Text(_userError!, style: const TextStyle(color: Colors.red)),
                           ],
                           const SizedBox(height: 12),
 
-                          // First name (required)
-                          AppTextField(
-                              controller: _firstCtrl, label: loc.firstName),
+                          // First
+                          AppTextField(controller: _firstCtrl, label: loc.firstName),
                           if (_firstError != null) ...[
                             const SizedBox(height: 6),
-                            Text(
-                              _firstError!,
-                              style: const TextStyle(color: Colors.red),
-                            ),
+                            Text(_firstError!, style: const TextStyle(color: Colors.red)),
                           ],
                           const SizedBox(height: 12),
 
-                          // Last name (required)
+                          // Last
                           AppTextField(controller: _lastCtrl, label: loc.lastName),
                           if (_lastError != null) ...[
                             const SizedBox(height: 6),
-                            Text(
-                              _lastError!,
-                              style: const TextStyle(color: Colors.red),
-                            ),
+                            Text(_lastError!, style: const TextStyle(color: Colors.red)),
                           ],
                           const SizedBox(height: 12),
 
                           SwitchListTile(
                             value: _public,
                             onChanged: (v) => setState(() => _public = v),
-                            title: Text(
-                              loc.publicProfile,
-                              style: TextStyle(color: colors.label),
-                            ),
+                            title: Text(loc.publicProfile, style: TextStyle(color: colors.label)),
                           ),
                           const SizedBox(height: 16),
 
@@ -372,40 +500,49 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             onPressed: state.saving
                                 ? null
                                 : () {
-                                    // ✅ local validation before calling API
                                     final valid = _validateInputs(loc);
                                     if (!valid) {
                                       AppToast.show(
                                         context,
-                                        loc.fieldRequired,
+                                        _emailError ?? _userError ?? _firstError ?? _lastError ?? loc.fieldRequired,
                                         isError: true,
                                       );
                                       return;
                                     }
 
-                                    context.read<EditProfileBloc>().add(
-                                          SaveEditProfile(
-                                            token: widget.token,
-                                            userId: widget.userId,
-                                            ownerProjectLinkId:
-                                                widget.ownerProjectLinkId,
-                                            firstName: _firstCtrl.text.trim(),
-                                            lastName: _lastCtrl.text.trim(),
-                                            // ✅ required now (no null fallback)
-                                            username: _userCtrl.text.trim(),
-                                            isPublicProfile: _public,
-                                            imageFilePath: _pickedImagePath,
-                                            imageRemoved: _removeImage,
-                                          ),
-                                        );
+                                    // ✅ user pressed save -> mark requested
+                                    _saveRequested = true;
+                                    _awaitingVerifyReload = false;
+                                    // do NOT reset _emailFlowActive here; it prevents loops
+
+                                    final newEmailRaw = _emailCtrl.text.trim();
+                                    final oldEmailRaw = _originalEmail.trim();
+
+                                    final emailToSend =
+                                        (newEmailRaw.isEmpty || newEmailRaw.toLowerCase() == oldEmailRaw.toLowerCase())
+                                            ? null
+                                            : newEmailRaw;
+
+                                    _bloc.add(
+                                      SaveEditProfile(
+                                        token: widget.token,
+                                        userId: widget.userId,
+                                        ownerProjectLinkId: widget.ownerProjectLinkId,
+                                        firstName: _firstCtrl.text.trim(),
+                                        lastName: _lastCtrl.text.trim(),
+                                        username: _userCtrl.text.trim(),
+                                        email: emailToSend,
+                                        isPublicProfile: _public,
+                                        imageFilePath: _pickedImagePath,
+                                        imageRemoved: _removeImage,
+                                      ),
+                                    );
                                   },
                             child: state.saving
                                 ? const SizedBox(
                                     height: 18,
                                     width: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
+                                    child: CircularProgressIndicator(strokeWidth: 2),
                                   )
                                 : Text(loc.save),
                           ),
@@ -416,14 +553,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                           _DeleteSection(
                             deleting: state.deleting,
+                            loc: loc,
                             onDelete: (password) {
-                              context.read<EditProfileBloc>().add(
-                                    DeleteAccount(
-                                      token: widget.token,
-                                      userId: widget.userId,
-                                      password: password,
-                                    ),
-                                  );
+                              _bloc.add(
+                                DeleteAccount(
+                                  token: widget.token,
+                                  userId: widget.userId,
+                                  password: password,
+                                ),
+                              );
                             },
                           ),
                         ],
@@ -436,6 +574,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 }
 
 class _ProfileHeader extends StatelessWidget {
+  final String changeLabel;
+  final String removeLabel;
+
   final String? imageUrl;
   final String? pickedPath;
   final bool removeImage;
@@ -443,6 +584,8 @@ class _ProfileHeader extends StatelessWidget {
   final VoidCallback onRemove;
 
   const _ProfileHeader({
+    required this.changeLabel,
+    required this.removeLabel,
     required this.imageUrl,
     required this.pickedPath,
     required this.removeImage,
@@ -468,9 +611,7 @@ class _ProfileHeader extends StatelessWidget {
           radius: 44,
           backgroundColor: colors.surface,
           backgroundImage: provider,
-          child: provider == null
-              ? Icon(Icons.person, color: colors.label, size: 40)
-              : null,
+          child: provider == null ? Icon(Icons.person, color: colors.label, size: 40) : null,
         ),
         const SizedBox(height: 10),
         Wrap(
@@ -479,12 +620,12 @@ class _ProfileHeader extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: onPick,
               icon: const Icon(Icons.photo),
-              label: const Text("Change"),
+              label: Text(changeLabel),
             ),
             OutlinedButton.icon(
               onPressed: onRemove,
               icon: const Icon(Icons.delete_outline),
-              label: const Text("Remove"),
+              label: Text(removeLabel),
             ),
           ],
         ),
@@ -496,10 +637,12 @@ class _ProfileHeader extends StatelessWidget {
 class _DeleteSection extends StatefulWidget {
   final void Function(String password) onDelete;
   final bool deleting;
+  final AppLocalizations loc;
 
   const _DeleteSection({
     required this.onDelete,
     required this.deleting,
+    required this.loc,
   });
 
   @override
@@ -518,25 +661,22 @@ class _DeleteSectionState extends State<_DeleteSection> {
 
   @override
   Widget build(BuildContext context) {
-    final loc = AppLocalizations.of(context)!;
+    final loc = widget.loc;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(loc.dangerZone, style: const TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
-
         AppTextField(
           controller: _passCtrl,
           label: loc.password,
           obscureText: true,
         ),
-
         if (_error != null) ...[
           const SizedBox(height: 6),
           Text(_error!, style: const TextStyle(color: Colors.red)),
         ],
-
         const SizedBox(height: 10),
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
@@ -552,12 +692,117 @@ class _DeleteSectionState extends State<_DeleteSection> {
                   widget.onDelete(pwd);
                 },
           child: widget.deleting
-              ? const SizedBox(
-                  height: 18,
-                  width: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
+              ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
               : Text(loc.deleteAccount),
+        ),
+      ],
+    );
+  }
+}
+
+/// ✅ OTP dialog: closes automatically on SUCCESS and on FAILURE with clean toast
+class _EmailOtpDialog extends StatefulWidget {
+  final AppLocalizations loc;
+  final String pendingEmail;
+  final Future<void> Function(String code) onVerify;
+  final Future<void> Function() onResend;
+
+  const _EmailOtpDialog({
+    required this.loc,
+    required this.pendingEmail,
+    required this.onVerify,
+    required this.onResend,
+  });
+
+  @override
+  State<_EmailOtpDialog> createState() => _EmailOtpDialogState();
+}
+
+class _EmailOtpDialogState extends State<_EmailOtpDialog> {
+  final _codeCtrl = TextEditingController();
+  bool _loading = false;
+
+  String _cleanErr(Object e) =>
+      e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '').trim();
+
+  @override
+  void dispose() {
+    _codeCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = widget.loc;
+
+    return AlertDialog(
+      title: Text(loc.editProfile_verifyNewEmailTitle),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(loc.editProfile_codeSentTo),
+            const SizedBox(height: 6),
+            Text(widget.pendingEmail, style: const TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _codeCtrl,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(labelText: loc.editProfile_codeLabel),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _loading
+              ? null
+              : () async {
+                  setState(() => _loading = true);
+                  try {
+                    await widget.onResend();
+                    if (!mounted) return;
+                    // clean message (reuse label; if you have a dedicated key, replace it)
+                    AppToast.show(context, loc.editProfile_resend);
+                  } catch (e) {
+                    if (!mounted) return;
+                    AppToast.show(context, _cleanErr(e), isError: true);
+                    Navigator.of(context, rootNavigator: true).pop(false); // ✅ close on failure too
+                  } finally {
+                    if (mounted) setState(() => _loading = false);
+                  }
+                },
+          child: Text(loc.editProfile_resend),
+        ),
+        ElevatedButton(
+          onPressed: _loading
+              ? null
+              : () async {
+                  final code = _codeCtrl.text.trim();
+                  if (code.isEmpty) {
+                    AppToast.show(context, loc.editProfile_codeRequired, isError: true);
+                    Navigator.of(context, rootNavigator: true).pop(false); // ✅ close
+                    return;
+                  }
+
+                  setState(() => _loading = true);
+                  try {
+                    await widget.onVerify(code);
+                    if (!mounted) return;
+                    AppToast.show(context, loc.editProfile_emailUpdatedToast);
+                    Navigator.of(context, rootNavigator: true).pop(true); // ✅ close on success
+                  } catch (e) {
+                    if (!mounted) return;
+                    AppToast.show(context, _cleanErr(e), isError: true);
+                    Navigator.of(context, rootNavigator: true).pop(false); // ✅ close on failure
+                  } finally {
+                    if (mounted) setState(() => _loading = false);
+                  }
+                },
+          child: _loading
+              ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              : Text(loc.editProfile_verify),
         ),
       ],
     );

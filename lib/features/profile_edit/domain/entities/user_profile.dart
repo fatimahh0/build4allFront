@@ -13,6 +13,10 @@ class UserProfile {
   final bool publicProfile;
   final String? statusName;
 
+  // ✅ NEW
+  final bool emailVerificationRequired;
+  final String? pendingEmail;
+
   UserProfile({
     required this.id,
     required this.ownerProjectLinkId,
@@ -24,6 +28,10 @@ class UserProfile {
     this.profileImageUrl,
     required this.publicProfile,
     this.statusName,
+
+    // ✅ NEW
+    this.emailVerificationRequired = false,
+    this.pendingEmail,
   });
 
   UserProfile copyWith({
@@ -32,6 +40,10 @@ class UserProfile {
     String? username,
     String? profileImageUrl,
     bool? publicProfile,
+
+    // ✅ NEW
+    bool? emailVerificationRequired,
+    String? pendingEmail,
   }) {
     return UserProfile(
       id: id,
@@ -44,6 +56,11 @@ class UserProfile {
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       publicProfile: publicProfile ?? this.publicProfile,
       statusName: statusName,
+
+      // ✅ NEW
+      emailVerificationRequired:
+          emailVerificationRequired ?? this.emailVerificationRequired,
+      pendingEmail: pendingEmail ?? this.pendingEmail,
     );
   }
 }

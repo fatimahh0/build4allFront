@@ -10,12 +10,13 @@ class OrdersRepositoryImpl implements OrdersRepository {
   OrdersRepositoryImpl({required this.api});
 
   @override
-  Future<List<OrderLine>> getMyOrders() async {
+  Future<List<OrderCard>> getMyOrders() async {
     try {
       final raw = await api.getMyOrdersRaw();
+
       return raw
           .whereType<Map>()
-          .map((m) => OrderLineModel.fromJson(m.cast<String, dynamic>()))
+          .map((m) => OrderCardModel.fromJson(m.cast<String, dynamic>()))
           .map((m) => m.toEntity())
           .toList();
     } on DioException catch (e) {
