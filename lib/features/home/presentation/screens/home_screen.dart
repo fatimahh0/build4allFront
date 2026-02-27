@@ -1039,109 +1039,115 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
       children: [
         header,
         SizedBox(height: spacing.xs),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final w = constraints.maxWidth;
-            final aspect = _aspect(w);
+      LayoutBuilder(
+  builder: (context, constraints) {
+    final w = constraints.maxWidth;
 
-            final cols = 2;
-            const perPage = 2; // ✅ 2 items per page (clean)
+    // base aspect
+    var aspect = _aspect(w);
 
-            final totalPages = (items.length / perPage).ceil().clamp(1, 999999);
+    // ✅ Flash sale cards have extra UI (old price + stock + CTA + Ask AI)
+    // so give them a bit more height (smaller aspect => taller card)
+    if (widget.storageId == 'flash_sale') {
+      aspect = math.max(0.48, aspect - 0.06);
+    }
 
-            final safePage = _page.clamp(0, totalPages - 1);
-            if (safePage != _page) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!mounted) return;
-                _page = safePage;
-                if (_pc.hasClients) _pc.jumpToPage(safePage);
-              });
-            }
+    final cols = 2;
+    const perPage = 2;
 
-            final cardW = (w - ((cols - 1) * spacing.md)) / cols;
-            final cardH = cardW / aspect;
+    final totalPages = (items.length / perPage).ceil().clamp(1, 999999);
 
-            Widget card(ItemSummary item) {
-              return Builder(
-                builder: (ctx) {
-                  final pricing = widget.pricingFor(ctx, item);
-                  final fit = item.kind == ItemKind.product
-                      ? BoxFit.contain
-                      : BoxFit.cover;
+    final safePage = _page.clamp(0, totalPages - 1);
+    if (safePage != _page) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _page = safePage;
+        if (_pc.hasClients) _pc.jumpToPage(safePage);
+      });
+    }
 
-                  final bool outOfStock = item.kind == ItemKind.product &&
-                      (item.stock != null) &&
-                      item.stock! <= 0;
+    final cardW = (w - ((cols - 1) * spacing.md)) / cols;
+    final cardH = cardW / aspect;
 
-                  return ItemCard(
-                    itemId: item.id,
-                    width: double.infinity,
-                    imageFit: fit,
-                    title: item.title,
-                    subtitle: widget.subtitleFor(item),
-                    imageUrl: item.imageUrl,
-                    badgeLabel: pricing.currentLabel,
-                    oldPriceLabel: pricing.oldLabel,
-                    tagLabel: pricing.tagLabel,
-                    metaLabel: widget.metaFor(ctx, item),
-                    ctaLabel: widget.ctaLabelFor(ctx, item),
-                    onTap: () => widget.onTapItem(item.id),
-                    onCtaPressed:
-                        outOfStock ? null : () => widget.onCtaPressed(item),
-                  );
-                },
-              );
-            }
+    // ✅ tiny extra safety padding for flash sale only
+    final extraH = widget.storageId == 'flash_sale' ? spacing.sm : 0.0;
 
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  height: cardH,
-                  child: PageView.builder(
-                    key: PageStorageKey('home_pager_${widget.storageId}'),
-                    controller: _pc,
-                    physics: const PageScrollPhysics(),
-                    onPageChanged: (i) => setState(() => _page = i),
-                    itemCount: totalPages,
-                    itemBuilder: (context, pageIndex) {
-                      final start = pageIndex * perPage;
-                      final end = math.min(start + perPage, items.length);
-                      final pageItems = start >= items.length
-                          ? <ItemSummary>[]
-                          : items.sublist(start, end);
+    Widget card(ItemSummary item) {
+      return Builder(
+        builder: (ctx) {
+          final pricing = widget.pricingFor(ctx, item);
+          final fit = item.kind == ItemKind.product ? BoxFit.contain : BoxFit.cover;
 
-                      return Align(
-                        alignment: Alignment.center,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            for (int i = 0; i < pageItems.length; i++) ...[
-                              SizedBox(width: cardW, child: card(pageItems[i])),
-                              if (i != pageItems.length - 1)
-                                SizedBox(width: spacing.md),
-                            ],
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+          final bool outOfStock = item.kind == ItemKind.product &&
+              (item.stock != null) &&
+              item.stock! <= 0;
+
+          return ItemCard(
+            itemId: item.id,
+
+            // ✅ pass real width (important if ItemCard calculates internal sizes)
+            width: cardW,
+
+            imageFit: fit,
+            title: item.title,
+            subtitle: widget.subtitleFor(item),
+            imageUrl: item.imageUrl,
+            badgeLabel: pricing.currentLabel,
+            oldPriceLabel: pricing.oldLabel,
+            tagLabel: pricing.tagLabel,
+            metaLabel: widget.metaFor(ctx, item),
+            ctaLabel: widget.ctaLabelFor(ctx, item),
+            onTap: () => widget.onTapItem(item.id),
+            onCtaPressed: outOfStock ? null : () => widget.onCtaPressed(item),
+          );
+        },
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: cardH + extraH,
+          child: PageView.builder(
+            key: PageStorageKey('home_pager_${widget.storageId}'),
+            controller: _pc,
+            physics: const PageScrollPhysics(),
+            onPageChanged: (i) => setState(() => _page = i),
+            itemCount: totalPages,
+            itemBuilder: (context, pageIndex) {
+              final start = pageIndex * perPage;
+              final end = math.min(start + perPage, items.length);
+              final pageItems = start >= items.length ? <ItemSummary>[] : items.sublist(start, end);
+
+              return Align(
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (int i = 0; i < pageItems.length; i++) ...[
+                      SizedBox(width: cardW, child: card(pageItems[i])),
+                      if (i != pageItems.length - 1) SizedBox(width: spacing.md),
+                    ],
+                  ],
                 ),
-                SizedBox(height: spacing.sm),
-                if (totalPages > 1)
-                  _ProPagerBar(
-                    currentPage0: safePage,
-                    totalPages: totalPages,
-                    onPrev: safePage > 0 ? () => _jumpTo(safePage - 1) : null,
-                    onNext: safePage < totalPages - 1
-                        ? () => _jumpTo(safePage + 1)
-                        : null,
-                    onDotTap: (p0) => _jumpTo(p0),
-                  ),
-              ],
-            );
-          },
+              );
+            },
+          ),
         ),
+        SizedBox(height: spacing.sm),
+        if (totalPages > 1)
+          _ProPagerBar(
+            currentPage0: safePage,
+            totalPages: totalPages,
+            onPrev: safePage > 0 ? () => _jumpTo(safePage - 1) : null,
+            onNext: safePage < totalPages - 1 ? () => _jumpTo(safePage + 1) : null,
+            onDotTap: (p0) => _jumpTo(p0),
+          ),
+      ],
+    );
+  },
+),
       ],
     );
   }
