@@ -29,17 +29,34 @@ class AdminOrderStatusUpdateRequested extends AdminOrderDetailsEvent {
 }
 
 /// manual payment state change
-class AdminOrderPaymentStateUpdateRequested extends AdminOrderDetailsEvent {
+class AdminOrderMarkCashPaidRequested extends AdminOrderDetailsEvent {
   final int orderId;
-  final String paymentState; // UNPAID / PARTIAL / PAID
-  final double? amount; // for PARTIAL (optional)
-
-  const AdminOrderPaymentStateUpdateRequested({
-    required this.orderId,
-    required this.paymentState,
-    this.amount,
-  });
+  const AdminOrderMarkCashPaidRequested({required this.orderId});
 
   @override
-  List<Object?> get props => [orderId, paymentState, amount];
+  List<Object?> get props => [orderId];
+}
+
+class AdminOrderResetCashUnpaidRequested extends AdminOrderDetailsEvent {
+  final int orderId;
+  const AdminOrderResetCashUnpaidRequested({required this.orderId});
+
+  @override
+  List<Object?> get props => [orderId];
+}
+
+class AdminOrderCancelAndUnpayRequested extends AdminOrderDetailsEvent {
+  final int orderId;
+  const AdminOrderCancelAndUnpayRequested({required this.orderId});
+
+  @override
+  List<Object?> get props => [orderId];
+}
+
+class AdminOrderReopenRequested extends AdminOrderDetailsEvent {
+  final int orderId;
+  const AdminOrderReopenRequested({required this.orderId});
+
+  @override
+  List<Object?> get props => [orderId];
 }

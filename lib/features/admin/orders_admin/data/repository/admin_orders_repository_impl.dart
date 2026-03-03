@@ -60,18 +60,34 @@ class AdminOrdersRepositoryImpl implements AdminOrdersRepository {
     }
   }
 
-   @override
-  Future<void> updateOrderPaymentState({
-    required int orderId,
-    required String paymentState,
-  }) async {
+    @override
+  Future<void> markCashPaid({required int orderId}) async {
     try {
-      await api.updateOrderPaymentStateRaw(
-        orderId: orderId,
-        paymentState: paymentState,
-      );
+      await api.markCashPaidRaw(orderId: orderId);
     } on DioException catch (e) {
-      _throwNice(e, fallback: 'Failed to update payment state');
+      _throwNice(e, fallback: 'Failed to mark cash as paid');
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  @override
+  Future<void> resetCashToUnpaid({required int orderId}) async {
+    try {
+      await api.resetCashToUnpaidRaw(orderId: orderId);
+    } on DioException catch (e) {
+      _throwNice(e, fallback: 'Failed to reset cash to unpaid');
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  @override
+  Future<void> reopenOrder({required int orderId}) async {
+    try {
+      await api.reopenOrderRaw(orderId: orderId);
+    } on DioException catch (e) {
+      _throwNice(e, fallback: 'Failed to reopen order');
     } catch (e) {
       throw Exception(e.toString());
     }

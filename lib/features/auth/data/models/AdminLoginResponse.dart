@@ -3,9 +3,8 @@ class AdminLoginResponse {
   final String refreshToken;
   final String role; // SUPER_ADMIN / OWNER / MANAGER
   final Map<String, dynamic> admin;
-  
 
-  // ✅ NEW: which AdminUserProject (AUP) this admin session belongs to
+  // which AUP / tenant this session belongs to (optional)
   final int? ownerProjectId;
 
   const AdminLoginResponse({
@@ -23,12 +22,51 @@ class AdminLoginResponse {
       return int.tryParse(v.toString());
     }
 
+    // ✅ Support wrapped payload: { message, data: {...} }
+    Map<String, dynamic> data = j;
+    final d1 = j['data'];
+    if (d1 is Map) {
+      data = Map<String, dynamic>.from(d1 as Map);
+
+      // Sometimes nested again: { message, data: { data: {...} } }
+      final d2 = data['data'];
+      if (d2 is Map) {
+        data = Map<String, dynamic>.from(d2 as Map);
+      }
+    }
+
+    String pickToken(Map<String, dynamic> m) {
+      return (m['token'] ??
+              m['accessToken'] ??
+              m['jwt'] ??
+              m['access_token'] ??
+              '')
+          .toString();
+    }
+
+    String pickRefresh(Map<String, dynamic> m) {
+      return (m['refreshToken'] ??
+              m['refresh_token'] ??
+              m['refresh'] ??
+              '')
+          .toString();
+    }
+
+    String pickRole(Map<String, dynamic> m) {
+      return (m['role'] ?? m['adminRole'] ?? m['type'] ?? '').toString();
+    }
+
+    Map<String, dynamic> pickAdmin(Map<String, dynamic> m) {
+      final a = m['admin'] ?? m['user'] ?? m['owner'] ?? m['profile'];
+      return (a is Map) ? Map<String, dynamic>.from(a as Map) : <String, dynamic>{};
+    }
+
     return AdminLoginResponse(
-      token: (j['token'] ?? '').toString(),
-       refreshToken: (j['refreshToken'] ?? '').toString(),
-      role: (j['role'] ?? '').toString(),
-      admin: (j['admin'] as Map?)?.cast<String, dynamic>() ?? {},
-      ownerProjectId: toInt(j['ownerProjectId']),
+      token: pickToken(data),
+      refreshToken: pickRefresh(data),
+      role: pickRole(data),
+      admin: pickAdmin(data),
+      ownerProjectId: toInt(data['ownerProjectId'] ?? j['ownerProjectId']),
     );
   }
 }

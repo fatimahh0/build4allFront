@@ -165,8 +165,6 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
               icon: const Icon(Icons.arrow_back),
               onPressed: () => Navigator.pop(context, _changed),
             ),
-
-            // ✅ NEW: dynamic title (use orderCode if loaded)
             title: BlocBuilder<AdminOrderDetailsBloc, AdminOrderDetailsState>(
               buildWhen: (p, c) => p.data?.order.orderCode != c.data?.order.orderCode,
               builder: (context, state) {
@@ -243,40 +241,53 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                   return colors.muted;
                 }
 
+                final rawStatus = (o.status).toUpperCase();
                 final paymentState = o.payment.paymentState.toUpperCase();
                 final paymentMethod = (o.paymentMethod ?? '').toUpperCase();
                 final isCash = paymentMethod == 'CASH';
-                final canMarkCashPaid = isCash && paymentState != 'PAID';
-                  final phoneTxt = (o.shippingPhone ?? '').trim();
+                final isRefunded = rawStatus == 'REFUNDED';
 
-                final rawStatus = o.status.toUpperCase();
                 final isPaid = paymentState == 'PAID' || o.fullyPaid == true;
 
+                // ✅ IMPORTANT: allow marking CASH paid even if status is CANCELED
+                // Only block if REFUNDED.
+                final canMarkCashPaid = isCash && !isRefunded && paymentState != 'PAID';
+
+                // ✅ If paid but not completed, allow completing even if status is CANCELED.
+                final canComplete = isPaid && !isRefunded && rawStatus != 'COMPLETED';
+
+                // Reject is only allowed when NOT paid and in pending-ish states
                 final canReject = !isPaid &&
                     (rawStatus == 'PENDING' || rawStatus == 'CANCEL_REQUESTED') &&
                     !['REJECTED', 'CANCELED', 'REFUNDED', 'COMPLETED'].contains(rawStatus);
 
-                final canReopen = rawStatus != 'PENDING' && rawStatus != 'REFUNDED';
+                // Your "reopen" action currently cancels + unpays (backend behavior)
+                // So don't show it if already canceled/refunded.
+                final canReopenAction = !isRefunded && rawStatus != 'CANCELED';
 
-               final headerName = (o.shippingFullName ?? '').trim();
+                // Restore is optional control: allow moving canceled back to pending
+                final canRestore = !isRefunded && rawStatus == 'CANCELED';
 
-final uniqueCustomers = data.items
-    .map((e) => e.user.fullName.trim())
-    .where((e) => e.isNotEmpty)
-    .toSet()
-    .toList();
+                final phoneTxt = (o.shippingPhone ?? '').trim();
 
-final fallbackPhone = (o.shippingPhone ?? '').trim();
+                final headerName = (o.shippingFullName ?? '').trim();
 
-final customerDisplay = headerName.isNotEmpty
-    ? headerName
-    : uniqueCustomers.isEmpty
-        ? (fallbackPhone.isNotEmpty ? fallbackPhone : '—')
-        : uniqueCustomers.length == 1
-            ? uniqueCustomers.first
-            : '${uniqueCustomers.first} (+${uniqueCustomers.length - 1})';
+                final uniqueCustomers = data.items
+                    .map((e) => e.user.fullName.trim())
+                    .where((e) => e.isNotEmpty)
+                    .toSet()
+                    .toList();
 
-                // ✅ NEW: order code display values
+                final fallbackPhone = (o.shippingPhone ?? '').trim();
+
+                final customerDisplay = headerName.isNotEmpty
+                    ? headerName
+                    : uniqueCustomers.isEmpty
+                        ? (fallbackPhone.isNotEmpty ? fallbackPhone : '—')
+                        : uniqueCustomers.length == 1
+                            ? uniqueCustomers.first
+                            : '${uniqueCustomers.first} (+${uniqueCustomers.length - 1})';
+
                 final orderCode = (o.orderCode ?? '').trim();
                 final orderSeq = o.orderSeq;
 
@@ -337,7 +348,10 @@ final customerDisplay = headerName.isNotEmpty
                         _kv(tokens, colors, l10n.adminOrderTotal, money(total)),
                         _kv(tokens, colors, l10n.adminPaid, money(o.payment.paidAmount)),
                         if (!o.fullyPaid)
-                          _kv(tokens, colors, l10n.adminRemaining, money(o.payment.remainingAmount)),
+                          _kv(tokens, colors, l10n.adminRemaining,
+                              money(o.payment.remainingAmount)),
+
+                        // ✅ Mark CASH Paid stays visible even if status is CANCELED
                         if (canMarkCashPaid) ...[
                           SizedBox(height: spacing.md),
                           Row(
@@ -361,10 +375,8 @@ final customerDisplay = headerName.isNotEmpty
                                           if (!ok) return;
 
                                           context.read<AdminOrderDetailsBloc>().add(
-                                                AdminOrderPaymentStateUpdateRequested(
-                                                  orderId: o.id,
-                                                  paymentState: 'PAID',
-                                                ),
+                                                AdminOrderMarkCashPaidRequested(
+                                                    orderId: o.id),
                                               );
                                         },
                                   style: ElevatedButton.styleFrom(
@@ -422,7 +434,6 @@ final customerDisplay = headerName.isNotEmpty
                           ),
                         ),
                         SizedBox(height: spacing.sm),
-
                         Row(
                           children: [
                             Text(
@@ -454,20 +465,17 @@ final customerDisplay = headerName.isNotEmpty
                             ),
                           ],
                         ),
-
                         SizedBox(height: spacing.md),
 
-                        // ✅ NEW: Order Code + Seq
                         if (orderCode.isNotEmpty) _kv(tokens, colors, 'Order Code', orderCode),
                         if (orderSeq != null) _kv(tokens, colors, 'Order Seq', '$orderSeq'),
                         if (orderCode.isNotEmpty || orderSeq != null)
                           _kv(tokens, colors, 'Internal ID', '#${o.id}'),
 
                         _kv(tokens, colors, 'Customer', customerDisplay),
-                     
 
-if (phoneTxt.isNotEmpty && customerDisplay != phoneTxt)
-  _kv(tokens, colors, 'Phone', phoneTxt),
+                        if (phoneTxt.isNotEmpty && customerDisplay != phoneTxt)
+                          _kv(tokens, colors, 'Phone', phoneTxt),
                         if ((o.shippingAddress ?? '').trim().isNotEmpty)
                           _kv(tokens, colors, 'Address', o.shippingAddress!.trim()),
                         if ((o.shippingCity ?? '').trim().isNotEmpty)
@@ -477,24 +485,25 @@ if (phoneTxt.isNotEmpty && customerDisplay != phoneTxt)
                         if ((o.paymentMethod ?? '').trim().isNotEmpty)
                           _kv(tokens, colors, 'Payment Method', o.paymentMethod!.trim()),
 
-                        if (canReopen) ...[
+                        // ✅ Mark Completed available even if status is CANCELED (your "control")
+                        if (canComplete) ...[
                           SizedBox(height: spacing.md),
                           Row(
                             children: [
                               Expanded(
-                                child: OutlinedButton.icon(
+                                child: ElevatedButton.icon(
                                   onPressed: state.updating
                                       ? null
                                       : () async {
                                           final ok = await _confirmAction(
                                             context: context,
-                                            title: 'Reopen Order',
-                                            body: 'This will change the order status back to Pending.',
-                                            confirmColor: colors.primary,
+                                            title: 'Mark Completed',
+                                            body: 'This will mark the order as completed.',
+                                            confirmColor: colors.success,
                                             tokens: tokens,
                                             colors: colors,
                                             spacing: spacing,
-                                            confirmText: 'Reopen',
+                                            confirmText: 'Complete',
                                             cancelText: l10n.cancel,
                                           );
                                           if (!ok) return;
@@ -502,13 +511,13 @@ if (phoneTxt.isNotEmpty && customerDisplay != phoneTxt)
                                           context.read<AdminOrderDetailsBloc>().add(
                                                 AdminOrderStatusUpdateRequested(
                                                   orderId: o.id,
-                                                  status: 'PENDING',
+                                                  status: 'COMPLETED',
                                                 ),
                                               );
                                         },
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: colors.primary,
-                                    side: BorderSide(color: colors.primary.withOpacity(0.45)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: colors.success,
+                                    foregroundColor: colors.onPrimary,
                                     padding: EdgeInsets.symmetric(
                                       horizontal: spacing.md,
                                       vertical: spacing.sm,
@@ -517,9 +526,9 @@ if (phoneTxt.isNotEmpty && customerDisplay != phoneTxt)
                                       borderRadius: BorderRadius.circular(14),
                                     ),
                                   ),
-                                  icon: const Icon(Icons.undo),
+                                  icon: const Icon(Icons.verified),
                                   label: Text(
-                                    'Reopen Order',
+                                    'Mark Completed',
                                     style: tokens.typography.bodyMedium.copyWith(
                                       fontWeight: FontWeight.w900,
                                     ),
@@ -535,6 +544,113 @@ if (phoneTxt.isNotEmpty && customerDisplay != phoneTxt)
                                 ),
                               ],
                             ],
+                          ),
+                        ],
+
+                        // ✅ "Reopen" button (your backend makes it: CANCELED + UNPAID)
+                        if (canReopenAction) ...[
+                          SizedBox(height: spacing.md),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: state.updating
+                                      ? null
+                                      : () async {
+                                          final ok = await _confirmAction(
+                                            context: context,
+                                            title: 'Reopen (Cancel + Unpay)',
+                                            body: 'This will cancel the order and reset payment back to UNPAID.',
+                                            confirmColor: colors.danger,
+                                            tokens: tokens,
+                                            colors: colors,
+                                            spacing: spacing,
+                                            confirmText: 'Reopen',
+                                            cancelText: l10n.cancel,
+                                          );
+                                          if (!ok) return;
+
+                                          context.read<AdminOrderDetailsBloc>().add(
+                                                AdminOrderReopenRequested(orderId: o.id),
+                                              );
+                                        },
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: colors.danger,
+                                    side: BorderSide(color: colors.danger.withOpacity(0.45)),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: spacing.md,
+                                      vertical: spacing.sm,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.restart_alt),
+                                  label: Text(
+                                    'Reopen',
+                                    style: tokens.typography.bodyMedium.copyWith(
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              if (state.updating) ...[
+                                SizedBox(width: spacing.sm),
+                                const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+
+                        // ✅ Restore canceled order back to Pending (optional but gives you control)
+                        if (canRestore) ...[
+                          SizedBox(height: spacing.md),
+                          OutlinedButton.icon(
+                            onPressed: state.updating
+                                ? null
+                                : () async {
+                                    final ok = await _confirmAction(
+                                      context: context,
+                                      title: 'Restore to Pending',
+                                      body: 'This will restore the order back to Pending.',
+                                      confirmColor: colors.primary,
+                                      tokens: tokens,
+                                      colors: colors,
+                                      spacing: spacing,
+                                      confirmText: 'Restore',
+                                      cancelText: l10n.cancel,
+                                    );
+                                    if (!ok) return;
+
+                                    context.read<AdminOrderDetailsBloc>().add(
+                                          AdminOrderStatusUpdateRequested(
+                                            orderId: o.id,
+                                            status: 'PENDING',
+                                          ),
+                                        );
+                                  },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: colors.primary,
+                              side: BorderSide(color: colors.primary.withOpacity(0.45)),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: spacing.md,
+                                vertical: spacing.sm,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            icon: const Icon(Icons.undo),
+                            label: Text(
+                              'Restore to Pending',
+                              style: tokens.typography.bodyMedium.copyWith(
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
                           ),
                         ],
 
@@ -689,13 +805,15 @@ if (phoneTxt.isNotEmpty && customerDisplay != phoneTxt)
                               if ((it.item.location ?? '').trim().isNotEmpty)
                                 Text(
                                   it.item.location!.trim(),
-                                  style: tokens.typography.bodySmall.copyWith(color: colors.muted),
+                                  style: tokens.typography.bodySmall.copyWith(
+                                      color: colors.muted),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               Text(
                                 l10n.adminQtyPriceLine(it.quantity, money(it.price)),
-                                style: tokens.typography.bodySmall.copyWith(color: colors.muted),
+                                style: tokens.typography.bodySmall.copyWith(
+                                    color: colors.muted),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),

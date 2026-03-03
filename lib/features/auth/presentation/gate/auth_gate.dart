@@ -1,4 +1,3 @@
-// lib/features/auth/presentation/gate/auth_gate.dart
 import 'package:build4front/core/config/env.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -30,7 +29,7 @@ class AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<AuthGate> {
   final _roleStore = SessionRoleStore();
-  final _adminStore = AdminTokenStore();
+  final _adminStore = const AdminTokenStore();
   final _userStore = AuthTokenStore();
 
   bool _loading = true;
@@ -45,15 +44,20 @@ class _AuthGateState extends State<AuthGate> {
     _boot();
   }
 
-  // ---------- helpers ----------
+  // ------------------- helpers -------------------
+
   String _stripBearer(String? t) {
     final v = (t ?? '').trim();
     if (v.toLowerCase().startsWith('bearer ')) return v.substring(7).trim();
     return v;
   }
 
-  /// ✅ TENANT must be ownerProjectLinkId (AUP link id)
-  String _currentTenantId() => (Env.ownerProjectLinkId ?? '').trim();
+  String _currentTenantId() {
+    // prefer runtime config, fallback env
+    final fromConfig = widget.appConfig.ownerProjectId?.toString().trim();
+    if (fromConfig != null && fromConfig.isNotEmpty) return fromConfig;
+    return (Env.ownerProjectLinkId ?? '').toString().trim();
+  }
 
   Future<void> _logoutAll() async {
     await _userStore.clear();
@@ -64,11 +68,12 @@ class _AuthGateState extends State<AuthGate> {
 
   Future<void> _enforceTenantMatchOrLogout() async {
     final current = _currentTenantId();
-    if (current.isEmpty) return; // fail-open if not configured
+    if (current.isEmpty) return; // fail-open
 
     final savedUser = (await _userStore.getTenantId())?.trim() ?? '';
     final savedAdmin = (await _adminStore.getTenantId())?.trim() ?? '';
 
+    // ✅ only treat as mismatch if saved value exists
     final mismatchUser = savedUser.isNotEmpty && savedUser != current;
     final mismatchAdmin = savedAdmin.isNotEmpty && savedAdmin != current;
 
@@ -77,12 +82,11 @@ class _AuthGateState extends State<AuthGate> {
     }
   }
 
-  /* ========================= Public app access check ========================= */
+  // ------------------- public access -------------------
 
   Future<bool> _checkPublicAppAccess() async {
-    // ✅ MUST be tenant link id (ownerProjectLinkId)
-    final linkId = int.tryParse(_currentTenantId());
-    if (linkId == null) return true; // fail-open
+    final linkId = widget.appConfig.ownerProjectId;
+    if (linkId == null) return true;
 
     try {
       final res = await g.dio().get('/api/public/app-access/$linkId');
@@ -90,20 +94,16 @@ class _AuthGateState extends State<AuthGate> {
           ? Map<String, dynamic>.from(res.data as Map)
           : <String, dynamic>{};
 
-      final allowed = data['allowed'] == true;
+      if (data['allowed'] == true) return true;
 
-      if (!allowed) {
-        if (!mounted) return false;
-        setState(() {
-          _appBlocked = true;
-          _blockReason = (data['reason'] ?? '').toString();
-          _serverBlockMessage = (data['message'] ?? '').toString();
-          _loading = false;
-        });
-        return false;
-      }
-
-      return true;
+      if (!mounted) return false;
+      setState(() {
+        _appBlocked = true;
+        _blockReason = (data['reason'] ?? '').toString();
+        _serverBlockMessage = (data['message'] ?? '').toString();
+        _loading = false;
+      });
+      return false;
     } on DioException catch (e) {
       if (e.response?.statusCode == 410) {
         final raw = e.response?.data;
@@ -118,13 +118,13 @@ class _AuthGateState extends State<AuthGate> {
         });
         return false;
       }
-      return true; // fail-open on network problems
+      return true;
     } catch (_) {
       return true;
     }
   }
 
-  /* ========================= Refresh helpers ========================= */
+  // ------------------- refresh -------------------
 
   Future<String?> _tryRefreshUserIfNeeded({
     required String? tokenStored,
@@ -178,7 +178,7 @@ class _AuthGateState extends State<AuthGate> {
       final role = (await _adminStore.getRole()) ?? '';
 
       await _adminStore.save(
-        token: newAccess,
+        token: newAccess, // ✅ store RAW, not Bearer
         role: role,
         refreshToken: newRefresh,
         tenantId: _currentTenantId(),
@@ -191,9 +191,10 @@ class _AuthGateState extends State<AuthGate> {
     }
   }
 
-  /* ========================= Boot ========================= */
+  // ------------------- boot -------------------
 
   Future<void> _boot() async {
+    await const AdminTokenStore().debugDump();
     try {
       final canOpen = await _checkPublicAppAccess();
       if (!canOpen) return;
@@ -221,20 +222,20 @@ class _AuthGateState extends State<AuthGate> {
 
       if (!mounted) return;
 
-      // BOTH valid and no last role -> ask
-      if (adminValid && userAutoValid && (lastRole == null || lastRole.trim().isEmpty)) {
-        setState(() => _loading = false);
-        await _askRoleAndGo(adminToken!, userToken!);
-        return;
-      }
-
-      // prefer last role
+      // ✅ IMPORTANT: when we have a valid token, apply it before navigating
       if (lastRole == 'admin' && adminValid) {
         _goAdminWithToken(adminToken!);
         return;
       }
       if (lastRole == 'user' && userAutoValid) {
         _hydrateUserAndGo(userToken!);
+        return;
+      }
+
+      // if both valid but no lastRole -> ask
+      if (adminValid && userAutoValid && (lastRole == null || lastRole.trim().isEmpty)) {
+        setState(() => _loading = false);
+        await _askRoleAndGo(adminToken!, userToken!);
         return;
       }
 
@@ -255,7 +256,7 @@ class _AuthGateState extends State<AuthGate> {
     }
   }
 
-  /* ========================= Routing ========================= */
+  // ------------------- routing -------------------
 
   Future<void> _askRoleAndGo(String adminToken, String userToken) async {
     final choice = await showModalBottomSheet<String>(
@@ -271,10 +272,7 @@ class _AuthGateState extends State<AuthGate> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const SizedBox(height: 6),
-              Text(
-                bl10n.authGateContinueAs,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
+              Text(bl10n.authGateContinueAs, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
               const SizedBox(height: 12),
               ListTile(
                 leading: const Icon(Icons.verified_user_outlined),
@@ -328,13 +326,11 @@ class _AuthGateState extends State<AuthGate> {
 
   void _goLogin() {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => UserLoginScreen(appConfig: widget.appConfig),
-      ),
+      MaterialPageRoute(builder: (_) => UserLoginScreen(appConfig: widget.appConfig)),
     );
   }
 
-  /* ========================= Blocked UI helpers ========================= */
+  // ------------------- blocked UI -------------------
 
   String _titleForReason(AppLocalizations l10n, String reason) {
     switch (reason) {
@@ -389,72 +385,15 @@ class _AuthGateState extends State<AuthGate> {
                 decoration: BoxDecoration(
                   color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: const [
-                    BoxShadow(
-                      blurRadius: 20,
-                      spreadRadius: 0,
-                      offset: Offset(0, 8),
-                      color: Color(0x1A000000),
-                    ),
-                  ],
-                  border: Border.all(
-                    color: Theme.of(context).dividerColor.withOpacity(0.25),
-                  ),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     CircleAvatar(radius: 34, child: Icon(icon, size: 34)),
                     const SizedBox(height: 16),
-                    Text(
-                      title,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-                    ),
+                    Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 8),
-                    Text(
-                      message,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.8),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      l10n.appAccessOwnerDisabledHint,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.75),
-                      ),
-                    ),
-                    if (_serverBlockMessage.isNotEmpty &&
-                        _serverBlockMessage.trim().toLowerCase() != message.trim().toLowerCase()) ...[
-                      const SizedBox(height: 10),
-                      Text(
-                        _serverBlockMessage,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.65),
-                        ),
-                      ),
-                    ],
-                    if (_blockReason.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(999),
-                          color: Theme.of(context).dividerColor.withOpacity(0.12),
-                        ),
-                        child: Text(
-                          _blockReason,
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
+                    Text(message, textAlign: TextAlign.center),
                     const SizedBox(height: 18),
                     SizedBox(
                       width: double.infinity,
@@ -486,11 +425,7 @@ class _AuthGateState extends State<AuthGate> {
   @override
   Widget build(BuildContext context) {
     if (_appBlocked) return _buildBlockedFullScreen();
-
-    if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
+    if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     return const Scaffold(body: SizedBox.shrink());
   }
 }

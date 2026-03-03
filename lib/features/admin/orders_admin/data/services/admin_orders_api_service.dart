@@ -35,42 +35,25 @@ class AdminOrdersApiService {
     return token;
   }
 
-  Future<Response> _getWithFallback({
-    required String basePath,
-    String? status,
-    required Options options,
-  }) async {
-    if (status == null || status.trim().isEmpty) {
-      return _dio.get(basePath, options: options);
-    }
-
-    final s = status.trim().toUpperCase();
-    return _dio.get('$basePath/status/$s', options: options);
-  }
-
   Future<List<dynamic>> getOrdersRaw({String? status}) async {
     final token = await _requireToken();
     const base = '/api/orders/owner/orders';
 
-    final res = await _getWithFallback(
-      basePath: base,
-      status: status,
-      options: _auth(token),
-    );
+    if (status == null || status.trim().isEmpty) {
+      final res = await _dio.get(base, options: _auth(token));
+      return res.data is List ? res.data : const [];
+    }
 
-    final data = res.data;
-    if (data is List) return data;
-    return const [];
+    final s = status.trim().toUpperCase();
+    final res = await _dio.get('$base/status/$s', options: _auth(token));
+    return res.data is List ? res.data : const [];
   }
 
   Future<Map<String, dynamic>> getOrderDetailsRaw({required int orderId}) async {
     final token = await _requireToken();
     final path = '/api/orders/owner/orders/$orderId';
-
     final res = await _dio.get(path, options: _auth(token));
-    final data = res.data;
-    if (data is Map) return data.cast<String, dynamic>();
-    return const {};
+    return res.data is Map ? (res.data as Map).cast<String, dynamic>() : const {};
   }
 
   Future<void> updateOrderStatusRaw({
@@ -87,21 +70,33 @@ class AdminOrdersApiService {
     );
   }
 
-
-Future<void> updateOrderPaymentStateRaw({
-    required int orderId,
-    required String paymentState,
-  }) async {
+  // ✅ NEW: CASH mark paid
+  Future<Map<String, dynamic>> markCashPaidRaw({required int orderId}) async {
     final token = await _requireToken();
-
-    //  keep consistent with your status endpoint
-    // If your backend path is different, change ONLY this line.
     final path = '/api/orders/owner/orders/$orderId/cash/mark-paid';
 
-    await _dio.put(
-      path,
-      options: _auth(token),
-      data: {'paymentState': paymentState.trim().toUpperCase()},
-    );
+    final res = await _dio.put(path, options: _auth(token));
+    return res.data is Map ? (res.data as Map).cast<String, dynamic>() : const {};
   }
+
+  // ✅ NEW: CASH reset to unpaid
+  Future<Map<String, dynamic>> resetCashToUnpaidRaw({required int orderId}) async {
+    final token = await _requireToken();
+    final path = '/api/orders/owner/orders/$orderId/cash/reset-to-unpaid';
+
+    final res = await _dio.put(path, options: _auth(token));
+    return res.data is Map ? (res.data as Map).cast<String, dynamic>() : const {};
+  }
+
+  // ✅ NEW: reopen order properly (backend decides status + cash behavior)
+  Future<Map<String, dynamic>> reopenOrderRaw({required int orderId}) async {
+    final token = await _requireToken();
+    final path = '/api/orders/owner/orders/$orderId/reopen';
+
+    final res = await _dio.put(path, options: _auth(token));
+    return res.data is Map ? (res.data as Map).cast<String, dynamic>() : const {};
+  }
+
+
+  
 }

@@ -60,6 +60,34 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
     super.dispose();
   }
 
+  // ✅ CRITICAL: ensure admin session is persisted + token is applied to Dio
+  Future<void> _enterAdminFlow() async {
+    final store = const AdminTokenStore();
+    final adminToken = (await store.getToken())?.trim() ?? '';
+
+    if (adminToken.isNotEmpty) {
+      // make sure dio uses it immediately
+      g.setAuthToken(adminToken);
+    }
+
+    await _roleStore.saveRole('admin');
+  }
+
+  void _goToUserHome(BuildContext context) {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => MainShell(appConfig: widget.appConfig)),
+    );
+  }
+
+  Future<void> _goToAdmin(BuildContext context,
+      {required String role, required Map<String, dynamic> admin}) async {
+    // ✅ ALWAYS apply admin token before entering admin
+    await _enterAdminFlow();
+
+    if (!context.mounted) return;
+    Navigator.of(context).pushNamedAndRemoveUntil('/admin', (_) => false);
+  }
+
   Future<void> _onLoginPressed(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
     if (!_formKey.currentState!.validate()) return;
@@ -85,7 +113,7 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
 
       final orchestrator = DualLoginOrchestrator(
         authApi: authApi,
-        adminStore: AdminTokenStore(),
+        adminStore: const AdminTokenStore(),
       );
 
       final result = await orchestrator.login(
@@ -123,68 +151,62 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
             );
       }
 
-     Future<void> _enterUserFlow(bool wasInactiveUser) async {
-  final user = result.userEntity;
-  if (user == null) return;
+      Future<void> _enterUserFlow(bool wasInactiveUser) async {
+        final user = result.userEntity;
+        if (user == null) return;
 
-  // ✅ NEW: deleted restore flow first
-  if (result.wasDeletedUser == true) {
-    final confirm = await _showRestoreDeletedSheet(context);
-    if (confirm != true) {
-    
-      await authApi.clearAuth();
-      return;
-    }
+        // ✅ deleted restore flow first
+        if (result.wasDeletedUser == true) {
+          final confirm = await _showRestoreDeletedSheet(context);
+          if (confirm != true) {
+            await authApi.clearAuth();
+            return;
+          }
 
-    try {
-      await authApi.reactivateUser();
+          try {
+            await authApi.reactivateUser();
+            if (!mounted) return;
 
-      if (!mounted) return;
+            AppToast.show(context, 'Account restored successfully');
+            await _hydrateUserAuth(false);
+            await _roleStore.saveRole('user');
+            _goToUserHome(context);
+          } catch (e) {
+            if (!mounted) return;
+            AppToast.show(context, ExceptionMapper.toMessage(e), isError: true);
+          }
+          return;
+        }
 
-      AppToast.show(context, 'Account restored successfully'); // l10n later
-      await _hydrateUserAuth(false);
-      await _roleStore.saveRole('user');
-      _goToUserHome(context);
-    } catch (e) {
-      if (!mounted) return;
-      final msg = ExceptionMapper.toMessage(e);
-      AppToast.show(context, msg, isError: true);
-    }
+        // inactive flow
+        if (wasInactiveUser) {
+          final confirm = await _showReactivateSheet(context);
+          if (confirm != true) {
+            await authApi.clearAuth();
+            return;
+          }
 
-    return;
-  }
+          try {
+            await authApi.reactivateUser();
+            if (!mounted) return;
 
-  // existing inactive flow
-  if (wasInactiveUser) {
-    final confirm = await _showReactivateSheet(context);
-    if (confirm != true) {
-      await authApi.clearAuth();
-      return;
-    }
+            AppToast.show(context, l10n.loginInactiveSuccess);
+            await _hydrateUserAuth(true);
+            await _roleStore.saveRole('user');
+            _goToUserHome(context);
+          } catch (e) {
+            if (!mounted) return;
+            AppToast.show(context, ExceptionMapper.toMessage(e), isError: true);
+          }
+          return;
+        }
 
-    try {
-      await authApi.reactivateUser();
+        await _hydrateUserAuth(false);
+        await _roleStore.saveRole('user');
+        _goToUserHome(context);
+      }
 
-      if (!mounted) return;
-
-      AppToast.show(context, l10n.loginInactiveSuccess);
-
-      await _hydrateUserAuth(true);
-      await _roleStore.saveRole('user');
-      _goToUserHome(context);
-    } catch (e) {
-      if (!mounted) return;
-      final msg = ExceptionMapper.toMessage(e);
-      AppToast.show(context, msg, isError: true);
-    }
-  } else {
-    await _hydrateUserAuth(false);
-    await _roleStore.saveRole('user');
-    _goToUserHome(context);
-  }
-}
-
-      // BOTH
+      // ✅ BOTH (admin + user)
       if (result.both) {
         final choice = await showModalBottomSheet<String>(
           context: context,
@@ -219,14 +241,10 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                   ),
                   const SizedBox(height: 12),
                   ListTile(
-                    leading: Icon(
-                      Icons.verified_user_outlined,
-                      color: colors.primary,
-                    ),
-                    title: Text(
-                      l10n.loginEnterAsOwner,
-                      style: t.bodyLarge?.copyWith(color: colors.label),
-                    ),
+                    leading: Icon(Icons.verified_user_outlined,
+                        color: colors.primary),
+                    title: Text(l10n.loginEnterAsOwner,
+                        style: t.bodyLarge?.copyWith(color: colors.label)),
                     subtitle: Text(
                       '${l10n.loginRoleLabel}: ${result.adminRole}',
                       style: t.bodySmall?.copyWith(color: colors.body),
@@ -236,10 +254,8 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                   const Divider(height: 1),
                   ListTile(
                     leading: Icon(Icons.person_outline, color: colors.label),
-                    title: Text(
-                      l10n.loginEnterAsUser,
-                      style: t.bodyLarge?.copyWith(color: colors.label),
-                    ),
+                    title: Text(l10n.loginEnterAsUser,
+                        style: t.bodyLarge?.copyWith(color: colors.label)),
                     subtitle: Text(
                       result.userEntity?.email ??
                           result.userEntity?.username ??
@@ -255,23 +271,25 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
         );
 
         if (choice == 'admin') {
-  _goToAdmin(context, role: result.adminRole!, admin: result.adminData!);
-}else if (choice == 'user') {
+          await _goToAdmin(context,
+              role: result.adminRole!, admin: result.adminData!);
+          return;
+        } else if (choice == 'user') {
           await _enterUserFlow(result.wasInactiveUser);
+          return;
         }
+
         return;
       }
 
-    
-
-      // ONLY ADMIN
+      // ✅ ONLY ADMIN
       if (result.adminOk && !result.userOk) {
-        await _roleStore.saveRole('admin');
-        _goToAdmin(context, role: result.adminRole!, admin: result.adminData!);
+        await _goToAdmin(context,
+            role: result.adminRole!, admin: result.adminData!);
         return;
       }
 
-      // ONLY USER
+      // ✅ ONLY USER
       if (result.userOk && !result.adminOk) {
         await _enterUserFlow(result.wasInactiveUser);
         return;
@@ -282,124 +300,91 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
       if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
       }
-      final msg = ExceptionMapper.toMessage(e);
-      AppToast.show(context, msg, isError: true);
+      AppToast.show(context, ExceptionMapper.toMessage(e), isError: true);
     }
   }
 
-  void _goToUserHome(BuildContext context) {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => MainShell(appConfig: widget.appConfig)),
-    );
-  }
+  Future<bool?> _showRestoreDeletedSheet(BuildContext context) {
+    final themeState = context.read<ThemeCubit>().state;
+    final colors = themeState.tokens.colors;
+    final t = Theme.of(context).textTheme;
 
-
-    Future<void> _enterAdminFlow() async {
-  final adminToken = (await AdminTokenStore().getToken())?.trim() ?? '';
-  if (adminToken.isNotEmpty) {
-    // make sure dio uses it immediately
-    g.setAuthToken(adminToken);
-  }
-  await _roleStore.saveRole('admin');
-}
-
-
-Future<bool?> _showRestoreDeletedSheet(BuildContext context) {
-  final themeState = context.read<ThemeCubit>().state;
-  final colors = themeState.tokens.colors;
-  final t = Theme.of(context).textTheme;
-
-  return showModalBottomSheet<bool>(
-    context: context,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-    ),
-    builder: (ctx) {
-      final tt = Theme.of(ctx).textTheme;
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                height: 4,
-                width: 36,
-                decoration: BoxDecoration(
-                  color: colors.border.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Restore deleted account?',
-              style: tt.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: colors.label,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'This account was deleted, but it can still be restored. Do you want to reactivate it now?',
-              style: tt.bodyMedium?.copyWith(color: colors.body),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(ctx, false),
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: colors.border.withOpacity(0.6)),
-                    ),
-                    child: Text(
-                      'Cancel',
-                      style: t.bodyMedium?.copyWith(color: colors.body),
-                    ),
+    return showModalBottomSheet<bool>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        final tt = Theme.of(ctx).textTheme;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  height: 4,
+                  width: 36,
+                  decoration: BoxDecoration(
+                    color: colors.border.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(999),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(ctx, true),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colors.primary,
-                      foregroundColor: colors.onPrimary,
-                    ),
-                    child: Text(
-                      'Restore',
-                      style: t.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Restore deleted account?',
+                style: tt.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: colors.label,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'This account was deleted, but it can still be restored. Do you want to reactivate it now?',
+                style: tt.bodyMedium?.copyWith(color: colors.body),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: colors.border.withOpacity(0.6)),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: t.bodyMedium?.copyWith(color: colors.body),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
-  void _goToAdmin(
-  BuildContext context, {
-  required String role,
-  required Map<String, dynamic> admin,
-}) async {
-  // ✅ Ensure global Authorization header is set
-  final adminToken = (await AdminTokenStore().getToken())?.trim() ?? '';
-  if (adminToken.isNotEmpty) {
-    g.setAuthToken(adminToken);
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colors.primary,
+                        foregroundColor: colors.onPrimary,
+                      ),
+                      child: Text(
+                        'Restore',
+                        style: t.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
-  await _roleStore.saveRole('admin');
-
-  if (!context.mounted) return;
-  Navigator.of(context).pushNamedAndRemoveUntil('/admin', (_) => false);
-}
   Future<bool?> _showReactivateSheet(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final themeState = context.read<ThemeCubit>().state;
@@ -500,8 +485,8 @@ Future<bool?> _showRestoreDeletedSheet(BuildContext context) {
             child: BlocConsumer<AuthBloc, AuthState>(
               listener: (context, state) {
                 if (state.error != null) {
-                  final msg = ExceptionMapper.toMessage(state.error!);
-                  AppToast.show(context, msg, isError: true);
+                  AppToast.show(context, ExceptionMapper.toMessage(state.error!),
+                      isError: true);
                 }
               },
               builder: (context, state) {
@@ -511,11 +496,8 @@ Future<bool?> _showRestoreDeletedSheet(BuildContext context) {
                     CircleAvatar(
                       radius: 28,
                       backgroundColor: colors.primary.withOpacity(0.1),
-                      child: Icon(
-                        Icons.person_outline,
-                        color: colors.primary,
-                        size: 28,
-                      ),
+                      child: Icon(Icons.person_outline,
+                          color: colors.primary, size: 28),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -547,7 +529,8 @@ Future<bool?> _showRestoreDeletedSheet(BuildContext context) {
                                 BoxShadow(
                                   color: Colors.black.withOpacity(0.04),
                                   blurRadius: card.elevation * 2,
-                                  offset: Offset(0, card.elevation * 0.6),
+                                  offset:
+                                      Offset(0, card.elevation * 0.6),
                                 ),
                               ]
                             : null,
@@ -588,8 +571,7 @@ Future<bool?> _showRestoreDeletedSheet(BuildContext context) {
                                 validator: (value) {
                                   final v = value?.trim() ?? '';
                                   if (v.isEmpty) return l10n.fieldRequired;
-                                  if (!v.contains('@'))
-                                    return l10n.invalidEmail;
+                                  if (!v.contains('@')) return l10n.invalidEmail;
                                   return null;
                                 },
                               )
@@ -599,8 +581,7 @@ Future<bool?> _showRestoreDeletedSheet(BuildContext context) {
                                 card: card,
                                 textTheme: t,
                                 l10n: l10n,
-                                onChanged: (fullPhone) =>
-                                    _fullPhone = fullPhone,
+                                onChanged: (fullPhone) => _fullPhone = fullPhone,
                               ),
                             const SizedBox(height: 16),
                             AppTextField(
@@ -608,10 +589,8 @@ Future<bool?> _showRestoreDeletedSheet(BuildContext context) {
                               controller: _passwordCtrl,
                               obscureText: true,
                               validator: (value) {
-                                if (value == null || value.isEmpty)
-                                  return l10n.fieldRequired;
-                                if (value.length < 6)
-                                  return l10n.passwordTooShort;
+                                if (value == null || value.isEmpty) return l10n.fieldRequired;
+                                if (value.length < 6) return l10n.passwordTooShort;
                                 return null;
                               },
                             ),
@@ -628,21 +607,14 @@ Future<bool?> _showRestoreDeletedSheet(BuildContext context) {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
                                       builder: (ctx) {
-                                        final repo = ctx
-                                            .read<ForgotPasswordRepository>();
-
+                                        final repo = ctx.read<ForgotPasswordRepository>();
                                         return BlocProvider(
                                           create: (_) => ForgotPasswordBloc(
                                             sendResetCode: SendResetCode(repo),
-                                            verifyResetCode: VerifyResetCode(
-                                              repo,
-                                            ),
-                                            updatePassword: UpdatePassword(
-                                              repo,
-                                            ),
+                                            verifyResetCode: VerifyResetCode(repo),
+                                            updatePassword: UpdatePassword(repo),
                                           ),
-                                          child:
-                                              const ForgotPasswordEmailScreen(),
+                                          child: const ForgotPasswordEmailScreen(),
                                         );
                                       },
                                     ),
@@ -666,10 +638,8 @@ Future<bool?> _showRestoreDeletedSheet(BuildContext context) {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          l10n.noAccountText,
-                          style: t.bodyMedium?.copyWith(color: colors.body),
-                        ),
+                        Text(l10n.noAccountText,
+                            style: t.bodyMedium?.copyWith(color: colors.body)),
                         TextButton(
                           onPressed: () {
                             Navigator.of(context).push(
@@ -678,12 +648,9 @@ Future<bool?> _showRestoreDeletedSheet(BuildContext context) {
                                   final repo = ctx.read<AuthRepositoryImpl>();
                                   return BlocProvider(
                                     create: (_) => RegisterBloc(
-                                      sendVerificationCode:
-                                          SendVerificationCode(repo),
+                                      sendVerificationCode: SendVerificationCode(repo),
                                     ),
-                                    child: UserRegisterScreen(
-                                      appConfig: widget.appConfig,
-                                    ),
+                                    child: UserRegisterScreen(appConfig: widget.appConfig),
                                   );
                                 },
                               ),
@@ -710,7 +677,7 @@ Future<bool?> _showRestoreDeletedSheet(BuildContext context) {
   }
 }
 
-// --- UI helpers (same as you had) ---
+// --- UI helpers ---
 class _LoginMethodToggle extends StatelessWidget {
   final LoginMethod method;
   final ValueChanged<LoginMethod> onChanged;
@@ -849,8 +816,7 @@ class _PhoneFieldIntl extends StatelessWidget {
       flagsButtonPadding: const EdgeInsets.only(left: 8),
       onChanged: (phone) => onChanged(phone.completeNumber),
       validator: (phone) {
-        if (phone == null || phone.number.trim().isEmpty)
-          return l10n.fieldRequired;
+        if (phone == null || phone.number.trim().isEmpty) return l10n.fieldRequired;
         if (phone.number.trim().length < 6) return l10n.invalidPhone;
         return null;
       },

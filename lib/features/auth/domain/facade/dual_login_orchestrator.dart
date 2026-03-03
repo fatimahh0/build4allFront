@@ -48,6 +48,12 @@ class DualLoginOrchestrator {
     required this.adminStore,
   });
 
+  String _stripBearer(String s) {
+    final t = s.trim();
+    if (t.toLowerCase().startsWith('bearer ')) return t.substring(7).trim();
+    return t;
+  }
+
   Future<DualLoginResult> login({
     required String identifier,
     required String password,
@@ -76,25 +82,28 @@ class DualLoginOrchestrator {
         ownerProjectId: ownerProjectLinkId,
       );
 
-      adminToken = adminRes.token;
-      adminRole = adminRes.role;
+      final cleanedToken = _stripBearer(adminRes.token);
+      final cleanedRole = adminRes.role.trim();
+
+      if (cleanedToken.isEmpty || cleanedRole.isEmpty) {
+        throw AppException('Admin login returned empty token/role');
+      }
+
+      adminToken = cleanedToken;
+      adminRole = cleanedRole;
       adminData = adminRes.admin;
 
-      final rawAdmin = (adminRes.token ?? '').trim();
-if (rawAdmin.isEmpty) throw AppException('Missing admin token');
+      await adminStore.save(
+        token: cleanedToken,
+        role: cleanedRole,
+        refreshToken: adminRes.refreshToken,
+        tenantId: ownerProjectLinkId.toString(),
+      );
 
-final cleanAdmin = rawAdmin.toLowerCase().startsWith('bearer ')
-    ? rawAdmin.substring(7).trim()
-    : rawAdmin;
+      await const AdminTokenStore().debugDump();
 
-await adminStore.save(
-  token: cleanAdmin,
-  role: adminRes.role ?? '',
-  refreshToken: adminRes.refreshToken,
-  tenantId: ownerProjectLinkId.toString(),
-);
-
-g.setAuthToken(cleanAdmin);
+      // make Dio use it immediately
+      g.setAuthToken(cleanedToken);
     } catch (e) {
       adminErr = e is AppException ? e : AppException(e.toString());
     }
@@ -127,7 +136,7 @@ g.setAuthToken(cleanAdmin);
       } catch (_) {}
     }
 
-    final adminOk = adminToken != null && adminRole != null;
+    final adminOk = (adminToken ?? '').trim().isNotEmpty && (adminRole ?? '').trim().isNotEmpty;
     final userOk = userEntity != null;
 
     if (!adminOk && !userOk) {

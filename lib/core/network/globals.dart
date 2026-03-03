@@ -2,7 +2,6 @@
 library globals;
 
 import 'dart:convert';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -10,9 +9,6 @@ import 'package:build4front/core/config/env.dart';
 import 'package:build4front/core/network/interceptors/auth_body_injector.dart';
 import 'package:build4front/core/network/interceptors/refresh_token_interceptor.dart';
 import 'package:build4front/core/network/connecting(wifiORserver)/connection_cubit.dart';
-
-import 'package:build4front/features/auth/data/services/admin_token_store.dart';
-import 'package:build4front/features/auth/data/services/auth_token_store.dart';
 
 Dio? appDio;
 
@@ -48,12 +44,13 @@ void registerConnectionCubit(ConnectionCubit cubit) {
   connectionCubit = cubit;
 }
 
-/// Read the current auth token from any of the legacy fields.
+/// Read current auth token from any legacy field.
 String readAuthToken() {
   return (authToken ?? token ?? userToken ?? Token ?? '').toString();
 }
 
-/// Set the current auth token and update Dio default headers.
+/// Set auth token and update Dio default headers.
+/// Accepts raw jwt OR "Bearer <jwt>".
 void setAuthToken(String? raw) {
   final t = (raw ?? '').trim();
 
@@ -69,7 +66,9 @@ void setAuthToken(String? raw) {
     return;
   }
 
-  final normalized = t.startsWith('Bearer ') ? t : 'Bearer $t';
+  final normalized = t.toLowerCase().startsWith('bearer ')
+      ? t
+      : 'Bearer $t';
 
   authToken = normalized;
   token = normalized;
@@ -87,7 +86,7 @@ String serverRootNoApi() {
   return base.replaceFirst(RegExp(r'/api/?$'), '');
 }
 
-/// Resolve a relative path against the server root.
+/// Resolve relative path against server root.
 String resolveUrl(String maybeRelative) {
   final s = maybeRelative.trim();
   if (s.isEmpty) return s;
@@ -101,7 +100,6 @@ String resolveUrl(String maybeRelative) {
 
 String get appLogoUrlResolved => resolveUrl(appLogoUrl);
 
-/// Get the shared Dio instance (or create it lazily).
 Dio dio() {
   return appDio ??= Dio(
     BaseOptions(
@@ -112,12 +110,12 @@ Dio dio() {
   );
 }
 
-/// Initialize shared Dio and global values.
-/// Call this once at app startup.
+/// Initialize Dio + interceptors.
+/// Call once at app startup.
 void makeDefaultDio(String baseUrl) {
   appServerRoot = baseUrl;
 
-  // Copy Env → globals so interceptors can read them.
+  // Copy Env → globals (interceptors rely on these)
   ownerProjectLinkId = Env.ownerProjectLinkId;
   ownerAttachMode = Env.ownerAttachMode;
   projectId = Env.projectId;
@@ -141,19 +139,13 @@ void makeDefaultDio(String baseUrl) {
 
   d.interceptors.clear();
 
-  // ✅ IMPORTANT: pass the SAME dio instance + stores
-  d.interceptors.add(
-    RefreshTokenInterceptor(
-      dio: d,
-      userStore: AuthTokenStore(),
-      adminStore: AdminTokenStore(),
-    ),
-  );
+  // ✅ First: refresh interceptor (it retries with new tokens)
+  d.interceptors.add(RefreshTokenInterceptor());
 
-  // ✅ inject ownerProjectLinkId/projectId/etc in request body if needed
+  // ✅ Then: inject ownerProjectLinkId / attach mode etc.
   d.interceptors.add(OwnerInjector());
 
-  // ✅ logging (optional)
+  // ✅ Logging last
   d.interceptors.add(
     LogInterceptor(
       requestBody: true,
@@ -164,18 +156,20 @@ void makeDefaultDio(String baseUrl) {
   );
 
   appDio = d;
+
+  // If token already set before init, copy it into dio headers
+  final existing = readAuthToken().trim();
+  if (existing.isNotEmpty) {
+    d.options.headers['Authorization'] = existing;
+  }
 }
 
-/// =======================
-///   JWT helpers (USER + OWNER)
-/// =======================
+/* ===================== JWT helpers ===================== */
 
 String? _rawJwt() {
   final full = readAuthToken().trim();
   if (full.isEmpty) return null;
-  if (full.toLowerCase().startsWith('bearer ')) {
-    return full.substring(7).trim();
-  }
+  if (full.toLowerCase().startsWith('bearer ')) return full.substring(7).trim();
   return full;
 }
 
@@ -208,10 +202,7 @@ String? getOwnerNameFromJwt() {
 
   if (role == 'OWNER') {
     final uname = payload['username'];
-    if (uname is String && uname.trim().isNotEmpty) {
-      return uname.trim();
-    }
+    if (uname is String && uname.trim().isNotEmpty) return uname.trim();
   }
-
   return null;
 }

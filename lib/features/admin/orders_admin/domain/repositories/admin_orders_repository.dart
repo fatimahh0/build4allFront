@@ -12,8 +12,7 @@ abstract class AdminOrdersRepository {
   });
 
   
-  Future<void> updateOrderPaymentState({
-    required int orderId,
-    required String paymentState,
-  });
+ Future<void> markCashPaid({required int orderId});
+Future<void> resetCashToUnpaid({required int orderId});
+Future<void> reopenOrder({required int orderId});
 }
