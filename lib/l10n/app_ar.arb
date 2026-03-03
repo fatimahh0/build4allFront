@@ -1049,6 +1049,35 @@
   "placeholders": {
     "count": { "type": "int" }
   }
-}
+},
+"editProfile_firstNameInvalid": "الاسم الأول يحتوي على أحرف غير مسموحة",
+"editProfile_lastNameInvalid": "الاسم الأخير يحتوي على أحرف غير مسموحة",
+ "licenseDetailsTitle": "تفاصيل الترخيص",
+  "licensePlanLabel": "الخطة",
+  "licensePlanCodeLabel": "رمز الخطة",
+  "licenseStatusLabel": "الحالة",
+  "licensePeriodEndLabel": "نهاية الفترة",
+  "licenseDaysLeftLabel": "الأيام المتبقية",
+  "licenseUsersLabel": "المستخدمون",
+  "licenseUsersRemainingLabel": "المستخدمون المتبقّون",
+  "licenseRequiresDedicatedLabel": "يتطلب خادمًا مخصصًا",
+  "licenseDedicatedInfraReadyLabel": "البنية التحتية المخصصة جاهزة",
+  "licenseBlockingReasonLabel": "سبب الحظر",
+
+  "upgradeRequestPending": "طلب الترقية قيد الانتظار للموافقة",
+  "requestUpgradePendingLabel": "تم الطلب",
+
+  "upgradeRequestStatusLabel": "حالة طلب الترقية",
+  "upgradeRequestPlanLabel": "الخطة المطلوبة",
+  "upgradeRequestAtLabel": "تاريخ الطلب",
+  "upgradeRequestNoteLabel": "ملاحظة القرار",
+
+  "upgradeStatusPending": "قيد الانتظار",
+  "upgradeStatusApproved": "تمت الموافقة",
+  "upgradeStatusRejected": "تم الرفض",
+
+  "yesLabel": "نعم",
+  "noLabel": "لا"
+
 
 }

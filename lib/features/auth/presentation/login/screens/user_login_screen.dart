@@ -1,3 +1,4 @@
+import 'package:build4front/core/network/globals.dart' as g;
 import 'package:build4front/features/auth/data/repository/auth_repository_impl.dart';
 import 'package:build4front/features/auth/data/services/admin_token_store.dart';
 import 'package:build4front/features/auth/data/services/session_role_store.dart';
@@ -136,10 +137,7 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
     }
 
     try {
-      await authApi.reactivateUser(
-        userId: user.id,
-        ownerProjectLinkId: int.tryParse(Env.ownerProjectLinkId) ?? 0,
-      );
+      await authApi.reactivateUser();
 
       if (!mounted) return;
 
@@ -165,10 +163,7 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
     }
 
     try {
-      await authApi.reactivateUser(
-        userId: user.id,
-        ownerProjectLinkId: int.tryParse(Env.ownerProjectLinkId) ?? 0,
-      );
+      await authApi.reactivateUser();
 
       if (!mounted) return;
 
@@ -260,17 +255,14 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
         );
 
         if (choice == 'admin') {
-          await _roleStore.saveRole('admin');
-          _goToAdmin(
-            context,
-            role: result.adminRole!,
-            admin: result.adminData!,
-          );
-        } else if (choice == 'user') {
+  _goToAdmin(context, role: result.adminRole!, admin: result.adminData!);
+}else if (choice == 'user') {
           await _enterUserFlow(result.wasInactiveUser);
         }
         return;
       }
+
+    
 
       // ONLY ADMIN
       if (result.adminOk && !result.userOk) {
@@ -300,6 +292,16 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
       MaterialPageRoute(builder: (_) => MainShell(appConfig: widget.appConfig)),
     );
   }
+
+
+    Future<void> _enterAdminFlow() async {
+  final adminToken = (await AdminTokenStore().getToken())?.trim() ?? '';
+  if (adminToken.isNotEmpty) {
+    // make sure dio uses it immediately
+    g.setAuthToken(adminToken);
+  }
+  await _roleStore.saveRole('admin');
+}
 
 
 Future<bool?> _showRestoreDeletedSheet(BuildContext context) {
@@ -383,13 +385,21 @@ Future<bool?> _showRestoreDeletedSheet(BuildContext context) {
   );
 }
   void _goToAdmin(
-    BuildContext context, {
-    required String role,
-    required Map<String, dynamic> admin,
-  }) {
-    Navigator.of(context).pushNamedAndRemoveUntil('/admin', (_) => false);
+  BuildContext context, {
+  required String role,
+  required Map<String, dynamic> admin,
+}) async {
+  // ✅ Ensure global Authorization header is set
+  final adminToken = (await AdminTokenStore().getToken())?.trim() ?? '';
+  if (adminToken.isNotEmpty) {
+    g.setAuthToken(adminToken);
   }
 
+  await _roleStore.saveRole('admin');
+
+  if (!context.mounted) return;
+  Navigator.of(context).pushNamedAndRemoveUntil('/admin', (_) => false);
+}
   Future<bool?> _showReactivateSheet(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final themeState = context.read<ThemeCubit>().state;

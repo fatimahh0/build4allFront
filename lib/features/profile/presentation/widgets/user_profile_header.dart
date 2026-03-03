@@ -37,6 +37,7 @@ class UserProfileHeader extends StatelessWidget {
 
     final url = _buildImageUrl(user.profilePictureUrl);
     final status = (user.status ?? 'ACTIVE').toString();
+    final token = g.readAuthToken(); // already includes "Bearer ..."
 
     return Column(
       children: [
@@ -59,15 +60,18 @@ class UserProfileHeader extends StatelessWidget {
                     size: size * 0.46,
                     color: theme.colorScheme.onSurfaceVariant,
                   )
-                : Image.network(
-                    url,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Icon(
-                      Icons.person,
-                      size: size * 0.46,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
+                : 
+
+Image.network(
+  url,
+  fit: BoxFit.cover,
+  headers: token.isEmpty ? null : {"Authorization": token},
+  errorBuilder: (_, __, ___) => Icon(
+    Icons.person,
+    size: size * 0.46,
+    color: theme.colorScheme.onSurfaceVariant,
+  ),
+)
           ),
         ),
         const SizedBox(height: 12),

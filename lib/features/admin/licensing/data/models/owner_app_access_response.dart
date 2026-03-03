@@ -38,7 +38,7 @@ class OwnerAppAccessResponse {
   final String? planName;
 
   final SubscriptionStatus? subscriptionStatus;
-  final String? periodEnd; // keep as string unless you need DateTime parsing
+  final String? periodEnd;
   final int daysLeft;
 
   final int? usersAllowed;
@@ -47,6 +47,12 @@ class OwnerAppAccessResponse {
 
   final bool requiresDedicatedServer;
   final bool dedicatedInfraReady;
+
+  // ✅ NEW (upgrade request state)
+  final String? upgradeRequestStatus; // PENDING / APPROVED / REJECTED / null
+  final PlanCode? upgradeRequestedPlan; // requestedPlanCode
+  final String? upgradeRequestedAt; // LocalDateTime -> string
+  final String? upgradeDecisionNote;
 
   OwnerAppAccessResponse({
     required this.canAccessDashboard,
@@ -61,30 +67,51 @@ class OwnerAppAccessResponse {
     required this.usersRemaining,
     required this.requiresDedicatedServer,
     required this.dedicatedInfraReady,
+    required this.upgradeRequestStatus,
+    required this.upgradeRequestedPlan,
+    required this.upgradeRequestedAt,
+    required this.upgradeDecisionNote,
   });
 
+  bool get hasPendingUpgradeRequest =>
+      (upgradeRequestStatus ?? '').toUpperCase() == 'PENDING';
+
   factory OwnerAppAccessResponse.fromJson(Map<String, dynamic> j) {
+    final upPlanRaw = j['upgradeRequestedPlan']?.toString();
     return OwnerAppAccessResponse(
       canAccessDashboard: j['canAccessDashboard'] == true,
       blockingReason: j['blockingReason'] as String?,
-      planCode: j['planCode'] != null ? _planCodeFrom(j['planCode']) : null,
+
+      planCode: j['planCode'] != null ? _planCodeFrom(j['planCode'].toString()) : null,
       planName: j['planName'] as String?,
+
       subscriptionStatus: j['subscriptionStatus'] != null
-          ? _subStatusFrom(j['subscriptionStatus'])
+          ? _subStatusFrom(j['subscriptionStatus'].toString())
           : null,
+
       periodEnd: j['periodEnd']?.toString(),
       daysLeft: (j['daysLeft'] ?? 0) is int
           ? (j['daysLeft'] ?? 0)
           : int.tryParse('${j['daysLeft']}') ?? 0,
+
       usersAllowed: j['usersAllowed'] as int?,
       activeUsers: (j['activeUsers'] ?? 0) is int
           ? (j['activeUsers'] ?? 0)
           : int.tryParse('${j['activeUsers']}') ?? 0,
+
       usersRemaining: j['usersRemaining'] == null
           ? null
           : (j['usersRemaining'] as num).toInt(),
+
       requiresDedicatedServer: j['requiresDedicatedServer'] == true,
       dedicatedInfraReady: j['dedicatedInfraReady'] == true,
+
+      // ✅ new fields
+      upgradeRequestStatus: j['upgradeRequestStatus']?.toString(),
+      upgradeRequestedPlan:
+          (upPlanRaw == null || upPlanRaw.isEmpty) ? null : _planCodeFrom(upPlanRaw),
+      upgradeRequestedAt: j['upgradeRequestedAt']?.toString(),
+      upgradeDecisionNote: j['upgradeDecisionNote']?.toString(),
     );
   }
 }

@@ -35,6 +35,7 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
   bool _active = true;
 
   bool get _isPercent => _type == CouponDiscountType.percent;
+  bool get _isFreeShipping => _type == CouponDiscountType.freeShipping;
 
   @override
   void initState() {
@@ -57,9 +58,14 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
     _type = c?.discountType ?? CouponDiscountType.percent;
     _active = c?.active ?? true;
 
-    // ✅ If existing coupon is not percent, make sure max discount is empty
+    // ✅ If existing coupon is not percent, max discount must be empty
     if (_type != CouponDiscountType.percent) {
       _maxDiscountCtrl.text = '';
+    }
+
+    // ✅ If existing is free shipping, value should not be shown as required
+    if (_type == CouponDiscountType.freeShipping) {
+      _valueCtrl.text = ''; // keep UI clean (we save 0 later)
     }
   }
 
@@ -161,6 +167,11 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
                               if (_type != CouponDiscountType.percent) {
                                 _maxDiscountCtrl.text = '';
                               }
+
+                              // ✅ Free shipping → value is not needed
+                              if (_type == CouponDiscountType.freeShipping) {
+                                _valueCtrl.text = '';
+                              }
                             });
                           },
                         ),
@@ -173,11 +184,15 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
                               ? l10n.coupons_value_percent
                               : l10n.coupons_value_amount,
                           controller: _valueCtrl,
+                          enabled: !_isFreeShipping, // ✅ disabled if free shipping
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
                           textInputAction: TextInputAction.next,
                           validator: (v) {
+                            // ✅ Free shipping: no discount value needed
+                            if (_isFreeShipping) return null;
+
                             if (v == null || v.trim().isEmpty) {
                               return l10n.coupons_value_required;
                             }
@@ -273,8 +288,11 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
     final safeOwnerProjectId = existing?.ownerProjectId ?? 0;
 
     // ✅ Only send maxDiscountAmount if percent, otherwise null
-    final maxDiscount =
-        _isPercent ? parseDouble(_maxDiscountCtrl.text) : null;
+    final maxDiscount = _isPercent ? parseDouble(_maxDiscountCtrl.text) : null;
+
+    // ✅ Free shipping → discountValue must be 0.0 (not required from UI)
+    final discountValue =
+        _isFreeShipping ? 0.0 : double.parse(_valueCtrl.text.trim());
 
     final coupon = Coupon(
       id: existing?.id ?? 0,
@@ -282,7 +300,7 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
       code: _codeCtrl.text.trim(),
       description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
       discountType: _type,
-      discountValue: double.parse(_valueCtrl.text.trim()),
+      discountValue: discountValue,
       maxUses: parseInt(_maxUsesCtrl.text),
       minOrderAmount: parseDouble(_minOrderCtrl.text),
       maxDiscountAmount: maxDiscount,

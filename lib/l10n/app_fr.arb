@@ -1131,7 +1131,35 @@
     "count": { "type": "int" }
   }
 }
+,
+"editProfile_firstNameInvalid": "Le prénom contient des caractères invalides",
+"editProfile_lastNameInvalid": "Le nom de famille contient des caractères invalides",
+ "licenseDetailsTitle": "Détails de la licence",
+  "licensePlanLabel": "Forfait",
+  "licensePlanCodeLabel": "Code du forfait",
+  "licenseStatusLabel": "Statut",
+  "licensePeriodEndLabel": "Fin de période",
+  "licenseDaysLeftLabel": "Jours restants",
+  "licenseUsersLabel": "Utilisateurs",
+  "licenseUsersRemainingLabel": "Utilisateurs restants",
+  "licenseRequiresDedicatedLabel": "Serveur dédié requis",
+  "licenseDedicatedInfraReadyLabel": "Infrastructure dédiée prête",
+  "licenseBlockingReasonLabel": "Raison du blocage",
 
+  "upgradeRequestPending": "La demande de mise à niveau est en attente d’approbation",
+  "requestUpgradePendingLabel": "Demandé",
+
+  "upgradeRequestStatusLabel": "Statut de la demande",
+  "upgradeRequestPlanLabel": "Forfait demandé",
+  "upgradeRequestAtLabel": "Demandé le",
+  "upgradeRequestNoteLabel": "Note de décision",
+
+  "upgradeStatusPending": "En attente",
+  "upgradeStatusApproved": "Approuvée",
+  "upgradeStatusRejected": "Refusée",
+
+  "yesLabel": "Oui",
+  "noLabel": "Non"
 
 
 

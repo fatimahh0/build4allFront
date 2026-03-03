@@ -39,6 +39,7 @@ import 'package:build4front/core/exceptions/exception_mapper.dart';
 // ✅ Profile (clean arch)
 import 'package:build4front/features/admin/profile/domain/usecases/get_my_admin_profile.dart';
 import 'package:build4front/features/admin/profile/presentation/cubit/admin_profile_cubit.dart';
+
 import 'package:http/http.dart' as http;
 
 String _planCodeToString(dynamic v) {
@@ -89,6 +90,21 @@ String _statusToString(dynamic v) {
 String _reasonToString(String? v) {
   final r = (v ?? '').trim();
   return r.isEmpty ? '—' : r;
+}
+
+String _upgradeStatusNice(AppLocalizations l10n, String? s) {
+  final v = (s ?? '').toUpperCase().trim();
+  if (v.isEmpty) return '—';
+  switch (v) {
+    case 'PENDING':
+      return l10n.upgradeStatusPending;
+    case 'APPROVED':
+      return l10n.upgradeStatusApproved;
+    case 'REJECTED':
+      return l10n.upgradeStatusRejected;
+    default:
+      return v;
+  }
 }
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -145,65 +161,66 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Future<void> _loadLicense() async {
-  try {
-    setState(() {
-      _licenseLoading = true;
-      _licenseError = null;
-    });
+    try {
+      setState(() {
+        _licenseLoading = true;
+        _licenseError = null;
+      });
 
-    // get role from token store (you already load it)
-    final role = (await _store.getRole())?.toUpperCase() ?? '';
+      final role = (await _store.getRole())?.toUpperCase() ?? '';
 
-    OwnerAppAccessResponse access;
+      OwnerAppAccessResponse access;
 
-    if (role == 'OWNER') {
-      // ✅ tenant from token only
-      access = await _licensingApi.getAccessMe();
-    } else if (role == 'SUPER_ADMIN') {
-      // ✅ act-as with aupId
-      final aupId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
-      access = await _licensingApi.getAccessAsSuperAdmin(aupId);
-    } else {
-      // If this dashboard is only for OWNER/SUPER_ADMIN, fail loudly.
-      throw Exception('Unsupported role for licensing: $role');
+      if (role == 'OWNER') {
+        // ✅ tenant from token only
+        access = await _licensingApi.getAccessMe();
+      } else if (role == 'SUPER_ADMIN') {
+        // ✅ act-as with aupId
+        final aupId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+        access = await _licensingApi.getAccessAsSuperAdmin(aupId);
+      } else {
+        throw Exception('Unsupported role for licensing: $role');
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _license = access;
+        _licenseLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _licenseLoading = false;
+        _licenseError = ExceptionMapper.toMessage(e);
+      });
+    }
+  }
+
+  Future<void> _logout() async {
+    final token = (await _store.getToken())?.trim() ?? '';
+    final refresh = (await _store.getRefreshToken())?.trim() ?? '';
+
+    if (token.isNotEmpty) {
+      final auth = token.toLowerCase().startsWith('bearer ')
+          ? token
+          : 'Bearer $token';
+      final uri = Uri.parse('${Env.apiBaseUrl}/api/auth/logout');
+
+      await http.post(
+        uri,
+        headers: {
+          'Authorization': auth,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'refreshToken': refresh}),
+      );
     }
 
+    await _store.clear();
     if (!mounted) return;
-    setState(() {
-      _license = access;
-      _licenseLoading = false;
-    });
-  } catch (e) {
-    if (!mounted) return;
-    setState(() {
-      _licenseLoading = false;
-      _licenseError = ExceptionMapper.toMessage(e);
-    });
+    Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
   }
-}
-
- Future<void> _logout() async {
- final token = (await _store.getToken())?.trim() ?? '';
-final refresh = (await _store.getRefreshToken())?.trim() ?? '';
-
-if (token.isNotEmpty) {
-  final auth = token.toLowerCase().startsWith('bearer ') ? token : 'Bearer $token';
-  final uri = Uri.parse('${Env.apiBaseUrl}/api/auth/logout');
-
-  await http.post(
-    uri,
-    headers: {
-      'Authorization': auth,
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: jsonEncode({'refreshToken': refresh}),
-  );
-}
-
-await _store.clear();
-Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
-}
 
   Future<void> _openProfilePopup() async {
     if (_profileCubit.state is! AdminProfileLoaded) {
@@ -250,6 +267,13 @@ Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
 
   Future<void> _showUpgradeSheet(OwnerAppAccessResponse access) async {
     final l10n = AppLocalizations.of(context)!;
+
+    // ✅ hard block if already pending (backend blocks too, but UX matters)
+    if (access.hasPendingUpgradeRequest) {
+      AppToast.show(context, l10n.upgradeRequestPending, isError: true);
+      return;
+    }
+
     final current = access.planCode;
 
     final options = <_UpgradeOption>[];
@@ -426,29 +450,20 @@ Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
 
     if (sent != true) return;
 
+    final role = (await _store.getRole())?.toUpperCase() ?? '';
+
     try {
-     try {
-  final role = (await _store.getRole())?.toUpperCase() ?? '';
-
-  if (role == 'OWNER') {
-    await _licensingApi.requestUpgradeMe(planCode: selected);
-  } else if (role == 'SUPER_ADMIN') {
-    final aupId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
-    await _licensingApi.requestUpgradeAsSuperAdmin(
-      aupId: aupId,
-      planCode: selected,
-    );
-  } else {
-    throw Exception('Unsupported role for upgrade request: $role');
-  }
-
-  if (!mounted) return;
-  AppToast.show(context, l10n.upgradeRequestSent);
-  await _loadLicense();
-} catch (e) {
-  if (!mounted) return;
-  AppToast.show(context, ExceptionMapper.toMessage(e), isError: true);
-}
+      if (role == 'OWNER') {
+        await _licensingApi.requestUpgradeMe(planCode: selected);
+      } else if (role == 'SUPER_ADMIN') {
+        final aupId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
+        await _licensingApi.requestUpgradeAsSuperAdmin(
+          aupId: aupId,
+          planCode: selected,
+        );
+      } else {
+        throw Exception('Unsupported role for upgrade request: $role');
+      }
 
       if (!mounted) return;
       AppToast.show(context, l10n.upgradeRequestSent);
@@ -529,7 +544,6 @@ Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => OwnerPaymentConfigScreen(
-                
                 getToken: () => _store.getToken(),
               ),
             ),
@@ -649,7 +663,15 @@ Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
                       access: _license,
                       onRetry: _loadLicense,
                       onRequestUpgrade: () {
-                        if (_license != null) _showUpgradeSheet(_license!);
+                        if (_license == null) return;
+
+                        if (_license!.hasPendingUpgradeRequest) {
+                          AppToast.show(context, l10n.upgradeRequestPending,
+                              isError: true);
+                          return;
+                        }
+
+                        _showUpgradeSheet(_license!);
                       },
                       onOpenDetails: () {
                         if (_license != null) _openLicenseDetails(_license!);
@@ -1311,36 +1333,47 @@ class _LicenseBanner extends StatelessWidget {
     if (access == null) return const SizedBox.shrink();
 
     final reason = (access!.blockingReason ?? '').trim();
-    final isOk = reason.isEmpty && (access!.canAccessDashboard != false);
     final isLimit = reason == 'USER_LIMIT_REACHED';
+
+    // ✅ pending is special state
+    final hasPending = access!.hasPendingUpgradeRequest;
+
+    final isOk = !hasPending && reason.isEmpty && (access!.canAccessDashboard != false);
 
     final planCodeStr = _planCodeToString(access!.planCode);
     final planName = (access!.planName ?? '').trim().isEmpty
         ? _nicePlanNameL10n(l10n, planCodeStr)
         : access!.planName!.trim();
 
-    final subtitle = isOk
-        ? l10n.licenseAccessGranted
-        : (isLimit ? l10n.adminDashboardStatusLimitReached : l10n.licenseAccessBlocked);
+    final subtitle = hasPending
+        ? l10n.upgradeRequestPending
+        : (isOk
+            ? l10n.licenseAccessGranted
+            : (isLimit ? l10n.adminDashboardStatusLimitReached : l10n.licenseAccessBlocked));
 
-    // ✅ upgrade request anytime (except already dedicated)
-    final canRequestUpgrade = access!.planCode != PlanCode.DEDICATED;
+    // ✅ disable button if pending
+    final canRequestUpgrade =
+        access!.planCode != PlanCode.DEDICATED && !hasPending;
 
     final bg = isOk
         ? colors.surface
-        : (isLimit ? colors.primary.withOpacity(.08) : colors.error.withOpacity(.06));
+        : (hasPending
+            ? colors.primary.withOpacity(.06)
+            : (isLimit ? colors.primary.withOpacity(.08) : colors.error.withOpacity(.06)));
 
     final border = isOk
         ? colors.border.withOpacity(.18)
-        : (isLimit ? colors.primary.withOpacity(.22) : colors.error.withOpacity(.22));
+        : (hasPending
+            ? colors.primary.withOpacity(.18)
+            : (isLimit ? colors.primary.withOpacity(.22) : colors.error.withOpacity(.22)));
 
     final icon = isOk
         ? Icons.verified_outlined
-        : (isLimit ? Icons.people_outline : Icons.lock_outline);
+        : (hasPending ? Icons.hourglass_top_rounded : (isLimit ? Icons.people_outline : Icons.lock_outline));
 
     final iconColor = isOk
         ? colors.body
-        : (isLimit ? colors.primary : colors.error);
+        : (hasPending ? colors.primary : (isLimit ? colors.primary : colors.error));
 
     return Material(
       color: Colors.transparent,
@@ -1358,7 +1391,6 @@ class _LicenseBanner extends StatelessWidget {
             children: [
               Icon(icon, color: iconColor, size: 18),
               const SizedBox(width: 10),
-
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1383,15 +1415,15 @@ class _LicenseBanner extends StatelessWidget {
                   ],
                 ),
               ),
-
-              if (canRequestUpgrade) ...[
+              if (access!.planCode != PlanCode.DEDICATED) ...[
                 const SizedBox(width: 8),
                 TextButton(
-                  onPressed: onRequestUpgrade,
-                  child: Text(l10n.requestUpgradeLabel),
+                  onPressed: canRequestUpgrade ? onRequestUpgrade : null,
+                  child: Text(
+                    hasPending ? l10n.requestUpgradePendingLabel : l10n.requestUpgradeLabel,
+                  ),
                 ),
               ],
-
               Icon(Icons.chevron_right_rounded,
                   color: colors.body.withOpacity(.6)),
             ],
@@ -1430,11 +1462,20 @@ class _LicenseDetailsSheet extends StatelessWidget {
     final endStr = _fmtDate(_tryParseDate(access.periodEnd));
     final daysLeft = access.daysLeft;
 
-    final allowed = access.usersAllowed; // null => unlimited
+    final allowed = access.usersAllowed;
     final active = access.activeUsers;
     final remaining = access.usersRemaining;
 
-    final canRequestUpgrade = access.planCode != PlanCode.DEDICATED;
+    final canRequestUpgrade =
+        access.planCode != PlanCode.DEDICATED && !access.hasPendingUpgradeRequest;
+
+    final upStatus = _upgradeStatusNice(l10n, access.upgradeRequestStatus);
+    final upPlan = _planCodeToString(access.upgradeRequestedPlan);
+    final upAt = _fmtDate(_tryParseDate(access.upgradeRequestedAt));
+    final upNote = _reasonToString(access.upgradeDecisionNote);
+
+    // ✅ crucial: cap the height so it can scroll instead of overflow
+    final maxHeight = MediaQuery.of(context).size.height * 0.85;
 
     return Container(
       decoration: BoxDecoration(
@@ -1443,99 +1484,169 @@ class _LicenseDetailsSheet extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: Padding(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 10,
-            bottom: 14 + MediaQuery.of(context).padding.bottom,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                height: 4,
-                width: 44,
-                decoration: BoxDecoration(
-                  color: colors.border.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(999),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 10,
+              bottom: 14 + MediaQuery.of(context).padding.bottom,
+            ),
+            child: Column(
+              children: [
+                // handle
+                Container(
+                  height: 4,
+                  width: 44,
+                  decoration: BoxDecoration(
+                    color: colors.border.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'License details',
-                      style: t.titleMedium?.copyWith(
-                        color: colors.label,
-                        fontWeight: FontWeight.w900,
+                const SizedBox(height: 12),
+
+                // header
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        l10n.licenseDetailsTitle,
+                        style: t.titleMedium?.copyWith(
+                          color: colors.label,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: Icon(Icons.close, color: colors.body),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-
-              _DetailRow(label: 'Plan', value: planName, colors: colors),
-              _DetailRow(
-                label: 'Plan code',
-                value: planCodeStr.isEmpty ? '—' : planCodeStr,
-                colors: colors,
-              ),
-              _DetailRow(label: 'Status', value: statusStr, colors: colors),
-              _DetailRow(label: 'Period end', value: endStr, colors: colors),
-              _DetailRow(label: 'Days left', value: '$daysLeft', colors: colors),
-              _DetailRow(
-                label: 'Users',
-                value: allowed == null ? '$active / ∞' : '$active / $allowed',
-                colors: colors,
-              ),
-              if (allowed != null)
-                _DetailRow(
-                  label: 'Users remaining',
-                  value: remaining == null ? '—' : '$remaining',
-                  colors: colors,
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.close, color: colors.body),
+                    ),
+                  ],
                 ),
-              _DetailRow(
-                label: 'Requires dedicated',
-                value: access.requiresDedicatedServer ? 'Yes' : 'No',
-                colors: colors,
-              ),
-              if (access.requiresDedicatedServer)
-                _DetailRow(
-                  label: 'Dedicated infra ready',
-                  value: access.dedicatedInfraReady ? 'Yes' : 'No',
-                  colors: colors,
-                ),
-              _DetailRow(
-                label: 'Blocking reason',
-                value: _reasonToString(access.blockingReason),
-                colors: colors,
-              ),
+                const SizedBox(height: 10),
 
-              const SizedBox(height: 10),
+                // ✅ scrollable body
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Column(
+                      children: [
+                        _DetailRow(
+                          label: l10n.licensePlanLabel,
+                          value: planName,
+                          colors: colors,
+                        ),
+                        _DetailRow(
+                          label: l10n.licensePlanCodeLabel,
+                          value: planCodeStr.isEmpty ? '—' : planCodeStr,
+                          colors: colors,
+                        ),
+                        _DetailRow(
+                          label: l10n.licenseStatusLabel,
+                          value: statusStr,
+                          colors: colors,
+                        ),
+                        _DetailRow(
+                          label: l10n.licensePeriodEndLabel,
+                          value: endStr,
+                          colors: colors,
+                        ),
+                        _DetailRow(
+                          label: l10n.licenseDaysLeftLabel,
+                          value: '$daysLeft',
+                          colors: colors,
+                        ),
+                        _DetailRow(
+                          label: l10n.licenseUsersLabel,
+                          value: allowed == null ? '$active / ∞' : '$active / $allowed',
+                          colors: colors,
+                        ),
+                        if (allowed != null)
+                          _DetailRow(
+                            label: l10n.licenseUsersRemainingLabel,
+                            value: remaining == null ? '—' : '$remaining',
+                            colors: colors,
+                          ),
+                        _DetailRow(
+                          label: l10n.licenseRequiresDedicatedLabel,
+                          value: access.requiresDedicatedServer
+                              ? l10n.yesLabel
+                              : l10n.noLabel,
+                          colors: colors,
+                        ),
+                        if (access.requiresDedicatedServer)
+                          _DetailRow(
+                            label: l10n.licenseDedicatedInfraReadyLabel,
+                            value: access.dedicatedInfraReady
+                                ? l10n.yesLabel
+                                : l10n.noLabel,
+                            colors: colors,
+                          ),
+                        _DetailRow(
+                          label: l10n.licenseBlockingReasonLabel,
+                          value: _reasonToString(access.blockingReason),
+                          colors: colors,
+                        ),
 
-              if (canRequestUpgrade)
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: onRequestUpgrade,
-                    icon: const Icon(Icons.upgrade),
-                    label: Text(l10n.requestUpgradeLabel),
+                        const SizedBox(height: 8),
+
+                        // ✅ upgrade request state section
+                        _DetailRow(
+                          label: l10n.upgradeRequestStatusLabel,
+                          value: upStatus,
+                          colors: colors,
+                        ),
+                        _DetailRow(
+                          label: l10n.upgradeRequestPlanLabel,
+                          value: upPlan.isEmpty ? '—' : upPlan,
+                          colors: colors,
+                        ),
+                        _DetailRow(
+                          label: l10n.upgradeRequestAtLabel,
+                          value: upAt,
+                          colors: colors,
+                        ),
+                        _DetailRow(
+                          label: l10n.upgradeRequestNoteLabel,
+                          value: upNote,
+                          colors: colors,
+                        ),
+
+                        const SizedBox(height: 12),
+                      ],
+                    ),
                   ),
                 ),
-            ],
+
+                // ✅ fixed footer button area (never overflows now)
+                if (access.hasPendingUpgradeRequest)
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: null,
+                      icon: const Icon(Icons.hourglass_top_rounded),
+                      label: Text(l10n.requestUpgradePendingLabel),
+                    ),
+                  )
+                else if (canRequestUpgrade)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: onRequestUpgrade,
+                      icon: const Icon(Icons.upgrade),
+                      label: Text(l10n.requestUpgradeLabel),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 }
+
 
 class _DetailRow extends StatelessWidget {
   final String label;

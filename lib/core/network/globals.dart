@@ -1,13 +1,18 @@
 // lib/core/network/globals.dart
 library globals;
 
-import 'dart:convert'; // for JWT decoding
-import 'package:build4front/core/network/interceptors/refresh_token_interceptor.dart';
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+
 import 'package:build4front/core/config/env.dart';
 import 'package:build4front/core/network/interceptors/auth_body_injector.dart';
+import 'package:build4front/core/network/interceptors/refresh_token_interceptor.dart';
 import 'package:build4front/core/network/connecting(wifiORserver)/connection_cubit.dart';
-import 'package:flutter/foundation.dart';
+
+import 'package:build4front/features/auth/data/services/admin_token_store.dart';
+import 'package:build4front/features/auth/data/services/auth_token_store.dart';
 
 Dio? appDio;
 
@@ -39,7 +44,6 @@ set aiEnabled(bool v) => aiEnabledNotifier.value = v;
 // -------- Connection Cubit (for server / network status) --------
 ConnectionCubit? connectionCubit;
 
-/// Register the ConnectionCubit globally so the network layer can update status.
 void registerConnectionCubit(ConnectionCubit cubit) {
   connectionCubit = cubit;
 }
@@ -137,9 +141,19 @@ void makeDefaultDio(String baseUrl) {
 
   d.interceptors.clear();
 
-d.interceptors.add(RefreshTokenInterceptor()); 
+  // ✅ IMPORTANT: pass the SAME dio instance + stores
+  d.interceptors.add(
+    RefreshTokenInterceptor(
+      dio: d,
+      userStore: AuthTokenStore(),
+      adminStore: AdminTokenStore(),
+    ),
+  );
 
+  // ✅ inject ownerProjectLinkId/projectId/etc in request body if needed
   d.interceptors.add(OwnerInjector());
+
+  // ✅ logging (optional)
   d.interceptors.add(
     LogInterceptor(
       requestBody: true,
@@ -156,7 +170,6 @@ d.interceptors.add(RefreshTokenInterceptor());
 ///   JWT helpers (USER + OWNER)
 /// =======================
 
-/// Extract raw JWT without the "Bearer " prefix.
 String? _rawJwt() {
   final full = readAuthToken().trim();
   if (full.isEmpty) return null;
@@ -166,7 +179,6 @@ String? _rawJwt() {
   return full;
 }
 
-/// Decode the JWT payload as a Map<String, dynamic>.
 Map<String, dynamic>? decodeJwtPayload() {
   try {
     final raw = _rawJwt();
@@ -180,22 +192,13 @@ Map<String, dynamic>? decodeJwtPayload() {
     final decoded = utf8.decode(base64Url.decode(payload));
     final map = jsonDecode(decoded);
 
-    if (map is Map<String, dynamic>) {
-      return map;
-    }
+    if (map is Map<String, dynamic>) return map;
     return null;
   } catch (_) {
     return null;
   }
 }
 
-/// Return the OWNER name (username) from the JWT if the role is OWNER.
-///
-/// Based on JwtUtil.java:
-/// - USER token:  id, username, firstName, lastName, profileImageUrl, role = USER
-/// - OWNER token: id, username, role = OWNER
-///
-/// If the token is not an OWNER token, this returns null.
 String? getOwnerNameFromJwt() {
   final payload = decodeJwtPayload();
   if (payload == null) return null;

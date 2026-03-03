@@ -2694,4 +2694,76 @@ class AppLocalizationsFr extends AppLocalizations {
   String home_stock_left_label(int count) {
     return 'Stock restant : $count';
   }
+
+  @override
+  String get editProfile_firstNameInvalid => 'Le prénom contient des caractères invalides';
+
+  @override
+  String get editProfile_lastNameInvalid => 'Le nom de famille contient des caractères invalides';
+
+  @override
+  String get licenseDetailsTitle => 'Détails de la licence';
+
+  @override
+  String get licensePlanLabel => 'Forfait';
+
+  @override
+  String get licensePlanCodeLabel => 'Code du forfait';
+
+  @override
+  String get licenseStatusLabel => 'Statut';
+
+  @override
+  String get licensePeriodEndLabel => 'Fin de période';
+
+  @override
+  String get licenseDaysLeftLabel => 'Jours restants';
+
+  @override
+  String get licenseUsersLabel => 'Utilisateurs';
+
+  @override
+  String get licenseUsersRemainingLabel => 'Utilisateurs restants';
+
+  @override
+  String get licenseRequiresDedicatedLabel => 'Serveur dédié requis';
+
+  @override
+  String get licenseDedicatedInfraReadyLabel => 'Infrastructure dédiée prête';
+
+  @override
+  String get licenseBlockingReasonLabel => 'Raison du blocage';
+
+  @override
+  String get upgradeRequestPending => 'La demande de mise à niveau est en attente d’approbation';
+
+  @override
+  String get requestUpgradePendingLabel => 'Demandé';
+
+  @override
+  String get upgradeRequestStatusLabel => 'Statut de la demande';
+
+  @override
+  String get upgradeRequestPlanLabel => 'Forfait demandé';
+
+  @override
+  String get upgradeRequestAtLabel => 'Demandé le';
+
+  @override
+  String get upgradeRequestNoteLabel => 'Note de décision';
+
+  @override
+  String get upgradeStatusPending => 'En attente';
+
+  @override
+  String get upgradeStatusApproved => 'Approuvée';
+
+  @override
+  String get upgradeStatusRejected => 'Refusée';
+
+  @override
+  String get yesLabel => 'Oui';
+
+  @override
+  String get noLabel => 'Non';
 }

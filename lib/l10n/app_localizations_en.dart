@@ -2694,4 +2694,76 @@ class AppLocalizationsEn extends AppLocalizations {
   String home_stock_left_label(int count) {
     return 'Only $count left';
   }
+
+  @override
+  String get editProfile_firstNameInvalid => 'First name contains invalid characters';
+
+  @override
+  String get editProfile_lastNameInvalid => 'Last name contains invalid characters';
+
+  @override
+  String get licenseDetailsTitle => 'License details';
+
+  @override
+  String get licensePlanLabel => 'Plan';
+
+  @override
+  String get licensePlanCodeLabel => 'Plan code';
+
+  @override
+  String get licenseStatusLabel => 'Status';
+
+  @override
+  String get licensePeriodEndLabel => 'Period end';
+
+  @override
+  String get licenseDaysLeftLabel => 'Days left';
+
+  @override
+  String get licenseUsersLabel => 'Users';
+
+  @override
+  String get licenseUsersRemainingLabel => 'Users remaining';
+
+  @override
+  String get licenseRequiresDedicatedLabel => 'Requires dedicated';
+
+  @override
+  String get licenseDedicatedInfraReadyLabel => 'Dedicated infra ready';
+
+  @override
+  String get licenseBlockingReasonLabel => 'Blocking reason';
+
+  @override
+  String get upgradeRequestPending => 'Upgrade request is pending approval';
+
+  @override
+  String get requestUpgradePendingLabel => 'Requested';
+
+  @override
+  String get upgradeRequestStatusLabel => 'Upgrade request status';
+
+  @override
+  String get upgradeRequestPlanLabel => 'Requested plan';
+
+  @override
+  String get upgradeRequestAtLabel => 'Requested at';
+
+  @override
+  String get upgradeRequestNoteLabel => 'Decision note';
+
+  @override
+  String get upgradeStatusPending => 'Pending';
+
+  @override
+  String get upgradeStatusApproved => 'Approved';
+
+  @override
+  String get upgradeStatusRejected => 'Rejected';
+
+  @override
+  String get yesLabel => 'Yes';
+
+  @override
+  String get noLabel => 'No';
 }

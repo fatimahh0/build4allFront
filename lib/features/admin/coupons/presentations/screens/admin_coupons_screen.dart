@@ -100,10 +100,13 @@ class _AdminCouponsScreenState extends State<AdminCouponsScreen> {
                       l10n.coupons_type_free_shipping,
                   };
 
-                  final valueLabel =
-                      coupon.discountType == CouponDiscountType.percent
-                      ? '${coupon.discountValue.toStringAsFixed(0)} %'
-                      : coupon.discountValue.toStringAsFixed(2);
+                  // ✅ Better label for Free Shipping (don’t show 0.00)
+                  final valueLabel = switch (coupon.discountType) {
+                    CouponDiscountType.percent =>
+                      '${coupon.discountValue.toStringAsFixed(0)} %',
+                    CouponDiscountType.fixed => coupon.discountValue.toStringAsFixed(2),
+                    CouponDiscountType.freeShipping => '—',
+                  };
 
                   return Container(
                     padding: EdgeInsets.all(spacing.md),
@@ -135,9 +138,7 @@ class _AdminCouponsScreenState extends State<AdminCouponsScreen> {
                                       ),
                                       decoration: BoxDecoration(
                                         color: c.error.withOpacity(0.08),
-                                        borderRadius: BorderRadius.circular(
-                                          999,
-                                        ),
+                                        borderRadius: BorderRadius.circular(999),
                                       ),
                                       child: Text(
                                         l10n.coupons_inactive_badge,
@@ -173,8 +174,7 @@ class _AdminCouponsScreenState extends State<AdminCouponsScreen> {
                         SizedBox(width: spacing.sm),
                         IconButton(
                           icon: const Icon(Icons.edit_rounded),
-                          onPressed: () =>
-                              _openFormSheet(context, coupon: coupon),
+                          onPressed: () => _openFormSheet(context, coupon: coupon),
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete_outline_rounded),
@@ -188,13 +188,11 @@ class _AdminCouponsScreenState extends State<AdminCouponsScreen> {
                                 ),
                                 actions: [
                                   TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(ctx).pop(false),
+                                    onPressed: () => Navigator.of(ctx).pop(false),
                                     child: Text(l10n.cancel),
                                   ),
                                   TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(ctx).pop(true),
+                                    onPressed: () => Navigator.of(ctx).pop(true),
                                     child: Text(l10n.delete),
                                   ),
                                 ],

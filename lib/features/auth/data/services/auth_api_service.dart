@@ -45,12 +45,16 @@ int? consumeLastResumePendingId() {
 
   // ========================== INIT FROM STORAGE ==========================
 
-  Future<void> initFromStorage() async {
-    final saved = await _tokenStore.getToken();
-    if (saved != null && saved.isNotEmpty) {
-      g.setAuthToken(saved);
-    }
-  }
+Future<void> initFromStorage() async {
+  final saved = (await _tokenStore.getToken())?.trim() ?? '';
+  if (saved.isEmpty) return;
+
+  final raw = saved.toLowerCase().startsWith('bearer ')
+      ? saved.substring(7).trim()
+      : saved;
+
+  if (raw.isNotEmpty) g.setAuthToken(raw);
+}
 
   int? _asInt(dynamic v) {
   if (v is int) return v;
@@ -305,7 +309,7 @@ Future<void> logoutRemote() async {
       _throwAuthFromLogin(resp, decoded);
     }
 
-    await _storeAuthFromLogin(decoded);
+   await _storeAuthFromLogin(decoded, tenantId: ownerProjectLinkId.toString());
     return UserModel.fromLoginJson(decoded);
   } on AppException {
     rethrow;
@@ -355,7 +359,7 @@ Future<void> logoutRemote() async {
       _throwAuthFromLogin(resp, decoded);
     }
 
-    await _storeAuthFromLogin(decoded);
+    await _storeAuthFromLogin(decoded, tenantId: ownerProjectLinkId.toString());
     return UserModel.fromLoginJson(decoded);
   } on AppException {
     rethrow;
@@ -365,52 +369,60 @@ Future<void> logoutRemote() async {
 }
   // ========================= USER REACTIVATION =========================
 
-  Future<void> reactivateUser({
-    required int userId,
-    required int ownerProjectLinkId,
-  }) async {
-    final uri = _uri('/api/auth/reactivate');
+  Future<void> reactivateUser() async {
+  final uri = _uri('/api/auth/reactivate');
 
-    try {
-      final resp = await _safePost(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'id': userId,
-          'ownerProjectLinkId': ownerProjectLinkId,
-        }),
-      );
-
-    
-
-      debugPrint('♻️ REACTIVATE USER → ${resp.statusCode}');
-      debugPrint('BODY: ${resp.body}');
-
-      final decoded = _safeJson(resp.body);
-
-      if (resp.statusCode >= 400) {
-        _throwAuthFromHttp(
-          resp,
-          decoded,
-          fallback: 'Failed to reactivate account',
-        );
-      }
-
-      final storePayload = <String, dynamic>{
-        'token': decoded['token'],
-        'wasInactive': false,
-      };
-        // ✅ account restored/reactivated, clear restore markers
-_lastWasDeletedUser = false;
-_lastCanRestoreDeletedUser = false;
-
-      await _storeAuthFromLogin(storePayload);
-    } on AppException {
-      rethrow;
-    } catch (e) {
-      throw AppException('Failed to reactivate account', original: e);
-    }
+  
+  final access = (await _tokenStore.getToken())?.trim() ?? '';
+  if (access.isEmpty) {
+    throw AuthException('Missing session token for reactivation', code: 'NO_TOKEN');
   }
+
+  final auth = access.toLowerCase().startsWith('bearer ')
+      ? access
+      : 'Bearer $access';
+
+  try {
+    final resp = await _safePost(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': auth, // ✅ THIS IS THE FIX
+      },
+      body: jsonEncode({}), // ✅ no id, no ownerProjectLinkId
+    );
+
+    debugPrint('♻️ REACTIVATE USER → ${resp.statusCode}');
+    debugPrint('BODY: ${resp.body}');
+
+    final decoded = _safeJson(resp.body);
+
+    if (resp.statusCode >= 400) {
+      _throwAuthFromHttp(
+        resp,
+        decoded,
+        fallback: 'Failed to reactivate account',
+      );
+    }
+
+    // ✅ backend returns: token + refreshToken
+    await _storeAuthFromLogin({
+      'token': decoded['token'],
+      'refreshToken': decoded['refreshToken'],
+      'wasInactive': false,
+      'wasDeleted': false,
+    });
+
+    // ✅ clear flags
+    _lastWasDeletedUser = false;
+    _lastCanRestoreDeletedUser = false;
+
+  } on AppException {
+    rethrow;
+  } catch (e) {
+    throw AppException('Failed to reactivate account', original: e);
+  }
+}
 
   // ========================= ADMIN LOGIN =========================
 
@@ -440,22 +452,22 @@ _lastCanRestoreDeletedUser = false;
   }
 
   // ============================= TOKEN HELPERS ==========================
-Future<void> _storeAuthFromLogin(Map<String, dynamic> json) async {
+Future<void> _storeAuthFromLogin(Map<String, dynamic> json, {String? tenantId}) async {
   final token = json['token'] as String?;
-  final refresh = (json['refreshToken'] ?? '').toString(); //  NEW
+  final refresh = (json['refreshToken'] ?? '').toString();
   final wasInactive = json['wasInactive'] as bool? ?? false;
-  final wasDeleted = json['wasDeleted'] == true; //  NEW safety
+  final wasDeleted = json['wasDeleted'] == true;
 
   final user = (json['user'] as Map?)?.cast<String, dynamic>();
 
   if (token != null && token.isNotEmpty) {
-   
     final safeRefresh = (wasInactive || wasDeleted) ? '' : refresh;
 
     await _tokenStore.saveToken(
       token: token,
       wasInactive: wasInactive,
       refreshToken: safeRefresh,
+      tenantId: (tenantId ?? '').trim().isNotEmpty ? tenantId : Env.ownerProjectLinkId,
     );
 
     g.setAuthToken(token);
@@ -468,7 +480,6 @@ Future<void> _storeAuthFromLogin(Map<String, dynamic> json) async {
     if (id is String) await _tokenStore.saveUserId(int.tryParse(id) ?? 0);
   }
 }
-
 
 
    
@@ -498,10 +509,11 @@ Future<void> refreshSession() async {
   }
 
   await _tokenStore.saveToken(
-    token: newAccess,
-    wasInactive: false,
-    refreshToken: newRefresh,
-  );
+  token: newAccess,
+  wasInactive: false,
+  refreshToken: newRefresh,
+  tenantId: Env.ownerProjectLinkId, 
+);
 
   g.setAuthToken(newAccess);
 }
@@ -581,23 +593,53 @@ Future<void> clearUserSession() async {
     return null;
   }
 
-  Future<http.Response> _safePost(
-    Uri uri, {
-    Map<String, String>? headers,
-    Object? body,
-  }) async {
-    try {
-      return await _client
-          .post(uri, headers: headers, body: body)
-          .timeout(const Duration(seconds: 30));
-    } on SocketException catch (e) {
-      throw NetworkException('No internet connection', original: e);
-    } on TimeoutException catch (e) {
-      throw NetworkException('Request timed out', original: e);
-    } on http.ClientException catch (e) {
-      throw NetworkException('Network error', original: e);
-    }
+Future<http.Response> _safePost(
+  Uri uri, {
+  Map<String, String>? headers,
+  Object? body,
+}) async {
+  Future<http.Response> doPost(Map<String, String>? h) async {
+    return await _client
+        .post(uri, headers: h, body: body)
+        .timeout(const Duration(seconds: 30));
   }
+
+  try {
+    var resp = await doPost(headers);
+
+    // ✅ try refresh once on 401/403 (but never for /refresh itself)
+    final isRefreshCall = uri.path.contains('/api/auth/refresh');
+    if (!isRefreshCall && (resp.statusCode == 401 || resp.statusCode == 403)) {
+      try {
+        await refreshSession();
+
+        final access = (await _tokenStore.getToken())?.trim() ?? '';
+        final auth = access.isEmpty
+            ? null
+            : (access.toLowerCase().startsWith('bearer ')
+                ? access
+                : 'Bearer $access');
+
+        final retryHeaders = <String, String>{
+          ...?headers,
+          if (auth != null) 'Authorization': auth,
+        };
+
+        resp = await doPost(retryHeaders);
+      } catch (_) {
+        // ignore refresh failure, return original resp
+      }
+    }
+
+    return resp;
+  } on SocketException catch (e) {
+    throw NetworkException('No internet connection', original: e);
+  } on TimeoutException catch (e) {
+    throw NetworkException('Request timed out', original: e);
+  } on http.ClientException catch (e) {
+    throw NetworkException('Network error', original: e);
+  }
+}
 
   Future<http.Response> _safeSend(http.BaseRequest request) async {
     try {

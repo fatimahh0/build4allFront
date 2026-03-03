@@ -1277,5 +1277,34 @@
   "placeholders": {
     "count": { "type": "int" }
   }
-}
+},
+"editProfile_firstNameInvalid": "First name contains invalid characters",
+"editProfile_lastNameInvalid": "Last name contains invalid characters",
+"licenseDetailsTitle": "License details",
+  "licensePlanLabel": "Plan",
+  "licensePlanCodeLabel": "Plan code",
+  "licenseStatusLabel": "Status",
+  "licensePeriodEndLabel": "Period end",
+  "licenseDaysLeftLabel": "Days left",
+  "licenseUsersLabel": "Users",
+  "licenseUsersRemainingLabel": "Users remaining",
+  "licenseRequiresDedicatedLabel": "Requires dedicated",
+  "licenseDedicatedInfraReadyLabel": "Dedicated infra ready",
+  "licenseBlockingReasonLabel": "Blocking reason",
+
+  "upgradeRequestPending": "Upgrade request is pending approval",
+  "requestUpgradePendingLabel": "Requested",
+
+  "upgradeRequestStatusLabel": "Upgrade request status",
+  "upgradeRequestPlanLabel": "Requested plan",
+  "upgradeRequestAtLabel": "Requested at",
+  "upgradeRequestNoteLabel": "Decision note",
+
+  "upgradeStatusPending": "Pending",
+  "upgradeStatusApproved": "Approved",
+  "upgradeStatusRejected": "Rejected",
+
+  "yesLabel": "Yes",
+  "noLabel": "No"
+
 }

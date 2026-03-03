@@ -118,6 +118,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   late final EditProfileBloc _bloc;
 
+  // ✅ RULES: all fields min 3 chars (first/last/username/email)
+  static const int _minLen = 3;
+  static const int _maxName = 40;
+  static const int _maxUsername = 20;
+
   static final RegExp _usernameAllowed = RegExp(r'^[A-Za-z0-9_]+$');
 
   @override
@@ -154,7 +159,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       LoadEditProfile(
         token: widget.token,
         userId: widget.userId,
-        
       ),
     );
   }
@@ -164,7 +168,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return t.toLowerCase().startsWith('bearer ') ? t.substring(7).trim() : t;
   }
 
-  bool _isUsernameValid(String username) => _usernameAllowed.hasMatch(username);
+  // ✅ Name validation (min 3 + basic allowed chars)
+  bool _isNameValid(String s) {
+    if (s.length < _minLen || s.length > _maxName) return false;
+    // letters + spaces + hyphen + apostrophe (supports most names)
+    return RegExp(r"^[A-Za-zÀ-ÿ' -]+$").hasMatch(s);
+  }
+
+  // ✅ Username validation (min 3, max 20, allowed A-Z a-z 0-9 _, no __, no leading/trailing _)
+  bool _isUsernameValid(String s) {
+    if (s.length < _minLen || s.length > _maxUsername) return false;
+    if (!_usernameAllowed.hasMatch(s)) return false;
+    if (s.startsWith('_') || s.endsWith('_')) return false;
+    if (s.contains('__')) return false;
+    return true;
+  }
+
+  bool _isEmailValid(String email) =>
+      RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
 
   bool _validateInputs(AppLocalizations loc) {
     final first = _firstCtrl.text.trim();
@@ -177,18 +198,40 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     String? userError;
     String? emailError;
 
+    // Username
     if (username.isEmpty) {
       userError = loc.fieldRequired;
+    } else if (username.length < _minLen) {
+      userError = 'Minimum $_minLen characters';
     } else if (!_isUsernameValid(username)) {
       userError = loc.editProfile_usernameInvalid;
     }
 
-    if (first.isEmpty) firstError = loc.fieldRequired;
-    if (last.isEmpty) lastError = loc.fieldRequired;
+    // First name
+    if (first.isEmpty) {
+      firstError = loc.fieldRequired;
+    } else if (first.length < _minLen) {
+      firstError = 'Minimum $_minLen characters';
+    } else if (!_isNameValid(first)) {
+      firstError = 'Invalid name';
+    }
 
-    if (email.isNotEmpty) {
-      final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
-      if (!ok) emailError = loc.editProfile_invalidEmail;
+    // Last name
+    if (last.isEmpty) {
+      lastError = loc.fieldRequired;
+    } else if (last.length < _minLen) {
+      lastError = 'Minimum $_minLen characters';
+    } else if (!_isNameValid(last)) {
+      lastError = 'Invalid name';
+    }
+
+    // ✅ Email REQUIRED (since you said ALL fields)
+    if (email.isEmpty) {
+      emailError = loc.fieldRequired;
+    } else if (email.length < _minLen) {
+      emailError = 'Minimum $_minLen characters';
+    } else if (!_isEmailValid(email)) {
+      emailError = loc.editProfile_invalidEmail;
     }
 
     setState(() {
@@ -198,40 +241,39 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _emailError = emailError;
     });
 
-    return userError == null && firstError == null && lastError == null && emailError == null;
+    return userError == null &&
+        firstError == null &&
+        lastError == null &&
+        emailError == null;
   }
 
   void _clearFieldErrorsIfNeeded() {
     bool changed = false;
 
+    final first = _firstCtrl.text.trim();
+    final last = _lastCtrl.text.trim();
     final username = _userCtrl.text.trim();
     final email = _emailCtrl.text.trim();
 
-    if (_userError != null && username.isNotEmpty && _isUsernameValid(username)) {
+    if (_userError != null && username.length >= _minLen && _isUsernameValid(username)) {
       _userError = null;
       changed = true;
     }
 
-    if (_firstError != null && _firstCtrl.text.trim().isNotEmpty) {
+    if (_firstError != null && first.length >= _minLen && _isNameValid(first)) {
       _firstError = null;
       changed = true;
     }
 
-    if (_lastError != null && _lastCtrl.text.trim().isNotEmpty) {
+    if (_lastError != null && last.length >= _minLen && _isNameValid(last)) {
       _lastError = null;
       changed = true;
     }
 
     if (_emailError != null) {
-      if (email.isEmpty) {
+      if (email.isNotEmpty && email.length >= _minLen && _isEmailValid(email)) {
         _emailError = null;
         changed = true;
-      } else {
-        final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
-        if (ok) {
-          _emailError = null;
-          changed = true;
-        }
       }
     }
 
@@ -270,13 +312,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           onVerify: (code) => _bloc.verifyEmailChangeDirect(
             token: widget.token,
             userId: widget.userId,
-            
             code: code,
           ),
           onResend: () => _bloc.resendEmailChangeDirect(
             token: widget.token,
             userId: widget.userId,
-           
           ),
         );
       },
@@ -391,7 +431,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     LoadEditProfile(
                       token: widget.token,
                       userId: widget.userId,
-                     
                     ),
                   );
                 } else {
@@ -504,7 +543,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     if (!valid) {
                                       AppToast.show(
                                         context,
-                                        _emailError ?? _userError ?? _firstError ?? _lastError ?? loc.fieldRequired,
+                                        _emailError ??
+                                            _userError ??
+                                            _firstError ??
+                                            _lastError ??
+                                            loc.fieldRequired,
                                         isError: true,
                                       );
                                       return;
@@ -513,21 +556,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     // ✅ user pressed save -> mark requested
                                     _saveRequested = true;
                                     _awaitingVerifyReload = false;
-                                    // do NOT reset _emailFlowActive here; it prevents loops
 
                                     final newEmailRaw = _emailCtrl.text.trim();
                                     final oldEmailRaw = _originalEmail.trim();
 
-                                    final emailToSend =
-                                        (newEmailRaw.isEmpty || newEmailRaw.toLowerCase() == oldEmailRaw.toLowerCase())
-                                            ? null
-                                            : newEmailRaw;
+                                    final emailToSend = (newEmailRaw.toLowerCase() ==
+                                            oldEmailRaw.toLowerCase())
+                                        ? null
+                                        : newEmailRaw;
 
                                     _bloc.add(
                                       SaveEditProfile(
                                         token: widget.token,
                                         userId: widget.userId,
-                                       
                                         firstName: _firstCtrl.text.trim(),
                                         lastName: _lastCtrl.text.trim(),
                                         username: _userCtrl.text.trim(),
@@ -763,12 +804,11 @@ class _EmailOtpDialogState extends State<_EmailOtpDialog> {
                   try {
                     await widget.onResend();
                     if (!mounted) return;
-                    // clean message (reuse label; if you have a dedicated key, replace it)
                     AppToast.show(context, loc.editProfile_resend);
                   } catch (e) {
                     if (!mounted) return;
                     AppToast.show(context, _cleanErr(e), isError: true);
-                    Navigator.of(context, rootNavigator: true).pop(false); // ✅ close on failure too
+                    Navigator.of(context, rootNavigator: true).pop(false);
                   } finally {
                     if (mounted) setState(() => _loading = false);
                   }
@@ -782,7 +822,7 @@ class _EmailOtpDialogState extends State<_EmailOtpDialog> {
                   final code = _codeCtrl.text.trim();
                   if (code.isEmpty) {
                     AppToast.show(context, loc.editProfile_codeRequired, isError: true);
-                    Navigator.of(context, rootNavigator: true).pop(false); // ✅ close
+                    Navigator.of(context, rootNavigator: true).pop(false);
                     return;
                   }
 
@@ -791,11 +831,11 @@ class _EmailOtpDialogState extends State<_EmailOtpDialog> {
                     await widget.onVerify(code);
                     if (!mounted) return;
                     AppToast.show(context, loc.editProfile_emailUpdatedToast);
-                    Navigator.of(context, rootNavigator: true).pop(true); // ✅ close on success
+                    Navigator.of(context, rootNavigator: true).pop(true);
                   } catch (e) {
                     if (!mounted) return;
                     AppToast.show(context, _cleanErr(e), isError: true);
-                    Navigator.of(context, rootNavigator: true).pop(false); // ✅ close on failure
+                    Navigator.of(context, rootNavigator: true).pop(false);
                   } finally {
                     if (mounted) setState(() => _loading = false);
                   }

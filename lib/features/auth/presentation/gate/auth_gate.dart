@@ -1,3 +1,5 @@
+// lib/features/auth/presentation/gate/auth_gate.dart
+import 'package:build4front/core/config/env.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -16,14 +18,11 @@ import 'package:build4front/features/auth/presentation/login/bloc/auth_event.dar
 import 'package:build4front/features/auth/presentation/login/screens/user_login_screen.dart';
 import 'package:build4front/features/shell/presentation/screens/main_shell.dart';
 
-// ✅ l10n import
 import 'package:build4front/l10n/app_localizations.dart';
 
 class AuthGate extends StatefulWidget {
   final AppConfig appConfig;
   const AuthGate({super.key, required this.appConfig});
-
-  
 
   @override
   State<AuthGate> createState() => _AuthGateState();
@@ -34,12 +33,8 @@ class _AuthGateState extends State<AuthGate> {
   final _adminStore = AdminTokenStore();
   final _userStore = AuthTokenStore();
 
-
-  
-
   bool _loading = true;
 
-  // ✅ app access block state
   bool _appBlocked = false;
   String _blockReason = '';
   String _serverBlockMessage = '';
@@ -50,18 +45,47 @@ class _AuthGateState extends State<AuthGate> {
     _boot();
   }
 
-  // ✅ public check (no token)
-  Future<bool> _checkPublicAppAccess() async {
-    // IMPORTANT:
-    // this value should be AUP LINK ID (ownerProjectLinkId), not plain projectId
-    final linkId = widget.appConfig.ownerProjectId;
+  // ---------- helpers ----------
+  String _stripBearer(String? t) {
+    final v = (t ?? '').trim();
+    if (v.toLowerCase().startsWith('bearer ')) return v.substring(7).trim();
+    return v;
+  }
 
-    // If missing config, don't block app (fail-open)
-    if (linkId == null) return true;
+  /// ✅ TENANT must be ownerProjectLinkId (AUP link id)
+  String _currentTenantId() => (Env.ownerProjectLinkId ?? '').trim();
+
+  Future<void> _logoutAll() async {
+    await _userStore.clear();
+    await _adminStore.clear();
+    await _roleStore.clear();
+    g.setAuthToken('');
+  }
+
+  Future<void> _enforceTenantMatchOrLogout() async {
+    final current = _currentTenantId();
+    if (current.isEmpty) return; // fail-open if not configured
+
+    final savedUser = (await _userStore.getTenantId())?.trim() ?? '';
+    final savedAdmin = (await _adminStore.getTenantId())?.trim() ?? '';
+
+    final mismatchUser = savedUser.isNotEmpty && savedUser != current;
+    final mismatchAdmin = savedAdmin.isNotEmpty && savedAdmin != current;
+
+    if (mismatchUser || mismatchAdmin) {
+      await _logoutAll();
+    }
+  }
+
+  /* ========================= Public app access check ========================= */
+
+  Future<bool> _checkPublicAppAccess() async {
+    // ✅ MUST be tenant link id (ownerProjectLinkId)
+    final linkId = int.tryParse(_currentTenantId());
+    if (linkId == null) return true; // fail-open
 
     try {
       final res = await g.dio().get('/api/public/app-access/$linkId');
-
       final data = (res.data is Map)
           ? Map<String, dynamic>.from(res.data as Map)
           : <String, dynamic>{};
@@ -81,12 +105,9 @@ class _AuthGateState extends State<AuthGate> {
 
       return true;
     } on DioException catch (e) {
-      // Backend may return 410 Gone for deleted/expired/not found
       if (e.response?.statusCode == 410) {
         final raw = e.response?.data;
-        final data = (raw is Map)
-            ? Map<String, dynamic>.from(raw)
-            : <String, dynamic>{};
+        final data = (raw is Map) ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
 
         if (!mounted) return false;
         setState(() {
@@ -97,143 +118,111 @@ class _AuthGateState extends State<AuthGate> {
         });
         return false;
       }
-
-      // Network issue? Timeout? Offline?
-      // Don't lock users out just because check failed to reach server
-      return true;
+      return true; // fail-open on network problems
     } catch (_) {
-      // Unexpected parsing error -> fail-open
       return true;
     }
   }
 
-Future<String?> _tryRefreshUserIfNeeded(String? userToken, bool userWasInactive) async {
-  if (userWasInactive) return null;
+  /* ========================= Refresh helpers ========================= */
 
-  final refresh = await _userStore.getRefreshToken();
-  if (refresh == null || refresh.isEmpty) return null;
+  Future<String?> _tryRefreshUserIfNeeded({
+    required String? tokenStored,
+    required bool userWasInactive,
+  }) async {
+    if (userWasInactive) return null;
 
-  if (userToken != null && userToken.isNotEmpty && !JwtUtils.isExpired(userToken)) {
-    return userToken; // still valid
+    final refresh = (await _userStore.getRefreshToken())?.trim() ?? '';
+    if (refresh.isEmpty) return null;
+
+    final raw = _stripBearer(tokenStored);
+    if (raw.isNotEmpty && !JwtUtils.isExpired(raw)) return raw;
+
+    try {
+      final res = await g.dio().post('/api/auth/refresh', data: {'refreshToken': refresh});
+      final data = (res.data is Map) ? Map<String, dynamic>.from(res.data as Map) : <String, dynamic>{};
+
+      final newAccess = _stripBearer((data['token'] ?? '').toString());
+      final newRefresh = (data['refreshToken'] ?? '').toString().trim();
+      if (newAccess.isEmpty || newRefresh.isEmpty) return null;
+
+      await _userStore.saveToken(
+        token: newAccess,
+        wasInactive: false,
+        refreshToken: newRefresh,
+        tenantId: _currentTenantId(),
+      );
+
+      return newAccess;
+    } catch (_) {
+      await _userStore.clear();
+      return null;
+    }
   }
 
-  try {
-    final res = await g.dio().post('/api/auth/refresh', data: {'refreshToken': refresh});
-    final newAccess = (res.data['token'] ?? '').toString();
-    final newRefresh = (res.data['refreshToken'] ?? '').toString();
+  Future<String?> _tryRefreshAdminIfNeeded({required String? tokenStored}) async {
+    final refresh = (await _adminStore.getRefreshToken())?.trim() ?? '';
+    if (refresh.isEmpty) return null;
 
-    if (newAccess.isEmpty || newRefresh.isEmpty) return null;
+    final raw = _stripBearer(tokenStored);
+    if (raw.isNotEmpty && !JwtUtils.isExpired(raw)) return raw;
 
-    await _userStore.saveToken(token: newAccess, wasInactive: false, refreshToken: newRefresh);
-    g.setAuthToken(newAccess);
-    return newAccess;
-  } catch (_) {
-    await _userStore.clear();
-    return null;
+    try {
+      final res = await g.dio().post('/api/auth/refresh', data: {'refreshToken': refresh});
+      final data = (res.data is Map) ? Map<String, dynamic>.from(res.data as Map) : <String, dynamic>{};
+
+      final newAccess = _stripBearer((data['token'] ?? '').toString());
+      final newRefresh = (data['refreshToken'] ?? '').toString().trim();
+      if (newAccess.isEmpty || newRefresh.isEmpty) return null;
+
+      final role = (await _adminStore.getRole()) ?? '';
+
+      await _adminStore.save(
+        token: newAccess,
+        role: role,
+        refreshToken: newRefresh,
+        tenantId: _currentTenantId(),
+      );
+
+      return newAccess;
+    } catch (_) {
+      await _adminStore.clear();
+      return null;
+    }
   }
-}
 
-Future<String?> _tryRefreshAdminIfNeeded(String? adminToken) async {
-  final refresh = await _adminStore.getRefreshToken();
-  if (refresh == null || refresh.isEmpty) return null;
+  /* ========================= Boot ========================= */
 
-  if (adminToken != null && adminToken.isNotEmpty && !JwtUtils.isExpired(adminToken)) {
-    return adminToken;
-  }
-
-  try {
-    final res = await g.dio().post('/api/auth/refresh', data: {'refreshToken': refresh});
-    final newAccess = (res.data['token'] ?? '').toString();
-    final newRefresh = (res.data['refreshToken'] ?? '').toString();
-    if (newAccess.isEmpty || newRefresh.isEmpty) return null;
-
-    final role = (await _adminStore.getRole()) ?? '';
-    await _adminStore.save(token: newAccess, role: role, refreshToken: newRefresh);
-    return newAccess;
-  } catch (_) {
-    await _adminStore.clear();
-    return null;
-  }
-}
   Future<void> _boot() async {
     try {
-      // ✅ FIRST: check public app access
       final canOpen = await _checkPublicAppAccess();
       if (!canOpen) return;
 
+      await _enforceTenantMatchOrLogout();
+
       final lastRole = await _roleStore.getRole();
 
-      var adminToken = await _adminStore.getToken();
-      var userToken = await _userStore.getToken();
+      final adminStored = (await _adminStore.getToken())?.trim();
+      final userStored = (await _userStore.getToken())?.trim();
       final userWasInactive = await _userStore.getWasInactive();
 
+      final adminToken = await _tryRefreshAdminIfNeeded(tokenStored: adminStored);
+      final userToken = await _tryRefreshUserIfNeeded(
+        tokenStored: userStored,
+        userWasInactive: userWasInactive,
+      );
 
-final adminTokenRefreshed = await _tryRefreshAdminIfNeeded(adminToken);
-final userTokenRefreshed = await _tryRefreshUserIfNeeded(userToken, userWasInactive);
+      final adminValid = adminToken != null && adminToken.isNotEmpty && !JwtUtils.isExpired(adminToken);
+      final userValid = userToken != null && userToken.isNotEmpty && !JwtUtils.isExpired(userToken);
+      final userAutoValid = userValid && !userWasInactive;
 
-final adminValid = adminTokenRefreshed != null && adminTokenRefreshed.isNotEmpty && !JwtUtils.isExpired(adminTokenRefreshed);
-final userValid  = userTokenRefreshed  != null && userTokenRefreshed.isNotEmpty  && !JwtUtils.isExpired(userTokenRefreshed);
-
-final userAutoValid = userValid && !userWasInactive;
-
-if (userAutoValid) {
-  g.setAuthToken(userTokenRefreshed!);
-}
-
-     
-
-      var adminRefresh = await _adminStore.getRefreshToken();
-var userRefresh  = await _userStore.getRefreshToken();
-
-
-if ((userToken == null || userToken.isEmpty || JwtUtils.isExpired(userToken)) &&
-    (userRefresh != null && userRefresh.isNotEmpty) &&
-    !userWasInactive) {
-  try {
-    // call refresh
-    final res = await g.dio().post('/api/auth/refresh', data: {'refreshToken': userRefresh});
-    final newAccess = (res.data['token'] ?? '').toString();
-    final newRefresh = (res.data['refreshToken'] ?? '').toString();
-
-    await _userStore.saveToken(token: newAccess, wasInactive: false, refreshToken: newRefresh);
-    g.setAuthToken(newAccess);
-    userToken = newAccess; 
-  } catch (_) {
-    await _userStore.clear(); 
-  }
-}
-
-
-if ((adminToken == null || adminToken.isEmpty || JwtUtils.isExpired(adminToken)) &&
-    (adminRefresh != null && adminRefresh.isNotEmpty)) {
-  try {
-    final res = await g.dio().post('/api/auth/refresh', data: {'refreshToken': adminRefresh});
-    final newAccess = (res.data['token'] ?? '').toString();
-    final newRefresh = (res.data['refreshToken'] ?? '').toString();
-
-    final role = (await _adminStore.getRole()) ?? ''; // keep role
-    await _adminStore.save(token: newAccess, role: role, refreshToken: newRefresh);
-    adminToken = newAccess;
-  } catch (_) {
-    await _adminStore.clear();
-  }
-}
-
-      // cleanup expired
-      if (adminToken != null && !adminValid) await _adminStore.clear();
-      if (userToken != null && !userValid) await _userStore.clear();
-
-      
+      if (!adminValid) await _adminStore.clear();
+      if (!userValid) await _userStore.clear();
 
       if (!mounted) return;
 
-      // ✅ set global token if entering user flow
-      if (userAutoValid) {
-        g.setAuthToken(userToken!);
-      }
-
-      // both valid & no lastRole -> ask user
-      if (adminValid && userAutoValid && lastRole == null) {
+      // BOTH valid and no last role -> ask
+      if (adminValid && userAutoValid && (lastRole == null || lastRole.trim().isEmpty)) {
         setState(() => _loading = false);
         await _askRoleAndGo(adminToken!, userToken!);
         return;
@@ -241,7 +230,7 @@ if ((adminToken == null || adminToken.isEmpty || JwtUtils.isExpired(adminToken))
 
       // prefer last role
       if (lastRole == 'admin' && adminValid) {
-        _goAdmin();
+        _goAdminWithToken(adminToken!);
         return;
       }
       if (lastRole == 'user' && userAutoValid) {
@@ -251,7 +240,7 @@ if ((adminToken == null || adminToken.isEmpty || JwtUtils.isExpired(adminToken))
 
       // fallback priority
       if (adminValid) {
-        _goAdmin();
+        _goAdminWithToken(adminToken!);
         return;
       }
       if (userAutoValid) {
@@ -266,10 +255,9 @@ if ((adminToken == null || adminToken.isEmpty || JwtUtils.isExpired(adminToken))
     }
   }
 
+  /* ========================= Routing ========================= */
 
   Future<void> _askRoleAndGo(String adminToken, String userToken) async {
-    final l10n = AppLocalizations.of(context)!;
-
     final choice = await showModalBottomSheet<String>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -277,7 +265,6 @@ if ((adminToken == null || adminToken.isEmpty || JwtUtils.isExpired(adminToken))
       ),
       builder: (ctx) {
         final bl10n = AppLocalizations.of(ctx)!;
-
         return Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           child: Column(
@@ -310,35 +297,32 @@ if ((adminToken == null || adminToken.isEmpty || JwtUtils.isExpired(adminToken))
 
     if (choice == 'admin') {
       await _roleStore.saveRole('admin');
-      _goAdmin();
-    } else if (choice == 'user') {
-      await _roleStore.saveRole('user');
-
-      // ✅ set global token before entering user flow
-      g.setAuthToken(userToken);
-
-      _hydrateUserAndGo(userToken);
-    } else {
-      // user dismissed sheet
-      // keep same behavior (go login)
-      _goLogin();
+      _goAdminWithToken(adminToken);
+      return;
     }
+    if (choice == 'user') {
+      await _roleStore.saveRole('user');
+      _hydrateUserAndGo(userToken);
+      return;
+    }
+
+    _goLogin();
   }
 
-  void _hydrateUserAndGo(String token) {
-    // ✅ ALWAYS set global token so UI can decode immediately
-    g.setAuthToken(token);
+  void _hydrateUserAndGo(String rawJwt) {
+    g.setAuthToken(rawJwt);
 
     context.read<AuthBloc>().add(
-      AuthLoginHydrated(user: null, token: token, wasInactive: false),
-    );
+          AuthLoginHydrated(user: null, token: rawJwt, wasInactive: false),
+        );
 
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => MainShell(appConfig: widget.appConfig)),
     );
   }
 
-  void _goAdmin() {
+  void _goAdminWithToken(String rawJwt) {
+    g.setAuthToken(rawJwt);
     Navigator.of(context).pushNamedAndRemoveUntil('/admin', (_) => false);
   }
 
@@ -350,7 +334,7 @@ if ((adminToken == null || adminToken.isEmpty || JwtUtils.isExpired(adminToken))
     );
   }
 
-  // ---------------- localized helpers ----------------
+  /* ========================= Blocked UI helpers ========================= */
 
   String _titleForReason(AppLocalizations l10n, String reason) {
     switch (reason) {
@@ -358,7 +342,6 @@ if ((adminToken == null || adminToken.isEmpty || JwtUtils.isExpired(adminToken))
         return l10n.appAccessTitleDeleted;
       case 'APP_EXPIRED':
         return l10n.appAccessTitleExpired;
-      case 'APP_NOT_AVAILABLE':
       default:
         return l10n.appAccessTitleUnavailable;
     }
@@ -370,7 +353,6 @@ if ((adminToken == null || adminToken.isEmpty || JwtUtils.isExpired(adminToken))
         return l10n.appAccessMessageDeleted;
       case 'APP_EXPIRED':
         return l10n.appAccessMessageExpired;
-      case 'APP_NOT_AVAILABLE':
       default:
         return l10n.appAccessMessageUnavailable;
     }
@@ -382,7 +364,6 @@ if ((adminToken == null || adminToken.isEmpty || JwtUtils.isExpired(adminToken))
         return Icons.block_rounded;
       case 'APP_EXPIRED':
         return Icons.timer_off_rounded;
-      case 'APP_NOT_AVAILABLE':
       default:
         return Icons.no_accounts_rounded;
     }
@@ -423,18 +404,12 @@ if ((adminToken == null || adminToken.isEmpty || JwtUtils.isExpired(adminToken))
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircleAvatar(
-                      radius: 34,
-                      child: Icon(icon, size: 34),
-                    ),
+                    CircleAvatar(radius: 34, child: Icon(icon, size: 34)),
                     const SizedBox(height: 16),
                     Text(
                       title,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -442,11 +417,7 @@ if ((adminToken == null || adminToken.isEmpty || JwtUtils.isExpired(adminToken))
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
-                        color: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.color
-                            ?.withOpacity(0.8),
+                        color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.8),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -455,52 +426,32 @@ if ((adminToken == null || adminToken.isEmpty || JwtUtils.isExpired(adminToken))
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 12,
-                        color: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.color
-                            ?.withOpacity(0.75),
+                        color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.75),
                       ),
                     ),
-
-                    // optional: show server message if different / for debugging
                     if (_serverBlockMessage.isNotEmpty &&
-                        _serverBlockMessage.trim().toLowerCase() !=
-                            message.trim().toLowerCase()) ...[
+                        _serverBlockMessage.trim().toLowerCase() != message.trim().toLowerCase()) ...[
                       const SizedBox(height: 10),
                       Text(
                         _serverBlockMessage,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 11,
-                          color: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.color
-                              ?.withOpacity(0.65),
+                          color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.65),
                         ),
                       ),
                     ],
-
                     if (_blockReason.isNotEmpty) ...[
                       const SizedBox(height: 12),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(999),
-                          color: Theme.of(context)
-                              .dividerColor
-                              .withOpacity(0.12),
+                          color: Theme.of(context).dividerColor.withOpacity(0.12),
                         ),
                         child: Text(
                           _blockReason,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                         ),
                       ),
                     ],
@@ -522,17 +473,6 @@ if ((adminToken == null || adminToken.isEmpty || JwtUtils.isExpired(adminToken))
                         label: Text(l10n.appAccessRetry),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          // keep user on blocked screen intentionally
-                        },
-                        icon: const Icon(Icons.lock_outline_rounded),
-                        label: Text(l10n.appAccessBlockedButton),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -545,14 +485,10 @@ if ((adminToken == null || adminToken.isEmpty || JwtUtils.isExpired(adminToken))
 
   @override
   Widget build(BuildContext context) {
-    if (_appBlocked) {
-      return _buildBlockedFullScreen();
-    }
+    if (_appBlocked) return _buildBlockedFullScreen();
 
     if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return const Scaffold(body: SizedBox.shrink());

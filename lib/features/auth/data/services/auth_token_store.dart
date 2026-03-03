@@ -1,42 +1,56 @@
 import 'dart:convert';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AuthTokenStore {
   final FlutterSecureStorage _storage;
 
   const AuthTokenStore({FlutterSecureStorage? storage})
-    : _storage = storage ?? const FlutterSecureStorage();
+      : _storage = storage ?? const FlutterSecureStorage();
 
   static const _keyToken = 'auth_token';
   static const _keyWasInactive = 'was_inactive';
   static const _keyUserJson = 'auth_user_json';
 
-  // ✅ NEW
   static const _keyUserId = 'auth_user_id';
- // + add
-static const _keyRefreshToken = 'auth_refresh_token';
+  static const _keyRefreshToken = 'auth_refresh_token';
 
-Future<void> saveToken({
-  required String token,
-  bool wasInactive = false,
-  String? refreshToken, // ✅ NEW
-}) async {
-  await _storage.write(key: _keyToken, value: token);
-  await _storage.write(key: _keyWasInactive, value: wasInactive.toString());
+  // ✅ NEW (tenant binding)
+  static const _keyTenantId = 'auth_tenant_id';
 
-  if (refreshToken != null) {
-    final v = refreshToken.trim();
-    if (v.isEmpty) {
-      await _storage.delete(key: _keyRefreshToken);
-    } else {
-      await _storage.write(key: _keyRefreshToken, value: v);
+  Future<void> saveToken({
+    required String token,
+    bool wasInactive = false,
+    String? refreshToken,
+    String? tenantId,
+  }) async {
+    await _storage.write(key: _keyToken, value: token);
+    await _storage.write(key: _keyWasInactive, value: wasInactive.toString());
+
+    if (refreshToken != null) {
+      final v = refreshToken.trim();
+      if (v.isEmpty) {
+        await _storage.delete(key: _keyRefreshToken);
+      } else {
+        await _storage.write(key: _keyRefreshToken, value: v);
+      }
+    }
+
+    if (tenantId != null) {
+      final t = tenantId.trim();
+      if (t.isEmpty) {
+        await _storage.delete(key: _keyTenantId);
+      } else {
+        await _storage.write(key: _keyTenantId, value: t);
+      }
     }
   }
-}
-
-
 
   Future<String?> getToken() => _storage.read(key: _keyToken);
+
+  Future<String?> getRefreshToken() => _storage.read(key: _keyRefreshToken);
+
+  Future<String?> getTenantId() => _storage.read(key: _keyTenantId);
 
   Future<void> saveUserJson(Map<String, dynamic> json) async {
     await _storage.write(key: _keyUserJson, value: jsonEncode(json));
@@ -50,7 +64,6 @@ Future<void> saveToken({
     return decoded;
   }
 
-  // ✅ NEW: save/get userId directly (super reliable)
   Future<void> saveUserId(int userId) async {
     await _storage.write(key: _keyUserId, value: userId.toString());
   }
@@ -66,13 +79,12 @@ Future<void> saveToken({
     return v.toLowerCase() == 'true';
   }
 
-Future<String?> getRefreshToken() => _storage.read(key: _keyRefreshToken);
-
-Future<void> clear() async {
-  await _storage.delete(key: _keyToken);
-  await _storage.delete(key: _keyWasInactive);
-  await _storage.delete(key: _keyUserJson);
-  await _storage.delete(key: _keyUserId);
-  await _storage.delete(key: _keyRefreshToken); // ✅ NEW
-}
+  Future<void> clear() async {
+    await _storage.delete(key: _keyToken);
+    await _storage.delete(key: _keyWasInactive);
+    await _storage.delete(key: _keyUserJson);
+    await _storage.delete(key: _keyUserId);
+    await _storage.delete(key: _keyRefreshToken);
+    await _storage.delete(key: _keyTenantId);
+  }
 }

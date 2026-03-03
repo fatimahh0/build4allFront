@@ -5274,6 +5274,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Only {count} left'**
   String home_stock_left_label(int count);
+
+  /// No description provided for @editProfile_firstNameInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'First name contains invalid characters'**
+  String get editProfile_firstNameInvalid;
+
+  /// No description provided for @editProfile_lastNameInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Last name contains invalid characters'**
+  String get editProfile_lastNameInvalid;
+
+  /// No description provided for @licenseDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'License details'**
+  String get licenseDetailsTitle;
+
+  /// No description provided for @licensePlanLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan'**
+  String get licensePlanLabel;
+
+  /// No description provided for @licensePlanCodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan code'**
+  String get licensePlanCodeLabel;
+
+  /// No description provided for @licenseStatusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get licenseStatusLabel;
+
+  /// No description provided for @licensePeriodEndLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Period end'**
+  String get licensePeriodEndLabel;
+
+  /// No description provided for @licenseDaysLeftLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Days left'**
+  String get licenseDaysLeftLabel;
+
+  /// No description provided for @licenseUsersLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Users'**
+  String get licenseUsersLabel;
+
+  /// No description provided for @licenseUsersRemainingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Users remaining'**
+  String get licenseUsersRemainingLabel;
+
+  /// No description provided for @licenseRequiresDedicatedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Requires dedicated'**
+  String get licenseRequiresDedicatedLabel;
+
+  /// No description provided for @licenseDedicatedInfraReadyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Dedicated infra ready'**
+  String get licenseDedicatedInfraReadyLabel;
+
+  /// No description provided for @licenseBlockingReasonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocking reason'**
+  String get licenseBlockingReasonLabel;
+
+  /// No description provided for @upgradeRequestPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade request is pending approval'**
+  String get upgradeRequestPending;
+
+  /// No description provided for @requestUpgradePendingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested'**
+  String get requestUpgradePendingLabel;
+
+  /// No description provided for @upgradeRequestStatusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade request status'**
+  String get upgradeRequestStatusLabel;
+
+  /// No description provided for @upgradeRequestPlanLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested plan'**
+  String get upgradeRequestPlanLabel;
+
+  /// No description provided for @upgradeRequestAtLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Requested at'**
+  String get upgradeRequestAtLabel;
+
+  /// No description provided for @upgradeRequestNoteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Decision note'**
+  String get upgradeRequestNoteLabel;
+
+  /// No description provided for @upgradeStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get upgradeStatusPending;
+
+  /// No description provided for @upgradeStatusApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved'**
+  String get upgradeStatusApproved;
+
+  /// No description provided for @upgradeStatusRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected'**
+  String get upgradeStatusRejected;
+
+  /// No description provided for @yesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get yesLabel;
+
+  /// No description provided for @noLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get noLabel;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

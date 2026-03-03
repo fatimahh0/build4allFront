@@ -2694,4 +2694,76 @@ class AppLocalizationsAr extends AppLocalizations {
   String home_stock_left_label(int count) {
     return 'باقي $count فقط';
   }
+
+  @override
+  String get editProfile_firstNameInvalid => 'الاسم الأول يحتوي على أحرف غير مسموحة';
+
+  @override
+  String get editProfile_lastNameInvalid => 'الاسم الأخير يحتوي على أحرف غير مسموحة';
+
+  @override
+  String get licenseDetailsTitle => 'تفاصيل الترخيص';
+
+  @override
+  String get licensePlanLabel => 'الخطة';
+
+  @override
+  String get licensePlanCodeLabel => 'رمز الخطة';
+
+  @override
+  String get licenseStatusLabel => 'الحالة';
+
+  @override
+  String get licensePeriodEndLabel => 'نهاية الفترة';
+
+  @override
+  String get licenseDaysLeftLabel => 'الأيام المتبقية';
+
+  @override
+  String get licenseUsersLabel => 'المستخدمون';
+
+  @override
+  String get licenseUsersRemainingLabel => 'المستخدمون المتبقّون';
+
+  @override
+  String get licenseRequiresDedicatedLabel => 'يتطلب خادمًا مخصصًا';
+
+  @override
+  String get licenseDedicatedInfraReadyLabel => 'البنية التحتية المخصصة جاهزة';
+
+  @override
+  String get licenseBlockingReasonLabel => 'سبب الحظر';
+
+  @override
+  String get upgradeRequestPending => 'طلب الترقية قيد الانتظار للموافقة';
+
+  @override
+  String get requestUpgradePendingLabel => 'تم الطلب';
+
+  @override
+  String get upgradeRequestStatusLabel => 'حالة طلب الترقية';
+
+  @override
+  String get upgradeRequestPlanLabel => 'الخطة المطلوبة';
+
+  @override
+  String get upgradeRequestAtLabel => 'تاريخ الطلب';
+
+  @override
+  String get upgradeRequestNoteLabel => 'ملاحظة القرار';
+
+  @override
+  String get upgradeStatusPending => 'قيد الانتظار';
+
+  @override
+  String get upgradeStatusApproved => 'تمت الموافقة';
+
+  @override
+  String get upgradeStatusRejected => 'تم الرفض';
+
+  @override
+  String get yesLabel => 'نعم';
+
+  @override
+  String get noLabel => 'لا';
 }
