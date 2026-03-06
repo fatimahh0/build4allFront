@@ -1,5 +1,3 @@
-// lib/features/admin/product/presentation/screens/admin_dashboard_screen.dart
-
 import 'dart:convert';
 
 import 'package:build4front/features/admin/licensing/data/models/owner_app_access_response.dart';
@@ -107,6 +105,13 @@ String _upgradeStatusNice(AppLocalizations l10n, String? s) {
   }
 }
 
+double _bottomInset(BuildContext context) {
+  final media = MediaQuery.of(context);
+  final safe = media.viewPadding.bottom;
+  final keyboard = media.viewInsets.bottom;
+  return keyboard > 0 ? keyboard : safe;
+}
+
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
 
@@ -131,7 +136,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   void initState() {
     super.initState();
 
-    // ✅ profile wiring (clean arch)
     final api = AdminUserApiService(getToken: () => _store.getToken());
     final repo = AdminProfileRepositoryImpl(api: api);
     final getMe = GetMyAdminProfile(repo);
@@ -172,10 +176,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       OwnerAppAccessResponse access;
 
       if (role == 'OWNER') {
-        // ✅ tenant from token only
         access = await _licensingApi.getAccessMe();
       } else if (role == 'SUPER_ADMIN') {
-        // ✅ act-as with aupId
         final aupId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
         access = await _licensingApi.getAccessAsSuperAdmin(aupId);
       } else {
@@ -268,7 +270,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Future<void> _showUpgradeSheet(OwnerAppAccessResponse access) async {
     final l10n = AppLocalizations.of(context)!;
 
-    // ✅ hard block if already pending (backend blocks too, but UX matters)
     if (access.hasPendingUpgradeRequest) {
       AppToast.error(context, l10n.upgradeRequestPending);
       return;
@@ -307,6 +308,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final sent = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
@@ -317,130 +320,148 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
         return StatefulBuilder(
           builder: (ctx2, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 14,
-                bottom: 20 + MediaQuery.of(ctx2).padding.bottom,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    height: 4,
-                    width: 40,
+            final inset = _bottomInset(ctx2);
+
+            return SafeArea(
+              top: false,
+              child: AnimatedPadding(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                padding: EdgeInsets.only(bottom: inset),
+                child: Material(
+                  color: Colors.transparent,
+                  child: Container(
                     decoration: BoxDecoration(
-                      color: colors.border.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(999),
+                      color: colors.surface,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(18),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: colors.primary.withOpacity(.10),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: colors.primary.withOpacity(.18),
-                          ),
-                        ),
-                        child: Icon(Icons.upgrade, color: colors.primary),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          l10n.upgradeSheetTitle,
-                          style: t.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: colors.label,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    l10n.upgradeSheetSubtitle,
-                    style: t.bodyMedium?.copyWith(color: colors.body),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 14),
-                  for (final o in options)
-                    InkWell(
-                      onTap: () => setModalState(() => selected = o.code),
-                      borderRadius: BorderRadius.circular(16),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        curve: Curves.easeOut,
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: selected == o.code
-                              ? colors.primary.withOpacity(.08)
-                              : colors.surface,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: selected == o.code
-                                ? colors.primary.withOpacity(.35)
-                                : colors.border.withOpacity(.20),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              selected == o.code
-                                  ? Icons.radio_button_checked
-                                  : Icons.radio_button_off,
-                              color: selected == o.code
-                                  ? colors.primary
-                                  : colors.body,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            height: 4,
+                            width: 40,
+                            decoration: BoxDecoration(
+                              color: colors.border.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(999),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    o.title,
-                                    style: t.bodyLarge?.copyWith(
-                                      color: colors.label,
-                                      fontWeight: FontWeight.w800,
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: colors.primary.withOpacity(.10),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: colors.primary.withOpacity(.18),
+                                  ),
+                                ),
+                                child: Icon(Icons.upgrade, color: colors.primary),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  l10n.upgradeSheetTitle,
+                                  style: t.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: colors.label,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            l10n.upgradeSheetSubtitle,
+                            style: t.bodyMedium?.copyWith(color: colors.body),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 14),
+                          for (final o in options)
+                            InkWell(
+                              onTap: () => setModalState(() => selected = o.code),
+                              borderRadius: BorderRadius.circular(16),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                curve: Curves.easeOut,
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: selected == o.code
+                                      ? colors.primary.withOpacity(.08)
+                                      : colors.surface,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: selected == o.code
+                                        ? colors.primary.withOpacity(.35)
+                                        : colors.border.withOpacity(.20),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      selected == o.code
+                                          ? Icons.radio_button_checked
+                                          : Icons.radio_button_off,
+                                      color: selected == o.code
+                                          ? colors.primary
+                                          : colors.body,
                                     ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    o.desc,
-                                    style:
-                                        t.bodySmall?.copyWith(color: colors.body),
-                                  ),
-                                ],
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            o.title,
+                                            style: t.bodyLarge?.copyWith(
+                                              color: colors.label,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            o.desc,
+                                            style: t.bodySmall?.copyWith(
+                                              color: colors.body,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ],
-                        ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () => Navigator.pop(ctx2, true),
+                              icon: const Icon(Icons.send),
+                              label: Text(l10n.sendRequestLabel),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(ctx2, false),
+                              child: Text(l10n.cancelLabel),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () => Navigator.pop(ctx2, true),
-                      icon: const Icon(Icons.send),
-                      label: Text(l10n.sendRequestLabel),
-                    ),
                   ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(ctx2, false),
-                      child: Text(l10n.cancelLabel),
-                    ),
-                  ),
-                ],
+                ),
               ),
             );
           },
@@ -666,8 +687,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         if (_license == null) return;
 
                         if (_license!.hasPendingUpgradeRequest) {
-                          AppToast.error(context, l10n.upgradeRequestPending
-                             );
+                          AppToast.error(context, l10n.upgradeRequestPending);
                           return;
                         }
 
@@ -770,260 +790,292 @@ class _ProfileBottomSheet extends StatelessWidget {
     final colors = tokens.colors;
     final t = Theme.of(context).textTheme;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+    return Material(
+      color: Colors.transparent,
       child: SafeArea(
         top: false,
-        child: Padding(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 10,
-            bottom: 14 + MediaQuery.of(context).padding.bottom,
-          ),
-          child: BlocBuilder<AdminProfileCubit, AdminProfileState>(
-            builder: (context, state) {
-              Widget body;
+        child: AnimatedPadding(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: EdgeInsets.only(bottom: _bottomInset(context)),
+          child: Container(
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+              child: BlocBuilder<AdminProfileCubit, AdminProfileState>(
+                builder: (context, state) {
+                  Widget body;
 
-              if (state is AdminProfileLoading || state is AdminProfileInitial) {
-                body = Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 12),
-                    const SizedBox(
-                      height: 22,
-                      width: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      l10n.adminProfileLoading,
-                      style: t.bodyMedium?.copyWith(color: colors.body),
-                    ),
-                  ],
-                );
-              } else if (state is AdminProfileError) {
-                body = Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 8),
-                    Icon(Icons.error_outline, color: colors.error, size: 28),
-                    const SizedBox(height: 8),
-                    Text(
-                      state.message,
-                      textAlign: TextAlign.center,
-                      style: t.bodyMedium?.copyWith(color: colors.label),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
+                  if (state is AdminProfileLoading ||
+                      state is AdminProfileInitial) {
+                    body = Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: onReload,
-                            child: Text(l10n.retryLabel),
-                          ),
+                        const SizedBox(height: 12),
+                        const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          l10n.adminProfileLoading,
+                          style: t.bodyMedium?.copyWith(color: colors.body),
                         ),
                       ],
-                    ),
-                  ],
-                );
-              } else {
-                final p = (state as AdminProfileLoaded).profile;
+                    );
+                  } else if (state is AdminProfileError) {
+                    body = Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: 8),
+                        Icon(Icons.error_outline, color: colors.error, size: 28),
+                        const SizedBox(height: 8),
+                        Text(
+                          state.message,
+                          textAlign: TextAlign.center,
+                          style: t.bodyMedium?.copyWith(color: colors.label),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: onReload,
+                                child: Text(l10n.retryLabel),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  } else {
+                    final p = (state as AdminProfileLoaded).profile;
 
-                final name = p.fullName.isNotEmpty
-                    ? p.fullName
-                    : (p.username.trim().isNotEmpty
-                        ? p.username
-                        : l10n.adminMyProfileTitle);
+                    final name = p.fullName.isNotEmpty
+                        ? p.fullName
+                        : (p.username.trim().isNotEmpty
+                            ? p.username
+                            : l10n.adminMyProfileTitle);
 
-                final role =
-                    (p.role.trim().isNotEmpty ? p.role : fallbackRole).toUpperCase();
+                    final role =
+                        (p.role.trim().isNotEmpty ? p.role : fallbackRole)
+                            .toUpperCase();
 
-                final email = p.email.trim();
-                final phone = p.phoneNumber.trim();
-                final businessId =
-                    p.businessId == null ? '' : p.businessId.toString();
-                final adminId = p.adminId.toString();
+                    final email = p.email.trim();
+                    final phone = p.phoneNumber.trim();
+                    final businessId =
+                        p.businessId == null ? '' : p.businessId.toString();
+                    final adminId = p.adminId.toString();
 
-                body = Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      height: 4,
-                      width: 44,
-                      decoration: BoxDecoration(
-                        color: colors.border.withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
+                    body = Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          height: 52,
-                          width: 52,
-                          alignment: Alignment.center,
+                          height: 4,
+                          width: 44,
                           decoration: BoxDecoration(
-                            color: colors.primary.withOpacity(.12),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: colors.primary.withOpacity(.18),
-                            ),
-                          ),
-                          child: Text(
-                            _initials(p.firstName, p.lastName, p.username),
-                            style: t.titleMedium?.copyWith(
-                              color: colors.primary,
-                              fontWeight: FontWeight.w900,
-                            ),
+                            color: colors.border.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(999),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Container(
+                              height: 52,
+                              width: 52,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: colors.primary.withOpacity(.12),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: colors.primary.withOpacity(.18),
+                                ),
+                              ),
+                              child: Text(
+                                _initials(p.firstName, p.lastName, p.username),
                                 style: t.titleMedium?.copyWith(
-                                  color: colors.label,
+                                  color: colors.primary,
                                   fontWeight: FontWeight.w900,
                                 ),
                               ),
-                              const SizedBox(height: 2),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: colors.background,
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: colors.border.withOpacity(.18),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: t.titleMedium?.copyWith(
+                                      color: colors.label,
+                                      fontWeight: FontWeight.w900,
+                                    ),
                                   ),
-                                ),
-                                child: Text(
-                                  l10n.adminMyProfileSubtitle(role),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: t.bodySmall?.copyWith(
-                                    color: colors.body,
-                                    fontWeight: FontWeight.w800,
+                                  const SizedBox(height: 2),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colors.background,
+                                      borderRadius:
+                                          BorderRadius.circular(999),
+                                      border: Border.all(
+                                        color: colors.border.withOpacity(.18),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      l10n.adminMyProfileSubtitle(role),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: t.bodySmall?.copyWith(
+                                        color: colors.body,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          icon: Icon(Icons.close, color: colors.body),
-                          tooltip: l10n.closeLabel,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Flexible(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          children: [
-                            _ProfileRow(
-                              label: l10n.adminIdLabel,
-                              value: adminId,
-                              icon: Icons.badge_outlined,
-                              colors: colors,
-                              onCopy: () => _copy(context, adminId, l10n.copiedLabel),
                             ),
-                            _ProfileRow(
-                              label: l10n.aupIdLabel,
-                              value: aupId,
-                              icon: Icons.link_outlined,
-                              colors: colors,
-                              onCopy: () => _copy(context, aupId, l10n.copiedLabel),
+                            IconButton(
+                              onPressed: () => Navigator.pop(context),
+                              icon: Icon(Icons.close, color: colors.body),
+                              tooltip: l10n.closeLabel,
                             ),
-                            _ProfileRow(
-                              label: l10n.usernameLabel,
-                              value: p.username,
-                              icon: Icons.person_outline,
-                              colors: colors,
-                              onCopy: p.username.trim().isEmpty
-                                  ? null
-                                  : () => _copy(context, p.username, l10n.copiedLabel),
-                            ),
-                            if (businessId.isNotEmpty)
-                              _ProfileRow(
-                                label: l10n.businessIdLabel,
-                                value: businessId,
-                                icon: Icons.store_outlined,
-                                colors: colors,
-                                onCopy: () => _copy(context, businessId, l10n.copiedLabel),
-                              ),
-                            if (email.isNotEmpty)
-                              _ProfileRow(
-                                label: l10n.emailLabel,
-                                value: email,
-                                icon: Icons.email_outlined,
-                                colors: colors,
-                                onCopy: () => _copy(context, email, l10n.copiedLabel),
-                              ),
-                            if (phone.isNotEmpty)
-                              _ProfileRow(
-                                label: l10n.phoneLabel,
-                                value: phone,
-                                icon: Icons.phone_outlined,
-                                colors: colors,
-                                onCopy: () => _copy(context, phone, l10n.copiedLabel),
-                              ),
-                            if ((p.createdAt ?? '').trim().isNotEmpty)
-                              _ProfileRow(
-                                label: l10n.createdAtLabel,
-                                value: (p.createdAt ?? '').toString(),
-                                icon: Icons.schedule_outlined,
-                                colors: colors,
-                                onCopy: () => _copy(
-                                  context,
-                                  (p.createdAt ?? '').toString(),
-                                  l10n.copiedLabel,
-                                ),
-                              ),
-                            if ((p.updatedAt ?? '').trim().isNotEmpty)
-                              _ProfileRow(
-                                label: l10n.updatedAtLabel,
-                                value: (p.updatedAt ?? '').toString(),
-                                icon: Icons.update_outlined,
-                                colors: colors,
-                                onCopy: () => _copy(
-                                  context,
-                                  (p.updatedAt ?? '').toString(),
-                                  l10n.copiedLabel,
-                                ),
-                              ),
                           ],
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: onReload,
-                        icon: const Icon(Icons.refresh),
-                        label: Text(l10n.refreshLabel),
-                      ),
-                    ),
-                  ],
-                );
-              }
+                        const SizedBox(height: 14),
+                        Flexible(
+                          child: SingleChildScrollView(
+                            child: Column(
+                              children: [
+                                _ProfileRow(
+                                  label: l10n.adminIdLabel,
+                                  value: adminId,
+                                  icon: Icons.badge_outlined,
+                                  colors: colors,
+                                  onCopy: () => _copy(
+                                    context,
+                                    adminId,
+                                    l10n.copiedLabel,
+                                  ),
+                                ),
+                                _ProfileRow(
+                                  label: l10n.aupIdLabel,
+                                  value: aupId,
+                                  icon: Icons.link_outlined,
+                                  colors: colors,
+                                  onCopy: () => _copy(
+                                    context,
+                                    aupId,
+                                    l10n.copiedLabel,
+                                  ),
+                                ),
+                                _ProfileRow(
+                                  label: l10n.usernameLabel,
+                                  value: p.username,
+                                  icon: Icons.person_outline,
+                                  colors: colors,
+                                  onCopy: p.username.trim().isEmpty
+                                      ? null
+                                      : () => _copy(
+                                            context,
+                                            p.username,
+                                            l10n.copiedLabel,
+                                          ),
+                                ),
+                                if (businessId.isNotEmpty)
+                                  _ProfileRow(
+                                    label: l10n.businessIdLabel,
+                                    value: businessId,
+                                    icon: Icons.store_outlined,
+                                    colors: colors,
+                                    onCopy: () => _copy(
+                                      context,
+                                      businessId,
+                                      l10n.copiedLabel,
+                                    ),
+                                  ),
+                                if (email.isNotEmpty)
+                                  _ProfileRow(
+                                    label: l10n.emailLabel,
+                                    value: email,
+                                    icon: Icons.email_outlined,
+                                    colors: colors,
+                                    onCopy: () => _copy(
+                                      context,
+                                      email,
+                                      l10n.copiedLabel,
+                                    ),
+                                  ),
+                                if (phone.isNotEmpty)
+                                  _ProfileRow(
+                                    label: l10n.phoneLabel,
+                                    value: phone,
+                                    icon: Icons.phone_outlined,
+                                    colors: colors,
+                                    onCopy: () => _copy(
+                                      context,
+                                      phone,
+                                      l10n.copiedLabel,
+                                    ),
+                                  ),
+                                if ((p.createdAt ?? '').trim().isNotEmpty)
+                                  _ProfileRow(
+                                    label: l10n.createdAtLabel,
+                                    value: (p.createdAt ?? '').toString(),
+                                    icon: Icons.schedule_outlined,
+                                    colors: colors,
+                                    onCopy: () => _copy(
+                                      context,
+                                      (p.createdAt ?? '').toString(),
+                                      l10n.copiedLabel,
+                                    ),
+                                  ),
+                                if ((p.updatedAt ?? '').trim().isNotEmpty)
+                                  _ProfileRow(
+                                    label: l10n.updatedAtLabel,
+                                    value: (p.updatedAt ?? '').toString(),
+                                    icon: Icons.update_outlined,
+                                    colors: colors,
+                                    onCopy: () => _copy(
+                                      context,
+                                      (p.updatedAt ?? '').toString(),
+                                      l10n.copiedLabel,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: onReload,
+                            icon: const Icon(Icons.refresh),
+                            label: Text(l10n.refreshLabel),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
 
-              return AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
-                child: body,
-              );
-            },
+                  return AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    child: body,
+                  );
+                },
+              ),
+            ),
           ),
         ),
       ),
@@ -1099,7 +1151,10 @@ class _ProfileRow extends StatelessWidget {
           if (onCopy != null)
             IconButton(
               onPressed: onCopy,
-              icon: Icon(Icons.copy_rounded, color: colors.body.withOpacity(.8)),
+              icon: Icon(
+                Icons.copy_rounded,
+                color: colors.body.withOpacity(.8),
+              ),
               tooltip: AppLocalizations.of(context)!.copyLabel,
             ),
         ],
@@ -1245,7 +1300,7 @@ class _AdminActionCardState extends State<_AdminActionCard> {
   }
 }
 
-// =========================== LICENSE BANNER (SMALL) ===========================
+// =========================== LICENSE BANNER ===========================
 
 class _LicenseBanner extends StatelessWidget {
   final bool loading;
@@ -1334,11 +1389,10 @@ class _LicenseBanner extends StatelessWidget {
 
     final reason = (access!.blockingReason ?? '').trim();
     final isLimit = reason == 'USER_LIMIT_REACHED';
-
-    // ✅ pending is special state
     final hasPending = access!.hasPendingUpgradeRequest;
 
-    final isOk = !hasPending && reason.isEmpty && (access!.canAccessDashboard != false);
+    final isOk =
+        !hasPending && reason.isEmpty && (access!.canAccessDashboard != false);
 
     final planCodeStr = _planCodeToString(access!.planCode);
     final planName = (access!.planName ?? '').trim().isEmpty
@@ -1349,9 +1403,10 @@ class _LicenseBanner extends StatelessWidget {
         ? l10n.upgradeRequestPending
         : (isOk
             ? l10n.licenseAccessGranted
-            : (isLimit ? l10n.adminDashboardStatusLimitReached : l10n.licenseAccessBlocked));
+            : (isLimit
+                ? l10n.adminDashboardStatusLimitReached
+                : l10n.licenseAccessBlocked));
 
-    // ✅ disable button if pending
     final canRequestUpgrade =
         access!.planCode != PlanCode.DEDICATED && !hasPending;
 
@@ -1359,21 +1414,29 @@ class _LicenseBanner extends StatelessWidget {
         ? colors.surface
         : (hasPending
             ? colors.primary.withOpacity(.06)
-            : (isLimit ? colors.primary.withOpacity(.08) : colors.error.withOpacity(.06)));
+            : (isLimit
+                ? colors.primary.withOpacity(.08)
+                : colors.error.withOpacity(.06)));
 
     final border = isOk
         ? colors.border.withOpacity(.18)
         : (hasPending
             ? colors.primary.withOpacity(.18)
-            : (isLimit ? colors.primary.withOpacity(.22) : colors.error.withOpacity(.22)));
+            : (isLimit
+                ? colors.primary.withOpacity(.22)
+                : colors.error.withOpacity(.22)));
 
     final icon = isOk
         ? Icons.verified_outlined
-        : (hasPending ? Icons.hourglass_top_rounded : (isLimit ? Icons.people_outline : Icons.lock_outline));
+        : (hasPending
+            ? Icons.hourglass_top_rounded
+            : (isLimit ? Icons.people_outline : Icons.lock_outline));
 
     final iconColor = isOk
         ? colors.body
-        : (hasPending ? colors.primary : (isLimit ? colors.primary : colors.error));
+        : (hasPending
+            ? colors.primary
+            : (isLimit ? colors.primary : colors.error));
 
     return Material(
       color: Colors.transparent,
@@ -1420,12 +1483,16 @@ class _LicenseBanner extends StatelessWidget {
                 TextButton(
                   onPressed: canRequestUpgrade ? onRequestUpgrade : null,
                   child: Text(
-                    hasPending ? l10n.requestUpgradePendingLabel : l10n.requestUpgradeLabel,
+                    hasPending
+                        ? l10n.requestUpgradePendingLabel
+                        : l10n.requestUpgradeLabel,
                   ),
                 ),
               ],
-              Icon(Icons.chevron_right_rounded,
-                  color: colors.body.withOpacity(.6)),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: colors.body.withOpacity(.6),
+              ),
             ],
           ),
         ),
@@ -1452,6 +1519,7 @@ class _LicenseDetailsSheet extends StatelessWidget {
     final tokens = context.watch<ThemeCubit>().state.tokens;
     final colors = tokens.colors;
     final t = Theme.of(context).textTheme;
+    final media = MediaQuery.of(context);
 
     final planCodeStr = _planCodeToString(access.planCode);
     final planName = (access.planName ?? '').trim().isEmpty
@@ -1467,178 +1535,171 @@ class _LicenseDetailsSheet extends StatelessWidget {
     final remaining = access.usersRemaining;
 
     final canRequestUpgrade =
-        access.planCode != PlanCode.DEDICATED && !access.hasPendingUpgradeRequest;
+        access.planCode != PlanCode.DEDICATED &&
+            !access.hasPendingUpgradeRequest;
 
     final upStatus = _upgradeStatusNice(l10n, access.upgradeRequestStatus);
     final upPlan = _planCodeToString(access.upgradeRequestedPlan);
     final upAt = _fmtDate(_tryParseDate(access.upgradeRequestedAt));
     final upNote = _reasonToString(access.upgradeDecisionNote);
 
-    // ✅ crucial: cap the height so it can scroll instead of overflow
-    final maxHeight = MediaQuery.of(context).size.height * 0.85;
+    final maxHeight = media.size.height * 0.85;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+    return Material(
+      color: Colors.transparent,
       child: SafeArea(
         top: false,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: maxHeight),
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 10,
-              bottom: 14 + MediaQuery.of(context).padding.bottom,
+        child: AnimatedPadding(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: EdgeInsets.only(bottom: _bottomInset(context)),
+          child: Container(
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             ),
-            child: Column(
-              children: [
-                // handle
-                Container(
-                  height: 4,
-                  width: 44,
-                  decoration: BoxDecoration(
-                    color: colors.border.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // header
-                Row(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: maxHeight),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                child: Column(
                   children: [
+                    Container(
+                      height: 4,
+                      width: 44,
+                      decoration: BoxDecoration(
+                        color: colors.border.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            l10n.licenseDetailsTitle,
+                            style: t.titleMedium?.copyWith(
+                              color: colors.label,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: Icon(Icons.close, color: colors.body),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
                     Expanded(
-                      child: Text(
-                        l10n.licenseDetailsTitle,
-                        style: t.titleMedium?.copyWith(
-                          color: colors.label,
-                          fontWeight: FontWeight.w900,
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: Column(
+                          children: [
+                            _DetailRow(
+                              label: l10n.licensePlanLabel,
+                              value: planName,
+                              colors: colors,
+                            ),
+                            _DetailRow(
+                              label: l10n.licensePlanCodeLabel,
+                              value: planCodeStr.isEmpty ? '—' : planCodeStr,
+                              colors: colors,
+                            ),
+                            _DetailRow(
+                              label: l10n.licenseStatusLabel,
+                              value: statusStr,
+                              colors: colors,
+                            ),
+                            _DetailRow(
+                              label: l10n.licensePeriodEndLabel,
+                              value: endStr,
+                              colors: colors,
+                            ),
+                            _DetailRow(
+                              label: l10n.licenseDaysLeftLabel,
+                              value: '$daysLeft',
+                              colors: colors,
+                            ),
+                            _DetailRow(
+                              label: l10n.licenseUsersLabel,
+                              value:
+                                  allowed == null ? '$active / ∞' : '$active / $allowed',
+                              colors: colors,
+                            ),
+                            if (allowed != null)
+                              _DetailRow(
+                                label: l10n.licenseUsersRemainingLabel,
+                                value: remaining == null ? '—' : '$remaining',
+                                colors: colors,
+                              ),
+                            _DetailRow(
+                              label: l10n.licenseRequiresDedicatedLabel,
+                              value: access.requiresDedicatedServer
+                                  ? l10n.yesLabel
+                                  : l10n.noLabel,
+                              colors: colors,
+                            ),
+                            if (access.requiresDedicatedServer)
+                              _DetailRow(
+                                label: l10n.licenseDedicatedInfraReadyLabel,
+                                value: access.dedicatedInfraReady
+                                    ? l10n.yesLabel
+                                    : l10n.noLabel,
+                                colors: colors,
+                              ),
+                            _DetailRow(
+                              label: l10n.licenseBlockingReasonLabel,
+                              value: _reasonToString(access.blockingReason),
+                              colors: colors,
+                            ),
+                            const SizedBox(height: 8),
+                            _DetailRow(
+                              label: l10n.upgradeRequestStatusLabel,
+                              value: upStatus,
+                              colors: colors,
+                            ),
+                            _DetailRow(
+                              label: l10n.upgradeRequestPlanLabel,
+                              value: upPlan.isEmpty ? '—' : upPlan,
+                              colors: colors,
+                            ),
+                            _DetailRow(
+                              label: l10n.upgradeRequestAtLabel,
+                              value: upAt,
+                              colors: colors,
+                            ),
+                            _DetailRow(
+                              label: l10n.upgradeRequestNoteLabel,
+                              value: upNote,
+                              colors: colors,
+                            ),
+                            const SizedBox(height: 12),
+                          ],
                         ),
                       ),
                     ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: Icon(Icons.close, color: colors.body),
-                    ),
+                    if (access.hasPendingUpgradeRequest)
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: null,
+                          icon: const Icon(Icons.hourglass_top_rounded),
+                          label: Text(l10n.requestUpgradePendingLabel),
+                        ),
+                      )
+                    else if (canRequestUpgrade)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: onRequestUpgrade,
+                          icon: const Icon(Icons.upgrade),
+                          label: Text(l10n.requestUpgradeLabel),
+                        ),
+                      ),
                   ],
                 ),
-                const SizedBox(height: 10),
-
-                // ✅ scrollable body
-                Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: Column(
-                      children: [
-                        _DetailRow(
-                          label: l10n.licensePlanLabel,
-                          value: planName,
-                          colors: colors,
-                        ),
-                        _DetailRow(
-                          label: l10n.licensePlanCodeLabel,
-                          value: planCodeStr.isEmpty ? '—' : planCodeStr,
-                          colors: colors,
-                        ),
-                        _DetailRow(
-                          label: l10n.licenseStatusLabel,
-                          value: statusStr,
-                          colors: colors,
-                        ),
-                        _DetailRow(
-                          label: l10n.licensePeriodEndLabel,
-                          value: endStr,
-                          colors: colors,
-                        ),
-                        _DetailRow(
-                          label: l10n.licenseDaysLeftLabel,
-                          value: '$daysLeft',
-                          colors: colors,
-                        ),
-                        _DetailRow(
-                          label: l10n.licenseUsersLabel,
-                          value: allowed == null ? '$active / ∞' : '$active / $allowed',
-                          colors: colors,
-                        ),
-                        if (allowed != null)
-                          _DetailRow(
-                            label: l10n.licenseUsersRemainingLabel,
-                            value: remaining == null ? '—' : '$remaining',
-                            colors: colors,
-                          ),
-                        _DetailRow(
-                          label: l10n.licenseRequiresDedicatedLabel,
-                          value: access.requiresDedicatedServer
-                              ? l10n.yesLabel
-                              : l10n.noLabel,
-                          colors: colors,
-                        ),
-                        if (access.requiresDedicatedServer)
-                          _DetailRow(
-                            label: l10n.licenseDedicatedInfraReadyLabel,
-                            value: access.dedicatedInfraReady
-                                ? l10n.yesLabel
-                                : l10n.noLabel,
-                            colors: colors,
-                          ),
-                        _DetailRow(
-                          label: l10n.licenseBlockingReasonLabel,
-                          value: _reasonToString(access.blockingReason),
-                          colors: colors,
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        // ✅ upgrade request state section
-                        _DetailRow(
-                          label: l10n.upgradeRequestStatusLabel,
-                          value: upStatus,
-                          colors: colors,
-                        ),
-                        _DetailRow(
-                          label: l10n.upgradeRequestPlanLabel,
-                          value: upPlan.isEmpty ? '—' : upPlan,
-                          colors: colors,
-                        ),
-                        _DetailRow(
-                          label: l10n.upgradeRequestAtLabel,
-                          value: upAt,
-                          colors: colors,
-                        ),
-                        _DetailRow(
-                          label: l10n.upgradeRequestNoteLabel,
-                          value: upNote,
-                          colors: colors,
-                        ),
-
-                        const SizedBox(height: 12),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // ✅ fixed footer button area (never overflows now)
-                if (access.hasPendingUpgradeRequest)
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: null,
-                      icon: const Icon(Icons.hourglass_top_rounded),
-                      label: Text(l10n.requestUpgradePendingLabel),
-                    ),
-                  )
-                else if (canRequestUpgrade)
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: onRequestUpgrade,
-                      icon: const Icon(Icons.upgrade),
-                      label: Text(l10n.requestUpgradeLabel),
-                    ),
-                  ),
-              ],
+              ),
             ),
           ),
         ),
@@ -1646,7 +1707,6 @@ class _LicenseDetailsSheet extends StatelessWidget {
     );
   }
 }
-
 
 class _DetailRow extends StatelessWidget {
   final String label;

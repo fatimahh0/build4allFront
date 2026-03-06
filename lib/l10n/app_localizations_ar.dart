@@ -2782,7 +2782,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get checkoutCouponInvalid => 'كوبون غير صالح';
 
   @override
-  String get checkoutCouponFailed => 'تعذّر تطبيق الكوبون';
+  String get checkoutCouponFailed => 'تعذر تطبيق الكوبون.';
 
   @override
   String checkoutOrderPlacedWithCode(String code) {
@@ -2851,4 +2851,25 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get home_support_invalid_phone => 'رقم الدعم غير صالح.';
+
+  @override
+  String get checkoutBlockedTitle => 'الدفع غير متاح';
+
+  @override
+  String get adminTaxRuleRateMustBePositive => 'يجب أن تكون النسبة أكبر من 0';
+
+  @override
+  String get adminTaxRuleRateTooHigh => 'لا يمكن أن تتجاوز النسبة 100٪';
+
+  @override
+  String get checkoutCouponExpired => 'انتهت صلاحية الكوبون.';
+
+  @override
+  String get checkoutCouponUsageLimitReached => 'تم الوصول إلى الحد الأقصى لاستخدام الكوبون.';
+
+  @override
+  String get checkoutCouponMinimumNotReached => 'لم يتم الوصول إلى الحد الأدنى المطلوب لهذا الكوبون.';
+
+  @override
+  String get checkoutCouponDidNotAffectOrder => 'هذا الكوبون لم يؤثر على هذا الطلب.';
 }

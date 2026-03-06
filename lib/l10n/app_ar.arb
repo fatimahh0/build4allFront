@@ -1112,7 +1112,15 @@
   "home_support_phone_not_configured": "رقم هاتف الدعم غير مُعدّ.",
   "home_support_open_email_failed": "تعذّر فتح تطبيق البريد.",
   "home_support_open_whatsapp_failed": "تعذّر فتح واتساب.",
-  "home_support_invalid_phone": "رقم الدعم غير صالح."
+  "home_support_invalid_phone": "رقم الدعم غير صالح.",
+  "checkoutBlockedTitle": "الدفع غير متاح",
+   "adminTaxRuleRateMustBePositive": "يجب أن تكون النسبة أكبر من 0",
+  "adminTaxRuleRateTooHigh": "لا يمكن أن تتجاوز النسبة 100٪",
+    "checkoutCouponExpired": "انتهت صلاحية الكوبون.",
+  "checkoutCouponUsageLimitReached": "تم الوصول إلى الحد الأقصى لاستخدام الكوبون.",
+  "checkoutCouponMinimumNotReached": "لم يتم الوصول إلى الحد الأدنى المطلوب لهذا الكوبون.",
+  "checkoutCouponDidNotAffectOrder": "هذا الكوبون لم يؤثر على هذا الطلب.",
+  "checkoutCouponFailed": "تعذر تطبيق الكوبون."
 
 
 }

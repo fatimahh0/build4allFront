@@ -1,5 +1,3 @@
-// lib/features/checkout/presentation/bloc/checkout_bloc.dart
-
 import 'dart:async';
 
 import 'package:build4front/features/checkout/domain/errors/checkout_blocked_failure.dart';
@@ -29,8 +27,6 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
   final GetLastShippingAddress getLastShippingAddress;
   final PreviewTax previewTax;
   final PlaceOrder placeOrder;
-
-  // ✅ quote endpoint (includes coupon discount, grandTotal, etc.)
   final QuoteFromCart quoteFromCart;
 
   final int ownerProjectId;
@@ -53,11 +49,8 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     on<CheckoutStarted>(_onStarted);
     on<CheckoutAddressChanged>(_onAddressChanged);
     on<CheckoutShippingSelected>(_onShippingSelected);
-
-    // ✅ NEW: coupon draft vs apply
     on<CheckoutCouponDraftChanged>(_onCouponDraftChanged);
     on<CheckoutCouponApplied>(_onCouponApplied);
-
     on<CheckoutPaymentSelected>(_onPaymentSelected);
     on<CheckoutRefreshRequested>(_onRefresh);
     on<CheckoutPlaceOrderPressed>(_onPlaceOrder);
@@ -77,7 +70,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
         .map((x) => CartLine(
               itemId: x.itemId,
               quantity: x.quantity,
-              unitPrice: 0.0, // server ignores
+              unitPrice: 0.0,
             ))
         .toList();
   }
@@ -111,7 +104,6 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     required int currencyId,
     required List<CartLine> lines,
   }) {
-    // anything that can change totals belongs here
     return [
       currencyId.toString(),
       coupon.trim(),
@@ -126,6 +118,11 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     ].join('|');
   }
 
+  bool _summaryRejectedCoupon(CheckoutSummaryModel summary) {
+    final msg = (summary.message ?? '').trim().toLowerCase();
+    return msg.contains('coupon was not applied');
+  }
+
   void _scheduleQuote({
     required CheckoutCart cart,
     required int? shippingMethodId,
@@ -138,11 +135,8 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
 
     final lines = _linesFromCart(cart);
     final curId = _resolvedCurrencyId();
-
-    // ✅ IMPORTANT: quote uses APPLIED coupon only (NOT draft)
     final coupon = state.coupon.trim();
 
-    // if shipping options exist but no shipping selected -> don’t quote
     if (state.shippingQuotes.isNotEmpty && shippingMethodId == null) {
       emit(state.copyWith(clearQuote: true, quoting: false));
       return;
@@ -185,7 +179,6 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
           clearCouponError: true,
         ));
       } catch (err) {
-        // ✅ If a coupon was applied, show it inline (not toast)
         final applied = state.coupon.trim();
         final friendly = _friendlyError(err);
 
@@ -193,7 +186,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
           quoting: false,
           clearQuote: true,
           couponError: applied.isNotEmpty ? friendly : null,
-          clearError: true, // keep general errors quiet here
+          clearError: true,
         ));
       }
     });
@@ -237,7 +230,6 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
       ),
     );
 
-    // ✅ quote totals (includes APPLIED coupon only)
     _scheduleQuote(
       cart: cart,
       shippingMethodId: chosen?.methodId,
@@ -271,7 +263,6 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
               ? prevIndex
               : null;
 
-      // keep draft synced (nice UX when reopening screen)
       final appliedCoupon = state.coupon.trim();
 
       emit(state.copyWith(
@@ -353,7 +344,6 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     }
   }
 
-  // ✅ Draft typing = no API
   void _onCouponDraftChanged(
     CheckoutCouponDraftChanged e,
     Emitter<CheckoutState> emit,
@@ -362,10 +352,10 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
       couponDraft: e.draft,
       clearCouponError: true,
       clearError: true,
+      clearOrderSummary: true,
     ));
   }
 
-  // ✅ Apply coupon = triggers quote API once
   void _onCouponApplied(
     CheckoutCouponApplied e,
     Emitter<CheckoutState> emit,
@@ -373,12 +363,12 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     final cart = state.cart;
     final applied = e.coupon.trim();
 
-    // sync draft with whatever user applied
     emit(state.copyWith(
       coupon: applied,
       couponDraft: e.coupon,
       clearCouponError: true,
       clearError: true,
+      clearOrderSummary: true,
     ));
 
     if (cart == null || cart.isEmpty) return;
@@ -483,7 +473,11 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
       return;
     }
 
-    emit(state.copyWith(placing: true, clearError: true));
+    emit(state.copyWith(
+      placing: true,
+      clearError: true,
+      clearOrderSummary: true,
+    ));
 
     try {
       final lines = _linesFromCart(cart);
@@ -495,10 +489,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
         ownerProjectId: ownerProjectId,
         currencyId: _resolvedCurrencyId(),
         paymentMethod: pmCode,
-
-        // ✅ IMPORTANT: use APPLIED coupon only
         couponCode: state.coupon.trim().isEmpty ? null : state.coupon.trim(),
-
         stripePaymentId: null,
         destinationAccountId: destinationAccountId,
         shippingMethodId: shipId,
@@ -533,11 +524,19 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
         }
       }
 
+      final rejectedCoupon = _summaryRejectedCoupon(summary);
+
       emit(state.copyWith(
         placing: false,
         orderId: summary.orderId,
         orderSummary: summary,
         clearError: true,
+
+        // ✅ if backend rejected coupon at final checkout, kill stale UI state
+        coupon: rejectedCoupon ? '' : state.coupon,
+        couponDraft: rejectedCoupon ? '' : state.couponDraft,
+        couponError: rejectedCoupon ? (summary.message ?? 'Coupon was not applied') : null,
+        clearQuote: rejectedCoupon,
       ));
     } catch (err) {
       if (err is CheckoutBlockedFailure) {

@@ -1194,7 +1194,15 @@
   "home_support_phone_not_configured": "Le numéro du support n’est pas configuré.",
   "home_support_open_email_failed": "Impossible d’ouvrir l’application e-mail.",
   "home_support_open_whatsapp_failed": "Impossible d’ouvrir WhatsApp.",
-  "home_support_invalid_phone": "Numéro du support invalide."
+  "home_support_invalid_phone": "Numéro du support invalide.",
+  "checkoutBlockedTitle": "Paiement bloqué",
+    "adminTaxRuleRateMustBePositive": "Le taux doit être supérieur à 0",
+  "adminTaxRuleRateTooHigh": "Le taux ne peut pas dépasser 100 %",
+   "checkoutCouponExpired": "Le coupon a expiré.",
+  "checkoutCouponUsageLimitReached": "La limite d'utilisation du coupon a été atteinte.",
+  "checkoutCouponMinimumNotReached": "Le montant minimum requis pour ce coupon n'a pas été atteint.",
+  "checkoutCouponDidNotAffectOrder": "Le coupon n'a eu aucun effet sur cette commande.",
+  "checkoutCouponFailed": "Le coupon n'a pas pu être appliqué."
 
 
 

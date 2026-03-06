@@ -284,19 +284,44 @@ class _TaxRuleFormSheetState extends State<TaxRuleFormSheet> {
   }
 
   void _submit(AppLocalizations l) {
-    if (!_formKey.currentState!.validate()) return;
+  if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedCountry == null) {
-      AppToast.error(
-        context,
-        l.adminTaxCountryRequired ?? 'Country is required',
-        
-      );
-      return;
-    }
+  final rate = double.tryParse(_rateCtrl.text.trim().replaceAll(',', '.'));
 
-    Navigator.pop(context, _buildBody());
+  if (rate == null) {
+    AppToast.error(
+      context,
+      l.adminTaxRuleRateInvalid ?? 'Invalid rate',
+    );
+    return;
   }
+
+  if (rate < 0) {
+    AppToast.error(
+      context,
+      l.adminTaxRuleRateMustBePositive ?? 'Rate must be 0 or more',
+    );
+    return;
+  }
+
+  if (rate > 100) {
+    AppToast.error(
+      context,
+      l.adminTaxRuleRateTooHigh ?? 'Rate cannot be greater than 100%',
+    );
+    return;
+  }
+
+  if (_selectedCountry == null) {
+    AppToast.error(
+      context,
+      l.adminTaxCountryRequired ?? 'Country is required',
+    );
+    return;
+  }
+
+  Navigator.pop(context, _buildBody());
+}
 
   @override
   Widget build(BuildContext context) {
@@ -416,19 +441,27 @@ class _TaxRuleFormSheetState extends State<TaxRuleFormSheet> {
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) {
-                            return l.adminTaxRuleRateRequired ??
-                                'Rate is required';
-                          }
-                          final d = double.tryParse(
-                            v.trim().replaceAll(',', '.'),
-                          );
-                          if (d == null || d < 0) {
-                            return l.adminTaxRuleRateInvalid ?? 'Invalid rate';
-                          }
-                          return null;
-                        },
+                      validator: (v) {
+  if (v == null || v.trim().isEmpty) {
+    return l.adminTaxRuleRateRequired ?? 'Rate is required';
+  }
+
+  final d = double.tryParse(v.trim().replaceAll(',', '.'));
+
+  if (d == null) {
+    return l.adminTaxRuleRateInvalid ?? 'Invalid rate';
+  }
+
+  if (d < 0) {
+    return l.adminTaxRuleRateMustBePositive ?? 'Rate must be 0 or more';
+  }
+
+  if (d > 100) {
+    return l.adminTaxRuleRateTooHigh ?? 'Rate cannot be greater than 100%';
+  }
+
+  return null;
+},
                       ),
                       SizedBox(height: spacing.lg),
 

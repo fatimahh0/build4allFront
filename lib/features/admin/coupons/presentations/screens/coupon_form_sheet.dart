@@ -34,7 +34,6 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
   CouponDiscountType _type = CouponDiscountType.percent;
   bool _active = true;
 
-  // ✅ NEW: validity fields
   DateTime? _startsAt;
   DateTime? _expiresAt;
   String? _dateError;
@@ -62,19 +61,15 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
 
     _type = c?.discountType ?? CouponDiscountType.percent;
     _active = c?.active ?? true;
-
-    // ✅ init validity from existing (edit mode)
     _startsAt = c?.startsAt;
     _expiresAt = c?.expiresAt;
 
-    // ✅ If existing coupon is not percent, max discount must be empty
     if (_type != CouponDiscountType.percent) {
       _maxDiscountCtrl.text = '';
     }
 
-    // ✅ If existing is free shipping, value should not be shown as required
     if (_type == CouponDiscountType.freeShipping) {
-      _valueCtrl.text = ''; // keep UI clean (we save 0 later)
+      _valueCtrl.text = '';
     }
 
     _validateDates();
@@ -90,10 +85,6 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
     _maxDiscountCtrl.dispose();
     super.dispose();
   }
-
-  // =========================
-  // Date helpers
-  // =========================
 
   String _fmt(DateTime? dt) {
     if (dt == null) return '—';
@@ -143,10 +134,6 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
     return true;
   }
 
-  // =========================
-  // UI
-  // =========================
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -181,7 +168,6 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
                   ),
                   SizedBox(height: spacing.lg),
 
-                  // ✅ Code
                   AppTextField(
                     label: l10n.coupons_code,
                     controller: _codeCtrl,
@@ -195,7 +181,6 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
                   ),
                   SizedBox(height: spacing.md),
 
-                  // ✅ Description
                   AppTextField(
                     label: l10n.coupons_description,
                     controller: _descCtrl,
@@ -203,7 +188,6 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
                   ),
                   SizedBox(height: spacing.md),
 
-                  // Type + value
                   Row(
                     children: [
                       Expanded(
@@ -233,12 +217,10 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
                             setState(() {
                               _type = val;
 
-                              // ✅ If not percent → max discount must not be used
                               if (_type != CouponDiscountType.percent) {
                                 _maxDiscountCtrl.text = '';
                               }
 
-                              // ✅ Free shipping → value is not needed
                               if (_type == CouponDiscountType.freeShipping) {
                                 _valueCtrl.text = '';
                               }
@@ -277,7 +259,6 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
                   ),
                   SizedBox(height: spacing.md),
 
-                  // Max uses + min order
                   Row(
                     children: [
                       Expanded(
@@ -302,7 +283,6 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
                   ),
                   SizedBox(height: spacing.md),
 
-                  // ✅ Max discount (ONLY meaningful for %)
                   AppTextField(
                     label: l10n.coupons_max_discount_amount,
                     controller: _maxDiscountCtrl,
@@ -312,7 +292,6 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
                   ),
                   SizedBox(height: spacing.md),
 
-                  // ✅ Valid From / Valid To
                   Text(
                     'Validity',
                     style: t.titleSmall?.copyWith(fontWeight: FontWeight.w600),
@@ -419,7 +398,6 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
 
                   SizedBox(height: spacing.md),
 
-                  // Active switch
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -432,7 +410,6 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
                   ),
                   SizedBox(height: spacing.lg),
 
-                  // ✅ Save
                   PrimaryButton(
                     label: l10n.common_save,
                     isLoading: isSaving,
@@ -450,9 +427,8 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
   void _onSubmit() {
     if (!_formKey.currentState!.validate()) return;
 
-    // ✅ validate validity range
     if (!_validateDates()) {
-      setState(() {}); // show error
+      setState(() {});
       return;
     }
 
@@ -466,9 +442,7 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
         (v == null || v.trim().isEmpty) ? null : int.tryParse(v.trim());
 
     final safeOwnerProjectId = existing?.ownerProjectId ?? 0;
-
     final maxDiscount = _isPercent ? parseDouble(_maxDiscountCtrl.text) : null;
-
     final discountValue =
         _isFreeShipping ? 0.0 : double.parse(_valueCtrl.text.trim());
 
@@ -480,14 +454,18 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
       discountType: _type,
       discountValue: discountValue,
       maxUses: parseInt(_maxUsesCtrl.text),
+      usedCount: existing?.usedCount ?? 0,
+      remainingUses: existing?.remainingUses,
       minOrderAmount: parseDouble(_minOrderCtrl.text),
       maxDiscountAmount: maxDiscount,
-
-      // ✅ IMPORTANT FIX: send chosen dates (not existing)
       startsAt: _startsAt,
       expiresAt: _expiresAt,
-
       active: _active,
+      started: existing?.started ?? true,
+      expired: existing?.expired ?? false,
+      usageLimitReached: existing?.usageLimitReached ?? false,
+      currentlyValid: existing?.currentlyValid ?? false,
+      status: existing?.status ?? 'ACTIVE',
     );
 
     bloc.add(CouponSaveRequested(coupon: coupon));

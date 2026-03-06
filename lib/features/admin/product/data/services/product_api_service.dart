@@ -13,9 +13,8 @@ class ProductApiService {
   Options _auth(String token) =>
       Options(headers: {'Authorization': 'Bearer $token'});
 
-  // ---------------- GET LISTS ----------------
-
   Future<List<dynamic>> getProducts({
+    required int ownerProjectId,
     int? itemTypeId,
     int? categoryId,
     required String authToken,
@@ -23,6 +22,7 @@ class ProductApiService {
     final resp = await _dio.get(
       _baseUrl,
       queryParameters: {
+        'ownerProjectId': ownerProjectId,
         if (itemTypeId != null) 'itemTypeId': itemTypeId,
         if (categoryId != null) 'categoryId': categoryId,
       },
@@ -77,12 +77,9 @@ class ProductApiService {
     return (resp.data as Map).cast<String, dynamic>();
   }
 
-  // ---------------- HELPERS ----------------
-
   Map<String, dynamic> _normalizeBodyForMultipart(Map<String, dynamic> body) {
     final map = Map<String, dynamic>.from(body);
 
-    // Convert attributes list -> attributesJson
     final attrs = map['attributes'];
     if (attrs is List) {
       map['attributesJson'] = jsonEncode(attrs);
@@ -110,8 +107,6 @@ class ProductApiService {
 
   Options _multipartOptions(String token) =>
       _auth(token).copyWith(contentType: 'multipart/form-data');
-
-  // ---------------- CREATE ----------------
 
   Future<Map<String, dynamic>> create({
     required Map<String, dynamic> body,
@@ -143,8 +138,6 @@ class ProductApiService {
 
     return (resp.data as Map).cast<String, dynamic>();
   }
-
-  // ---------------- UPDATE ----------------
 
   Future<Map<String, dynamic>> update({
     required int id,
@@ -178,8 +171,6 @@ class ProductApiService {
 
     return (resp.data as Map).cast<String, dynamic>();
   }
-
-  // ---------------- DELETE ----------------
 
   Future<void> delete({required int id, required String authToken}) async {
     await _dio.delete('$_baseUrl/$id', options: _auth(authToken));

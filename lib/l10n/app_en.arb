@@ -1340,6 +1340,14 @@
   "home_support_phone_not_configured": "Support phone number is not configured.",
   "home_support_open_email_failed": "Could not open email app.",
   "home_support_open_whatsapp_failed": "Could not open WhatsApp.",
-  "home_support_invalid_phone": "Invalid support number."
+  "home_support_invalid_phone": "Invalid support number.",
+  "checkoutBlockedTitle": "Checkout blocked",
+   "adminTaxRuleRateMustBePositive": "Rate must be 0 or more",
+  "adminTaxRuleRateTooHigh": "Rate cannot be greater than 100%",
+    "checkoutCouponExpired": "Coupon expired.",
+  "checkoutCouponUsageLimitReached": "Coupon usage limit reached.",
+  "checkoutCouponMinimumNotReached": "Minimum order amount not reached for this coupon.",
+  "checkoutCouponDidNotAffectOrder": "Coupon did not affect this order.",
+  "checkoutCouponFailed": "Coupon could not be applied."
 
 }

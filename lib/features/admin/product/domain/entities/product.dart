@@ -56,4 +56,13 @@ class Product {
     required this.onSale,
     required this.attributes,
   });
+
+  int get safeStock => stock ?? 0;
+
+  bool get isOutOfStock => safeStock <= 0;
+
+  bool get isAvailable => !isOutOfStock;
+
+  String get computedAvailabilityStatus =>
+      isOutOfStock ? 'OUT_OF_STOCK' : 'AVAILABLE';
 }

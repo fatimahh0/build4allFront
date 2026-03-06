@@ -7,7 +7,7 @@ class ProductListBloc extends Bloc<ProductListEvent, ProductListState> {
   final GetProducts getProducts;
 
   ProductListBloc({required this.getProducts})
-    : super(ProductListState.initial()) {
+      : super(ProductListState.initial()) {
     on<LoadProductsForOwner>(_onLoadProducts);
   }
 
@@ -19,10 +19,11 @@ class ProductListBloc extends Bloc<ProductListEvent, ProductListState> {
 
     try {
       final products = await getProducts(
-        
+        ownerProjectId: event.ownerProjectId,
         itemTypeId: event.itemTypeId,
         categoryId: event.categoryId,
       );
+
       emit(state.copyWith(isLoading: false, products: products));
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));

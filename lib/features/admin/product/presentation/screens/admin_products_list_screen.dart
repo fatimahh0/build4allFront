@@ -19,14 +19,16 @@ import '../bloc/list/product_list_state.dart';
 import '../widgets/admin_product_card.dart';
 import 'admin_create_product_screen.dart';
 
-// ✅ currency fetch + cache
 import 'package:build4front/features/catalog/data/services/currency_api_service.dart';
 import 'package:build4front/features/catalog/utils/currency_symbol_cache.dart';
 
 class AdminProductsListScreen extends StatelessWidget {
   final int ownerProjectId;
 
-  const AdminProductsListScreen({super.key, required this.ownerProjectId});
+  const AdminProductsListScreen({
+    super.key,
+    required this.ownerProjectId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +40,7 @@ class AdminProductsListScreen extends StatelessWidget {
             getToken: AdminTokenStore().getToken,
           ),
         ),
-      )..add(LoadProductsForOwner()),
+      )..add(LoadProductsForOwner(ownerProjectId: ownerProjectId)),
       child: _AdminProductsListView(ownerProjectId: ownerProjectId),
     );
   }
@@ -46,7 +48,10 @@ class AdminProductsListScreen extends StatelessWidget {
 
 class _AdminProductsListView extends StatefulWidget {
   final int ownerProjectId;
-  const _AdminProductsListView({required this.ownerProjectId});
+
+  const _AdminProductsListView({
+    required this.ownerProjectId,
+  });
 
   @override
   State<_AdminProductsListView> createState() => _AdminProductsListViewState();
@@ -56,7 +61,6 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
   String _searchQuery = '';
   String _typeFilter = 'ALL';
 
-  // ✅ Currency symbol cache (ONE place only)
   late final CurrencySymbolCache _currencyCache = CurrencySymbolCache(
     api: CurrencyApiService(),
     getToken: AdminTokenStore().getToken,
@@ -70,7 +74,8 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
     if (_warmingCurrency) return;
 
     final ids = products.map((p) => p.currencyId).whereType<int>().toSet();
-    final missing = ids.where((id) => !_symbolByCurrencyId.containsKey(id)).toList();
+    final missing =
+        ids.where((id) => !_symbolByCurrencyId.containsKey(id)).toList();
 
     if (missing.isEmpty) return;
 
@@ -83,7 +88,9 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
         _symbolByCurrencyId = Map<int, String>.from(_currencyCache.snapshot);
       });
     } finally {
-      if (mounted) setState(() => _warmingCurrency = false);
+      if (mounted) {
+        setState(() => _warmingCurrency = false);
+      }
     }
   }
 
@@ -91,7 +98,8 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
     if (_warmScheduled || _warmingCurrency) return;
 
     final ids = products.map((p) => p.currencyId).whereType<int>().toSet();
-    final missing = ids.where((id) => !_symbolByCurrencyId.containsKey(id)).toList();
+    final missing =
+        ids.where((id) => !_symbolByCurrencyId.containsKey(id)).toList();
 
     if (missing.isEmpty) return;
 
@@ -110,8 +118,6 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
     final status = e.response?.statusCode;
     final data = e.response?.data;
 
-    // structured backend format (recommended):
-    // { code: "PRODUCT_IN_CART", error: "PRODUCT_IN_CART" }
     String? code;
     String? err;
 
@@ -124,11 +130,13 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
 
     final errLower = (err ?? '').toLowerCase();
 
-    // ✅ Most important cases: product is referenced in cart/order
-    final isCart =
-        code == 'PRODUCT_IN_CART' || errLower.contains('cart_items') || errLower.contains('cart');
-    final isOrders =
-        code == 'PRODUCT_IN_ORDERS' || errLower.contains('order_items') || errLower.contains('order');
+    final isCart = code == 'PRODUCT_IN_CART' ||
+        errLower.contains('cart_items') ||
+        errLower.contains('cart');
+
+    final isOrders = code == 'PRODUCT_IN_ORDERS' ||
+        errLower.contains('order_items') ||
+        errLower.contains('order');
 
     if (status == 409 || status == 500) {
       if (isCart) return l10n.adminProductDeleteBlockedCart;
@@ -200,19 +208,17 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
 
       if (!context.mounted) return;
 
-      Navigator.of(context).pop(); // close loader
+      Navigator.of(context).pop();
 
       context.read<ProductListBloc>().add(
-            LoadProductsForOwner(),
+            LoadProductsForOwner(ownerProjectId: widget.ownerProjectId),
           );
 
       AppToast.error(context, l10n.adminProductDeleteSuccess);
     } catch (e) {
       if (!context.mounted) return;
 
-      Navigator.of(context).pop(); // close loader
-
-      final l10n = AppLocalizations.of(context)!;
+      Navigator.of(context).pop();
 
       String msg = l10n.adminProductDeleteFailed;
 
@@ -226,45 +232,41 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
 
   String _norm(String v) => v.trim().toLowerCase();
 
-String _normSku(String? v) {
-  final raw = (v ?? '').trim().toLowerCase();
-
-  // Optional: remove common SKU prefix so searching "k" doesn't match "SKU-*"
-  // Examples removed: "sku-", "sku_", "sku ", "sku:"
-  return raw.replaceFirst(RegExp(r'^sku[\s\-_:#]*'), '');
-}
-
-bool _matchesSearch(Product p, String query) {
-  final q = _norm(query);
-  if (q.isEmpty) return true;
-
-  final name = _norm(p.name);
-  final sku = _normSku(p.sku);
-
-  //  If user typed only 1 char, be strict (starts with)
-  if (q.length == 1) {
-    return name.startsWith(q) || sku.startsWith(q);
+  String _normSku(String? v) {
+    final raw = (v ?? '').trim().toLowerCase();
+    return raw.replaceFirst(RegExp(r'^sku[\s\-_:#]*'), '');
   }
 
-  //  For longer queries, allow contains
-  return name.contains(q) || sku.contains(q);
-}
+  bool _matchesSearch(Product p, String query) {
+    final q = _norm(query);
+    if (q.isEmpty) return true;
 
-List<Product> _applyFilters(ProductListState state) {
-  var list = state.products;
+    final name = _norm(p.name);
+    final sku = _normSku(p.sku);
 
-  if (_searchQuery.trim().isNotEmpty) {
-    list = list.where((p) => _matchesSearch(p, _searchQuery)).toList();
+    if (q.length == 1) {
+      return name.startsWith(q) || sku.startsWith(q);
+    }
+
+    return name.contains(q) || sku.contains(q);
   }
 
-  if (_typeFilter != 'ALL') {
-    list = list
-        .where((p) => (p.productType).toUpperCase() == _typeFilter)
-        .toList();
+  List<Product> _applyFilters(ProductListState state) {
+    var list = state.products;
+
+    if (_searchQuery.trim().isNotEmpty) {
+      list = list.where((p) => _matchesSearch(p, _searchQuery)).toList();
+    }
+
+    if (_typeFilter != 'ALL') {
+      list = list
+          .where((p) => p.productType.toUpperCase() == _typeFilter)
+          .toList();
+    }
+
+    return list;
   }
 
-  return list;
-}
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -297,7 +299,7 @@ List<Product> _applyFilters(ProductListState state) {
 
           if (changed == true && context.mounted) {
             context.read<ProductListBloc>().add(
-                  LoadProductsForOwner(),
+                  LoadProductsForOwner(ownerProjectId: widget.ownerProjectId),
                 );
           }
         },
@@ -331,11 +333,11 @@ List<Product> _applyFilters(ProductListState state) {
               );
             }
 
-            // ✅ Warm currency symbols once (only missing ids)
             _maybeWarmUp(state.products);
 
             final filtered = _applyFilters(state);
             final width = MediaQuery.of(context).size.width;
+
             final crossAxisCount = width >= 1100
                 ? 5
                 : width >= 900
@@ -355,7 +357,8 @@ List<Product> _applyFilters(ProductListState state) {
                   searchQuery: _searchQuery,
                   onSearchChanged: (val) => setState(() => _searchQuery = val),
                   typeFilter: _typeFilter,
-                  onTypeFilterChanged: (val) => setState(() => _typeFilter = val),
+                  onTypeFilterChanged: (val) =>
+                      setState(() => _typeFilter = val),
                 ),
                 SizedBox(height: spacing.md),
                 Expanded(
@@ -370,8 +373,9 @@ List<Product> _applyFilters(ProductListState state) {
                     itemBuilder: (context, index) {
                       final product = filtered[index];
 
-                      final sym =
-                          product.currencyId != null ? _symbolByCurrencyId[product.currencyId!] : null;
+                      final sym = product.currencyId != null
+                          ? _symbolByCurrencyId[product.currencyId!]
+                          : null;
 
                       final bool showCurrencyLoading = _warmingCurrency &&
                           product.currencyId != null &&
@@ -396,7 +400,9 @@ List<Product> _applyFilters(ProductListState state) {
 
                           if (changed == true && context.mounted) {
                             context.read<ProductListBloc>().add(
-                                  LoadProductsForOwner(),
+                                  LoadProductsForOwner(
+                                    ownerProjectId: widget.ownerProjectId,
+                                  ),
                                 );
                           }
                         },
@@ -419,11 +425,8 @@ class _AdminProductsHeaderBar extends StatelessWidget {
   final AppLocalizations l10n;
   final int totalCount;
   final int filteredCount;
-
   final String searchQuery;
   final ValueChanged<String> onSearchChanged;
-
-  /// 'ALL', 'SIMPLE', 'VARIABLE', 'GROUPED', 'EXTERNAL'
   final String typeFilter;
   final ValueChanged<String> onTypeFilterChanged;
 

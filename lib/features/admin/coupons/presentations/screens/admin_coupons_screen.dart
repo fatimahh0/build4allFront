@@ -34,6 +34,70 @@ class _AdminCouponsScreenState extends State<AdminCouponsScreen> {
     return s.length >= 16 ? s.substring(0, 16) : s;
   }
 
+  String _statusLabel(BuildContext context, Coupon coupon) {
+    final l10n = AppLocalizations.of(context)!;
+
+    switch (coupon.status.toUpperCase()) {
+      case 'INACTIVE':
+        return l10n.coupons_inactive_badge;
+      case 'SCHEDULED':
+        return 'Scheduled';
+      case 'EXPIRED':
+        return 'Expired';
+      case 'USAGE_LIMIT_REACHED':
+        return 'Limit reached';
+      case 'ACTIVE':
+      default:
+        return 'Active';
+    }
+  }
+
+  Color _statusBg(ColorScheme c, Coupon coupon) {
+    switch (coupon.status.toUpperCase()) {
+      case 'INACTIVE':
+        return c.error.withOpacity(0.10);
+      case 'SCHEDULED':
+        return c.primary.withOpacity(0.10);
+      case 'EXPIRED':
+        return c.error.withOpacity(0.10);
+      case 'USAGE_LIMIT_REACHED':
+        return Colors.orange.withOpacity(0.12);
+      case 'ACTIVE':
+      default:
+        return Colors.green.withOpacity(0.12);
+    }
+  }
+
+  Color _statusFg(ColorScheme c, Coupon coupon) {
+    switch (coupon.status.toUpperCase()) {
+      case 'INACTIVE':
+        return c.error;
+      case 'SCHEDULED':
+        return c.primary;
+      case 'EXPIRED':
+        return c.error;
+      case 'USAGE_LIMIT_REACHED':
+        return Colors.orange.shade800;
+      case 'ACTIVE':
+      default:
+        return Colors.green.shade700;
+    }
+  }
+
+  String _usageText(Coupon coupon) {
+    if (coupon.maxUses == null) {
+      return '${coupon.usedCount} / ∞';
+    }
+    return '${coupon.usedCount} / ${coupon.maxUses}';
+  }
+
+  String _remainingText(Coupon coupon) {
+    if (coupon.remainingUses == null) {
+      return 'Unlimited';
+    }
+    return coupon.remainingUses.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -56,7 +120,9 @@ class _AdminCouponsScreenState extends State<AdminCouponsScreen> {
                 text = l10n.coupons_deleted;
                 break;
             }
-            if (text.isNotEmpty) AppToast.error(context, text);
+            if (text.isNotEmpty) {
+              AppToast.show(context, text);
+            }
           }
 
           if (state.errorMessage != null && state.errorMessage!.isNotEmpty) {
@@ -122,103 +188,138 @@ class _AdminCouponsScreenState extends State<AdminCouponsScreen> {
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: c.outline.withOpacity(0.12)),
                     ),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Text(
-                                    coupon.code,
-                                    style: t.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w600,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                coupon.code,
+                                style: t.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: spacing.sm,
+                                vertical: spacing.xs,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _statusBg(c, coupon),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                _statusLabel(context, coupon),
+                                style: t.labelSmall?.copyWith(
+                                  color: _statusFg(c, coupon),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: spacing.xs),
+                            IconButton(
+                              icon: const Icon(Icons.edit_rounded),
+                              onPressed: () =>
+                                  _openFormSheet(context, coupon: coupon),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline_rounded),
+                              onPressed: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: Text(l10n.coupons_delete_title),
+                                    content: Text(
+                                      l10n.coupons_delete_confirm(coupon.code),
                                     ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(ctx).pop(false),
+                                        child: Text(l10n.cancel),
+                                      ),
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(ctx).pop(true),
+                                        child: Text(l10n.delete),
+                                      ),
+                                    ],
                                   ),
-                                  SizedBox(width: spacing.sm),
-                                  if (!coupon.active)
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: spacing.xs,
-                                        vertical: spacing.xs / 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: c.error.withOpacity(0.08),
-                                        borderRadius: BorderRadius.circular(999),
-                                      ),
-                                      child: Text(
-                                        l10n.coupons_inactive_badge,
-                                        style: t.labelSmall?.copyWith(
-                                          color: c.error,
+                                );
+
+                                if (confirm == true) {
+                                  context.read<CouponBloc>().add(
+                                        CouponDeleteRequested(
+                                          couponId: coupon.id,
                                         ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              SizedBox(height: spacing.xs),
-                              if (coupon.description != null &&
-                                  coupon.description!.isNotEmpty)
-                                Text(
-                                  coupon.description!,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: t.bodySmall?.copyWith(
-                                    color: c.onSurface.withOpacity(0.7),
-                                  ),
-                                ),
-                              SizedBox(height: spacing.xs),
-                              Text(
-                                '$typeLabel • $valueLabel',
-                                style: t.bodySmall?.copyWith(
-                                  color: c.primary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              SizedBox(height: spacing.xs),
-                              Text(
-                                validity,
-                                style: t.bodySmall?.copyWith(
-                                  color: c.onSurface.withOpacity(0.65),
-                                ),
-                              ),
-                            ],
+                                      );
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+
+                        if (coupon.description != null &&
+                            coupon.description!.isNotEmpty) ...[
+                          SizedBox(height: spacing.xs),
+                          Text(
+                            coupon.description!,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: t.bodySmall?.copyWith(
+                              color: c.onSurface.withOpacity(0.7),
+                            ),
+                          ),
+                        ],
+
+                        SizedBox(height: spacing.sm),
+
+                        Text(
+                          '$typeLabel • $valueLabel',
+                          style: t.bodySmall?.copyWith(
+                            color: c.primary,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        SizedBox(width: spacing.sm),
-                        IconButton(
-                          icon: const Icon(Icons.edit_rounded),
-                          onPressed: () => _openFormSheet(context, coupon: coupon),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline_rounded),
-                          onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: Text(l10n.coupons_delete_title),
-                                content: Text(
-                                  l10n.coupons_delete_confirm(coupon.code),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.of(ctx).pop(false),
-                                    child: Text(l10n.cancel),
-                                  ),
-                                  TextButton(
-                                    onPressed: () => Navigator.of(ctx).pop(true),
-                                    child: Text(l10n.delete),
-                                  ),
-                                ],
-                              ),
-                            );
 
-                            if (confirm == true) {
-                              context.read<CouponBloc>().add(
-                                CouponDeleteRequested(couponId: coupon.id),
-                              );
-                            }
-                          },
+                        SizedBox(height: spacing.xs),
+
+                        Text(
+                          validity,
+                          style: t.bodySmall?.copyWith(
+                            color: c.onSurface.withOpacity(0.65),
+                          ),
+                        ),
+
+                        SizedBox(height: spacing.md),
+
+                        Wrap(
+                          spacing: spacing.sm,
+                          runSpacing: spacing.sm,
+                          children: [
+                            _InfoChip(
+                              label: 'Used',
+                              value: _usageText(coupon),
+                            ),
+                            _InfoChip(
+                              label: 'Remaining',
+                              value: _remainingText(coupon),
+                            ),
+                            _InfoChip(
+                              label: 'Started',
+                              value: coupon.started ? 'Yes' : 'No',
+                            ),
+                            _InfoChip(
+                              label: 'Expired',
+                              value: coupon.expired ? 'Yes' : 'No',
+                            ),
+                            _InfoChip(
+                              label: 'Valid now',
+                              value: coupon.currentlyValid ? 'Yes' : 'No',
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -253,6 +354,48 @@ class _AdminCouponsScreenState extends State<AdminCouponsScreen> {
           child: CouponFormSheet(existing: coupon),
         );
       },
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InfoChip({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.watch<ThemeCubit>().state.tokens;
+    final spacing = tokens.spacing;
+    final c = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: spacing.sm,
+        vertical: spacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: c.surfaceContainerHighest.withOpacity(0.45),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: c.outline.withOpacity(0.10)),
+      ),
+      child: RichText(
+        text: TextSpan(
+          style: t.bodySmall?.copyWith(color: c.onSurface),
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            TextSpan(text: value),
+          ],
+        ),
+      ),
     );
   }
 }

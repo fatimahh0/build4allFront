@@ -28,8 +28,6 @@ class ProductModel extends Product {
     required super.attributes,
   });
 
-  // ---------------- helpers ----------------
-
   static int? _toInt(dynamic v) {
     if (v == null) return null;
     if (v is int) return v;
@@ -62,7 +60,6 @@ class ProductModel extends Product {
   }
 
   static Map<String, String> _parseAttrs(dynamic raw) {
-    // supports list [{code,value}] OR map {code:value}
     final out = <String, String>{};
 
     if (raw == null) return out;
@@ -90,12 +87,10 @@ class ProductModel extends Product {
   }
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
-    // ✅ handle nested currency object if backend sends it
     final nestedCurrency = json['currency'];
     final nestedCurrencyId =
         (nestedCurrency is Map) ? _toInt(nestedCurrency['id']) : null;
 
-    // ✅ accept multiple key names
     final parsedCurrencyId =
         _toInt(json['currencyId']) ??
         _toInt(json['currency_id']) ??
@@ -106,47 +101,40 @@ class ProductModel extends Product {
     final effectivePrice =
         _toDouble(json['effectivePrice']) ?? salePrice ?? price;
 
+    final parsedStock = _toInt(json['stock']);
+    final rawStatus = (json['status'] ?? '').toString().trim();
+
+    final resolvedStatus = (parsedStock ?? 0) <= 0
+        ? 'OUT_OF_STOCK'
+        : (rawStatus.isEmpty ? 'AVAILABLE' : rawStatus);
+
     return ProductModel(
       id: _toInt(json['id']) ?? 0,
-
-      // ✅ sometimes backends return ownerProjectLinkId instead (seen in your codebase)
       ownerProjectId:
           _toInt(json['ownerProjectId']) ??
           _toInt(json['ownerProjectLinkId']) ??
           0,
-
       itemTypeId: _toInt(json['itemTypeId']),
       currencyId: parsedCurrencyId,
       categoryId: _toInt(json['categoryId']),
-
       name: (json['name'] ?? json['itemName'] ?? '').toString(),
       description: json['description']?.toString(),
-
       price: price,
-      stock: _toInt(json['stock']),
-      status: (json['status'] ?? 'Upcoming').toString(),
-
+      stock: parsedStock,
+      status: resolvedStatus,
       imageUrl: json['imageUrl']?.toString(),
       sku: json['sku']?.toString(),
-
       productType: (json['productType'] ?? 'SIMPLE').toString(),
-
-      // ✅ safer than `as bool?` (backend might send "true"/1)
       virtualProduct: _toBool(json['virtualProduct'], fallback: false),
       downloadable: _toBool(json['downloadable'], fallback: false),
-
       downloadUrl: json['downloadUrl']?.toString(),
       externalUrl: json['externalUrl']?.toString(),
       buttonText: json['buttonText']?.toString(),
-
       salePrice: salePrice,
       saleStart: _toDate(json['saleStart']),
       saleEnd: _toDate(json['saleEnd']),
-
       effectivePrice: effectivePrice,
-
       onSale: _toBool(json['onSale'], fallback: false),
-
       attributes: _parseAttrs(json['attributes']),
     );
   }

@@ -210,7 +210,7 @@ class _AdminHomeBannerFormSheetState extends State<AdminHomeBannerFormSheet> {
 
     final rawList = await api.getProducts(
      
-      authToken: token,
+      authToken: token, ownerProjectId: widget.ownerProjectId
     );
 
     return rawList.map<ItemSummary>((j) {

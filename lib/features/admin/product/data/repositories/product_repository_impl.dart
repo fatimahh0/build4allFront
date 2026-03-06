@@ -19,88 +19,67 @@ class ProductRepositoryImpl implements ProductRepository {
 
   @override
   Future<List<Product>> getProducts({
-    
+    required int ownerProjectId,
     int? itemTypeId,
     int? categoryId,
   }) async {
     final token = await _requireToken();
     final list = await api.getProducts(
-      
+      ownerProjectId: ownerProjectId,
       itemTypeId: itemTypeId,
       categoryId: categoryId,
       authToken: token,
     );
-   return list
-  .cast<Map<String, dynamic>>()
-  .map((j) {
-    final p = ProductModel.fromJson(j);
-    print("DBG product=${p.id} currencyId_raw=${j['currencyId']} parsed=${p.currencyId}");
-    return p;
-  })
-  .toList();
 
+    return list
+        .cast<Map<String, dynamic>>()
+        .map((j) => ProductModel.fromJson(j))
+        .toList();
   }
 
   @override
   Future<List<Product>> getNewArrivals({
-    
     int? days,
   }) async {
     final token = await _requireToken();
     final list = await api.getNewArrivals(
-      
       days: days,
       authToken: token,
     );
-   return list
-  .cast<Map<String, dynamic>>()
-  .map((j) {
-    final p = ProductModel.fromJson(j);
-    print("DBG product=${p.id} currencyId_raw=${j['currencyId']} parsed=${p.currencyId}");
-    return p;
-  })
-  .toList();
 
+    return list
+        .cast<Map<String, dynamic>>()
+        .map((j) => ProductModel.fromJson(j))
+        .toList();
   }
 
   @override
   Future<List<Product>> getBestSellers({
-    
     int? limit,
   }) async {
     final token = await _requireToken();
     final list = await api.getBestSellers(
-      
       limit: limit,
       authToken: token,
     );
-   return list
-  .cast<Map<String, dynamic>>()
-  .map((j) {
-    final p = ProductModel.fromJson(j);
-    print("DBG product=${p.id} currencyId_raw=${j['currencyId']} parsed=${p.currencyId}");
-    return p;
-  })
-  .toList();
 
+    return list
+        .cast<Map<String, dynamic>>()
+        .map((j) => ProductModel.fromJson(j))
+        .toList();
   }
 
   @override
   Future<List<Product>> getDiscounted({required int ownerProjectId}) async {
     final token = await _requireToken();
     final list = await api.getDiscounted(
-      
       authToken: token,
     );
-  return list
-  .cast<Map<String, dynamic>>()
-  .map((j) {
-    final p = ProductModel.fromJson(j);
-    print("DBG product=${p.id} currencyId_raw=${j['currencyId']} parsed=${p.currencyId}");
-    return p;
-  })
-  .toList();
 
+    return list
+        .cast<Map<String, dynamic>>()
+        .map((j) => ProductModel.fromJson(j))
+        .toList();
   }
 
   @override
@@ -112,7 +91,6 @@ class ProductRepositoryImpl implements ProductRepository {
 
   @override
   Future<Product> createProduct({
-   
     required int itemTypeId,
     required int? currencyId,
     required String name,
@@ -135,7 +113,6 @@ class ProductRepositoryImpl implements ProductRepository {
     final token = await _requireToken();
 
     final body = <String, dynamic>{
-    
       'itemTypeId': itemTypeId,
       'currencyId': currencyId,
       'name': name,

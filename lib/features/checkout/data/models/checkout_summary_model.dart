@@ -13,6 +13,7 @@ final int? orderSeq;
   final double itemTaxTotal;
   final double shippingTaxTotal;
   final double grandTotal;
+  final String? message;
 
   final String currencyCode;
   final String currencySymbol;
@@ -44,6 +45,7 @@ this.orderSeq,// ✅ NEW
     required this.currencyCode,
     required this.currencySymbol,
     required this.lines,
+    this.message,
     this.couponCode,
     this.couponDiscount,
     this.paymentTransactionId,
@@ -81,7 +83,7 @@ this.orderSeq,// ✅ NEW
       // ✅ NEW: accept multiple backend key styles just in case
      orderCode: (json['orderCode'] ?? json['order_code'] ?? json['code'])?.toString(),
 orderSeq: _toIntOrNull(json['orderSeq'] ?? json['order_seq']),
-
+message: json['message']?.toString(),
       itemsSubtotal: _toDouble(json['itemsSubtotal']),
       shippingTotal: _toDouble(json['shippingTotal']),
       itemTaxTotal: _toDouble(json['itemTaxTotal']),

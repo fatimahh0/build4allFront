@@ -8,14 +8,8 @@ import '../../domain/entities/product.dart';
 
 class AdminProductCard extends StatefulWidget {
   final Product product;
-
-  /// ✅ Provided by list screen (from CurrencySymbolCache warmed up).
-  /// If null/empty => card shows placeholder "…16.00" until list updates.
   final String? currencySymbol;
-
-  /// ✅ Optional: show tiny loader pill while list is warming currencies
   final bool currencyLoading;
-
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
@@ -47,12 +41,18 @@ class _AdminProductCardState extends State<AdminProductCard> {
     final sym = (widget.currencySymbol ?? '').trim();
     final amount = value.toDouble().toStringAsFixed(decimals);
 
-    // ✅ If symbol is ready
     if (sym.isNotEmpty) return '$sym$amount';
-
-    // ✅ If not ready yet -> show placeholder
-    // (so admin sees it’s loading, not wrong currency)
     return '…$amount';
+  }
+
+  int get _safeStock => widget.product.stock ?? 0;
+
+  bool get _isOutOfStock => _safeStock <= 0;
+
+  String get _availabilityText => _isOutOfStock ? 'Out of stock' : 'Available';
+
+  Color _availabilityColor(dynamic colors) {
+    return _isOutOfStock ? colors.danger : colors.success;
   }
 
   Future<void> _showActionsSheet(BuildContext context) async {
@@ -63,39 +63,68 @@ class _AdminProductCardState extends State<AdminProductCard> {
 
     final action = await showModalBottomSheet<String>(
       context: context,
+      useSafeArea: true,
+      backgroundColor: colors.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(tokens.card.radius),
         ),
       ),
       builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.all(spacing.md),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: Icon(Icons.edit, color: colors.primary),
-                title: Text(
-                  'Edit product',
-                  style: text.bodyMedium.copyWith(color: colors.label),
+        final bottomInset = MediaQuery.of(ctx).padding.bottom;
+
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              spacing.md,
+              spacing.md,
+              spacing.md,
+              spacing.md + bottomInset,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: EdgeInsets.only(bottom: spacing.md),
+                  decoration: BoxDecoration(
+                    color: colors.muted.withOpacity(0.35),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
-                onTap: () => Navigator.of(ctx).pop('edit'),
-              ),
-              ListTile(
-                leading: Icon(Icons.delete_outline, color: colors.danger),
-                title: Text(
-                  'Delete product',
-                  style: text.bodyMedium.copyWith(color: colors.danger),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.edit, color: colors.primary),
+                  title: Text(
+                    'Edit product',
+                    style: text.bodyMedium.copyWith(color: colors.label),
+                  ),
+                  onTap: () => Navigator.of(ctx).pop('edit'),
                 ),
-                onTap: () => Navigator.of(ctx).pop('delete'),
-              ),
-              SizedBox(height: spacing.sm),
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Cancel'),
-              ),
-            ],
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.delete_outline, color: colors.danger),
+                  title: Text(
+                    'Delete product',
+                    style: text.bodyMedium.copyWith(color: colors.danger),
+                  ),
+                  onTap: () => Navigator.of(ctx).pop('delete'),
+                ),
+                SizedBox(height: spacing.sm),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: spacing.sm),
+                    ),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -153,13 +182,16 @@ class _AdminProductCardState extends State<AdminProductCard> {
                           )
                         : imagePlaceholder(),
 
-                    // ✅ show loader only when list is warming AND this product has currencyId
-                    if (widget.currencyLoading && widget.product.currencyId != null)
+                    if (widget.currencyLoading &&
+                        widget.product.currencyId != null)
                       Positioned(
                         top: spacing.xs,
                         right: spacing.xs,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.black.withOpacity(0.45),
                             borderRadius: BorderRadius.circular(999),
@@ -171,6 +203,28 @@ class _AdminProductCardState extends State<AdminProductCard> {
                           ),
                         ),
                       ),
+
+                    Positioned(
+                      left: spacing.xs,
+                      top: spacing.xs,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: spacing.xs,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _availabilityColor(colors).withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          _availabilityText,
+                          style: text.bodySmall.copyWith(
+                            color: _availabilityColor(colors),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -179,6 +233,7 @@ class _AdminProductCardState extends State<AdminProductCard> {
                   padding: EdgeInsets.all(spacing.sm),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
                       if (showDiscountBadge)
                         Container(
@@ -192,12 +247,15 @@ class _AdminProductCardState extends State<AdminProductCard> {
                           ),
                           child: Text(
                             'On sale',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: text.bodySmall.copyWith(
                               color: colors.success,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
+
                       if (showDiscountBadge) SizedBox(height: spacing.xs),
 
                       Text(
@@ -207,38 +265,53 @@ class _AdminProductCardState extends State<AdminProductCard> {
                         style: text.bodyMedium.copyWith(
                           color: colors.label,
                           fontWeight: FontWeight.w600,
+                          height: 1.18,
                         ),
                       ),
 
-                      const Spacer(),
+                      SizedBox(height: spacing.xs),
+
+                      Text(
+                        'Stock: $_safeStock',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: text.bodySmall.copyWith(
+                          color: _isOutOfStock ? colors.danger : colors.body,
+                          fontWeight:
+                              _isOutOfStock ? FontWeight.w700 : FontWeight.w500,
+                        ),
+                      ),
+
+                      SizedBox(height: spacing.xs),
 
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Text(
-                            _moneyStrict(widget.product.effectivePrice),
-                            style: text.bodyMedium.copyWith(
-                              color: colors.primary,
-                              fontWeight: FontWeight.bold,
+                          Expanded(
+                            child: Text(
+                              _moneyStrict(widget.product.effectivePrice),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: text.bodyMedium.copyWith(
+                                color: colors.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                           if (widget.product.onSale) SizedBox(width: spacing.xs),
                           if (widget.product.onSale)
-                            Text(
-                              _moneyStrict(widget.product.price),
-                              style: text.bodySmall.copyWith(
-                                color: colors.muted,
-                                decoration: TextDecoration.lineThrough,
+                            Flexible(
+                              child: Text(
+                                _moneyStrict(widget.product.price),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: text.bodySmall.copyWith(
+                                  color: colors.muted,
+                                  decoration: TextDecoration.lineThrough,
+                                ),
                               ),
                             ),
                         ],
-                      ),
-
-                      SizedBox(height: spacing.xs),
-                      Text(
-                        widget.product.status,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: text.bodySmall.copyWith(color: colors.muted),
                       ),
                     ],
                   ),

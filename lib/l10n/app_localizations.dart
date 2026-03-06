@@ -5446,7 +5446,7 @@ abstract class AppLocalizations {
   /// No description provided for @checkoutCouponFailed.
   ///
   /// In en, this message translates to:
-  /// **'Could not apply coupon'**
+  /// **'Coupon could not be applied.'**
   String get checkoutCouponFailed;
 
   /// No description provided for @checkoutOrderPlacedWithCode.
@@ -5580,6 +5580,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Invalid support number.'**
   String get home_support_invalid_phone;
+
+  /// No description provided for @checkoutBlockedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Checkout blocked'**
+  String get checkoutBlockedTitle;
+
+  /// No description provided for @adminTaxRuleRateMustBePositive.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate must be 0 or more'**
+  String get adminTaxRuleRateMustBePositive;
+
+  /// No description provided for @adminTaxRuleRateTooHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate cannot be greater than 100%'**
+  String get adminTaxRuleRateTooHigh;
+
+  /// No description provided for @checkoutCouponExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Coupon expired.'**
+  String get checkoutCouponExpired;
+
+  /// No description provided for @checkoutCouponUsageLimitReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Coupon usage limit reached.'**
+  String get checkoutCouponUsageLimitReached;
+
+  /// No description provided for @checkoutCouponMinimumNotReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum order amount not reached for this coupon.'**
+  String get checkoutCouponMinimumNotReached;
+
+  /// No description provided for @checkoutCouponDidNotAffectOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Coupon did not affect this order.'**
+  String get checkoutCouponDidNotAffectOrder;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

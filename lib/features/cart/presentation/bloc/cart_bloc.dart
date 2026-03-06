@@ -1,4 +1,5 @@
 // lib/features/cart/presentation/bloc/cart_bloc.dart
+import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'cart_event.dart';
@@ -31,7 +32,48 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     on<CartItemRemoved>(_onRemoveItem);
     on<CartCleared>(_onClear);
     on<CartReset>(_onReset);
+  }
 
+  String _extractErrorMessage(Object error) {
+    if (error is DioException) {
+      final data = error.response?.data;
+
+      if (data is Map<String, dynamic>) {
+        final backendError = data['error'];
+        final backendMessage = data['message'];
+
+        if (backendError is String && backendError.trim().isNotEmpty) {
+          return backendError.trim();
+        }
+
+        if (backendMessage is String && backendMessage.trim().isNotEmpty) {
+          return backendMessage.trim();
+        }
+      }
+
+      if (data is String && data.trim().isNotEmpty) {
+        return data.trim();
+      }
+
+      switch (error.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          return 'Request timed out. Please try again.';
+        case DioExceptionType.connectionError:
+          return 'Connection error. Please check your internet.';
+        case DioExceptionType.badResponse:
+          return 'Request failed. Please try again.';
+        case DioExceptionType.cancel:
+          return 'Request cancelled.';
+        case DioExceptionType.badCertificate:
+          return 'Security certificate error.';
+        case DioExceptionType.unknown:
+          return 'Something went wrong. Please try again.';
+      }
+    }
+
+    return 'Something went wrong. Please try again.';
   }
 
   Future<void> _safeLoad(
@@ -48,17 +90,31 @@ class CartBloc extends Bloc<CartEvent, CartState> {
           ),
         );
       }
+
       final cart = await getMyCart();
-      emit(state.copyWith(isLoading: false, cart: cart));
+
+      emit(
+        state.copyWith(
+          isLoading: false,
+          isUpdating: false,
+          cart: cart,
+          errorMessage: null,
+        ),
+      );
     } catch (e) {
-      emit(state.copyWith(isLoading: false, errorMessage: e.toString()));
+      emit(
+        state.copyWith(
+          isLoading: false,
+          isUpdating: false,
+          errorMessage: _extractErrorMessage(e),
+        ),
+      );
     }
   }
 
   Future<void> _onReset(CartReset event, Emitter<CartState> emit) async {
     emit(CartState.initial());
   }
-
 
   Future<void> _onStarted(CartStarted event, Emitter<CartState> emit) async {
     await _safeLoad(emit);
@@ -77,21 +133,36 @@ class CartBloc extends Bloc<CartEvent, CartState> {
   ) async {
     try {
       emit(
-        state.copyWith(isUpdating: true, errorMessage: null, lastMessage: null),
+        state.copyWith(
+          isUpdating: true,
+          errorMessage: null,
+          lastMessage: null,
+        ),
       );
+
       final cart = await addToCartUc(
         itemId: event.itemId,
         quantity: event.quantity,
       );
+
       emit(
         state.copyWith(
           isUpdating: false,
           cart: cart,
-          lastMessage: 'cart_item_added', // will map to l10n in UI
+          errorMessage: null,
+          lastMessage: 'cart_item_added',
         ),
       );
     } catch (e) {
-      emit(state.copyWith(isUpdating: false, errorMessage: e.toString()));
+      emit(
+        state.copyWith(
+          isUpdating: false,
+          errorMessage: _extractErrorMessage(e),
+          lastMessage: null,
+        ),
+      );
+
+      await _safeLoad(emit, showLoading: false);
     }
   }
 
@@ -101,21 +172,36 @@ class CartBloc extends Bloc<CartEvent, CartState> {
   ) async {
     try {
       emit(
-        state.copyWith(isUpdating: true, errorMessage: null, lastMessage: null),
+        state.copyWith(
+          isUpdating: true,
+          errorMessage: null,
+          lastMessage: null,
+        ),
       );
+
       final cart = await updateCartItemUc(
         cartItemId: event.cartItemId,
         quantity: event.quantity,
       );
+
       emit(
         state.copyWith(
           isUpdating: false,
           cart: cart,
+          errorMessage: null,
           lastMessage: 'cart_item_updated',
         ),
       );
     } catch (e) {
-      emit(state.copyWith(isUpdating: false, errorMessage: e.toString()));
+      emit(
+        state.copyWith(
+          isUpdating: false,
+          errorMessage: _extractErrorMessage(e),
+          lastMessage: null,
+        ),
+      );
+
+      await _safeLoad(emit, showLoading: false);
     }
   }
 
@@ -125,38 +211,63 @@ class CartBloc extends Bloc<CartEvent, CartState> {
   ) async {
     try {
       emit(
-        state.copyWith(isUpdating: true, errorMessage: null, lastMessage: null),
+        state.copyWith(
+          isUpdating: true,
+          errorMessage: null,
+          lastMessage: null,
+        ),
       );
+
       final cart = await removeCartItemUc(cartItemId: event.cartItemId);
+
       emit(
         state.copyWith(
           isUpdating: false,
           cart: cart,
+          errorMessage: null,
           lastMessage: 'cart_item_removed',
         ),
       );
     } catch (e) {
-      emit(state.copyWith(isUpdating: false, errorMessage: e.toString()));
+      emit(
+        state.copyWith(
+          isUpdating: false,
+          errorMessage: _extractErrorMessage(e),
+          lastMessage: null,
+        ),
+      );
     }
   }
 
   Future<void> _onClear(CartCleared event, Emitter<CartState> emit) async {
     try {
       emit(
-        state.copyWith(isUpdating: true, errorMessage: null, lastMessage: null),
+        state.copyWith(
+          isUpdating: true,
+          errorMessage: null,
+          lastMessage: null,
+        ),
       );
+
       await clearCartUc();
-      // reload empty cart
       final cart = await getMyCart();
+
       emit(
         state.copyWith(
           isUpdating: false,
           cart: cart,
+          errorMessage: null,
           lastMessage: 'cart_cleared',
         ),
       );
     } catch (e) {
-      emit(state.copyWith(isUpdating: false, errorMessage: e.toString()));
+      emit(
+        state.copyWith(
+          isUpdating: false,
+          errorMessage: _extractErrorMessage(e),
+          lastMessage: null,
+        ),
+      );
     }
   }
 }

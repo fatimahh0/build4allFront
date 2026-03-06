@@ -1,5 +1,3 @@
-// lib/features/checkout/presentation/screens/checkout_screen.dart
-
 import 'package:build4front/features/catalog/cubit/money.dart';
 import 'package:build4front/features/checkout/presentation/screens/order_details_screen.dart';
 import 'package:flutter/material.dart';
@@ -48,7 +46,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final _addressFormController = CheckoutAddressFormController();
   bool _showAddressPickerErrors = false;
 
-  // ✅ scroll anchors
   final _itemsSectionKey = GlobalKey();
   final _addressSectionKey = GlobalKey();
   final _shippingSectionKey = GlobalKey();
@@ -92,6 +89,28 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return res == true;
   }
 
+  String _localizeBackendCheckoutMessage(AppLocalizations l10n, String raw) {
+    final s = raw.trim().toLowerCase();
+
+    if (s.contains('coupon was not applied because it is expired')) {
+      return l10n.checkoutCouponExpired;
+    }
+    if (s.contains('coupon was not applied because it reached the usage limit')) {
+      return l10n.checkoutCouponUsageLimitReached;
+    }
+    if (s.contains('coupon was not applied because it is invalid')) {
+      return l10n.checkoutCouponInvalid;
+    }
+    if (s.contains('coupon was not applied because order minimum was not reached')) {
+      return l10n.checkoutCouponMinimumNotReached;
+    }
+    if (s.contains('coupon was not applied because it did not affect this order')) {
+      return l10n.checkoutCouponDidNotAffectOrder;
+    }
+
+    return raw;
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -103,14 +122,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     });
   }
 
-  // ✅ Localize any error string BEFORE showing it to user
   String _localizeCheckoutError(AppLocalizations l10n, String raw) {
     final s = raw.trim().toLowerCase();
 
-    // Known bloc validation strings (avoid showing English)
     if (s.contains('cart is empty')) return l10n.checkoutCartEmptyError;
     if (s.contains('select a payment method')) return l10n.checkoutSelectPayment;
-    if (s.contains('payment method code is missing')) return l10n.checkoutPaymentMissingCode;
+    if (s.contains('payment method code is missing')) {
+      return l10n.checkoutPaymentMissingCode;
+    }
 
     if (s.contains('select a country')) return l10n.checkoutCountryRequiredError;
     if (s.contains('select a region')) return l10n.checkoutRegionRequiredError;
@@ -119,24 +138,38 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (s.contains('enter phone')) return l10n.checkoutPhoneRequiredError;
 
     if (s.contains('select a shipping method')) return l10n.checkoutSelectShipping;
-    if (s.contains('shipping method is missing')) return l10n.checkoutShippingMissingError;
+    if (s.contains('shipping method is missing')) {
+      return l10n.checkoutShippingMissingError;
+    }
 
-    // Stripe errors
     if (s.contains('stripe payment canceled')) return l10n.checkoutStripeCanceled;
-    if (s.contains('did not return stripe clientsecret')) return l10n.checkoutStripeClientSecretMissing;
-    if (s.contains('did not return stripe publishablekey')) return l10n.checkoutStripePublishableKeyMissing;
+    if (s.contains('did not return stripe clientsecret')) {
+      return l10n.checkoutStripeClientSecretMissing;
+    }
+    if (s.contains('did not return stripe publishablekey')) {
+      return l10n.checkoutStripePublishableKeyMissing;
+    }
 
-    // Fallback
     return l10n.commonSomethingWentWrong;
   }
 
-  // ✅ Coupon errors: never show raw backend English
   String _localizeCouponError(AppLocalizations l10n, String raw) {
     final s = raw.trim().toLowerCase();
     if (s.isEmpty) return '';
-    if (s.contains('invalid') || s.contains('not valid') || s.contains('coupon')) {
+
+    if (s.contains('expired')) {
+      return l10n.checkoutCouponExpired;
+    }
+    if (s.contains('usage limit') || (s.contains('max') && s.contains('use'))) {
+      return l10n.checkoutCouponUsageLimitReached;
+    }
+    if (s.contains('minimum')) {
+      return l10n.checkoutCouponMinimumNotReached;
+    }
+    if (s.contains('invalid') || s.contains('not valid') || s.contains('not found')) {
       return l10n.checkoutCouponInvalid;
     }
+
     return l10n.checkoutCouponFailed;
   }
 
@@ -160,16 +193,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         if (summary != null) {
           final code = (summary.orderCode ?? '').trim();
 
-          AppToast.error(
+          AppToast.show(
             context,
             code.isNotEmpty
                 ? l10n.checkoutOrderPlacedWithCode(code)
                 : l10n.checkoutOrderPlacedToast(summary.orderId),
           );
 
+          final backendMsg = (summary.message ?? '').trim();
+          if (backendMsg.isNotEmpty) {
+            AppToast.show(
+              context,
+              _localizeBackendCheckoutMessage(l10n, backendMsg),
+              isError: true,
+            );
+          }
+
           context.read<CartBloc>().add(const CartRefreshed());
 
-          // ✅ BEST fallback: from quote lines first (they include itemName)
           final map = <int, String>{};
 
           final q = state.quote;
@@ -180,7 +221,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             }
           }
 
-          // ✅ fallback #2: from cart itemName
           final cart = state.cart;
           if (map.isEmpty && cart != null) {
             for (final it in cart.items) {
@@ -189,17 +229,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             }
           }
 
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => OrderDetailsScreen(
-                summary: summary,
-                address: state.address,
-                shipping: state.selectedQuote,
-                itemNameById: map.isEmpty ? null : map,
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => OrderDetailsScreen(
+                  summary: summary,
+                  address: state.address,
+                  shipping: state.selectedQuote,
+                  itemNameById: map.isEmpty ? null : map,
+                ),
               ),
-            ),
-          );
+            );
+          });
         }
       },
       child: Scaffold(
@@ -209,6 +252,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           behavior: HitTestBehavior.opaque,
           onTap: () => FocusScope.of(context).unfocus(),
           child: BlocBuilder<CheckoutBloc, CheckoutState>(
+            buildWhen: (prev, curr) {
+              if (prev.placing != curr.placing && curr.placing) return true;
+              if (prev.orderSummary != curr.orderSummary) return true;
+              if (curr.placing) return false;
+              return true;
+            },
             builder: (context, state) {
               if (state.loading) {
                 return Center(
@@ -240,8 +289,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.shopping_cart_outlined,
-                            size: 44, color: colors.muted),
+                        Icon(
+                          Icons.shopping_cart_outlined,
+                          size: 44,
+                          color: colors.muted,
+                        ),
                         SizedBox(height: spacing.sm),
                         Text(
                           l10n.checkoutEmptyCart,
@@ -262,13 +314,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 );
               }
 
-              // ✅ Coupon inline status (localized)
               final applied = state.coupon.trim();
               final quote = state.quote;
 
               final rawCouponErr = (state.couponError ?? '').trim();
-              final couponErrMsg =
-                  rawCouponErr.isEmpty ? '' : _localizeCouponError(l10n, rawCouponErr);
+              final couponErrMsg = rawCouponErr.isEmpty
+                  ? ''
+                  : _localizeCouponError(l10n, rawCouponErr);
+
+              final rawBackendMsg = (state.orderSummary?.message ?? '').trim();
+              final backendCouponMsg = rawBackendMsg.isEmpty
+                  ? ''
+                  : _localizeBackendCheckoutMessage(l10n, rawBackendMsg);
+
+              final backendRejectedCoupon =
+                  rawBackendMsg.toLowerCase().contains('coupon was not applied');
 
               bool? couponValid;
               String? couponMsg;
@@ -280,17 +340,23 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 } else if (couponErrMsg.isNotEmpty) {
                   couponValid = false;
                   couponMsg = couponErrMsg;
+                } else if (backendRejectedCoupon) {
+                  couponValid = false;
+                  couponMsg = backendCouponMsg;
                 } else if (quote != null) {
                   final qCode = (quote.couponCode ?? '').trim();
-                  final same = qCode.isNotEmpty &&
-                      qCode.toUpperCase() == applied.toUpperCase();
+                  final same =
+                      qCode.isNotEmpty && qCode.toUpperCase() == applied.toUpperCase();
 
-                  if (same) {
+                  final disc = quote.couponDiscount ?? 0.0;
+
+                  if (same && disc > 0) {
                     couponValid = true;
-                    final disc = quote.couponDiscount ?? 0.0;
-                    couponMsg = disc > 0
-                        ? l10n.checkoutCouponAppliedDiscount(money(context, disc))
-                        : l10n.checkoutCouponApplied;
+                    couponMsg =
+                        l10n.checkoutCouponAppliedDiscount(money(context, disc));
+                  } else if (same && disc <= 0) {
+                    couponValid = false;
+                    couponMsg = l10n.checkoutCouponFailed;
                   } else {
                     couponValid = false;
                     couponMsg = l10n.checkoutCouponInvalid;
@@ -298,116 +364,169 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 }
               }
 
-              return RefreshIndicator(
-                onRefresh: () async {
-                  context.read<CheckoutBloc>().add(const CheckoutRefreshRequested());
-                },
-                child: ListView(
-                  key: const PageStorageKey('checkout_list'),
-                  cacheExtent: MediaQuery.of(context).size.height * 3,
-                  addAutomaticKeepAlives: true,
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.all(spacing.md),
-                  children: [
-                    // ✅ Items
-                    KeyedSubtree(
-                      key: _itemsSectionKey,
-                      child: CheckoutSectionCard(
-                        title: l10n.checkoutItemsTitle,
-                        child: CheckoutItemsPreview(cart: cart),
+              return Stack(
+                children: [
+                  IgnorePointer(
+                    ignoring: state.placing,
+                    child: RefreshIndicator(
+                      onRefresh: () async {
+                        context
+                            .read<CheckoutBloc>()
+                            .add(const CheckoutRefreshRequested());
+                      },
+                      child: ListView(
+                        key: const PageStorageKey('checkout_list'),
+                        cacheExtent: MediaQuery.of(context).size.height * 3,
+                        addAutomaticKeepAlives: true,
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: EdgeInsets.all(spacing.md),
+                        children: [
+                          KeyedSubtree(
+                            key: _itemsSectionKey,
+                            child: CheckoutSectionCard(
+                              title: l10n.checkoutItemsTitle,
+                              child: CheckoutItemsPreview(cart: cart),
+                            ),
+                          ),
+                          SizedBox(height: spacing.md),
+
+                          KeyedSubtree(
+                            key: _addressSectionKey,
+                            child: CheckoutSectionCard(
+                              title: l10n.checkoutAddressTitle,
+                              child: CheckoutAddressForm(
+                                key: const PageStorageKey('checkout_address_form'),
+                                formKey: _addressFormKey,
+                                controller: _addressFormController,
+                                showPickerErrors: _showAddressPickerErrors,
+                                initial: state.address,
+                                onApply: (addr) {
+                                  context
+                                      .read<CheckoutBloc>()
+                                      .add(CheckoutAddressChanged(addr));
+                                },
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: spacing.md),
+
+                          CheckoutSectionCard(
+                            title: l10n.checkoutCouponTitle,
+                            child: CheckoutCouponField(
+                              draft: state.couponDraft,
+                              applied: state.coupon,
+                              isValid: couponValid,
+                              message: couponMsg,
+                              onDraftChanged: (v) {
+                                context
+                                    .read<CheckoutBloc>()
+                                    .add(CheckoutCouponDraftChanged(v));
+                              },
+                              onApply: (code) {
+                                context
+                                    .read<CheckoutBloc>()
+                                    .add(CheckoutCouponApplied(code));
+                              },
+                            ),
+                          ),
+                          SizedBox(height: spacing.md),
+
+                          KeyedSubtree(
+                            key: _shippingSectionKey,
+                            child: CheckoutSectionCard(
+                              title: l10n.checkoutShippingTitle,
+                              child: CheckoutShippingMethods(
+                                quotes: state.shippingQuotes,
+                                selectedMethodId: state.selectedShippingMethodId,
+                                onSelect: (id) => context
+                                    .read<CheckoutBloc>()
+                                    .add(CheckoutShippingSelected(id)),
+                                onRefresh: () => context
+                                    .read<CheckoutBloc>()
+                                    .add(const CheckoutRefreshRequested()),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: spacing.md),
+
+                          KeyedSubtree(
+                            key: _paymentSectionKey,
+                            child: CheckoutSectionCard(
+                              title: l10n.checkoutPaymentTitle,
+                              child: CheckoutPaymentMethods(
+                                methods: state.paymentMethods,
+                                selectedIndex: state.selectedPaymentIndex,
+                                onSelectIndex: (i) => context
+                                    .read<CheckoutBloc>()
+                                    .add(CheckoutPaymentSelected(i)),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: spacing.md),
+
+                          CheckoutSectionCard(
+                            title: l10n.checkoutSummaryTitle,
+                            child: CheckoutOrderSummary(
+                              cart: cart,
+                              selectedShipping: state.selectedQuote,
+                              tax: state.tax,
+                              quote: state.quote,
+                            ),
+                          ),
+                          SizedBox(height: spacing.xl),
+                        ],
                       ),
                     ),
-                    SizedBox(height: spacing.md),
+                  ),
 
-                    // ✅ Address
-                    KeyedSubtree(
-                      key: _addressSectionKey,
-                      child: CheckoutSectionCard(
-                        title: l10n.checkoutAddressTitle,
-                        child: CheckoutAddressForm(
-                          key: const PageStorageKey('checkout_address_form'),
-                          formKey: _addressFormKey,
-                          controller: _addressFormController,
-                          showPickerErrors: _showAddressPickerErrors,
-                          initial: state.address,
-                          onApply: (addr) {
-                            context.read<CheckoutBloc>().add(CheckoutAddressChanged(addr));
-                          },
+                  if (state.placing)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black.withOpacity(0.12),
+                        child: Center(
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: spacing.lg,
+                              vertical: spacing.md,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).cardColor,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.4,
+                                  ),
+                                ),
+                                SizedBox(width: spacing.md),
+                                Text(
+                                  l10n.checkoutLoading,
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                    SizedBox(height: spacing.md),
-
-                    // ✅ Coupon (draft typing does NOT call backend)
-                    CheckoutSectionCard(
-                      title: l10n.checkoutCouponTitle,
-                      child: CheckoutCouponField(
-                        draft: state.couponDraft,
-                        applied: state.coupon,
-                        isValid: couponValid,
-                        message: couponMsg,
-                        onDraftChanged: (v) {
-                          context.read<CheckoutBloc>().add(CheckoutCouponDraftChanged(v));
-                        },
-                        onApply: (code) {
-                          context.read<CheckoutBloc>().add(CheckoutCouponApplied(code));
-                        },
-                      ),
-                    ),
-                    SizedBox(height: spacing.md),
-
-                    // ✅ Shipping
-                    KeyedSubtree(
-                      key: _shippingSectionKey,
-                      child: CheckoutSectionCard(
-                        title: l10n.checkoutShippingTitle,
-                        child: CheckoutShippingMethods(
-                          quotes: state.shippingQuotes,
-                          selectedMethodId: state.selectedShippingMethodId,
-                          onSelect: (id) =>
-                              context.read<CheckoutBloc>().add(CheckoutShippingSelected(id)),
-                          onRefresh: () =>
-                              context.read<CheckoutBloc>().add(const CheckoutRefreshRequested()),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: spacing.md),
-
-                    // ✅ Payment
-                    KeyedSubtree(
-                      key: _paymentSectionKey,
-                      child: CheckoutSectionCard(
-                        title: l10n.checkoutPaymentTitle,
-                        child: CheckoutPaymentMethods(
-                          methods: state.paymentMethods,
-                          selectedIndex: state.selectedPaymentIndex,
-                          onSelectIndex: (i) =>
-                              context.read<CheckoutBloc>().add(CheckoutPaymentSelected(i)),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: spacing.md),
-
-                    // ✅ Summary
-                    CheckoutSectionCard(
-                      title: l10n.checkoutSummaryTitle,
-                      child: CheckoutOrderSummary(
-                        cart: cart,
-                        selectedShipping: state.selectedQuote,
-                        tax: state.tax,
-                        quote: state.quote,
-                      ),
-                    ),
-                    SizedBox(height: spacing.xl),
-                  ],
-                ),
+                ],
               );
             },
           ),
         ),
         bottomNavigationBar: BlocBuilder<CheckoutBloc, CheckoutState>(
+          buildWhen: (prev, curr) {
+            if (prev.placing != curr.placing) return true;
+            if (curr.placing) return false;
+            return true;
+          },
           builder: (context, state) {
             final cart = state.cart;
             if (cart == null || cart.items.isEmpty) {
@@ -460,7 +579,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     return;
                   }
 
-                  if (s.shippingQuotes.isNotEmpty && s.selectedShippingMethodId == null) {
+                  if (s.shippingQuotes.isNotEmpty &&
+                      s.selectedShippingMethodId == null) {
                     await _scrollTo(_shippingSectionKey);
                     AppToast.error(context, l10n.checkoutSelectShipping);
                     return;

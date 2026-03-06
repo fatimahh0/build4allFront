@@ -2782,7 +2782,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get checkoutCouponInvalid => 'Coupon invalide';
 
   @override
-  String get checkoutCouponFailed => 'Impossible d’appliquer le coupon';
+  String get checkoutCouponFailed => 'Le coupon n\'a pas pu être appliqué.';
 
   @override
   String checkoutOrderPlacedWithCode(String code) {
@@ -2851,4 +2851,25 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get home_support_invalid_phone => 'Numéro du support invalide.';
+
+  @override
+  String get checkoutBlockedTitle => 'Paiement bloqué';
+
+  @override
+  String get adminTaxRuleRateMustBePositive => 'Le taux doit être supérieur à 0';
+
+  @override
+  String get adminTaxRuleRateTooHigh => 'Le taux ne peut pas dépasser 100 %';
+
+  @override
+  String get checkoutCouponExpired => 'Le coupon a expiré.';
+
+  @override
+  String get checkoutCouponUsageLimitReached => 'La limite d\'utilisation du coupon a été atteinte.';
+
+  @override
+  String get checkoutCouponMinimumNotReached => 'Le montant minimum requis pour ce coupon n\'a pas été atteint.';
+
+  @override
+  String get checkoutCouponDidNotAffectOrder => 'Le coupon n\'a eu aucun effet sur cette commande.';
 }

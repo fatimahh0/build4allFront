@@ -1,6 +1,8 @@
+// lib/features/cart/presentation/screens/cart_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:build4front/common/widgets/app_toast.dart';
 import 'package:build4front/core/config/env.dart';
 import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/l10n/app_localizations.dart';
@@ -51,15 +53,12 @@ class _CartScreenState extends State<CartScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.cart_title)),
       body: BlocConsumer<CartBloc, CartState>(
+        listenWhen: (previous, current) =>
+            previous.errorMessage != current.errorMessage &&
+            current.errorMessage != null &&
+            current.errorMessage!.trim().isNotEmpty,
         listener: (context, state) {
-          if (state.errorMessage != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.errorMessage!),
-                backgroundColor: Theme.of(context).colorScheme.error,
-              ),
-            );
-          }
+          AppToast.error(context, state.errorMessage!);
         },
         builder: (context, state) {
           if (state.isLoading && state.cart == null) {
@@ -89,12 +88,10 @@ class _CartScreenState extends State<CartScreen> {
               padding: EdgeInsets.all(spacing.lg),
               child: Column(
                 children: [
-                  // ✅ Banner when checkout blocked
                   if (!canCheckout && blockingErrors.isNotEmpty) ...[
                     _CheckoutBlockedBanner(errors: blockingErrors),
                     SizedBox(height: spacing.md),
                   ],
-
                   Expanded(
                     child: ListView.builder(
                       physics: const AlwaysScrollableScrollPhysics(),
@@ -104,7 +101,7 @@ class _CartScreenState extends State<CartScreen> {
 
                         return CartItemTile(
                           item: item,
-                          currencySymbol: cart.currencySymbol, // kept
+                          currencySymbol: cart.currencySymbol,
                           onRemove: () {
                             context.read<CartBloc>().add(
                                   CartItemRemoved(cartItemId: item.cartItemId),
@@ -122,46 +119,36 @@ class _CartScreenState extends State<CartScreen> {
                       },
                     ),
                   ),
-
                   SizedBox(height: spacing.md),
-
                   CartSummaryCard(
                     itemsTotal: cart.itemsTotal,
                     shippingTotal: cart.shippingTotal,
                     taxTotal: cart.taxTotal,
                     discountTotal: cart.discountTotal,
                     grandTotal: cart.grandTotal,
-                    currencySymbol: cart.currencySymbol, // kept
+                    currencySymbol: cart.currencySymbol,
                     isUpdating: state.isUpdating,
-
-                    // ✅ NEW
                     canCheckout: canCheckout,
                     blockingErrors: blockingErrors,
-
                     checkoutLabel: l10n.cart_checkout,
                     onCheckout: () {
-                      // hard guard: even if user taps fast
                       if (!canCheckout) {
                         final msg = blockingErrors.isNotEmpty
                             ? blockingErrors.first
                             : 'Fix your cart before checkout.';
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(msg),
-                            backgroundColor:
-                                Theme.of(context).colorScheme.error,
-                          ),
+                        AppToast.show(
+                          context,
+                          msg,
+                          isError: true,
                         );
                         return;
                       }
 
-                      final ownerId = int.tryParse(Env.ownerProjectLinkId) ?? 0;
                       final currencyId = int.tryParse(Env.currencyId) ?? 1;
 
                       Navigator.of(context).pushNamed(
                         '/checkout',
                         arguments: {
-                          
                           'currencyId': currencyId,
                         },
                       );
@@ -184,6 +171,7 @@ class _CheckoutBlockedBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final c = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final spacing = context.read<ThemeCubit>().state.tokens.spacing;
@@ -205,7 +193,7 @@ class _CheckoutBlockedBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Checkout blocked',
+                  l10n.checkoutBlockedTitle,
                   style: t.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                     color: c.error,
@@ -214,8 +202,9 @@ class _CheckoutBlockedBanner extends StatelessWidget {
                 SizedBox(height: spacing.xs),
                 Text(
                   errors.join('\n'),
-                  style: t.bodyMedium
-                      ?.copyWith(color: c.onSurface.withOpacity(0.85)),
+                  style: t.bodyMedium?.copyWith(
+                    color: c.onSurface.withOpacity(0.85),
+                  ),
                 ),
               ],
             ),
@@ -258,7 +247,9 @@ class _EmptyCartView extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: t.bodyLarge?.copyWith(color: c.onSurface.withOpacity(0.8)),
+              style: t.bodyLarge?.copyWith(
+                color: c.onSurface.withOpacity(0.8),
+              ),
             ),
             SizedBox(height: spacing.lg),
             SizedBox(

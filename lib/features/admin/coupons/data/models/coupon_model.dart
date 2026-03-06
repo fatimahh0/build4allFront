@@ -8,11 +8,20 @@ class CouponModel {
   final String discountType;
   final double discountValue;
   final int? maxUses;
+  final int usedCount;
+  final int? remainingUses;
   final double? minOrderAmount;
   final double? maxDiscountAmount;
   final DateTime? startsAt;
   final DateTime? expiresAt;
   final bool active;
+
+  // computed admin info
+  final bool started;
+  final bool expired;
+  final bool usageLimitReached;
+  final bool currentlyValid;
+  final String status;
 
   const CouponModel({
     required this.id,
@@ -22,11 +31,18 @@ class CouponModel {
     required this.discountType,
     required this.discountValue,
     required this.maxUses,
+    required this.usedCount,
+    required this.remainingUses,
     required this.minOrderAmount,
     required this.maxDiscountAmount,
     required this.startsAt,
     required this.expiresAt,
     required this.active,
+    required this.started,
+    required this.expired,
+    required this.usageLimitReached,
+    required this.currentlyValid,
+    required this.status,
   });
 
   factory CouponModel.fromJson(Map<String, dynamic> json) {
@@ -38,6 +54,8 @@ class CouponModel {
       discountType: (json['discountType'] ?? 'PERCENT') as String,
       discountValue: (json['discountValue'] as num?)?.toDouble() ?? 0.0,
       maxUses: json['maxUses'] as int?,
+      usedCount: (json['usedCount'] ?? 0) as int,
+      remainingUses: json['remainingUses'] as int?,
       minOrderAmount: (json['minOrderAmount'] as num?)?.toDouble(),
       maxDiscountAmount: (json['maxDiscountAmount'] as num?)?.toDouble(),
       startsAt: json['startsAt'] != null
@@ -47,6 +65,11 @@ class CouponModel {
           ? DateTime.parse(json['expiresAt'] as String)
           : null,
       active: (json['active'] ?? true) as bool,
+      started: (json['started'] ?? true) as bool,
+      expired: (json['expired'] ?? false) as bool,
+      usageLimitReached: (json['usageLimitReached'] ?? false) as bool,
+      currentlyValid: (json['currentlyValid'] ?? false) as bool,
+      status: (json['status'] ?? 'ACTIVE') as String,
     );
   }
 
@@ -88,11 +111,18 @@ class CouponModel {
       discountType: mapType(discountType),
       discountValue: discountValue,
       maxUses: maxUses,
+      usedCount: usedCount,
+      remainingUses: remainingUses,
       minOrderAmount: minOrderAmount,
       maxDiscountAmount: maxDiscountAmount,
       startsAt: startsAt,
       expiresAt: expiresAt,
       active: active,
+      started: started,
+      expired: expired,
+      usageLimitReached: usageLimitReached,
+      currentlyValid: currentlyValid,
+      status: status,
     );
   }
 
@@ -116,11 +146,18 @@ class CouponModel {
       discountType: mapType(c.discountType),
       discountValue: c.discountValue,
       maxUses: c.maxUses,
+      usedCount: c.usedCount,
+      remainingUses: c.remainingUses,
       minOrderAmount: c.minOrderAmount,
       maxDiscountAmount: c.maxDiscountAmount,
       startsAt: c.startsAt,
       expiresAt: c.expiresAt,
       active: c.active,
+      started: c.started,
+      expired: c.expired,
+      usageLimitReached: c.usageLimitReached,
+      currentlyValid: c.currentlyValid,
+      status: c.status,
     );
   }
 }

@@ -10,11 +10,20 @@ class Coupon extends Equatable {
   final CouponDiscountType discountType;
   final double discountValue;
   final int? maxUses;
+  final int usedCount;
+  final int? remainingUses;
   final double? minOrderAmount;
   final double? maxDiscountAmount;
   final DateTime? startsAt;
   final DateTime? expiresAt;
   final bool active;
+
+  // computed admin info
+  final bool started;
+  final bool expired;
+  final bool usageLimitReached;
+  final bool currentlyValid;
+  final String status;
 
   const Coupon({
     required this.id,
@@ -24,11 +33,18 @@ class Coupon extends Equatable {
     required this.discountType,
     required this.discountValue,
     required this.maxUses,
+    required this.usedCount,
+    required this.remainingUses,
     required this.minOrderAmount,
     required this.maxDiscountAmount,
     required this.startsAt,
     required this.expiresAt,
     required this.active,
+    required this.started,
+    required this.expired,
+    required this.usageLimitReached,
+    required this.currentlyValid,
+    required this.status,
   });
 
   Coupon copyWith({
@@ -39,11 +55,18 @@ class Coupon extends Equatable {
     CouponDiscountType? discountType,
     double? discountValue,
     int? maxUses,
+    int? usedCount,
+    int? remainingUses,
     double? minOrderAmount,
     double? maxDiscountAmount,
     DateTime? startsAt,
     DateTime? expiresAt,
     bool? active,
+    bool? started,
+    bool? expired,
+    bool? usageLimitReached,
+    bool? currentlyValid,
+    String? status,
   }) {
     return Coupon(
       id: id ?? this.id,
@@ -53,27 +76,41 @@ class Coupon extends Equatable {
       discountType: discountType ?? this.discountType,
       discountValue: discountValue ?? this.discountValue,
       maxUses: maxUses ?? this.maxUses,
+      usedCount: usedCount ?? this.usedCount,
+      remainingUses: remainingUses ?? this.remainingUses,
       minOrderAmount: minOrderAmount ?? this.minOrderAmount,
       maxDiscountAmount: maxDiscountAmount ?? this.maxDiscountAmount,
       startsAt: startsAt ?? this.startsAt,
       expiresAt: expiresAt ?? this.expiresAt,
       active: active ?? this.active,
+      started: started ?? this.started,
+      expired: expired ?? this.expired,
+      usageLimitReached: usageLimitReached ?? this.usageLimitReached,
+      currentlyValid: currentlyValid ?? this.currentlyValid,
+      status: status ?? this.status,
     );
   }
 
   @override
   List<Object?> get props => [
-    id,
-    ownerProjectId,
-    code,
-    description,
-    discountType,
-    discountValue,
-    maxUses,
-    minOrderAmount,
-    maxDiscountAmount,
-    startsAt,
-    expiresAt,
-    active,
-  ];
+        id,
+        ownerProjectId,
+        code,
+        description,
+        discountType,
+        discountValue,
+        maxUses,
+        usedCount,
+        remainingUses,
+        minOrderAmount,
+        maxDiscountAmount,
+        startsAt,
+        expiresAt,
+        active,
+        started,
+        expired,
+        usageLimitReached,
+        currentlyValid,
+        status,
+      ];
 }
