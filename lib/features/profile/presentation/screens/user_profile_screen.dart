@@ -12,7 +12,7 @@ import 'package:build4front/core/network/globals.dart' as g;
 import 'package:build4front/core/utils/jwt_utils.dart';
 import 'package:build4front/features/auth/data/services/auth_token_store.dart';
 
-// ✅ Auth bloc patch imports
+// Auth bloc patch imports
 import 'package:build4front/features/auth/presentation/login/bloc/auth_bloc.dart';
 import 'package:build4front/features/auth/presentation/login/bloc/auth_event.dart';
 
@@ -46,14 +46,15 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   final AuthTokenStore _store = const AuthTokenStore();
 
   bool _hydrating = true;
+  bool _hydratingNow = false;
 
   String _effectiveToken = '';
   int _effectiveUserId = 0;
 
-  // ✅ multi-tenant ownerProjectLinkId
+  // multi-tenant ownerProjectLinkId
   int _effectiveOwnerProjectLinkId = 0;
 
-  // ✅ guard to prevent spam reloads
+  // guard to prevent spam reloads
   String _lastToken = '';
   int _lastUserId = 0;
   int _lastOwnerId = 0;
@@ -92,61 +93,70 @@ class _UserProfileScreenState extends State<UserProfileScreen>
 
   String _stripBearer(String t) {
     final s = t.trim();
-    if (s.toLowerCase().startsWith('bearer ')) return s.substring(7).trim();
+    if (s.toLowerCase().startsWith('bearer ')) {
+      return s.substring(7).trim();
+    }
     return s;
   }
 
   int _envOwnerId() => int.tryParse(Env.ownerProjectLinkId) ?? 0;
 
   Future<void> _hydrateSession() async {
-    setState(() => _hydrating = true);
+    if (_hydratingNow) return;
+    _hydratingNow = true;
 
-    final tWidget = widget.token.trim();
-    final tGlobal = g.readAuthToken().trim();
-    final tStored = (await _store.getToken())?.trim() ?? '';
-
-    // ✅ stored before global to avoid wrong token from another app/session
-    final tokenFull = _firstNonEmpty([tWidget, tStored, tGlobal]);
-    final tokenRaw = _stripBearer(tokenFull);
-
-    // ✅ ALWAYS take userId from token first
-    int id = 0;
-    if (tokenRaw.isNotEmpty) {
-      id = JwtUtils.userIdFromToken(tokenRaw) ?? 0;
+    if (mounted) {
+      setState(() => _hydrating = true);
     }
 
-    if (id <= 0) id = widget.userId;
+    try {
+      final tWidget = widget.token.trim();
+      final tGlobal = g.readAuthToken().trim();
+      final tStored = (await _store.getToken())?.trim() ?? '';
 
-    if (id <= 0) {
-      final storedId = await _store.getUserId();
-      if (storedId > 0) id = storedId;
+      // latest token first
+      final tokenFull = _firstNonEmpty([tStored, tGlobal, tWidget]);
+      final tokenRaw = _stripBearer(tokenFull);
+
+      int id = 0;
+
+      // always take userId from token first
+      if (tokenRaw.isNotEmpty) {
+        id = JwtUtils.userIdFromToken(tokenRaw) ?? 0;
+      }
+
+      if (id <= 0) id = widget.userId;
+
+      if (id <= 0) {
+        final storedId = await _store.getUserId();
+        if (storedId > 0) id = storedId;
+      }
+
+      if (id <= 0) {
+        final uj = await _store.getUserJson();
+        final v = uj?['id'];
+        if (v is num) id = v.toInt();
+        if (v is String) id = int.tryParse(v.trim()) ?? 0;
+      }
+
+      // keep global token synced
+      if (tokenFull.isNotEmpty) {
+        g.setAuthToken(tokenFull);
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _effectiveToken = tokenRaw;
+        _effectiveUserId = id;
+        _effectiveOwnerProjectLinkId = _envOwnerId();
+        _hydrating = false;
+      });
+
+      _kickLoadIfNeeded();
+    } finally {
+      _hydratingNow = false;
     }
-
-    if (id <= 0) {
-      final uj = await _store.getUserJson();
-      final v = uj?['id'];
-      if (v is num) id = v.toInt();
-      if (v is String) id = int.tryParse(v.trim()) ?? 0;
-    }
-
-    // keep global token synced
-    if (tokenFull.isNotEmpty) {
-      g.setAuthToken(tokenFull);
-    }
-
-    if (!mounted) return;
-
-    setState(() {
-      _effectiveToken = tokenRaw;
-      _effectiveUserId = id;
-
-      // ✅ start with env ownerId; lock later if backend returns real one
-      _effectiveOwnerProjectLinkId = _envOwnerId();
-
-      _hydrating = false;
-    });
-
-    _kickLoadIfNeeded();
   }
 
   void _kickLoadIfNeeded() {
@@ -164,13 +174,33 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     _lastUserId = id;
     _lastOwnerId = ownerId;
 
-    context.read<UserProfileBloc>().add(LoadUserProfile(token, id));
+    if (!mounted) return;
+
+    context.read<UserProfileBloc>().add(
+          LoadUserProfile(_effectiveToken, _effectiveUserId),
+        );
   }
 
-  void _goToLogin(BuildContext context) {
+  Future<void> _retryProfileLoad() async {
+    await _hydrateSession();
+    if (!mounted) return;
+
+    if (_effectiveToken.isEmpty || _effectiveUserId <= 0) return;
+
+    context.read<UserProfileBloc>().add(
+          LoadUserProfile(_effectiveToken, _effectiveUserId),
+        );
+  }
+
+  void _goToLogin() {
+    if (!mounted) return;
     _resetSessionUi();
     widget.onLogout();
-    Navigator.pushNamedAndRemoveUntil(context, AppRouter.startup, (_) => false);
+    Navigator.pushNamedAndRemoveUntil(
+      this.context,
+      AppRouter.startup,
+      (_) => false,
+    );
   }
 
   void _patchAuthFromProfile(UserProfileLoaded st) {
@@ -188,35 +218,37 @@ class _UserProfileScreenState extends State<UserProfileScreen>
         );
   }
 
-  Future<void> _goToEditProfile(
-      BuildContext context, int ownerProjectLinkId) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-       builder: (_) => EditProfileScreen(
-  userId: _effectiveUserId,
-  token: _effectiveToken,
-  ownerProjectLinkId: ownerProjectLinkId,
-  onLogoutAfterDelete: () => _goToLogin(context), // does logout + clear token
-),
+ Future<void> _goToEditProfile(int ownerProjectLinkId) async {
+  final navigator = Navigator.of(this.context);
 
+  await navigator.push(
+    MaterialPageRoute(
+      builder: (_) => EditProfileScreen(
+        userId: _effectiveUserId,
+        token: _effectiveToken,
+        ownerProjectLinkId: ownerProjectLinkId,
+        onLogoutAfterDelete: _goToLogin,
       ),
-    );
+    ),
+  );
 
-    if (!mounted) return;
+  if (!mounted) return;
 
-    context.read<UserProfileBloc>().add(
-          LoadUserProfile(
-              _effectiveToken, _effectiveUserId),
-        );
-  }
+  await _hydrateSession();
+  if (!mounted) return;
 
+  this.context.read<UserProfileBloc>().add(
+        LoadUserProfile(_effectiveToken, _effectiveUserId),
+      );
+}
   @override
   Widget build(BuildContext context) {
     final tr = AppLocalizations.of(context)!;
 
     if (_hydrating) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     if (_effectiveToken.isEmpty || _effectiveUserId <= 0) {
@@ -236,7 +268,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                 ),
                 const SizedBox(height: 12),
                 FilledButton.icon(
-                  onPressed: () => _goToLogin(context),
+                  onPressed: _goToLogin,
                   icon: const Icon(Icons.login),
                   label: Text(tr.login),
                 ),
@@ -252,12 +284,13 @@ class _UserProfileScreenState extends State<UserProfileScreen>
         if (state is UserProfileLoaded) {
           _patchAuthFromProfile(state);
 
-          // If backend returns a real owner id, lock it and reload once
+          // if backend returns a real owner id, lock it and reload once
           final realOwnerId = state.user.ownerProjectLinkId;
           if (realOwnerId > 0 && realOwnerId != _effectiveOwnerProjectLinkId) {
             setState(() => _effectiveOwnerProjectLinkId = realOwnerId);
-            WidgetsBinding.instance
-                .addPostFrameCallback((_) => _kickLoadIfNeeded());
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _kickLoadIfNeeded();
+            });
           }
         }
       },
@@ -298,14 +331,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                     ),
                     const SizedBox(height: 12),
                     FilledButton.icon(
-                      onPressed: loginRequired
-                          ? () => _goToLogin(context)
-                          : () => context.read<UserProfileBloc>().add(
-                                LoadUserProfile(
-                                  _effectiveToken,
-                                  _effectiveUserId,
-                                ),
-                              ),
+                      onPressed: loginRequired ? _goToLogin : _retryProfileLoad,
                       icon: Icon(loginRequired ? Icons.login : Icons.refresh),
                       label: Text(loginRequired ? tr.login : tr.retry),
                     ),
@@ -331,7 +357,6 @@ class _UserProfileScreenState extends State<UserProfileScreen>
           final user = state.user;
           final theme = Theme.of(context);
 
-          // ✅ CRITICAL FIX: do NOT trust user.ownerProjectLinkId
           final ownerId = _effectiveOwnerProjectLinkId > 0
               ? _effectiveOwnerProjectLinkId
               : _envOwnerId();
@@ -350,7 +375,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                     context,
                     icon: Icons.edit,
                     title: tr.editProfileTitle,
-                    onTap: () => _goToEditProfile(context, ownerId),
+                    onTap: () => _goToEditProfile(ownerId),
                   ),
                   _tile(
                     context,
@@ -381,7 +406,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                     context,
                     icon: Icons.logout,
                     title: tr.logout,
-                    onTap: () => _confirmLogout(context),
+                    onTap: _confirmLogout,
                   ),
                   const SizedBox(height: 8),
                   ExpansionTile(
@@ -392,27 +417,25 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                         context,
                         icon: Icons.power_settings_new,
                         title: tr.setInactive,
-                       onTap: () async {
-  final ok = await showDialog<bool>(
-    context: context,
-    barrierDismissible: false,
-    useRootNavigator: false, // ✅ IMPORTANT: keep same navigator tree
-    builder: (_) => BlocProvider.value(
-      value: context.read<UserProfileBloc>(), // ✅ inject existing bloc
-      child: DeactivateUserDialog(
-        token: _effectiveToken,
-        userId: _effectiveUserId,
-        ownerProjectLinkId: ownerId,
-      ),
-    ),
-  );
+                        onTap: () async {
+                          final ok = await showDialog<bool>(
+                            context: context,
+                            barrierDismissible: false,
+                            useRootNavigator: false,
+                            builder: (_) => BlocProvider.value(
+                              value: context.read<UserProfileBloc>(),
+                              child: DeactivateUserDialog(
+                                token: _effectiveToken,
+                                userId: _effectiveUserId,
+                                ownerProjectLinkId: ownerId,
+                              ),
+                            ),
+                          );
 
-  // ✅ After success, logout + navigate away.
-  if (ok == true) {
-    _goToLogin(context);
-  }
-},
-
+                          if (ok == true) {
+                            _goToLogin();
+                          }
+                        },
                       ),
                     ],
                   ),
@@ -422,8 +445,6 @@ class _UserProfileScreenState extends State<UserProfileScreen>
           );
         }
 
-        WidgetsBinding.instance
-            .addPostFrameCallback((_) => _kickLoadIfNeeded());
         return const Scaffold(body: SizedBox.shrink());
       },
     );
@@ -492,12 +513,12 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     );
   }
 
-  Future<void> _confirmLogout(BuildContext context) async {
+  Future<void> _confirmLogout() async {
     final tr = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
 
     final confirmed = await showDialog<bool>(
-      context: context,
+      context: this.context,
       builder: (ctx) => AlertDialog(
         title: Text(tr.logout),
         content: Text(tr.profileLogoutConfirm),

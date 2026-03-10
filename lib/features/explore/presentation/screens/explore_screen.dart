@@ -393,7 +393,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             CartAddItemRequested(itemId: item.id, quantity: 1),
           );
 
-      AppToast.show(context, l10n.cart_item_added_snackbar);
+      AppToast.info(context, l10n.cart_item_added_snackbar);
       return;
     }
 

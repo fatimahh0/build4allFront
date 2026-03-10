@@ -199,7 +199,7 @@ class _OwnerPaymentConfigViewState extends State<_OwnerPaymentConfigView> {
                                   ),
                                 );
 
-                            AppToast.error(context, l10n.paymentSavedKeepHint);
+                            AppToast.success(context, l10n.paymentSavedKeepHint);
                           },
                           onConfigure: () async {
                             if (saving) return;
@@ -231,7 +231,7 @@ class _OwnerPaymentConfigViewState extends State<_OwnerPaymentConfigView> {
                                   ),
                                 );
 
-                            AppToast.error(context, l10n.paymentSavedKeepHint);
+                            AppToast.success(context, l10n.paymentSavedKeepHint);
                           },
                         );
                       },

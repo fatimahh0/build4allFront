@@ -241,7 +241,7 @@ class _UserCompleteProfileScreenState extends State<UserCompleteProfileScreen> {
         return;
       }
 
-      AppToast.error(
+      AppToast.success(
         context,
         l10n.profileCompletedSuccessMessage,
        

@@ -2,7 +2,6 @@
 import 'package:build4front/features/cart/data/services/cart_api_service.dart';
 import 'package:build4front/features/cart/domain/entities/cart.dart';
 import 'package:build4front/features/cart/domain/entities/cart_item.dart';
-
 import 'package:build4front/features/cart/domain/repositories/cart_repository.dart';
 
 import '../models/cart_model.dart';
@@ -13,7 +12,7 @@ class CartRepositoryImpl implements CartRepository {
 
   CartRepositoryImpl(this.api);
 
- Cart _mapCart(CartModel model) {
+  Cart _mapCart(CartModel model) {
     return Cart(
       id: model.cartId,
       status: model.status,
@@ -24,8 +23,6 @@ class CartRepositoryImpl implements CartRepository {
       grandTotal: model.grandTotal,
       currencySymbol: model.currencySymbol,
       items: model.items.map(_mapCartItem).toList(),
-
-      // ✅ NEW
       canCheckout: model.canCheckout,
       blockingErrors: model.blockingErrors,
       checkoutTotalPrice: model.checkoutTotalPrice,
@@ -41,14 +38,17 @@ class CartRepositoryImpl implements CartRepository {
       quantity: m.quantity,
       unitPrice: m.unitPrice,
       lineTotal: m.lineTotal,
-
-      // ✅ NEW
       availableStock: m.availableStock,
       outOfStock: m.outOfStock,
       quantityExceedsStock: m.quantityExceedsStock,
       maxAllowedQuantity: m.maxAllowedQuantity,
       disabled: m.disabled,
       blockingReason: m.blockingReason,
+
+      // ✅ NEW
+      isUpcoming: m.isUpcoming,
+      statusCode: m.statusCode,
+      statusName: m.statusName,
     );
   }
 

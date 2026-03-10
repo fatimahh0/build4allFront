@@ -72,7 +72,7 @@ class _ForgotPasswordNewPasswordScreenState
             );
           }
           if (state.successMessage != null) {
-            AppToast.error(ctx, state.successMessage!);
+            AppToast.success(ctx, state.successMessage!);
             // ✅ back to login
             Navigator.of(ctx).popUntil((r) => r.isFirst);
             ctx.read<ForgotPasswordBloc>().add(const ForgotClearMessage());

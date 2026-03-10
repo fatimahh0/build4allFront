@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'cart_event.dart';
 import 'cart_state.dart';
 
+import 'package:build4front/features/cart/domain/entities/cart_item.dart';
 import 'package:build4front/features/cart/domain/usecases/get_my_cart.dart';
 import 'package:build4front/features/cart/domain/usecases/add_to_cart.dart';
 import 'package:build4front/features/cart/domain/usecases/update_cart_item.dart';
@@ -74,6 +75,24 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     }
 
     return 'Something went wrong. Please try again.';
+  }
+
+  CartItem? _findCartItemByCartItemId(int cartItemId) {
+    final cart = state.cart;
+    if (cart == null) return null;
+
+    for (final item in cart.items) {
+      if (item.cartItemId == cartItemId) return item;
+    }
+    return null;
+  }
+
+  String _itemBlockedMessage(CartItem item) {
+    final raw = (item.effectiveBlockingReason ?? '').trim();
+    if (raw.isNotEmpty) return raw;
+    if (item.isComingSoon) return 'Coming Soon';
+    if (item.outOfStock) return 'Out of stock';
+    return 'This item cannot be updated.';
   }
 
   Future<void> _safeLoad(
@@ -170,6 +189,44 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     CartItemQuantityChanged event,
     Emitter<CartState> emit,
   ) async {
+    final target = _findCartItemByCartItemId(event.cartItemId);
+
+    if (target != null && target.isBlockedInCart) {
+      emit(
+        state.copyWith(
+          isUpdating: false,
+          errorMessage: _itemBlockedMessage(target),
+          lastMessage: null,
+        ),
+      );
+      return;
+    }
+
+    if (event.quantity < 1) {
+      emit(
+        state.copyWith(
+          isUpdating: false,
+          errorMessage: 'Invalid quantity.',
+          lastMessage: null,
+        ),
+      );
+      return;
+    }
+
+    if (target != null &&
+        target.maxAllowedQuantity != null &&
+        event.quantity > target.maxAllowedQuantity!) {
+      emit(
+        state.copyWith(
+          isUpdating: false,
+          errorMessage: target.effectiveBlockingReason ??
+              'You cannot increase beyond the allowed quantity.',
+          lastMessage: null,
+        ),
+      );
+      return;
+    }
+
     try {
       emit(
         state.copyWith(

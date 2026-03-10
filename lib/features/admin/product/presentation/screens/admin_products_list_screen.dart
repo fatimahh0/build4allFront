@@ -222,7 +222,7 @@ class _AdminProductsListViewState extends State<_AdminProductsListView> {
       Navigator.of(context).pop();
       await _reload();
 
-      AppToast.show(context, l10n.adminProductDeleteSuccess);
+      AppToast.success(context, l10n.adminProductDeleteSuccess);
     } catch (e) {
       if (!context.mounted) return;
 

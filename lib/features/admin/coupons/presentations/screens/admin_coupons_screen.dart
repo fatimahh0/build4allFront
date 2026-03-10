@@ -121,7 +121,7 @@ class _AdminCouponsScreenState extends State<AdminCouponsScreen> {
                 break;
             }
             if (text.isNotEmpty) {
-              AppToast.show(context, text);
+              AppToast.info(context, text);
             }
           }
 

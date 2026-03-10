@@ -54,6 +54,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Future<void> _scrollTo(GlobalKey key) async {
     final ctx = key.currentContext;
     if (ctx == null) return;
+
     await Scrollable.ensureVisible(
       ctx,
       duration: const Duration(milliseconds: 260),
@@ -193,7 +194,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         if (summary != null) {
           final code = (summary.orderCode ?? '').trim();
 
-          AppToast.show(
+          AppToast.success(
             context,
             code.isNotEmpty
                 ? l10n.checkoutOrderPlacedWithCode(code)
@@ -202,10 +203,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
           final backendMsg = (summary.message ?? '').trim();
           if (backendMsg.isNotEmpty) {
-            AppToast.show(
+            AppToast.error(
               context,
               _localizeBackendCheckoutMessage(l10n, backendMsg),
-              isError: true,
             );
           }
 
@@ -314,7 +314,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 );
               }
 
-              final applied = state.coupon.trim();
+              final draftCoupon = state.couponDraft.trim();
+              final appliedCoupon = state.coupon.trim();
+              final lastAttemptCoupon = state.lastCouponAttempt.trim();
               final quote = state.quote;
 
               final rawCouponErr = (state.couponError ?? '').trim();
@@ -322,42 +324,57 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ? ''
                   : _localizeCouponError(l10n, rawCouponErr);
 
-              final rawBackendMsg = (state.orderSummary?.message ?? '').trim();
-              final backendCouponMsg = rawBackendMsg.isEmpty
-                  ? ''
-                  : _localizeBackendCheckoutMessage(l10n, rawBackendMsg);
+              final isEditingNewCoupon =
+                  draftCoupon.isNotEmpty &&
+                  appliedCoupon.isNotEmpty &&
+                  draftCoupon.toUpperCase() != appliedCoupon.toUpperCase();
 
-              final backendRejectedCoupon =
-                  rawBackendMsg.toLowerCase().contains('coupon was not applied');
+              final feedbackCoupon = state.quoting
+                  ? (draftCoupon.isNotEmpty
+                      ? draftCoupon
+                      : (appliedCoupon.isNotEmpty
+                          ? appliedCoupon
+                          : lastAttemptCoupon))
+                  : (appliedCoupon.isNotEmpty
+                      ? appliedCoupon
+                      : (lastAttemptCoupon.isNotEmpty
+                          ? lastAttemptCoupon
+                          : draftCoupon));
+
+              final quoteCouponCode = (quote?.couponCode ?? '').trim();
 
               bool? couponValid;
               String? couponMsg;
 
-              if (applied.isNotEmpty) {
+              final hasCouponState =
+                  feedbackCoupon.isNotEmpty ||
+                  rawCouponErr.isNotEmpty ||
+                  state.quoting ||
+                  quoteCouponCode.isNotEmpty;
+
+              if (!isEditingNewCoupon && hasCouponState) {
                 if (state.quoting) {
                   couponValid = null;
                   couponMsg = l10n.checkoutCouponChecking;
                 } else if (couponErrMsg.isNotEmpty) {
                   couponValid = false;
                   couponMsg = couponErrMsg;
-                } else if (backendRejectedCoupon) {
-                  couponValid = false;
-                  couponMsg = backendCouponMsg;
                 } else if (quote != null) {
-                  final qCode = (quote.couponCode ?? '').trim();
-                  final same =
-                      qCode.isNotEmpty && qCode.toUpperCase() == applied.toUpperCase();
+                  final same = feedbackCoupon.isNotEmpty &&
+                      quoteCouponCode.isNotEmpty &&
+                      quoteCouponCode.toUpperCase() == feedbackCoupon.toUpperCase();
 
-                  final disc = quote.couponDiscount ?? 0.0;
+                  final disc = (quote.couponDiscount ?? 0.0).toDouble();
 
                   if (same && disc > 0) {
                     couponValid = true;
-                    couponMsg =
-                        l10n.checkoutCouponAppliedDiscount(money(context, disc));
-                  } else if (same && disc <= 0) {
+                    couponMsg = l10n.checkoutCouponAppliedDiscount(
+                      money(context, disc),
+                    );
+                  } else if (same) {
                     couponValid = false;
-                    couponMsg = l10n.checkoutCouponFailed;
-                  } else {
+                    couponMsg = l10n.checkoutCouponDidNotAffectOrder;
+                  } else if (feedbackCoupon.isNotEmpty) {
                     couponValid = false;
                     couponMsg = l10n.checkoutCouponInvalid;
                   }

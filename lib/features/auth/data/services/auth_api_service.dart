@@ -605,32 +605,7 @@ Future<http.Response> _safePost(
   }
 
   try {
-    var resp = await doPost(headers);
-
-    // ✅ try refresh once on 401/403 (but never for /refresh itself)
-    final isRefreshCall = uri.path.contains('/api/auth/refresh');
-    if (!isRefreshCall && (resp.statusCode == 401 || resp.statusCode == 403)) {
-      try {
-        await refreshSession();
-
-        final access = (await _tokenStore.getToken())?.trim() ?? '';
-        final auth = access.isEmpty
-            ? null
-            : (access.toLowerCase().startsWith('bearer ')
-                ? access
-                : 'Bearer $access');
-
-        final retryHeaders = <String, String>{
-          ...?headers,
-          if (auth != null) 'Authorization': auth,
-        };
-
-        resp = await doPost(retryHeaders);
-      } catch (_) {
-        // ignore refresh failure, return original resp
-      }
-    }
-
+    final resp = await doPost(headers);
     return resp;
   } on SocketException catch (e) {
     throw NetworkException('No internet connection', original: e);
@@ -640,7 +615,6 @@ Future<http.Response> _safePost(
     throw NetworkException('Network error', original: e);
   }
 }
-
   Future<http.Response> _safeSend(http.BaseRequest request) async {
     try {
       final streamed =

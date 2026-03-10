@@ -167,7 +167,7 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
             await authApi.reactivateUser();
             if (!mounted) return;
 
-            AppToast.error(context, 'Account restored successfully');
+            AppToast.success(context, 'Account restored successfully');
             await _hydrateUserAuth(false);
             await _roleStore.saveRole('user');
             _goToUserHome(context);
@@ -190,7 +190,7 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
             await authApi.reactivateUser();
             if (!mounted) return;
 
-            AppToast.error(context, l10n.loginInactiveSuccess);
+            AppToast.success(context, l10n.loginInactiveSuccess);
             await _hydrateUserAuth(true);
             await _roleStore.saveRole('user');
             _goToUserHome(context);

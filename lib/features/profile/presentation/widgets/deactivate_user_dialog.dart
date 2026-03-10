@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:build4front/l10n/app_localizations.dart';
@@ -22,6 +23,7 @@ class DeactivateUserDialog extends StatefulWidget {
 
 class _DeactivateUserDialogState extends State<DeactivateUserDialog> {
   final _ctrl = TextEditingController();
+
   bool _busy = false;
   String? _error;
 
@@ -31,6 +33,37 @@ class _DeactivateUserDialogState extends State<DeactivateUserDialog> {
     super.dispose();
   }
 
+  String _extractErrorMessage(dynamic error, AppLocalizations tr) {
+    if (error is DioException) {
+      final data = error.response?.data;
+
+      if (data is Map<String, dynamic>) {
+        final backendError = data['error'];
+        final backendMessage = data['message'];
+
+        if (backendError is String && backendError.trim().isNotEmpty) {
+          return backendError.trim();
+        }
+
+        if (backendMessage is String && backendMessage.trim().isNotEmpty) {
+          return backendMessage.trim();
+        }
+      }
+
+      if (data is String && data.trim().isNotEmpty) {
+        return data.trim();
+      }
+
+      return tr.profile_load_error;
+    }
+
+    if (error is String && error.trim().isNotEmpty) {
+      return error.trim();
+    }
+
+    return tr.profile_load_error;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -38,24 +71,61 @@ class _DeactivateUserDialogState extends State<DeactivateUserDialog> {
 
     return AlertDialog(
       title: Text(tr.deactivate_title),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(tr.deactivate_warning),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _ctrl,
-            obscureText: true,
-            decoration: InputDecoration(
-              labelText: tr.current_password_label,
-              errorText: _error,
-              filled: true,
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(tr.deactivate_warning),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _ctrl,
+              obscureText: true,
+              enabled: !_busy,
+              decoration: InputDecoration(
+                labelText: tr.current_password_label,
+                hintText: tr.current_password_label,
+                filled: true,
+                border: const OutlineInputBorder(),
+              ),
+              onChanged: (_) {
+                if (_error != null) {
+                  setState(() => _error = null);
+                }
+              },
+              onSubmitted: (_) => _submit(context),
             ),
-            onSubmitted: (_) => _submit(context),
-          ),
-          if (_busy) const SizedBox(height: 8),
-          if (_busy) const LinearProgressIndicator(minHeight: 2),
-        ],
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.error.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: theme.colorScheme.error.withOpacity(0.35),
+                  ),
+                ),
+                child: Text(
+                  _error!,
+                  style: TextStyle(
+                    color: theme.colorScheme.error,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+            if (_busy) ...[
+              const SizedBox(height: 12),
+              const LinearProgressIndicator(minHeight: 2),
+            ],
+          ],
+        ),
       ),
       actions: [
         TextButton(
@@ -90,20 +160,26 @@ class _DeactivateUserDialogState extends State<DeactivateUserDialog> {
     try {
       final bloc = context.read<UserProfileBloc>();
 
-      // ✅ WAIT for real response (don’t close on failure)
       await bloc.updateStatusDirect(
         token: widget.token,
         userId: widget.userId,
         status: 'INACTIVE',
-        
         password: pwd,
       );
 
-      if (mounted) Navigator.pop(context, true);
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (!mounted) return;
+
+      setState(() {
+        _error = _extractErrorMessage(e, tr);
+      });
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+      }
     }
   }
 }

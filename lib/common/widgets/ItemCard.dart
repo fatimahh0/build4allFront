@@ -76,22 +76,60 @@ class ItemCard extends StatelessWidget {
         final bool compact = maxW <= 230;
         final bool veryCompact = maxW <= 210;
 
-        final double contentPad = veryCompact
-            ? cardTokens.padding * 0.72
-            : (compact ? cardTokens.padding * 0.82 : cardTokens.padding);
+        // ✅ In your project product cards use BoxFit.contain
+        final bool isProductCard = imageFit == BoxFit.contain;
 
-        final double ctaH = veryCompact ? 34 : (compact ? 36 : 40);
-        final double aiBtnH = veryCompact ? 34 : (compact ? 36 : 40);
+        // ✅ Keep activities pinned nicely, but do NOT create huge mid-card gap for products
+        final bool pinBottomActions = boundedH && !isProductCard;
 
-        final double gapXS = veryCompact ? (spacing.xs * 0.6) : spacing.xs;
-        final double gapSM = veryCompact
-            ? (spacing.sm * 0.65)
-            : (compact ? (spacing.sm * 0.85) : spacing.sm);
+        final double contentPad = isProductCard
+            ? (veryCompact
+                ? cardTokens.padding * 0.62
+                : (compact
+                    ? cardTokens.padding * 0.72
+                    : cardTokens.padding * 0.82))
+            : (veryCompact
+                ? cardTokens.padding * 0.72
+                : (compact
+                    ? cardTokens.padding * 0.82
+                    : cardTokens.padding));
+
+        final double ctaH = isProductCard
+            ? (veryCompact ? 32 : (compact ? 34 : 36))
+            : (veryCompact ? 34 : (compact ? 36 : 40));
+
+        final double aiBtnH = isProductCard
+            ? (veryCompact ? 32 : (compact ? 34 : 36))
+            : (veryCompact ? 34 : (compact ? 36 : 40));
+
+        final double gapXS = isProductCard
+            ? (veryCompact ? (spacing.xs * 0.45) : (spacing.xs * 0.7))
+            : (veryCompact ? (spacing.xs * 0.6) : spacing.xs);
+
+        final double gapSM = isProductCard
+            ? (veryCompact
+                ? (spacing.sm * 0.45)
+                : (compact ? (spacing.sm * 0.6) : (spacing.sm * 0.72)))
+            : (veryCompact
+                ? (spacing.sm * 0.65)
+                : (compact ? (spacing.sm * 0.85) : spacing.sm));
 
         final double imgH = boundedH
-            ? (constraints.maxHeight * (veryCompact ? 0.32 : 0.34))
-                .clamp(92.0, 135.0)
-            : (veryCompact ? 92.0 : (compact ? 105.0 : 125.0));
+            ? (constraints.maxHeight *
+                    (isProductCard
+                        ? (veryCompact ? 0.22 : 0.25)
+                        : (veryCompact ? 0.32 : 0.34)))
+                .clamp(
+                  isProductCard ? 74.0 : 92.0,
+                  isProductCard ? 108.0 : 135.0,
+                )
+            : (isProductCard
+                ? (veryCompact ? 74.0 : (compact ? 86.0 : 98.0))
+                : (veryCompact ? 92.0 : (compact ? 105.0 : 125.0)));
+
+        final EdgeInsets imageInnerPadding = isProductCard
+            ? EdgeInsets.all(veryCompact ? 6 : 8)
+            : EdgeInsets.zero;
 
         final ButtonStyle ctaStyle = ButtonStyle(
           padding: MaterialStateProperty.all(EdgeInsets.zero),
@@ -116,6 +154,7 @@ class ItemCard extends StatelessWidget {
         );
 
         Widget contentColumn = Column(
+          mainAxisSize: pinBottomActions ? MainAxisSize.max : MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -123,7 +162,7 @@ class ItemCard extends StatelessWidget {
               style: t.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w800,
               ),
-              maxLines: 2,
+              maxLines: isProductCard ? 2 : 2,
               overflow: TextOverflow.ellipsis,
             ),
 
@@ -134,7 +173,7 @@ class ItemCard extends StatelessWidget {
                 style: t.bodySmall?.copyWith(
                   color: c.onSurface.withOpacity(0.75),
                 ),
-                maxLines: 3,
+                maxLines: isProductCard ? 2 : 3,
                 overflow: TextOverflow.ellipsis,
               ),
             ],
@@ -172,7 +211,7 @@ class ItemCard extends StatelessWidget {
                       style: t.bodySmall?.copyWith(
                         color: c.onSurface.withOpacity(0.6),
                       ),
-                      maxLines: 2,
+                      maxLines: isProductCard ? 1 : 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -180,7 +219,7 @@ class ItemCard extends StatelessWidget {
               ),
             ],
 
-            if (boundedH) const Spacer(),
+            if (pinBottomActions) const Spacer(),
 
             ValueListenableBuilder<bool>(
               valueListenable: net.aiEnabledNotifier,
@@ -190,7 +229,7 @@ class ItemCard extends StatelessWidget {
 
                 return Padding(
                   padding: EdgeInsets.only(
-                    top: boundedH ? 0 : gapSM,
+                    top: pinBottomActions ? 0 : gapSM,
                     bottom: hasCta ? gapXS : 0,
                   ),
                   child: SizedBox(
@@ -225,6 +264,7 @@ class ItemCard extends StatelessWidget {
                             cardTokens.radius / 1.5,
                           ),
                         ),
+                        padding: EdgeInsets.zero,
                       ),
                       icon: Icon(
                         Icons.auto_awesome,
@@ -307,20 +347,23 @@ class ItemCard extends StatelessWidget {
                               resolvedImageUrl!.isNotEmpty)
                             Container(
                               color: c.surface,
-                              child: Image.network(
-                                resolvedImageUrl!,
-                                fit: imageFit,
-                                errorBuilder: (_, __, ___) {
-                                  return Container(
-                                    color: c.surface,
-                                    alignment: Alignment.center,
-                                    child: Icon(
-                                      Icons.broken_image_outlined,
-                                      color: c.error,
-                                      size: 30,
-                                    ),
-                                  );
-                                },
+                              child: Padding(
+                                padding: imageInnerPadding,
+                                child: Image.network(
+                                  resolvedImageUrl!,
+                                  fit: imageFit,
+                                  errorBuilder: (_, __, ___) {
+                                    return Container(
+                                      color: c.surface,
+                                      alignment: Alignment.center,
+                                      child: Icon(
+                                        Icons.broken_image_outlined,
+                                        color: c.error,
+                                        size: 30,
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
                             )
                           else

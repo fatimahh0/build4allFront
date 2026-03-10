@@ -5,10 +5,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/features/catalog/cubit/money.dart';
+import 'package:build4front/l10n/app_localizations.dart';
 
 class CartItemTile extends StatelessWidget {
   final CartItem item;
-
   final String? currencySymbol;
   final VoidCallback onRemove;
   final ValueChanged<int> onQuantityChanged;
@@ -23,6 +23,7 @@ class CartItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final themeState = context.read<ThemeCubit>().state;
     final spacing = themeState.tokens.spacing;
     final c = Theme.of(context).colorScheme;
@@ -32,12 +33,19 @@ class CartItemTile extends StatelessWidget {
         ? net.resolveUrl(item.imageUrl!.trim())
         : null;
 
-    final bool disabled = item.disabled == true;
-    final String? reason =
-        (item.blockingReason ?? '').trim().isEmpty ? null : item.blockingReason;
+    final bool blocked = item.isBlockedInCart;
+    final bool comingSoon = item.isComingSoon;
+
+    final String? reason = () {
+      final raw = (item.effectiveBlockingReason ?? '').trim();
+      if (raw.isNotEmpty) return raw;
+      if (comingSoon) return l10n.home_coming_soon_button;
+      if (item.outOfStock) return l10n.outOfStock;
+      return null;
+    }();
 
     return Opacity(
-      opacity: disabled ? 0.75 : 1,
+      opacity: blocked ? 0.75 : 1,
       child: Container(
         margin: EdgeInsets.only(bottom: spacing.md),
         padding: EdgeInsets.all(spacing.md),
@@ -45,15 +53,16 @@ class CartItemTile extends StatelessWidget {
           color: c.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: disabled
-                ? c.error.withOpacity(0.25)
+            color: blocked
+                ? (comingSoon
+                    ? c.primary.withOpacity(0.25)
+                    : c.error.withOpacity(0.25))
                 : c.outline.withOpacity(0.12),
           ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: SizedBox(
@@ -82,23 +91,49 @@ class CartItemTile extends StatelessWidget {
             ),
             SizedBox(width: spacing.md),
 
-            // Text + prices + reason
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    (item.itemName).trim(),
-                    style: t.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                    item.itemName.trim(),
+                    style: t.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   SizedBox(height: spacing.xs),
+
+                  if (comingSoon)
+                    Container(
+                      margin: EdgeInsets.only(bottom: spacing.xs),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: spacing.sm,
+                        vertical: spacing.xs,
+                      ),
+                      decoration: BoxDecoration(
+                        color: c.primary.withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: c.primary.withOpacity(0.25),
+                        ),
+                      ),
+                      child: Text(
+                        l10n.home_coming_soon_button,
+                        style: t.labelMedium?.copyWith(
+                          color: c.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+
                   Text(
                     money(context, item.unitPrice),
                     style: t.bodyMedium?.copyWith(
-                      color:
-                          disabled ? c.onSurface.withOpacity(0.6) : c.primary,
+                      color: blocked
+                          ? c.onSurface.withOpacity(0.6)
+                          : c.primary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -109,18 +144,26 @@ class CartItemTile extends StatelessWidget {
                       color: c.onSurface.withOpacity(0.7),
                     ),
                   ),
+
                   if (reason != null) ...[
                     SizedBox(height: spacing.sm),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.info_outline_rounded,
-                            size: 16, color: c.error),
+                        Icon(
+                          comingSoon
+                              ? Icons.schedule_rounded
+                              : Icons.info_outline_rounded,
+                          size: 16,
+                          color: comingSoon ? c.primary : c.error,
+                        ),
                         SizedBox(width: spacing.xs),
                         Expanded(
                           child: Text(
-                            reason!,
-                            style: t.bodySmall?.copyWith(color: c.error),
+                            reason,
+                            style: t.bodySmall?.copyWith(
+                              color: comingSoon ? c.primary : c.error,
+                            ),
                           ),
                         ),
                       ],
@@ -132,7 +175,6 @@ class CartItemTile extends StatelessWidget {
 
             SizedBox(width: spacing.sm),
 
-            // Quantity controls + delete
             Column(
               children: [
                 IconButton(
@@ -143,7 +185,7 @@ class CartItemTile extends StatelessWidget {
                 SizedBox(height: spacing.sm),
                 _QuantitySelector(
                   quantity: item.quantity,
-                  disabled: disabled,
+                  disabled: blocked,
                   maxAllowedQuantity: item.maxAllowedQuantity,
                   onChanged: onQuantityChanged,
                 ),

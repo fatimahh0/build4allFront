@@ -1,42 +1,24 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:build4front/core/network/auth_refresh_coordinator.dart';
 import 'package:build4front/core/network/globals.dart' as g;
-import 'package:build4front/features/auth/data/services/auth_token_store.dart';
 import 'package:build4front/features/auth/data/services/admin_token_store.dart';
+import 'package:build4front/features/auth/data/services/auth_token_store.dart';
 
 class RefreshTokenInterceptor extends Interceptor {
-  final _userStore = AuthTokenStore();
-  final _adminStore = AdminTokenStore();
-
-  Completer<void>? _userRefreshing;
-  Completer<void>? _adminRefreshing;
-
-  Dio _plain() {
-    return Dio(
-      BaseOptions(
-        baseUrl: g.appServerRoot,
-        headers: const {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 60),
-      ),
-    );
-  }
+  final AuthTokenStore _userStore = const AuthTokenStore();
+  final AdminTokenStore _adminStore = const AdminTokenStore();
+  final AuthRefreshCoordinator _refresh = AuthRefreshCoordinator.instance;
 
   bool _isAuthCall(RequestOptions o) {
     final p = o.path;
-
-    // ✅ include ALL auth endpoints you actually use
     return p.contains('/api/auth/refresh') ||
         p.contains('/api/auth/logout') ||
         p.contains('/api/auth/user/login') ||
         p.contains('/api/auth/user/login-phone') ||
         p.contains('/api/auth/admin/login') ||
-        p.contains('/api/auth/admin/login/front') || // ✅ IMPORTANT
+        p.contains('/api/auth/admin/login/front') ||
         p.contains('/api/auth/manager/login') ||
         p.contains('/api/auth/superadmin/login');
   }
@@ -75,97 +57,22 @@ class RefreshTokenInterceptor extends Interceptor {
         role == 'ADMIN';
   }
 
-  Future<void> _refreshUser() async {
-    if (_userRefreshing != null) return _userRefreshing!.future;
-    _userRefreshing = Completer<void>();
-
-    try {
-      final refresh = (await _userStore.getRefreshToken())?.trim() ?? '';
-      if (refresh.isEmpty) throw Exception('NO_USER_REFRESH');
-
-      final res =
-          await _plain().post('/api/auth/refresh', data: {'refreshToken': refresh});
-      final data = (res.data is Map)
-          ? Map<String, dynamic>.from(res.data as Map)
-          : <String, dynamic>{};
-
-      final newAccess = (data['token'] ?? '').toString().trim();
-      final newRefresh = (data['refreshToken'] ?? '').toString().trim();
-      if (newAccess.isEmpty || newRefresh.isEmpty) {
-        throw Exception('BAD_REFRESH_RESPONSE');
-      }
-
-      await _userStore.saveToken(
-        token: newAccess,
-        wasInactive: false,
-        refreshToken: newRefresh,
-      );
-
-      g.setAuthToken(newAccess);
-
-      _userRefreshing!.complete();
-    } catch (e) {
-      _userRefreshing!.completeError(e);
-      rethrow;
-    } finally {
-      _userRefreshing = null;
-    }
-  }
-
-  Future<void> _refreshAdmin() async {
-    if (_adminRefreshing != null) return _adminRefreshing!.future;
-    _adminRefreshing = Completer<void>();
-
-    try {
-      final refresh = (await _adminStore.getRefreshToken())?.trim() ?? '';
-      if (refresh.isEmpty) throw Exception('NO_ADMIN_REFRESH');
-
-      final res =
-          await _plain().post('/api/auth/refresh', data: {'refreshToken': refresh});
-      final data = (res.data is Map)
-          ? Map<String, dynamic>.from(res.data as Map)
-          : <String, dynamic>{};
-
-      final newAccess = (data['token'] ?? '').toString().trim();
-      final newRefresh = (data['refreshToken'] ?? '').toString().trim();
-      if (newAccess.isEmpty || newRefresh.isEmpty) {
-        throw Exception('BAD_REFRESH_RESPONSE');
-      }
-
-      final role = (await _adminStore.getRole()) ?? '';
-      await _adminStore.save(
-        token: newAccess,
-        role: role,
-        refreshToken: newRefresh,
-      );
-
-      g.setAuthToken(newAccess);
-
-      _adminRefreshing!.complete();
-    } catch (e) {
-      _adminRefreshing!.completeError(e);
-      rethrow;
-    } finally {
-      _adminRefreshing = null;
-    }
-  }
-
   @override
   Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
     final status = err.response?.statusCode ?? 0;
     final req = err.requestOptions;
 
-    // only handle 401/403
-    if ((status != 401 && status != 403) || _isAuthCall(req)) {
+    // ✅ refresh ONLY on 401
+    if (status != 401 || _isAuthCall(req)) {
       return handler.next(err);
     }
 
-    // avoid infinite loop
+    // ✅ avoid infinite loop
     if (req.extra['__retried'] == true) {
       return handler.next(err);
     }
 
-    // ✅ If request had NO auth token, DO NOT try refresh, DO NOT clear stores.
+    // ✅ if request had no auth token, don't try refresh
     final authHeader = (req.headers['Authorization'] ?? '').toString().trim();
     final globalAuth = g.readAuthToken().trim();
 
@@ -174,44 +81,41 @@ class RefreshTokenInterceptor extends Interceptor {
       return handler.next(err);
     }
 
-    final raw = _rawTokenFromAuthHeader(authHeader.isNotEmpty ? authHeader : globalAuth);
+    final raw = _rawTokenFromAuthHeader(
+      authHeader.isNotEmpty ? authHeader : globalAuth,
+    );
     final role = _roleFromJwt(raw);
     final isAdmin = _isAdminRole(role);
 
     try {
+      late final String newToken;
+
       if (isAdmin) {
-        await _refreshAdmin();
-        final newAdminToken = (await _adminStore.getToken())?.trim() ?? '';
-        if (newAdminToken.isNotEmpty) {
-          req.headers['Authorization'] =
-              newAdminToken.toLowerCase().startsWith('bearer ')
-                  ? newAdminToken
-                  : 'Bearer $newAdminToken';
-        }
+        newToken = await _refresh.refreshAdmin();
       } else {
-        await _refreshUser();
-        final newUserToken = (await _userStore.getToken())?.trim() ?? '';
-        if (newUserToken.isNotEmpty) {
-          req.headers['Authorization'] =
-              newUserToken.toLowerCase().startsWith('bearer ')
-                  ? newUserToken
-                  : 'Bearer $newUserToken';
-        }
+        newToken = await _refresh.refreshUser();
       }
+
+      req.headers['Authorization'] =
+          newToken.toLowerCase().startsWith('bearer ')
+              ? newToken
+              : 'Bearer $newToken';
 
       req.extra['__retried'] = true;
       final response = await g.dio().fetch(req);
       return handler.resolve(response);
-    } catch (_) {
-      // ✅ Only clear the store that matches the request type
-      if (isAdmin) {
-        await _adminStore.clear();
-      } else {
-        await _userStore.clear();
+    } catch (e) {
+      final shouldClear = _refresh.shouldClearAfterRefreshFailure(e);
+
+      if (shouldClear) {
+        if (isAdmin) {
+          await _adminStore.clear();
+        } else {
+          await _userStore.clear();
+        }
+        g.setAuthToken('');
       }
 
-      // If the cleared one was the active token, remove it from globals
-      g.setAuthToken('');
       return handler.next(err);
     }
   }

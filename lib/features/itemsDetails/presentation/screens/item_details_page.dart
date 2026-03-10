@@ -21,29 +21,20 @@ import 'package:build4front/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:build4front/features/cart/presentation/bloc/cart_event.dart';
 import 'package:build4front/features/auth/presentation/login/bloc/auth_bloc.dart';
 import 'package:build4front/common/widgets/app_toast.dart';
-
-// ✅ dynamic currency formatter
 import 'package:build4front/features/catalog/cubit/money.dart';
 
 class ItemDetailsPage extends StatelessWidget {
   final int itemId;
   const ItemDetailsPage({super.key, required this.itemId});
 
-  // ✅ Stock UX:
-  // - stock <= 0  => Out of stock
-  // - 1..10       => "Only X left"
-  // - > 10        => null (hide, no numbers)
-  // - null        => null (not tracked)
   String? _stockStatusLabel(AppLocalizations l10n, int? stock) {
     if (stock == null) return null;
     if (stock <= 0) return l10n.outOfStock;
-
-    // ✅ requires l10n key: home_stock_left_label(count)
     if (stock <= 10) return l10n.home_stock_left_label(stock);
-
-    // ✅ hide when plenty
     return null;
   }
+
+  
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +43,6 @@ class ItemDetailsPage extends StatelessWidget {
     final spacing = themeState.tokens.spacing;
     final card = themeState.tokens.card;
 
-    // ✅ self-contained wiring (keep as-is)
     final api = ItemsApiService();
     final repo = ItemsRepositoryImpl(api: api);
     final usecase = GetItemDetails(repo);
@@ -100,16 +90,16 @@ class ItemDetailsPage extends StatelessWidget {
           final curPrice = d.displayPrice;
           final oldPrice = d.oldPriceIfDiscounted;
 
-          // ✅ STOCK GUARD (no raw numbers shown)
+         final bool isUpcoming = d.isUpcoming;
+
           final int? stock = d.stock;
           final bool isStockTracked = stock != null;
-          final bool outOfStock = isStockTracked && stock! <= 0;
+          final bool outOfStock = !isUpcoming && isStockTracked && stock! <= 0;
           final bool lowStock =
-              isStockTracked && stock! > 0 && stock! <= 10;
+              !isUpcoming && isStockTracked && stock! > 0 && stock! <= 10;
 
           final String? stockStatus = _stockStatusLabel(l10n, stock);
 
-          // sale tag
           String? tag;
           if (d.isSaleActiveNow &&
               oldPrice != null &&
@@ -119,6 +109,13 @@ class ItemDetailsPage extends StatelessWidget {
             if (pct > 0) tag = '-$pct%';
           }
           tag ??= d.isSaleActiveNow ? l10n.common_sale_tag : null;
+
+          final bool ctaDisabled = isUpcoming || outOfStock;
+          final String ctaText = isUpcoming
+              ? l10n.home_coming_soon_button
+              : outOfStock
+                  ? l10n.outOfStock
+                  : l10n.cart_add_button;
 
           return Scaffold(
             appBar: AppBar(title: Text(d.name)),
@@ -130,7 +127,6 @@ class ItemDetailsPage extends StatelessWidget {
                 spacing.xl,
               ),
               children: [
-                // IMAGE
                 ClipRRect(
                   borderRadius: BorderRadius.circular(card.radius),
                   child: AspectRatio(
@@ -161,7 +157,6 @@ class ItemDetailsPage extends StatelessWidget {
 
                 SizedBox(height: spacing.lg),
 
-                // TITLE + PRICE
                 Text(
                   d.name,
                   style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700),
@@ -188,7 +183,6 @@ class ItemDetailsPage extends StatelessWidget {
                       ),
                     ],
 
-                    // ✅ low stock pill near price (ONLY for 1..10)
                     if (lowStock && stockStatus != null) ...[
                       SizedBox(width: spacing.sm),
                       Container(
@@ -237,7 +231,42 @@ class ItemDetailsPage extends StatelessWidget {
                   ],
                 ),
 
-                // ✅ out-of-stock banner only when stock tracked and <= 0
+                if (isUpcoming) ...[
+                  SizedBox(height: spacing.sm),
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: spacing.md,
+                      vertical: spacing.sm,
+                    ),
+                    decoration: BoxDecoration(
+                      color: c.primaryContainer.withOpacity(0.35),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: c.primary.withOpacity(0.25),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.schedule_rounded,
+                          color: c.primary,
+                          size: 18,
+                        ),
+                        SizedBox(width: spacing.sm),
+                        Expanded(
+                          child: Text(
+                            l10n.home_coming_soon_button,
+                            style: t.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: c.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 if (outOfStock) ...[
                   SizedBox(height: spacing.sm),
                   Container(
@@ -252,8 +281,11 @@ class ItemDetailsPage extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.warning_amber_rounded,
-                            color: c.error, size: 18),
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: c.error,
+                          size: 18,
+                        ),
                         SizedBox(width: spacing.sm),
                         Expanded(
                           child: Text(
@@ -271,7 +303,6 @@ class ItemDetailsPage extends StatelessWidget {
 
                 SizedBox(height: spacing.md),
 
-                // ✅ ASK AI BUTTON (Details)
                 AiEnabledGate(
                   minRefreshInterval: const Duration(seconds: 10),
                   whenEnabled: (ctx) {
@@ -312,8 +343,9 @@ class ItemDetailsPage extends StatelessWidget {
                           icon: const Icon(Icons.auto_awesome, size: 18),
                           label: Text(
                             l10n.ai_ask_button,
-                            style:
-                                t.labelLarge?.copyWith(fontWeight: FontWeight.w800),
+                            style: t.labelLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                       ),
@@ -325,7 +357,6 @@ class ItemDetailsPage extends StatelessWidget {
                 Divider(color: c.outline.withOpacity(0.2)),
                 SizedBox(height: spacing.md),
 
-                // DESCRIPTION
                 Text(
                   l10n.common_description_title,
                   style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -340,12 +371,13 @@ class ItemDetailsPage extends StatelessWidget {
 
                 SizedBox(height: spacing.lg),
 
-                // QUICK INFO
-                _infoRow(context,
-                    label: l10n.common_sku_label, value: d.sku ?? '-'),
+                _infoRow(
+                  context,
+                  label: l10n.common_sku_label,
+                  value: d.sku ?? '-',
+                ),
 
-                // ✅ STOCK row only when meaningful (OutOfStock or Only X left)
-                if (stockStatus != null)
+                if (!isUpcoming && stockStatus != null)
                   _infoRow(
                     context,
                     label: l10n.common_stock_label_plain,
@@ -362,7 +394,6 @@ class ItemDetailsPage extends StatelessWidget {
 
                 SizedBox(height: spacing.lg),
 
-                // ATTRIBUTES
                 Text(
                   l10n.common_attributes_title,
                   style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -391,11 +422,10 @@ class ItemDetailsPage extends StatelessWidget {
 
                 SizedBox(height: spacing.xl),
 
-                // ✅ CTA (Add to cart) — disabled when out of stock
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: outOfStock
+                    onPressed: ctaDisabled
                         ? null
                         : () {
                             final auth = context.read<AuthBloc>().state;
@@ -404,17 +434,22 @@ class ItemDetailsPage extends StatelessWidget {
                               AppToast.error(
                                 context,
                                 l10n.cart_login_required_message,
-                                
                               );
                               return;
                             }
 
-                            // ✅ extra safety
+                            if (isUpcoming) {
+                              AppToast.error(
+                                context,
+                                l10n.home_coming_soon_button,
+                              );
+                              return;
+                            }
+
                             if (outOfStock) {
                               AppToast.error(
                                 context,
                                 l10n.outOfStock,
-                                
                               );
                               return;
                             }
@@ -426,14 +461,12 @@ class ItemDetailsPage extends StatelessWidget {
                                   ),
                                 );
 
-                            AppToast.error(
+                            AppToast.success(
                               context,
                               l10n.cart_item_added_snackbar,
                             );
                           },
-                    child: Text(
-                      outOfStock ? l10n.outOfStock : l10n.cart_add_button,
-                    ),
+                    child: Text(ctaText),
                   ),
                 ),
               ],
@@ -470,7 +503,9 @@ class ItemDetailsPage extends StatelessWidget {
           const Spacer(),
           Text(
             value,
-            style: t.bodyMedium?.copyWith(color: c.onSurface.withOpacity(0.75)),
+            style: t.bodyMedium?.copyWith(
+              color: c.onSurface.withOpacity(0.75),
+            ),
           ),
         ],
       ),

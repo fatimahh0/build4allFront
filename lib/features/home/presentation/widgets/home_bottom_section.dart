@@ -316,10 +316,10 @@ class HomeBottomSection extends StatelessWidget {
     final region = _resolveRegionIso2(context);
 
     if (!_isConfigured(raw)) {
-      AppToast.show(
+      AppToast.error(
         context,
         l10n.home_support_phone_not_configured,
-        isError: true,
+        
       );
       _log('tap blocked: raw is empty/null');
       return;
@@ -329,10 +329,10 @@ class HomeBottomSection extends StatelessWidget {
     _log('tap: raw="$raw" region="$region" normalized="$phone"');
 
     if (phone == null) {
-      AppToast.show(
+      AppToast.error(
         context,
         l10n.home_support_invalid_phone,
-        isError: true,
+        
       );
       return;
     }
@@ -356,18 +356,18 @@ class HomeBottomSection extends StatelessWidget {
       _log('launch wa.me ok=$ok2');
 
       if (!ok2) {
-        AppToast.show(
+        AppToast.error(
           context,
           l10n.home_support_open_whatsapp_failed,
-          isError: true,
+        
         );
       }
     } catch (e) {
       _log('launch error: $e');
-      AppToast.show(
+      AppToast.error(
         context,
         l10n.home_support_open_whatsapp_failed,
-        isError: true,
+       
       );
     }
   }
@@ -377,10 +377,10 @@ class HomeBottomSection extends StatelessWidget {
 
     final email = (supportEmail ?? '').trim();
     if (!_isConfigured(email)) {
-      AppToast.show(
+      AppToast.error(
         context,
         l10n.home_support_email_not_configured,
-        isError: true,
+        
       );
       return;
     }
@@ -397,18 +397,18 @@ class HomeBottomSection extends StatelessWidget {
     try {
       final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!ok) {
-        AppToast.show(
+        AppToast.error(
           context,
           l10n.home_support_open_email_failed,
-          isError: true,
+          
         );
       }
     } catch (e) {
       _log('mailto launch error: $e');
-      AppToast.show(
+      AppToast.error(
         context,
         l10n.home_support_open_email_failed,
-        isError: true,
+        
       );
     }
   }
@@ -421,10 +421,10 @@ class HomeBottomSection extends StatelessWidget {
     final hasEmail = _isConfigured(supportEmail);
 
     if (!hasPhone && !hasEmail) {
-      AppToast.show(
+      AppToast.error(
         context,
         l10n.home_support_not_configured,
-        isError: true,
+      
       );
       return;
     }

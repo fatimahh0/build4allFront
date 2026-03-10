@@ -128,6 +128,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   static final RegExp _usernameAllowed = RegExp(r'^[A-Za-z0-9_]+$');
 
+  
+
+  String _currentToken() {
+  final t = g.readAuthToken().trim();
+  if (t.isEmpty) return _cleanToken(widget.token);
+  return _cleanToken(t);
+}
+
   @override
   void initState() {
     super.initState();
@@ -144,7 +152,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (!has) {
       dio.interceptors.add(
         _EditProfileAuthDebugInterceptor(
-          tokenGetter: () => _cleanToken(widget.token),
+         tokenGetter: _currentToken,
         ),
       );
     }
@@ -160,12 +168,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       resendEmailChange: ResendEmailChange(repo),
     );
 
-    _bloc.add(
-      LoadEditProfile(
-        token: widget.token,
-        userId: widget.userId,
-      ),
-    );
+   _bloc.add(
+  LoadEditProfile(
+    token: _currentToken(),
+    userId: widget.userId,
+  ),
+);
   }
 
   String _cleanToken(String token) {
@@ -339,12 +347,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           loc: loc,
           pendingEmail: pendingEmail,
           onVerify: (code) => _bloc.verifyEmailChangeDirect(
-            token: widget.token,
+            token: _currentToken(),
             userId: widget.userId,
             code: code,
           ),
           onResend: () => _bloc.resendEmailChangeDirect(
-            token: widget.token,
+            token: _currentToken(),
             userId: widget.userId,
           ),
         );
@@ -444,7 +452,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               WidgetsBinding.instance.addPostFrameCallback((_) async {
                 if (!mounted) return;
 
-                AppToast.error(this.context, loc.editProfile_codeSentToast);
+                AppToast.success(this.context, loc.editProfile_codeSentToast);
 
                 final pending = (u.pendingEmail ?? '').trim();
                 final ok = await _showEmailOtpDialog(
@@ -459,7 +467,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   _awaitingVerifyReload = true;
                   _bloc.add(
                     LoadEditProfile(
-                      token: widget.token,
+                      token: _currentToken(),
                       userId: widget.userId,
                     ),
                   );
@@ -632,7 +640,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                                     _bloc.add(
                                       SaveEditProfile(
-                                        token: widget.token,
+                                        token: _currentToken(),
                                         userId: widget.userId,
                                         firstName: _firstCtrl.text.trim(),
                                         lastName: _lastCtrl.text.trim(),
@@ -665,7 +673,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             onDelete: (password) {
                               _bloc.add(
                                 DeleteAccount(
-                                  token: widget.token,
+                                  token: _currentToken(),
                                   userId: widget.userId,
                                   password: password,
                                 ),
@@ -884,7 +892,7 @@ class _EmailOtpDialogState extends State<_EmailOtpDialog> {
                   try {
                     await widget.onResend();
                     if (!mounted) return;
-                    AppToast.error(context, loc.editProfile_resend);
+                    AppToast.success(context, loc.editProfile_resend);
                   } catch (e) {
                     if (!mounted) return;
                     AppToast.error(context, _cleanErr(e));
@@ -910,7 +918,7 @@ class _EmailOtpDialogState extends State<_EmailOtpDialog> {
                   try {
                     await widget.onVerify(code);
                     if (!mounted) return;
-                    AppToast.error(context, loc.editProfile_emailUpdatedToast);
+                    AppToast.success(context, loc.editProfile_emailUpdatedToast);
                     Navigator.of(context, rootNavigator: true).pop(true);
                   } catch (e) {
                     if (!mounted) return;

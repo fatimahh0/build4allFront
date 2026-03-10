@@ -20,16 +20,16 @@ class UserProfileApiService {
     return b;
   }
 
-  Options _authJson(String token) => Options(
-        headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
-        validateStatus: (s) => s != null && s >= 200 && s < 500,
-      );
+ Options _authJson(String token) => Options(
+  headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
+  receiveDataWhenStatusError: true,
+);
 
-  Options _authMultipart(String token) => Options(
-        headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
-        contentType: Headers.multipartFormDataContentType,
-        validateStatus: (s) => s != null && s >= 200 && s < 500,
-      );
+ Options _authMultipart(String token) => Options(
+  headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
+  contentType: Headers.multipartFormDataContentType,
+  receiveDataWhenStatusError: true,
+);
 
   String _readErrorMessage(dynamic data, {int? statusCode}) {
     if (data is Map) {
@@ -47,12 +47,17 @@ class UserProfileApiService {
     return 'Request failed (${statusCode ?? 'unknown'})';
   }
 
-  void _throwIfFailed(Response res) {
-    final code = res.statusCode;
-    if (code == null || code >= 400) {
-      throw Exception(_readErrorMessage(res.data, statusCode: code));
-    }
+void _throwIfFailed(Response res) {
+  final code = res.statusCode ?? 0;
+  if (code >= 400) {
+    throw DioException(
+      requestOptions: res.requestOptions,
+      response: res,
+      type: DioExceptionType.badResponse,
+      message: _readErrorMessage(res.data, statusCode: code),
+    );
   }
+}
 
   Future<Map<String, dynamic>> getUserById({
     required String token,

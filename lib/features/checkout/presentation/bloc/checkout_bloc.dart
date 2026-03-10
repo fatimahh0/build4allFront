@@ -34,6 +34,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
 
   Timer? _quoteDebounce;
   String? _lastQuoteSig;
+  int _quoteOpId = 0;
 
   CheckoutBloc({
     required this.getCart,
@@ -64,14 +65,22 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
 
   int _resolvedCurrencyId() => (currencyId ?? int.tryParse(Env.currencyId) ?? 1);
 
+  void _invalidateQuoteWork() {
+    _quoteDebounce?.cancel();
+    _quoteOpId++;
+    _lastQuoteSig = null;
+  }
+
   List<CartLine> _linesFromCart(CheckoutCart cart) {
     return cart.items
         .where((x) => x.itemId != 0 && x.quantity > 0)
-        .map((x) => CartLine(
-              itemId: x.itemId,
-              quantity: x.quantity,
-              unitPrice: 0.0,
-            ))
+        .map(
+          (x) => CartLine(
+            itemId: x.itemId,
+            quantity: x.quantity,
+            unitPrice: 0.0,
+          ),
+        )
         .toList();
   }
 
@@ -106,7 +115,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
   }) {
     return [
       currencyId.toString(),
-      coupon.trim(),
+      coupon.trim().toUpperCase(),
       (shipId?.toString() ?? 'null'),
       shipName.trim(),
       (addr.countryId?.toString() ?? ''),
@@ -128,22 +137,25 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     required int? shippingMethodId,
     required String shippingMethodName,
   }) {
-    if (!_addressReadyForQuotes(state.address)) {
-      emit(state.copyWith(clearQuote: true, quoting: false));
-      return;
-    }
-
+    final addr = state.address;
     final lines = _linesFromCart(cart);
     final curId = _resolvedCurrencyId();
     final coupon = state.coupon.trim();
 
+    if (!_addressReadyForQuotes(addr)) {
+      _invalidateQuoteWork();
+      emit(state.copyWith(clearQuote: true, quoting: false));
+      return;
+    }
+
     if (state.shippingQuotes.isNotEmpty && shippingMethodId == null) {
+      _invalidateQuoteWork();
       emit(state.copyWith(clearQuote: true, quoting: false));
       return;
     }
 
     final sig = _quoteSignature(
-      addr: state.address,
+      addr: addr,
       shipId: shippingMethodId,
       shipName: shippingMethodName,
       coupon: coupon,
@@ -154,7 +166,11 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     if (sig == _lastQuoteSig) return;
 
     _quoteDebounce?.cancel();
+    final opId = ++_quoteOpId;
+
     _quoteDebounce = Timer(const Duration(milliseconds: 350), () async {
+      if (isClosed || opId != _quoteOpId) return;
+
       _lastQuoteSig = sig;
 
       emit(state.copyWith(
@@ -169,8 +185,10 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
           couponCode: coupon.isEmpty ? null : coupon,
           shippingMethodId: shippingMethodId,
           shippingMethodName: shippingMethodName,
-          shippingAddress: state.address,
+          shippingAddress: addr,
         );
+
+        if (isClosed || opId != _quoteOpId) return;
 
         emit(state.copyWith(
           quoting: false,
@@ -179,13 +197,16 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
           clearCouponError: true,
         ));
       } catch (err) {
-        final applied = state.coupon.trim();
-        final friendly = _friendlyError(err);
+        if (isClosed || opId != _quoteOpId) return;
+
+        _lastQuoteSig = null;
 
         emit(state.copyWith(
           quoting: false,
           clearQuote: true,
-          couponError: applied.isNotEmpty ? friendly : null,
+          couponError: state.lastCouponAttempt.trim().isNotEmpty
+              ? _friendlyError(err)
+              : null,
           clearError: true,
         ));
       }
@@ -237,7 +258,12 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     );
   }
 
-  Future<void> _onStarted(CheckoutStarted e, Emitter<CheckoutState> emit) async {
+  Future<void> _onStarted(
+    CheckoutStarted e,
+    Emitter<CheckoutState> emit,
+  ) async {
+    _invalidateQuoteWork();
+
     emit(state.copyWith(
       loading: true,
       clearError: true,
@@ -273,6 +299,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
         loading: false,
         clearError: true,
         couponDraft: appliedCoupon,
+        lastCouponAttempt: appliedCoupon,
         clearCouponError: true,
       ));
 
@@ -293,7 +320,10 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
         }
       }
     } catch (err) {
-      emit(state.copyWith(loading: false, error: err.toString()));
+      emit(state.copyWith(
+        loading: false,
+        error: _friendlyError(err),
+      ));
     }
   }
 
@@ -301,6 +331,8 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     CheckoutAddressChanged e,
     Emitter<CheckoutState> emit,
   ) async {
+    _invalidateQuoteWork();
+
     emit(state.copyWith(address: e.address, clearError: true));
 
     final cart = state.cart;
@@ -324,7 +356,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
         preferMethodId: state.selectedShippingMethodId,
       );
     } catch (err) {
-      emit(state.copyWith(error: err.toString()));
+      emit(state.copyWith(error: _friendlyError(err)));
     }
   }
 
@@ -332,15 +364,23 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     CheckoutShippingSelected e,
     Emitter<CheckoutState> emit,
   ) async {
-    emit(state.copyWith(selectedShippingMethodId: e.methodId, clearError: true));
+    _invalidateQuoteWork();
+
+    emit(state.copyWith(
+      selectedShippingMethodId: e.methodId,
+      clearError: true,
+    ));
 
     final cart = state.cart;
     if (cart == null || cart.isEmpty) return;
 
     try {
-      await _loadQuotesTaxAndQuote(cart, preferMethodId: e.methodId);
+      await _loadQuotesTaxAndQuote(
+        cart,
+        preferMethodId: e.methodId,
+      );
     } catch (err) {
-      emit(state.copyWith(error: err.toString()));
+      emit(state.copyWith(error: _friendlyError(err)));
     }
   }
 
@@ -363,12 +403,16 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     final cart = state.cart;
     final applied = e.coupon.trim();
 
+    _invalidateQuoteWork();
+
     emit(state.copyWith(
       coupon: applied,
       couponDraft: e.coupon,
+      lastCouponAttempt: applied,
       clearCouponError: true,
       clearError: true,
       clearOrderSummary: true,
+      clearQuote: applied.isEmpty,
     ));
 
     if (cart == null || cart.isEmpty) return;
@@ -381,8 +425,14 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     );
   }
 
-  void _onPaymentSelected(CheckoutPaymentSelected e, Emitter<CheckoutState> emit) {
-    emit(state.copyWith(selectedPaymentIndex: e.index, clearError: true));
+  void _onPaymentSelected(
+    CheckoutPaymentSelected e,
+    Emitter<CheckoutState> emit,
+  ) {
+    emit(state.copyWith(
+      selectedPaymentIndex: e.index,
+      clearError: true,
+    ));
   }
 
   Future<void> _onRefresh(
@@ -391,6 +441,8 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
   ) async {
     final cart = state.cart;
     if (cart == null || cart.isEmpty) return;
+
+    _invalidateQuoteWork();
 
     try {
       if (_addressReadyForQuotes(state.address)) {
@@ -408,7 +460,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
         ));
       }
     } catch (err) {
-      emit(state.copyWith(error: err.toString()));
+      emit(state.copyWith(error: _friendlyError(err)));
     }
   }
 
@@ -432,6 +484,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
 
     final selectedPm = state.paymentMethods[idx];
     final pmCode = selectedPm.code.trim().toUpperCase();
+
     if (pmCode.isEmpty) {
       emit(state.copyWith(error: 'Payment method code is missing'));
       return;
@@ -483,7 +536,7 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
       final lines = _linesFromCart(cart);
 
       final destinationAccountId =
-          (pmCode == 'STRIPE') ? _stripeAccountIdFromPaymentMethod(selectedPm) : null;
+          pmCode == 'STRIPE' ? _stripeAccountIdFromPaymentMethod(selectedPm) : null;
 
       final CheckoutSummaryModel summary = await placeOrder(
         ownerProjectId: ownerProjectId,
@@ -531,11 +584,11 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
         orderId: summary.orderId,
         orderSummary: summary,
         clearError: true,
-
-        // ✅ if backend rejected coupon at final checkout, kill stale UI state
         coupon: rejectedCoupon ? '' : state.coupon,
         couponDraft: rejectedCoupon ? '' : state.couponDraft,
-        couponError: rejectedCoupon ? (summary.message ?? 'Coupon was not applied') : null,
+        couponError: rejectedCoupon
+            ? (summary.message ?? 'Coupon was not applied')
+            : null,
         clearQuote: rejectedCoupon,
       ));
     } catch (err) {
@@ -544,11 +597,17 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
             ? err.blockingErrors.join('\n')
             : err.message;
 
-        emit(state.copyWith(placing: false, error: msg));
+        emit(state.copyWith(
+          placing: false,
+          error: msg,
+        ));
         return;
       }
 
-      emit(state.copyWith(placing: false, error: _friendlyError(err)));
+      emit(state.copyWith(
+        placing: false,
+        error: _friendlyError(err),
+      ));
     }
   }
 

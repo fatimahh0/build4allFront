@@ -66,7 +66,7 @@ class _ForgotPasswordEmailScreenState extends State<ForgotPasswordEmailScreen> {
             );
           }
           if (state.successMessage != null) {
-            AppToast.error(ctx, state.successMessage!);
+            AppToast.success(ctx, state.successMessage!);
             // go to verify screen
            Navigator.of(ctx).push(
               MaterialPageRoute(

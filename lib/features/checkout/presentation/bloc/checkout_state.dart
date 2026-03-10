@@ -1,5 +1,3 @@
-// lib/features/checkout/presentation/bloc/checkout_state.dart
-
 import 'package:build4front/features/checkout/data/models/checkout_summary_model.dart';
 import 'package:build4front/features/checkout/domain/entities/checkout_entities.dart';
 
@@ -22,16 +20,19 @@ class CheckoutState {
   final List<PaymentMethod> paymentMethods;
   final int? selectedPaymentIndex;
 
-  /// ✅ coupon = APPLIED coupon (used in quote + placeOrder)
+  /// Applied coupon actually used in quote/place-order
   final String coupon;
 
-  /// ✅ couponDraft = user typing (NO API)
+  /// What user is typing
   final String couponDraft;
 
-  /// ✅ couponError = only coupon-related error (no toast spam)
+  /// Last coupon code the user explicitly tried to validate
+  final String lastCouponAttempt;
+
+  /// Coupon-only error
   final String? couponError;
 
-  /// general errors (not coupon)
+  /// General errors
   final String? error;
 
   final int? orderId;
@@ -52,6 +53,7 @@ class CheckoutState {
     required this.selectedPaymentIndex,
     required this.coupon,
     required this.couponDraft,
+    required this.lastCouponAttempt,
     required this.couponError,
     required this.error,
     required this.orderId,
@@ -74,6 +76,7 @@ class CheckoutState {
       selectedPaymentIndex: null,
       coupon: '',
       couponDraft: '',
+      lastCouponAttempt: '',
       couponError: null,
       error: null,
       orderId: null,
@@ -84,71 +87,53 @@ class CheckoutState {
   CheckoutState copyWith({
     bool? loading,
     bool? placing,
-
     bool? quoting,
     CheckoutSummaryModel? quote,
     bool clearQuote = false,
-
     CheckoutCart? cart,
     ShippingAddress? address,
-
     List<ShippingQuote>? shippingQuotes,
-
     int? selectedShippingMethodId,
     ShippingQuote? selectedQuote,
     bool clearSelectedShipping = false,
-
     TaxPreview? tax,
     bool clearTax = false,
-
     List<PaymentMethod>? paymentMethods,
     int? selectedPaymentIndex,
-
     String? coupon,
     String? couponDraft,
-
+    String? lastCouponAttempt,
     String? couponError,
     bool clearCouponError = false,
-
     String? error,
     bool clearError = false,
-
     int? orderId,
     bool clearOrderId = false,
-
     CheckoutSummaryModel? orderSummary,
     bool clearOrderSummary = false,
   }) {
     return CheckoutState(
       loading: loading ?? this.loading,
       placing: placing ?? this.placing,
-
       quoting: quoting ?? this.quoting,
       quote: clearQuote ? null : (quote ?? this.quote),
-
       cart: cart ?? this.cart,
       address: address ?? this.address,
-
       shippingQuotes: shippingQuotes ?? this.shippingQuotes,
-
       selectedShippingMethodId: clearSelectedShipping
           ? null
           : (selectedShippingMethodId ?? this.selectedShippingMethodId),
-
-      selectedQuote: clearSelectedShipping ? null : (selectedQuote ?? this.selectedQuote),
-
+      selectedQuote: clearSelectedShipping
+          ? null
+          : (selectedQuote ?? this.selectedQuote),
       tax: clearTax ? null : (tax ?? this.tax),
-
       paymentMethods: paymentMethods ?? this.paymentMethods,
       selectedPaymentIndex: selectedPaymentIndex ?? this.selectedPaymentIndex,
-
       coupon: coupon ?? this.coupon,
       couponDraft: couponDraft ?? this.couponDraft,
-
+      lastCouponAttempt: lastCouponAttempt ?? this.lastCouponAttempt,
       couponError: clearCouponError ? null : (couponError ?? this.couponError),
-
       error: clearError ? null : (error ?? this.error),
-
       orderId: clearOrderId ? null : (orderId ?? this.orderId),
       orderSummary: clearOrderSummary ? null : (orderSummary ?? this.orderSummary),
     );

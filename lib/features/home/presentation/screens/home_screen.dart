@@ -834,7 +834,7 @@ class _HomeScreenState extends State<HomeScreen>
       context.read<CartBloc>().add(
         CartAddItemRequested(itemId: item.id, quantity: 1),
       );
-      AppToast.show(context, l10n.cart_item_added_snackbar);
+      AppToast.info(context, l10n.cart_item_added_snackbar);
       return;
     }
 
@@ -967,12 +967,12 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
     super.dispose();
   }
 
-  double _aspect(double w) {
-    if (w < 360) return 0.56;
-    if (w < 420) return 0.58;
-    if (w < 700) return 0.62;
-    return 0.68;
-  }
+ double _aspect(double w) {
+  if (w < 360) return 0.74;
+  if (w < 420) return 0.78;
+  if (w < 700) return 0.82;
+  return 0.88;
+}
 
   void _jumpTo(int p) {
     if (!_pc.hasClients) return;
@@ -1045,8 +1045,8 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
 
             var aspect = _aspect(w);
             if (widget.storageId == 'flash_sale') {
-              aspect = math.max(0.48, aspect - 0.06);
-            }
+  aspect = math.max(0.64, aspect - 0.03);
+}
 
             final cols = 2;
             const perPage = 2;

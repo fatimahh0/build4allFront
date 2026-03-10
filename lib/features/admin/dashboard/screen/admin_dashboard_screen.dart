@@ -487,7 +487,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       }
 
       if (!mounted) return;
-      AppToast.error(context, l10n.upgradeRequestSent);
+      AppToast.success(context, l10n.upgradeRequestSent);
       await _loadLicense();
     } catch (e) {
       if (!mounted) return;
@@ -780,7 +780,7 @@ class _ProfileBottomSheet extends StatelessWidget {
   Future<void> _copy(BuildContext context, String text, String toast) async {
     await Clipboard.setData(ClipboardData(text: text));
     if (!context.mounted) return;
-    AppToast.error(context, toast);
+    AppToast.success(context, toast);
   }
 
   @override

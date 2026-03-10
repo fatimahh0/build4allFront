@@ -10,13 +10,17 @@ class CartItem extends Equatable {
   final double unitPrice;
   final double lineTotal;
 
-  // ✅ NEW
   final int? availableStock;
   final bool outOfStock;
   final bool quantityExceedsStock;
   final int? maxAllowedQuantity;
   final bool disabled;
   final String? blockingReason;
+
+  // ✅ NEW
+  final bool isUpcoming;
+  final String? statusCode;
+  final String? statusName;
 
   const CartItem({
     required this.cartItemId,
@@ -32,9 +36,36 @@ class CartItem extends Equatable {
     required this.maxAllowedQuantity,
     required this.disabled,
     required this.blockingReason,
+    required this.isUpcoming,
+    required this.statusCode,
+    required this.statusName,
   });
 
-  CartItem copyWith({int? quantity}) {
+  String get normalizedStatusCode => (statusCode ?? '').trim().toUpperCase();
+  String get normalizedStatusName => (statusName ?? '').trim().toUpperCase();
+
+  bool get isComingSoon =>
+      isUpcoming ||
+      normalizedStatusCode == 'UPCOMING' ||
+      normalizedStatusName == 'UPCOMING' ||
+      normalizedStatusCode == 'COMING_SOON' ||
+      normalizedStatusName == 'COMING_SOON' ||
+      normalizedStatusName == 'COMING SOON';
+
+  bool get isBlockedInCart =>
+      disabled || outOfStock || quantityExceedsStock || isComingSoon;
+
+  String? get effectiveBlockingReason {
+    final r = (blockingReason ?? '').trim();
+    if (r.isNotEmpty) return r;
+    if (isComingSoon) return 'Coming Soon';
+    if (outOfStock) return 'Out of stock';
+    return null;
+  }
+
+  CartItem copyWith({
+    int? quantity,
+  }) {
     return CartItem(
       cartItemId: cartItemId,
       itemId: itemId,
@@ -49,6 +80,9 @@ class CartItem extends Equatable {
       maxAllowedQuantity: maxAllowedQuantity,
       disabled: disabled,
       blockingReason: blockingReason,
+      isUpcoming: isUpcoming,
+      statusCode: statusCode,
+      statusName: statusName,
     );
   }
 
@@ -67,5 +101,8 @@ class CartItem extends Equatable {
         maxAllowedQuantity,
         disabled,
         blockingReason,
+        isUpcoming,
+        statusCode,
+        statusName,
       ];
 }

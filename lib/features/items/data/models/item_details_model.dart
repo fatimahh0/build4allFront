@@ -26,6 +26,11 @@ class ItemDetailsModel {
 
   final List<ItemAttribute> attributes;
 
+  // ✅ NEW
+  final int? statusId;
+  final String? statusCode;
+  final String? statusName;
+
   ItemDetailsModel({
     required this.id,
     required this.name,
@@ -46,13 +51,17 @@ class ItemDetailsModel {
     this.heightCm,
     this.lengthCm,
     this.attributes = const [],
+
+    // ✅ NEW
+    this.statusId,
+    this.statusCode,
+    this.statusName,
   });
 
   factory ItemDetailsModel.fromJson(Map<String, dynamic> j) {
     DateTime? _dt(dynamic v) => v == null ? null : DateTime.tryParse('$v');
 
-
-num? _parseNum(dynamic v) {
+    num? _parseNum(dynamic v) {
       if (v == null) return null;
       if (v is num) return v;
 
@@ -67,7 +76,6 @@ num? _parseNum(dynamic v) {
 
       return double.tryParse(s.replaceAll(',', '.'));
     }
-
 
     bool _bool(dynamic v) {
       if (v == null) return false;
@@ -111,6 +119,11 @@ num? _parseNum(dynamic v) {
       heightCm: _parseNum(j['heightCm']),
       lengthCm: _parseNum(j['lengthCm']),
       attributes: attrs,
+
+      // ✅ NEW
+      statusId: _int(j['statusId']),
+      statusCode: j['statusCode']?.toString(),
+      statusName: j['statusName']?.toString(),
     );
   }
 
@@ -135,6 +148,11 @@ num? _parseNum(dynamic v) {
       heightCm: heightCm,
       lengthCm: lengthCm,
       attributes: attributes,
+
+      // ✅ NEW
+      statusId: statusId,
+      statusCode: statusCode,
+      statusName: statusName,
     );
   }
 }

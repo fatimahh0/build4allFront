@@ -30,6 +30,11 @@ class ItemDetails {
 
   final List<ItemAttribute> attributes;
 
+  // ✅ NEW
+  final int? statusId;
+  final String? statusCode;
+  final String? statusName;
+
   const ItemDetails({
     required this.id,
     required this.name,
@@ -50,6 +55,11 @@ class ItemDetails {
     this.heightCm,
     this.lengthCm,
     this.attributes = const [],
+
+    // ✅ NEW
+    this.statusId,
+    this.statusCode,
+    this.statusName,
   });
 
   bool get isSaleActiveNow {
@@ -77,4 +87,12 @@ class ItemDetails {
     if (price! <= cur) return null;
     return price;
   }
+
+  // ✅ NEW
+  String get normalizedStatusCode => (statusCode ?? '').trim().toUpperCase();
+  String get normalizedStatusName => (statusName ?? '').trim().toUpperCase();
+
+  bool get isUpcoming =>
+      normalizedStatusCode == 'UPCOMING' ||
+      normalizedStatusName == 'UPCOMING';
 }

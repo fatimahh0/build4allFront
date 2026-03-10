@@ -159,7 +159,7 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
         );
 
     final l = AppLocalizations.of(context)!;
-    AppToast.error(context, l.adminCreated ?? 'Created');
+    AppToast.success(context, l.adminCreated ?? 'Created');
   }
 
   Future<void> _openEditSheet(TaxRule rule) async {
@@ -185,7 +185,7 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
         );
 
     final l = AppLocalizations.of(context)!;
-    AppToast.error(context, l.adminUpdated ?? 'Updated');
+    AppToast.success(context, l.adminUpdated ?? 'Updated');
   }
 
   Future<void> _confirmAndDelete(TaxRule rule) async {
@@ -230,7 +230,7 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
           ),
         );
 
-    AppToast.error(context, l.adminDeleted ?? 'Deleted');
+    AppToast.success(context, l.adminDeleted ?? 'Deleted');
   }
 
   @override

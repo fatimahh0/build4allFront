@@ -36,13 +36,13 @@ class AdminExcelImportScreen extends StatelessWidget {
         }
 
         if (state.result != null) {
-          AppToast.error(context, state.result!.message);
+          AppToast.success(context, state.result!.message);
         }
 
         // ✅ After download: show toast + open file
         if (state.templateFilePath != null &&
             state.templateFilePath!.isNotEmpty) {
-          AppToast.error(context, l10n.adminExcelTemplateSavedToast);
+          AppToast.success(context, l10n.adminExcelTemplateSavedToast);
           await OpenFilex.open(state.templateFilePath!);
         }
       },

@@ -235,7 +235,7 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
         );
 
     final l = AppLocalizations.of(context)!;
-    AppToast.error(context, l.adminCreated ?? 'Created');
+    AppToast.success(context, l.adminCreated ?? 'Created');
   }
 
   Future<void> _openEditSheet(ShippingMethod method) async {
@@ -264,7 +264,7 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
         );
 
     final l = AppLocalizations.of(context)!;
-    AppToast.error(context, l.adminUpdated ?? 'Updated');
+    AppToast.success(context, l.adminUpdated ?? 'Updated');
   }
 
   Future<void> _confirmAndDelete(ShippingMethod method) async {
@@ -309,7 +309,7 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
           ),
         );
 
-    AppToast.error(context, l.adminDeleted ?? 'Deleted');
+    AppToast.success(context, l.adminDeleted ?? 'Deleted');
   }
 
   // ----------------- UI -----------------

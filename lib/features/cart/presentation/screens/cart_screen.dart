@@ -136,10 +136,10 @@ class _CartScreenState extends State<CartScreen> {
                         final msg = blockingErrors.isNotEmpty
                             ? blockingErrors.first
                             : 'Fix your cart before checkout.';
-                        AppToast.show(
+                        AppToast.error(
                           context,
                           msg,
-                          isError: true,
+                          
                         );
                         return;
                       }

@@ -294,7 +294,7 @@ class HomeItemsSection extends StatelessWidget {
       context.read<CartBloc>().add(
             CartAddItemRequested(itemId: item.id, quantity: 1),
           );
-      AppToast.error(context, l10n.cart_item_added_snackbar);
+      AppToast.success(context, l10n.cart_item_added_snackbar);
       return;
     }
 

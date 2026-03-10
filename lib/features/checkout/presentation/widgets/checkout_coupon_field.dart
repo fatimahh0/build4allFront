@@ -1,5 +1,3 @@
-// lib/features/checkout/presentation/widgets/checkout_coupon_field.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -7,8 +5,8 @@ import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/l10n/app_localizations.dart';
 
 class CheckoutCouponField extends StatefulWidget {
-  final String draft;     // what user is typing
-  final String applied;   // currently applied coupon
+  final String draft;
+  final String applied;
 
   final bool? isValid;
   final String? message;
@@ -45,7 +43,6 @@ class _CheckoutCouponFieldState extends State<CheckoutCouponField> {
   void didUpdateWidget(covariant CheckoutCouponField oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // keep controller in sync ONLY if parent changed externally
     if (oldWidget.draft != widget.draft && _ctrl.text != widget.draft) {
       _ctrl.text = widget.draft;
     }
@@ -67,8 +64,9 @@ class _CheckoutCouponFieldState extends State<CheckoutCouponField> {
   void _clearAndApply() {
     _ctrl.clear();
     widget.onDraftChanged('');
-    widget.onApply(''); // ✅ clearing removes applied coupon too
+    widget.onApply('');
     FocusScope.of(context).unfocus();
+    setState(() {});
   }
 
   @override
@@ -81,7 +79,6 @@ class _CheckoutCouponFieldState extends State<CheckoutCouponField> {
 
     final draft = _ctrl.text.trim();
     final applied = widget.applied.trim();
-
     final isDirty = draft.toUpperCase() != applied.toUpperCase();
 
     Color msgColor;
@@ -92,6 +89,8 @@ class _CheckoutCouponFieldState extends State<CheckoutCouponField> {
     } else {
       msgColor = c.muted;
     }
+
+    final cleanMessage = (widget.message ?? '').trim();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,7 +118,7 @@ class _CheckoutCouponFieldState extends State<CheckoutCouponField> {
                     borderRadius: BorderRadius.circular(tokens.card.radius),
                     borderSide: BorderSide(color: c.primary, width: 1.4),
                   ),
-                  suffixIcon: (draft.isEmpty)
+                  suffixIcon: draft.isEmpty
                       ? null
                       : IconButton(
                           onPressed: _clearAndApply,
@@ -128,18 +127,16 @@ class _CheckoutCouponFieldState extends State<CheckoutCouponField> {
                 ),
                 onChanged: (v) {
                   widget.onDraftChanged(v);
-                  setState(() {}); // updates isDirty
+                  setState(() {});
                 },
-                onSubmitted: (_) => _applyNow(), // ✅ “finished entering code”
+                onSubmitted: (_) => _applyNow(),
               ),
             ),
             SizedBox(width: spacing.sm),
             SizedBox(
               height: 48,
               child: ElevatedButton(
-                onPressed: draft.isEmpty
-                    ? null
-                    : (isDirty ? _applyNow : null), // no-op if already applied
+                onPressed: draft.isEmpty ? null : (isDirty ? _applyNow : null),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: c.primary,
                   foregroundColor: c.onPrimary,
@@ -152,12 +149,13 @@ class _CheckoutCouponFieldState extends State<CheckoutCouponField> {
             ),
           ],
         ),
-
-        if ((widget.message ?? '').trim().isNotEmpty) ...[
+        if (cleanMessage.isNotEmpty) ...[
           SizedBox(height: spacing.xs),
-          Text(widget.message!.trim(), style: t.bodySmall.copyWith(color: msgColor)),
+          Text(
+            cleanMessage,
+            style: t.bodySmall.copyWith(color: msgColor),
+          ),
         ] else if (draft.isNotEmpty && isDirty) ...[
-          // Optional tiny hint when user typed but didn’t apply yet
           SizedBox(height: spacing.xs),
           Text(
             'Not applied yet • tap ✓',

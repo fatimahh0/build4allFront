@@ -72,7 +72,7 @@ class _ForgotPasswordVerifyScreenState
             );
           }
           if (state.successMessage != null) {
-            AppToast.error(ctx, state.successMessage!);
+            AppToast.success(ctx, state.successMessage!);
             Navigator.of(ctx).push(
               MaterialPageRoute(
                 builder: (_) => BlocProvider.value(

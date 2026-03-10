@@ -1,6 +1,7 @@
 // lib/features/auth/presentation/gate/auth_gate.dart
 
 import 'package:build4front/core/config/env.dart';
+import 'package:build4front/core/network/auth_refresh_coordinator.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -35,6 +36,7 @@ class _AuthGateState extends State<AuthGate> {
   final _roleStore = SessionRoleStore();
   final _adminStore = const AdminTokenStore();
   final _userStore = AuthTokenStore();
+  final _refreshCoordinator = AuthRefreshCoordinator.instance;
 
   bool _loading = true;
 
@@ -166,80 +168,22 @@ class _AuthGateState extends State<AuthGate> {
 
   // ------------------- refresh -------------------
 
-  Future<String?> _tryRefreshUserIfNeeded({
-    required String? tokenStored,
-    required bool userWasInactive,
-  }) async {
-    if (userWasInactive) return null;
-
-    final refresh = (await _userStore.getRefreshToken())?.trim() ?? '';
-    if (refresh.isEmpty) return null;
-
-    final raw = _stripBearer(tokenStored);
-    if (raw.isNotEmpty && !JwtUtils.isExpired(raw)) return raw;
-
-    try {
-      final res = await g.dio().post(
-        '/api/auth/refresh',
-        data: {'refreshToken': refresh},
-      );
-      final data = (res.data is Map)
-          ? Map<String, dynamic>.from(res.data as Map)
-          : <String, dynamic>{};
-
-      final newAccess = _stripBearer((data['token'] ?? '').toString());
-      final newRefresh = (data['refreshToken'] ?? '').toString().trim();
-      if (newAccess.isEmpty || newRefresh.isEmpty) return null;
-
-      await _userStore.saveToken(
-        token: newAccess,
-        wasInactive: false,
-        refreshToken: newRefresh,
-        tenantId: _currentTenantIdString(),
-      );
-
-      return newAccess;
-    } catch (_) {
-      await _userStore.clear();
-      return null;
-    }
-  }
-
-  Future<String?> _tryRefreshAdminIfNeeded({required String? tokenStored}) async {
-    final refresh = (await _adminStore.getRefreshToken())?.trim() ?? '';
-    if (refresh.isEmpty) return null;
-
-    final raw = _stripBearer(tokenStored);
-    if (raw.isNotEmpty && !JwtUtils.isExpired(raw)) return raw;
-
-    try {
-      final res = await g.dio().post(
-        '/api/auth/refresh',
-        data: {'refreshToken': refresh},
-      );
-      final data = (res.data is Map)
-          ? Map<String, dynamic>.from(res.data as Map)
-          : <String, dynamic>{};
-
-      final newAccess = _stripBearer((data['token'] ?? '').toString());
-      final newRefresh = (data['refreshToken'] ?? '').toString().trim();
-      if (newAccess.isEmpty || newRefresh.isEmpty) return null;
-
-      final role = (await _adminStore.getRole()) ?? '';
-
-      await _adminStore.save(
-        token: newAccess, // ✅ RAW
-        role: role,
-        refreshToken: newRefresh,
-        tenantId: _currentTenantIdString(),
-      );
-
-      return newAccess;
-    } catch (_) {
-      await _adminStore.clear();
-      return null;
-    }
-  }
+ Future<String?> _tryRefreshUserIfNeeded({
+  required String? tokenStored,
+  required bool userWasInactive,
+}) async {
+  return _refreshCoordinator.refreshUserIfNeeded(
+    tokenStored: tokenStored,
+    userWasInactive: userWasInactive,
+    tenantId: _currentTenantIdString(),
+  );
+}
+Future<String?> _tryRefreshAdminIfNeeded({required String? tokenStored}) async {
+  return _refreshCoordinator.refreshAdminIfNeeded(
+    tokenStored: tokenStored,
+    tenantId: _currentTenantIdString(),
+  );
+}
 
   // ------------------- boot -------------------
 
