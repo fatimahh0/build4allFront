@@ -1,10 +1,12 @@
 import 'dart:convert';
 
+import 'package:build4front/core/network/globals.dart' as g;
 import 'package:build4front/features/admin/licensing/data/models/owner_app_access_response.dart';
 import 'package:build4front/features/admin/licensing/data/services/licensing_api_service.dart';
 
 import 'package:build4front/features/admin/profile/data/repository/admin_profile_repository_impl.dart';
 import 'package:build4front/features/admin/profile/data/servcies/admin_user_api_service.dart';
+import 'package:dio/dio.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -198,31 +200,36 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
-  Future<void> _logout() async {
-    final token = (await _store.getToken())?.trim() ?? '';
-    final refresh = (await _store.getRefreshToken())?.trim() ?? '';
+ Future<void> _logout() async {
+  final token = (await _store.getToken())?.trim() ?? '';
+  final refresh = (await _store.getRefreshToken())?.trim() ?? '';
 
-    if (token.isNotEmpty) {
-      final auth = token.toLowerCase().startsWith('bearer ')
-          ? token
-          : 'Bearer $token';
-      final uri = Uri.parse('${Env.apiBaseUrl}/api/auth/logout');
+  try {
+    final dio = g.appDio!;
 
-      await http.post(
-        uri,
+    await dio.post(
+      '/api/auth/logout',
+      data: {'refreshToken': refresh},
+      options: Options(
         headers: {
-          'Authorization': auth,
+          if (token.isNotEmpty)
+            'Authorization': token.toLowerCase().startsWith('bearer ')
+                ? token
+                : 'Bearer $token',
           'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({'refreshToken': refresh}),
-      );
-    }
-
-    await _store.clear();
-    if (!mounted) return;
-    Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+      ),
+    );
+  } catch (_) {
+    // ignore backend logout failure; local logout still happens
   }
+
+  await _store.clear();
+  if (!mounted) return;
+  Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+}
+  
 
   Future<void> _openProfilePopup() async {
     if (_profileCubit.state is! AdminProfileLoaded) {

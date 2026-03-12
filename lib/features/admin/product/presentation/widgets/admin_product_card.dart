@@ -270,17 +270,17 @@ class _AdminProductCardState extends State<AdminProductCard> {
 
     final imageUrl = _resolveImageUrl(widget.product.imageUrl);
 
-    Widget imagePlaceholder() {
-      return Container(
-        color: colors.muted.withOpacity(0.08),
-        alignment: Alignment.center,
-        child: Icon(
-          Icons.image_outlined,
-          color: colors.muted.withOpacity(0.7),
-          size: 24,
-        ),
-      );
-    }
+   Widget imagePlaceholder() {
+  return Container(
+    color: colors.muted.withOpacity(0.08),
+    alignment: Alignment.center,
+    padding: const EdgeInsets.all(12),
+    child: Image.asset(
+      'assets/branding/product_placeholder.png',
+      fit: BoxFit.contain,
+    ),
+  );
+}
 
     return LayoutBuilder(
       builder: (context, constraints) {

@@ -103,7 +103,7 @@ class ApiFetch {
           e.type == DioExceptionType.receiveTimeout ||
           e.type == DioExceptionType.connectionError) {
         // Treat as "server unreachable" (Wi-Fi can be ON but backend down)
-        g.connectionCubit?.setServerDown('Server is not responding');
+       g.connectionCubit?.setServerDown();
         throw NetworkException(
           'No internet or server unreachable',
           original: e,
@@ -128,7 +128,7 @@ class ApiFetch {
 
       // Mark server as down for 5xx or missing response
       if (res == null || status >= 500) {
-        g.connectionCubit?.setServerDown(msg);
+        g.connectionCubit?.setServerDown();
       }
 
       // Auth-related errors

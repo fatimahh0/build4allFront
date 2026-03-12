@@ -486,7 +486,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 _labelForCategoryId(homeState, _selectedCategoryId);
 
             final effectiveSelectedLabel =
-                (rawSelectedLabel != null && categoryNames.contains(rawSelectedLabel))
+                (rawSelectedLabel != null &&
+                        categoryNames.contains(rawSelectedLabel))
                     ? rawSelectedLabel
                     : null;
 
@@ -543,7 +544,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         children: [
                           AppSearchField(
                             hintText: l10n.explore_search_hint,
-                            initialValue: _searchQuery.isEmpty ? null : _searchQuery,
+                            initialValue:
+                                _searchQuery.isEmpty ? null : _searchQuery,
                             onChanged: _onSearchChangedDebounced,
                             onSubmitted: (value) {
                               setState(() {
@@ -553,7 +555,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             },
                           ),
                           SizedBox(height: spacing.md),
-
                           if (showCategories) ...[
                             _ExploreCategoryChips(
                               categories: categoryNames,
@@ -581,7 +582,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           ] else ...[
                             SizedBox(height: spacing.xs),
                           ],
-
                           _ExploreTopBar(
                             totalItems: totalItems,
                             current: _sortOption,
@@ -592,9 +592,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               });
                             },
                           ),
-
                           SizedBox(height: spacing.md),
-
                           if (filtered.isEmpty)
                             _EmptyExploreState(message: emptyMessage)
                           else ...[
@@ -857,6 +855,13 @@ class _ExploreItemsGrid extends StatelessWidget {
     required this.onCtaPressed,
   });
 
+  double _aspect(double w) {
+    if (w < 360) return 0.74;
+    if (w < 420) return 0.78;
+    if (w < 700) return 0.82;
+    return 0.88;
+  }
+
   @override
   Widget build(BuildContext context) {
     final spacing = context.read<ThemeCubit>().state.tokens.spacing;
@@ -864,23 +869,16 @@ class _ExploreItemsGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
+        const cols = 2;
 
-        double aspect;
-        if (w <= 360) {
-          aspect = 0.48;
-        } else if (w <= 420) {
-          aspect = 0.52;
-        } else if (w <= 700) {
-          aspect = 0.60;
-        } else {
-          aspect = 0.70;
-        }
+        final aspect = _aspect(w);
+        final cardWidth = (w - ((cols - 1) * spacing.md)) / cols;
 
         return GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
+            crossAxisCount: cols,
             mainAxisSpacing: spacing.md,
             crossAxisSpacing: spacing.md,
             childAspectRatio: aspect,
@@ -894,12 +892,12 @@ class _ExploreItemsGrid extends StatelessWidget {
                 final pricing = pricingFor(ctx, item);
                 final out = isOutOfStock(item);
                 final disabled =
-                    (item.kind == ItemKind.product) &&
+                    item.kind == ItemKind.product &&
                     (item.isUpcoming || out);
 
                 return ItemCard(
                   itemId: item.id,
-                  width: double.infinity,
+                  width: cardWidth,
                   imageFit: item.kind == ItemKind.product
                       ? BoxFit.contain
                       : BoxFit.cover,
@@ -993,7 +991,8 @@ class _PaginationBar extends StatelessWidget {
       children: [
         IconButton(
           tooltip: 'Prev',
-          onPressed: currentPage > 1 ? () => onPageChanged(currentPage - 1) : null,
+          onPressed:
+              currentPage > 1 ? () => onPageChanged(currentPage - 1) : null,
           icon: const Icon(Icons.chevron_left_rounded),
         ),
         SizedBox(width: spacing.xs),

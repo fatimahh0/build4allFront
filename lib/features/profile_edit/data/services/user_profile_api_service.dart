@@ -148,11 +148,11 @@ void _throwIfFailed(Response res) {
     final res = await dio.delete(
       '${_apiRoot()}/users/$userId',
       data: {'password': password},
-      options: Options(
-        headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
-        responseType: ResponseType.plain,
-        validateStatus: (s) => s != null && s >= 200 && s < 500,
-      ),
+    options: Options(
+  headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
+  responseType: ResponseType.plain,
+  receiveDataWhenStatusError: true,
+),
     );
 
     final text = (res.data ?? '').toString().trim();

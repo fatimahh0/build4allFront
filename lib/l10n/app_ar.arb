@@ -1126,7 +1126,8 @@
 "adminProductStatusLabel":  "الحالة",
 "adminProductStatusUnavailable":  "غير متوفر",
 "adminProductStatusRequired": "مطلوب",
-"home_coming_soon_button": "قريبًا"
+"home_coming_soon_button": "قريبًا",
+"connection_reconnecting": "إعادة الاتصال..."
 
 
 

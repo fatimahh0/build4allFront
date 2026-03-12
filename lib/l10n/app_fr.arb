@@ -1208,7 +1208,8 @@
 "adminProductStatusLabel": "Statut",
 "adminProductStatusUnavailable": "Indisponible",
 "adminProductStatusRequired": "Veuillez sélectionner un statut pour ce produit.",
-"home_coming_soon_button": "Bientôt disponible"
+"home_coming_soon_button": "Bientôt disponible",
+"connection_reconnecting":  "Reconnexion…"
 
 
 

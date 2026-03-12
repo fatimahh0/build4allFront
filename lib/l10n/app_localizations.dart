@@ -5652,6 +5652,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Coming Soon'**
   String get home_coming_soon_button;
+
+  /// No description provided for @connection_reconnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting...'**
+  String get connection_reconnecting;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

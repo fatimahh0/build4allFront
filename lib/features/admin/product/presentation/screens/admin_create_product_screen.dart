@@ -1814,8 +1814,13 @@ class AdminProductImageSection extends StatelessWidget {
     final c = tokens.colors;
     final spacing = tokens.spacing;
 
-    Widget placeholderIcon() =>
-        Icon(Icons.image_outlined, color: c.muted.withOpacity(0.7), size: 36);
+  Widget placeholderImage() => Padding(
+  padding: const EdgeInsets.all(16),
+  child: Image.asset(
+    'assets/branding/product_placeholder.png',
+    fit: BoxFit.contain,
+  ),
+);
 
     return AdminFormSectionCard(
       tokens: tokens,
@@ -1833,25 +1838,25 @@ class AdminProductImageSection extends StatelessWidget {
               borderRadius: BorderRadius.circular(tokens.card.radius),
               border: Border.all(color: c.border.withOpacity(0.4)),
             ),
-            child: pickedImage != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(tokens.card.radius),
-                    child: Image.file(
-                      File(pickedImage!.path),
-                      fit: BoxFit.cover,
-                    ),
-                  )
-                : existingImageUrl != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(tokens.card.radius),
-                        child: Image.network(
-                          existingImageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              Center(child: placeholderIcon()),
-                        ),
-                      )
-                    : Center(child: placeholderIcon()),
+           child: pickedImage != null
+    ? ClipRRect(
+        borderRadius: BorderRadius.circular(tokens.card.radius),
+        child: Image.file(
+          File(pickedImage!.path),
+          fit: BoxFit.cover,
+        ),
+      )
+    : existingImageUrl != null && existingImageUrl!.trim().isNotEmpty
+        ? ClipRRect(
+            borderRadius: BorderRadius.circular(tokens.card.radius),
+            child: Image.network(
+              existingImageUrl!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  Center(child: placeholderImage()),
+            ),
+          )
+        : Center(child: placeholderImage()),
           ),
           SizedBox(height: spacing.sm),
           Row(

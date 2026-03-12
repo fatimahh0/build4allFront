@@ -12,60 +12,65 @@ class ConnectionBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final l = AppLocalizations.of(context)!;
 
     return BlocBuilder<ConnectionCubit, ConnectionStateModel>(
       builder: (context, state) {
         if (state.status == ConnectionStatus.online) {
-          // Online → hide banner
           return const SizedBox.shrink();
         }
 
         Color bg;
         String text;
+        IconData icon;
 
         switch (state.status) {
           case ConnectionStatus.offline:
-            bg = Colors.redAccent;
-            text = l.connection_offline; // "No internet connection"
+            bg = const Color(0xFFD32F2F);
+            text = l.connection_offline;
+            icon = Icons.wifi_off_rounded;
             break;
+
           case ConnectionStatus.serverDown:
-            bg = Colors.orange;
-            text = state.message ?? l.connection_server_down;
+            bg = const Color(0xFFE68A00);
+            text = l.connection_reconnecting;
+            icon = Icons.sync_rounded;
             break;
+
           default:
-            bg = c.error;
+            bg = const Color(0xFFE68A00);
             text = l.connection_issue;
+            icon = Icons.info_outline_rounded;
         }
 
-        return Container(
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           color: bg,
           child: SafeArea(
             bottom: false,
-            child: Row(
-              children: [
-                const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            child: Container(
+              height: 36,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              alignment: Alignment.centerLeft,
+              child: Row(
+                children: [
+                  Icon(icon, color: Colors.white, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      text,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodyMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    text,
-                    style: t.bodyMedium?.copyWith(color: Colors.white),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );

@@ -72,12 +72,12 @@ class ConnectionCubit extends Cubit<ConnectionStateModel> {
   void _updateFromConnectivity(ConnectivityResult result) {
     if (result == ConnectivityResult.none) {
       // No internet at all → offline
-      emit(
-        const ConnectionStateModel(
-          status: ConnectionStatus.offline,
-          message: 'No internet connection',
-        ),
-      );
+             emit(
+          const ConnectionStateModel(
+            status: ConnectionStatus.serverDown,
+            message: null,
+          ),
+        );
       _stopHeartbeat();
     } else {
       // Internet is available (Wi-Fi or mobile)
@@ -134,11 +134,11 @@ class ConnectionCubit extends Cubit<ConnectionStateModel> {
   }
 
   /// Manually mark server as down (used by ApiFetch when a request fails)
-  void setServerDown([String? message]) {
+   void setServerDown([String? message]) {
     emit(
-      ConnectionStateModel(
+      const ConnectionStateModel(
         status: ConnectionStatus.serverDown,
-        message: message ?? 'Server is not responding',
+        message: null,
       ),
     );
   }

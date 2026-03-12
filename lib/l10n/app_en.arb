@@ -1356,6 +1356,7 @@
 "adminProductStatusLabel": "Status",
 "adminProductStatusUnavailable": "No statuses available",
 "adminProductStatusRequired": "Please select a product status",
-"home_coming_soon_button": "Coming Soon"
+"home_coming_soon_button": "Coming Soon",
+"connection_reconnecting": "Connecting..."
 
 }

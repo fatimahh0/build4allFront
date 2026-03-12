@@ -146,7 +146,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _emailCtrl.addListener(_clearFieldErrorsIfNeeded);
     _phoneCtrl.addListener(_clearFieldErrorsIfNeeded);
 
-    final dio = g.appDio ?? Dio();
+   if (g.appDio == null) {
+  throw StateError('appDio is not initialized');
+}
+final dio = g.appDio!;
     final has =
         dio.interceptors.any((i) => i is _EditProfileAuthDebugInterceptor);
     if (!has) {

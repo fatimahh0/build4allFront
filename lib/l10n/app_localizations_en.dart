@@ -2887,4 +2887,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get home_coming_soon_button => 'Coming Soon';
+
+  @override
+  String get connection_reconnecting => 'Connecting...';
 }

@@ -1,15 +1,18 @@
-// lib/features/support/data/services/support_api_service.dart
 import 'package:dio/dio.dart';
 import 'package:build4front/core/network/globals.dart' as g;
 import 'package:build4front/core/config/env.dart';
 import 'package:build4front/features/support/domain/support_info.dart';
 
 class OwnerSupportService {
-  final Dio _dio = g.appDio!;
+  final Dio _dio;
+
+  OwnerSupportService({Dio? dio}) : _dio = dio ?? g.appDio!;
 
   String _cleanToken(String token) {
     final t = token.trim();
-    return t.toLowerCase().startsWith('bearer ') ? t.substring(7).trim() : t;
+    return t.toLowerCase().startsWith('bearer ')
+        ? t.substring(7).trim()
+        : t;
   }
 
   String get _apiRoot {
@@ -24,7 +27,6 @@ class OwnerSupportService {
     if (data is Map) {
       final map = Map<String, dynamic>.from(data);
 
-      // ✅ backend returns linkId in payload
       final linkId = (map['linkId'] is num)
           ? (map['linkId'] as num).toInt()
           : int.tryParse('${map['linkId']}') ?? 0;
@@ -38,27 +40,19 @@ class OwnerSupportService {
     );
   }
 
-  Future<SupportInfo> fetchSupportInfo({required String token}) async {
-    final tk = token.trim();
-    if (tk.isEmpty) {
-      throw Exception('Missing token (support endpoint is secured)');
-    }
+  Future<SupportInfo> fetchSupportInfo({String? token}) async {
+    final tk = token?.trim() ?? '';
 
     final res = await _dio.get(
       '$_apiRoot/apps/support',
       options: Options(
-        headers: {'Authorization': 'Bearer ${_cleanToken(tk)}'},
+        headers: tk.isEmpty
+            ? null
+            : {'Authorization': 'Bearer ${_cleanToken(tk)}'},
         responseType: ResponseType.json,
-        validateStatus: (s) => s != null && s >= 200 && s < 500,
+        receiveDataWhenStatusError: true,
       ),
     );
-
-    if (res.statusCode == null || res.statusCode! >= 400) {
-      final msg = (res.data is Map)
-          ? ((res.data['error'] ?? res.data['message'])?.toString() ?? 'Support request failed')
-          : (res.data?.toString() ?? 'Support request failed');
-      throw Exception(msg);
-    }
 
     return _parseSupport(res.data, res.requestOptions);
   }

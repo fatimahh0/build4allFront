@@ -157,6 +157,8 @@ class _DeactivateUserDialogState extends State<DeactivateUserDialog> {
       _busy = true;
     });
 
+    var success = false;
+
     try {
       final bloc = context.read<UserProfileBloc>();
 
@@ -166,6 +168,8 @@ class _DeactivateUserDialogState extends State<DeactivateUserDialog> {
         status: 'INACTIVE',
         password: pwd,
       );
+
+      success = true;
 
       if (mounted) {
         Navigator.pop(context, true);
@@ -177,7 +181,7 @@ class _DeactivateUserDialogState extends State<DeactivateUserDialog> {
         _error = _extractErrorMessage(e, tr);
       });
     } finally {
-      if (mounted) {
+      if (mounted && !success) {
         setState(() => _busy = false);
       }
     }

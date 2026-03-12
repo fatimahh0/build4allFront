@@ -13,15 +13,9 @@ class OrdersApiService {
     final token = await tokenStore.getToken();
 
     if (token == null || token.trim().isEmpty) {
-      throw DioException(
-        requestOptions: RequestOptions(path: '/api/orders'),
-        response: Response(
-          requestOptions: RequestOptions(path: '/api/orders'),
-          statusCode: 401,
-          data: {'error': 'No token found. Please login again.'},
-        ),
-        type: DioExceptionType.badResponse,
-      );
+      // ✅ do NOT throw here
+      // let the request go through so 401 can trigger refresh interceptor
+      return {};
     }
 
     final t = token.trim();
@@ -66,76 +60,62 @@ class OrdersApiService {
     return const [];
   }
 
-  /// ✅ Order Details: tries multiple possible backend routes.
-  /// IMPORTANT: this expects an actual ORDER ID (like 81), NOT a line id (like 116).
   Future<Map<String, dynamic>> getOrderDetailsRaw(int orderId) async {
     final headers = await _authHeaders();
 
-    // try multiple common detail routes (first that returns 200 wins)
     final candidates = <String>[
       '/api/orders/$orderId',
       '/api/orders/details/$orderId',
       '/api/orders/myorders/details/$orderId',
-      // fallback to your current one (if backend actually supports it)
       '/api/orders/myorders/$orderId',
     ];
 
     DioException? lastDioError;
+
     for (final path in candidates) {
       try {
         final res = await _dio.get(
           path,
-          options: Options(
-            headers: headers,
-            // ✅ so we can inspect 404/400 and continue trying
-            validateStatus: (_) => true,
-          ),
+          options: Options(headers: headers),
         );
 
-        final sc = res.statusCode ?? 0;
+        final data = res.data;
+        if (data is Map) return data.cast<String, dynamic>();
+        return {'data': data};
+      } on DioException catch (e) {
+        final sc = e.response?.statusCode ?? 0;
 
-        if (sc >= 200 && sc < 300) {
-          final data = res.data;
-          if (data is Map) return data.cast<String, dynamic>();
-          // if backend returns non-map, still return something sane
-          return {'data': data};
-        }
-
-        // If it's 404, try next candidate
+        // ✅ route not found? try next one
         if (sc == 404) continue;
 
-        // If it's 401/403, stop immediately (auth issue)
+        // ✅ auth issue? DO NOT swallow it
+        // if refresh failed, let it bubble up
         if (sc == 401 || sc == 403) {
-          throw Exception(_extractError(res.data, statusCode: sc));
+          rethrow;
         }
 
-        // If it's 500, keep a meaningful error but still try others
+        // ✅ backend/server issue -> save and try next candidate
         if (sc >= 500) {
-          lastDioError = DioException(
-            requestOptions: res.requestOptions,
-            response: res,
-            type: DioExceptionType.badResponse,
-            message: _extractError(res.data, statusCode: sc),
-          );
-          continue;
-        }
-
-        // other 4xx
-        throw Exception(_extractError(res.data, statusCode: sc));
-      } catch (e) {
-        if (e is DioException) {
           lastDioError = e;
           continue;
         }
-        // non-dio error (rare)
+
+        // network/no-response or other 4xx
+        throw Exception(
+          _extractError(e.response?.data, statusCode: sc == 0 ? null : sc),
+        );
+      } catch (e) {
         throw Exception(e.toString());
       }
     }
 
-    // nothing worked
     if (lastDioError != null) {
-      final data = lastDioError!.response?.data;
-      throw Exception(_extractError(data, statusCode: lastDioError!.response?.statusCode));
+      throw Exception(
+        _extractError(
+          lastDioError!.response?.data,
+          statusCode: lastDioError!.response?.statusCode,
+        ),
+      );
     }
 
     throw Exception('Order details endpoint not found (no matching route).');

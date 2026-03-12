@@ -47,14 +47,13 @@ class _UserProfileScreenState extends State<UserProfileScreen>
 
   bool _hydrating = true;
   bool _hydratingNow = false;
+  bool _loggingOut = false;
 
   String _effectiveToken = '';
   int _effectiveUserId = 0;
 
-  // multi-tenant ownerProjectLinkId
   int _effectiveOwnerProjectLinkId = 0;
 
-  // guard to prevent spam reloads
   String _lastToken = '';
   int _lastUserId = 0;
   int _lastOwnerId = 0;
@@ -78,6 +77,8 @@ class _UserProfileScreenState extends State<UserProfileScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_loggingOut) return;
+
     if (state == AppLifecycleState.resumed) {
       _hydrateSession();
     }
@@ -102,7 +103,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   int _envOwnerId() => int.tryParse(Env.ownerProjectLinkId) ?? 0;
 
   Future<void> _hydrateSession() async {
-    if (_hydratingNow) return;
+    if (_hydratingNow || _loggingOut) return;
     _hydratingNow = true;
 
     if (mounted) {
@@ -114,13 +115,11 @@ class _UserProfileScreenState extends State<UserProfileScreen>
       final tGlobal = g.readAuthToken().trim();
       final tStored = (await _store.getToken())?.trim() ?? '';
 
-      // latest token first
       final tokenFull = _firstNonEmpty([tStored, tGlobal, tWidget]);
       final tokenRaw = _stripBearer(tokenFull);
 
       int id = 0;
 
-      // always take userId from token first
       if (tokenRaw.isNotEmpty) {
         id = JwtUtils.userIdFromToken(tokenRaw) ?? 0;
       }
@@ -139,12 +138,11 @@ class _UserProfileScreenState extends State<UserProfileScreen>
         if (v is String) id = int.tryParse(v.trim()) ?? 0;
       }
 
-      // keep global token synced
       if (tokenFull.isNotEmpty) {
         g.setAuthToken(tokenFull);
       }
 
-      if (!mounted) return;
+      if (!mounted || _loggingOut) return;
 
       setState(() {
         _effectiveToken = tokenRaw;
@@ -160,6 +158,8 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   }
 
   void _kickLoadIfNeeded() {
+    if (_loggingOut) return;
+
     final token = _effectiveToken.trim();
     final id = _effectiveUserId;
     final ownerId = _effectiveOwnerProjectLinkId;
@@ -174,7 +174,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     _lastUserId = id;
     _lastOwnerId = ownerId;
 
-    if (!mounted) return;
+    if (!mounted || _loggingOut) return;
 
     context.read<UserProfileBloc>().add(
           LoadUserProfile(_effectiveToken, _effectiveUserId),
@@ -182,8 +182,10 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   }
 
   Future<void> _retryProfileLoad() async {
+    if (_loggingOut) return;
+
     await _hydrateSession();
-    if (!mounted) return;
+    if (!mounted || _loggingOut) return;
 
     if (_effectiveToken.isEmpty || _effectiveUserId <= 0) return;
 
@@ -192,15 +194,20 @@ class _UserProfileScreenState extends State<UserProfileScreen>
         );
   }
 
-  void _goToLogin() {
-    if (!mounted) return;
+  Future<void> _goToLogin() async {
+    if (!mounted || _loggingOut) return;
+
+    setState(() {
+      _loggingOut = true;
+      _hydrating = false;
+    });
+
+    _lastToken = '';
+    _lastUserId = 0;
+    _lastOwnerId = 0;
+
     _resetSessionUi();
     widget.onLogout();
-    Navigator.pushNamedAndRemoveUntil(
-      this.context,
-      AppRouter.startup,
-      (_) => false,
-    );
   }
 
   void _patchAuthFromProfile(UserProfileLoaded st) {
@@ -218,32 +225,43 @@ class _UserProfileScreenState extends State<UserProfileScreen>
         );
   }
 
- Future<void> _goToEditProfile(int ownerProjectLinkId) async {
-  final navigator = Navigator.of(this.context);
+  Future<void> _goToEditProfile(int ownerProjectLinkId) async {
+    if (_loggingOut) return;
 
-  await navigator.push(
-    MaterialPageRoute(
-      builder: (_) => EditProfileScreen(
-        userId: _effectiveUserId,
-        token: _effectiveToken,
-        ownerProjectLinkId: ownerProjectLinkId,
-        onLogoutAfterDelete: _goToLogin,
+    final navigator = Navigator.of(context);
+
+    await navigator.push(
+      MaterialPageRoute(
+        builder: (_) => EditProfileScreen(
+          userId: _effectiveUserId,
+          token: _effectiveToken,
+          ownerProjectLinkId: ownerProjectLinkId,
+          onLogoutAfterDelete: () {
+            _goToLogin();
+          },
+        ),
       ),
-    ),
-  );
+    );
 
-  if (!mounted) return;
+    if (!mounted || _loggingOut) return;
 
-  await _hydrateSession();
-  if (!mounted) return;
+    await _hydrateSession();
+    if (!mounted || _loggingOut) return;
 
-  this.context.read<UserProfileBloc>().add(
-        LoadUserProfile(_effectiveToken, _effectiveUserId),
-      );
-}
+    context.read<UserProfileBloc>().add(
+          LoadUserProfile(_effectiveToken, _effectiveUserId),
+        );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tr = AppLocalizations.of(context)!;
+
+    if (_loggingOut) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
     if (_hydrating) {
       return const Scaffold(
@@ -281,10 +299,11 @@ class _UserProfileScreenState extends State<UserProfileScreen>
 
     return BlocConsumer<UserProfileBloc, UserProfileState>(
       listener: (context, state) {
+        if (_loggingOut) return;
+
         if (state is UserProfileLoaded) {
           _patchAuthFromProfile(state);
 
-          // if backend returns a real owner id, lock it and reload once
           final realOwnerId = state.user.ownerProjectLinkId;
           if (realOwnerId > 0 && realOwnerId != _effectiveOwnerProjectLinkId) {
             setState(() => _effectiveOwnerProjectLinkId = realOwnerId);
@@ -295,6 +314,12 @@ class _UserProfileScreenState extends State<UserProfileScreen>
         }
       },
       builder: (context, state) {
+        if (_loggingOut) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
         if (state is UserProfileLoading) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
@@ -433,7 +458,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                           );
 
                           if (ok == true) {
-                            _goToLogin();
+                            await _goToLogin();
                           }
                         },
                       ),
@@ -514,6 +539,8 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   }
 
   Future<void> _confirmLogout() async {
+    if (_loggingOut) return;
+
     final tr = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
 
@@ -539,8 +566,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     );
 
     if (confirmed == true) {
-      _resetSessionUi();
-      widget.onLogout();
+      await _goToLogin();
     }
   }
 }

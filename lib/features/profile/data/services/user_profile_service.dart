@@ -70,12 +70,12 @@ class UserProfileService {
   }) async {
     final res = await _dio.get(
       '$_base/$userId',
-      options: Options(
-        headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
-        responseType: ResponseType.json,
-        receiveDataWhenStatusError: true,
-        validateStatus: (s) => s != null && s >= 200 && s < 500,
-      ),
+      
+    options: Options(
+  headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
+  responseType: ResponseType.json,
+  receiveDataWhenStatusError: true,
+),
     );
 
     if ((res.statusCode ?? 0) < 200 || (res.statusCode ?? 0) >= 300) {
@@ -107,7 +107,7 @@ class UserProfileService {
         headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
         responseType: ResponseType.plain,
         receiveDataWhenStatusError: true,
-        validateStatus: (s) => s != null && s >= 200 && s < 500,
+        
       ),
     );
 
@@ -137,7 +137,7 @@ class UserProfileService {
         headers: {'Authorization': 'Bearer ${_cleanToken(token)}'},
         responseType: ResponseType.plain,
         receiveDataWhenStatusError: true,
-        validateStatus: (s) => s != null && s >= 200 && s < 500,
+       
       ),
     );
 

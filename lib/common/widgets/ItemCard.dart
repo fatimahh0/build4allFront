@@ -153,6 +153,17 @@ class ItemCard extends StatelessWidget {
           }),
         );
 
+Widget imagePlaceholder() {
+  return Container(
+    color: c.surface,
+    alignment: Alignment.center,
+    padding: const EdgeInsets.all(10),
+    child: Image.asset(
+      'assets/branding/product_placeholder.png',
+      fit: BoxFit.contain,
+    ),
+  );
+}
         Widget contentColumn = Column(
           mainAxisSize: pinBottomActions ? MainAxisSize.max : MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -343,39 +354,20 @@ class ItemCard extends StatelessWidget {
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          if (resolvedImageUrl != null &&
-                              resolvedImageUrl!.isNotEmpty)
-                            Container(
-                              color: c.surface,
-                              child: Padding(
-                                padding: imageInnerPadding,
-                                child: Image.network(
-                                  resolvedImageUrl!,
-                                  fit: imageFit,
-                                  errorBuilder: (_, __, ___) {
-                                    return Container(
-                                      color: c.surface,
-                                      alignment: Alignment.center,
-                                      child: Icon(
-                                        Icons.broken_image_outlined,
-                                        color: c.error,
-                                        size: 30,
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            )
-                          else
-                            Container(
-                              color: c.surface,
-                              alignment: Alignment.center,
-                              child: Icon(
-                                Icons.image_outlined,
-                                color: c.primary.withOpacity(0.9),
-                                size: 30,
-                              ),
-                            ),
+                         if (resolvedImageUrl != null && resolvedImageUrl!.isNotEmpty)
+  Container(
+    color: c.surface,
+    child: Padding(
+      padding: imageInnerPadding,
+      child: Image.network(
+        resolvedImageUrl!,
+        fit: imageFit,
+        errorBuilder: (_, __, ___) => imagePlaceholder(),
+      ),
+    ),
+  )
+else
+  imagePlaceholder(),
                           if ((tagLabel ?? '').trim().isNotEmpty)
                             Positioned(
                               top: spacing.xs,

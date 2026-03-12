@@ -1,3 +1,4 @@
+import 'package:build4front/core/network/globals.dart' as g;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -31,7 +32,7 @@ class OwnerPaymentConfigScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repo = OwnerPaymentConfigRepositoryImpl(
-      api: OwnerPaymentConfigApiService(dio: Dio(), baseUrl: Env.apiBaseUrl),
+      api:OwnerPaymentConfigApiService(dio: g.appDio!, baseUrl: Env.apiBaseUrl),
       tokenProvider: () async {
         final t = await (getToken?.call());
         return (t ?? '').trim();
