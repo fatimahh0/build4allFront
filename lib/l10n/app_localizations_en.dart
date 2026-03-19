@@ -2890,4 +2890,43 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get connection_reconnecting => 'Connecting...';
+
+  @override
+  String get adminProductSectionSaleTitle => 'Sale settings';
+
+  @override
+  String get adminProductSectionSaleSubtitle => 'Configure sale price and sale period.';
+
+  @override
+  String get adminProductLoadingCategories => 'Loading categories...';
+
+  @override
+  String get adminProductLoadingItemTypes => 'Loading item types...';
+
+  @override
+  String get adminProductSelectCategoryHint => 'Select a category';
+
+  @override
+  String get adminProductSelectItemTypeHint => 'Select an item type';
+
+  @override
+  String get adminProductSectionCategoryTypeTitle => 'Category & type';
+
+  @override
+  String get adminProductSectionCategoryTypeSubtitle => 'Select the category and item type for this product';
+
+  @override
+  String get adminCreateCategoryTooltip => 'Create new category';
+
+  @override
+  String get adminCreateItemTypeTooltip => 'Create new item type';
+
+  @override
+  String get adminProductSalePriceHint => 'e.g. 99.99';
+
+  @override
+  String get adminProductSaleStartHint => 'Select sale start date';
+
+  @override
+  String get adminProductSaleEndHint => 'Select sale end date';
 }

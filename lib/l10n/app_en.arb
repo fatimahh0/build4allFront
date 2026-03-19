@@ -1357,6 +1357,25 @@
 "adminProductStatusUnavailable": "No statuses available",
 "adminProductStatusRequired": "Please select a product status",
 "home_coming_soon_button": "Coming Soon",
-"connection_reconnecting": "Connecting..."
+"connection_reconnecting": "Connecting...",
+
+
+ 
+
+  "adminProductSectionSaleTitle": "Sale settings",
+  "adminProductSectionSaleSubtitle": "Configure sale price and sale period.",
+
+  "adminProductLoadingCategories": "Loading categories...",
+  "adminProductLoadingItemTypes": "Loading item types...",
+  "adminProductSelectCategoryHint": "Select a category",
+  "adminProductSelectItemTypeHint": "Select an item type",
+  "adminProductSectionCategoryTypeTitle": "Category & type",
+  "adminProductSectionCategoryTypeSubtitle": "Select the category and item type for this product",
+  "adminCreateCategoryTooltip": "Create new category",
+  "adminCreateItemTypeTooltip": "Create new item type",
+  "adminProductSalePriceHint": "e.g. 99.99",
+  "adminProductSaleStartHint": "Select sale start date",
+  "adminProductSaleEndHint": "Select sale end date"
+  
 
 }

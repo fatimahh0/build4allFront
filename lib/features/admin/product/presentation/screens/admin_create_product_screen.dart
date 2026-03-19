@@ -950,10 +950,48 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
     }
   }
 
+  Set<String> _usedAttributeCodes({int? exceptIndex}) {
+    final used = <String>{};
+    for (int i = 0; i < _attributes.length; i++) {
+      if (exceptIndex != null && i == exceptIndex) continue;
+      final code = _attributes[i].selectedCode;
+      if (code != null && code.trim().isNotEmpty) {
+        used.add(code);
+      }
+    }
+    return used;
+  }
+
+  List<String> _availableCodesForRow(int index) {
+    final usedElsewhere = _usedAttributeCodes(exceptIndex: index);
+    final current = _attributes[index].selectedCode;
+
+    return _allowedAttributeCodes.where((code) {
+      if (code == current) return true;
+      return !usedElsewhere.contains(code);
+    }).toList();
+  }
+
   void _addAttributeRow() {
+    final used = _usedAttributeCodes();
+    final available = _allowedAttributeCodes
+        .where((code) => !used.contains(code))
+        .toList();
+
+    if (available.isEmpty) {
+      final l = AppLocalizations.of(context)!;
+      AppToast.error(
+        context,
+        l.adminGenericError.isNotEmpty
+            ? 'All available attribute types are already added'
+            : 'All available attribute types are already added',
+      );
+      return;
+    }
+
     setState(() {
       _attributes.add(
-        _AttributeRow(selectedCode: _allowedAttributeCodes.first),
+        _AttributeRow(selectedCode: available.first),
       );
     });
   }
@@ -1100,8 +1138,9 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
             'salePrice': salePrice,
             'saleStart': saleStartText,
             'saleEnd': saleEndText,
-            if (attrs.isNotEmpty)
-              'attributes': attrs.map((e) => e.toJson()).toList(),
+            // important: always send attributes, even if empty,
+            // so backend can delete old ones
+            'attributes': attrs.map((e) => e.toJson()).toList(),
           },
         );
       }
@@ -1286,6 +1325,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                   allowedAttributeCodes: _allowedAttributeCodes,
                   onAddAttribute: _addAttributeRow,
                   onRemoveAttribute: _removeAttributeRow,
+                  availableCodesForRow: _availableCodesForRow,
                 ),
                 SizedBox(height: spacing.lg),
                 if (_errorMessage != null)
@@ -1504,14 +1544,13 @@ class AdminProductCategoryTypeSection extends StatelessWidget {
 
   final String? metaError;
 
-  final Future<void> Function(int? id) onCategoryChanged;
+  final Future<void> Function(int?) onCategoryChanged;
   final ValueChanged<int?> onItemTypeChanged;
 
-  final Future<void> Function() onCreateCategory;
-  final Future<void> Function() onCreateItemType;
-
-  final Future<void> Function() onDeleteCategory;
-  final Future<void> Function() onDeleteItemType;
+  final VoidCallback onCreateCategory;
+  final VoidCallback onCreateItemType;
+  final VoidCallback onDeleteCategory;
+  final VoidCallback onDeleteItemType;
 
   const AdminProductCategoryTypeSection({
     super.key,
@@ -1534,158 +1573,102 @@ class AdminProductCategoryTypeSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = tokens.colors;
     final spacing = tokens.spacing;
+    final c = tokens.colors;
     final text = tokens.typography;
 
     final canDeleteCategory =
-        selectedCategoryId != null && categories.isNotEmpty;
-    final canDeleteType = selectedItemTypeId != null && itemTypes.isNotEmpty;
+        !loadingCategories && selectedCategoryId != null && categories.isNotEmpty;
+    final canDeleteType =
+        !loadingItemTypes && selectedItemTypeId != null && itemTypes.isNotEmpty;
 
     return AdminFormSectionCard(
       tokens: tokens,
-      title: l.adminProductSectionMetaTitle,
-      subtitle: l.adminProductSectionMetaSubtitle,
+      title: l.adminProductSectionCategoryTypeTitle,
+      subtitle: l.adminProductSectionCategoryTypeSubtitle,
       icon: Icons.category_outlined,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(l.adminProductCategoryLabel, style: text.titleMedium),
           SizedBox(height: spacing.xs),
-          if (loadingCategories)
-            const Center(child: CircularProgressIndicator())
-          else if (categories.isEmpty)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l.adminNoCategories,
-                  style: text.bodyMedium.copyWith(color: c.danger),
-                ),
-                TextButton.icon(
-                  onPressed: onCreateCategory,
-                  icon: const Icon(Icons.add),
-                  label: Text(l.adminCreateCategory),
-                ),
-              ],
-            )
-          else
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: spacing.sm,
-                      vertical: spacing.xs,
-                    ),
-                    decoration: BoxDecoration(
-                      color: c.surface,
-                      borderRadius: BorderRadius.circular(tokens.card.radius),
-                      border: Border.all(color: c.border.withOpacity(0.4)),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<int>(
-                        value: selectedCategoryId,
-                        isExpanded: true,
-                        items: categories
-                            .map(
-                              (cat) => DropdownMenuItem<int>(
-                                value: cat.id,
-                                child: Text(cat.name),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: onCategoryChanged,
-                      ),
-                    ),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  value: selectedCategoryId,
+                  items: categories
+                      .map(
+                        (c) => DropdownMenuItem<int>(
+                          value: c.id,
+                          child: Text(c.name),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: loadingCategories ? null : onCategoryChanged,
+                  decoration: InputDecoration(
+                    hintText: loadingCategories
+                        ? l.adminProductLoadingCategories
+                        : l.adminProductSelectCategoryHint,
                   ),
                 ),
-                SizedBox(width: spacing.sm),
-                IconButton(
-                  onPressed: onCreateCategory,
-                  icon: const Icon(Icons.add),
-                  color: c.primary,
-                  tooltip: l.adminCreateCategory,
-                ),
-                IconButton(
-                  onPressed: canDeleteCategory ? onDeleteCategory : null,
-                  icon: const Icon(Icons.delete_outline),
-                  color: c.danger,
-                  tooltip: l.adminDeleteCategoryTooltip,
-                ),
-              ],
-            ),
+              ),
+              SizedBox(width: spacing.xs),
+              IconButton(
+                onPressed: loadingCategories ? null : onCreateCategory,
+                icon: const Icon(Icons.add_circle_outline),
+                tooltip: l.adminCreateCategoryTooltip,
+              ),
+              IconButton(
+                onPressed: canDeleteCategory ? onDeleteCategory : null,
+                icon: const Icon(Icons.delete_outline),
+                color: c.danger,
+                tooltip: l.adminDeleteCategoryTooltip,
+              ),
+            ],
+          ),
           SizedBox(height: spacing.md),
           Text(l.adminProductItemTypeLabel, style: text.titleMedium),
           SizedBox(height: spacing.xs),
-          if (selectedCategoryId == null)
-            Text(
-              l.adminSelectCategoryFirst,
-              style: text.bodySmall.copyWith(color: c.muted),
-            )
-          else if (loadingItemTypes)
-            const Center(child: CircularProgressIndicator())
-          else if (itemTypes.isEmpty)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l.adminNoItemTypes,
-                  style: text.bodyMedium.copyWith(color: c.danger),
-                ),
-                TextButton.icon(
-                  onPressed: onCreateItemType,
-                  icon: const Icon(Icons.add),
-                  label: Text(l.adminCreateItemType),
-                ),
-              ],
-            )
-          else
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: spacing.sm,
-                      vertical: spacing.xs,
-                    ),
-                    decoration: BoxDecoration(
-                      color: c.surface,
-                      borderRadius: BorderRadius.circular(tokens.card.radius),
-                      border: Border.all(color: c.border.withOpacity(0.4)),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<int>(
-                        value: selectedItemTypeId,
-                        isExpanded: true,
-                        items: itemTypes
-                            .map(
-                              (t) => DropdownMenuItem<int>(
-                                value: t.id,
-                                child: Text(t.name),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: onItemTypeChanged,
-                      ),
-                    ),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  value: selectedItemTypeId,
+                  items: itemTypes
+                      .map(
+                        (it) => DropdownMenuItem<int>(
+                          value: it.id,
+                          child: Text(it.name),
+                        ),
+                      )
+                      .toList(),
+                  onChanged:
+                      loadingItemTypes || selectedCategoryId == null ? null : onItemTypeChanged,
+                  decoration: InputDecoration(
+                    hintText: selectedCategoryId == null
+                        ? l.adminSelectCategoryFirst
+                        : loadingItemTypes
+                            ? l.adminProductLoadingItemTypes
+                            : l.adminProductSelectItemTypeHint,
                   ),
                 ),
-                SizedBox(width: spacing.sm),
-                IconButton(
-                  onPressed: onCreateItemType,
-                  icon: const Icon(Icons.add),
-                  color: c.primary,
-                  tooltip: l.adminCreateItemType,
-                ),
-                IconButton(
-                  onPressed: canDeleteType ? onDeleteItemType : null,
-                  icon: const Icon(Icons.delete_outline),
-                  color: c.danger,
-                  tooltip: l.adminDeleteItemTypeTooltip,
-                ),
-              ],
-            ),
+              ),
+              SizedBox(width: spacing.xs),
+              IconButton(
+                onPressed:
+                    loadingItemTypes || selectedCategoryId == null ? null : onCreateItemType,
+                icon: const Icon(Icons.add_circle_outline),
+                tooltip: l.adminCreateItemTypeTooltip,
+              ),
+              IconButton(
+                onPressed: canDeleteType ? onDeleteItemType : null,
+                icon: const Icon(Icons.delete_outline),
+                color: c.danger,
+                tooltip: l.adminDeleteItemTypeTooltip,
+              ),
+            ],
+          ),
           if (metaError != null) ...[
             SizedBox(height: spacing.sm),
             Text(metaError!, style: text.bodySmall.copyWith(color: c.danger)),
@@ -1814,13 +1797,13 @@ class AdminProductImageSection extends StatelessWidget {
     final c = tokens.colors;
     final spacing = tokens.spacing;
 
-  Widget placeholderImage() => Padding(
-  padding: const EdgeInsets.all(16),
-  child: Image.asset(
-    'assets/branding/product_placeholder.png',
-    fit: BoxFit.contain,
-  ),
-);
+    Widget placeholderImage() => Padding(
+          padding: const EdgeInsets.all(16),
+          child: Image.asset(
+            'assets/branding/product_placeholder.png',
+            fit: BoxFit.contain,
+          ),
+        );
 
     return AdminFormSectionCard(
       tokens: tokens,
@@ -1838,25 +1821,25 @@ class AdminProductImageSection extends StatelessWidget {
               borderRadius: BorderRadius.circular(tokens.card.radius),
               border: Border.all(color: c.border.withOpacity(0.4)),
             ),
-           child: pickedImage != null
-    ? ClipRRect(
-        borderRadius: BorderRadius.circular(tokens.card.radius),
-        child: Image.file(
-          File(pickedImage!.path),
-          fit: BoxFit.cover,
-        ),
-      )
-    : existingImageUrl != null && existingImageUrl!.trim().isNotEmpty
-        ? ClipRRect(
-            borderRadius: BorderRadius.circular(tokens.card.radius),
-            child: Image.network(
-              existingImageUrl!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  Center(child: placeholderImage()),
-            ),
-          )
-        : Center(child: placeholderImage()),
+            child: pickedImage != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(tokens.card.radius),
+                    child: Image.file(
+                      File(pickedImage!.path),
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : existingImageUrl != null && existingImageUrl!.trim().isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(tokens.card.radius),
+                        child: Image.network(
+                          existingImageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              Center(child: placeholderImage()),
+                        ),
+                      )
+                    : Center(child: placeholderImage()),
           ),
           SizedBox(height: spacing.sm),
           Row(
@@ -1938,84 +1921,66 @@ class AdminProductConfigSection extends StatelessWidget {
           SizedBox(height: spacing.md),
           Text(l.adminProductTypeLabel, style: text.titleMedium),
           SizedBox(height: spacing.xs),
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: spacing.sm,
-              vertical: spacing.xs,
-            ),
-            decoration: BoxDecoration(
-              color: tokens.colors.surface,
-              borderRadius: BorderRadius.circular(tokens.card.radius),
-              border: Border.all(color: tokens.colors.border.withOpacity(0.4)),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<ProductTypeDto>(
-                value: selectedProductType,
-                isExpanded: true,
-                items: [
-                  DropdownMenuItem(
-                    value: ProductTypeDto.simple,
-                    child: Text(l.adminProductTypeSimple),
-                  ),
-                  DropdownMenuItem(
-                    value: ProductTypeDto.variable,
-                    child: Text(l.adminProductTypeVariable),
-                  ),
-                  DropdownMenuItem(
-                    value: ProductTypeDto.grouped,
-                    child: Text(l.adminProductTypeGrouped),
-                  ),
-                  DropdownMenuItem(
-                    value: ProductTypeDto.external,
-                    child: Text(l.adminProductTypeExternal),
-                  ),
-                ],
-                onChanged: (val) {
-                  if (val == null) return;
-                  onProductTypeChanged(val);
-                },
+          DropdownButtonFormField<ProductTypeDto>(
+            value: selectedProductType,
+            items: [
+              DropdownMenuItem(
+                value: ProductTypeDto.simple,
+                child: Text(l.adminProductTypeSimple),
               ),
-            ),
+              DropdownMenuItem(
+                value: ProductTypeDto.variable,
+                child: Text(l.adminProductTypeVariable),
+              ),
+              DropdownMenuItem(
+                value: ProductTypeDto.grouped,
+                child: Text(l.adminProductTypeGrouped),
+              ),
+              DropdownMenuItem(
+                value: ProductTypeDto.external,
+                child: Text(l.adminProductTypeExternal),
+              ),
+            ],
+            onChanged: (val) {
+              if (val != null) onProductTypeChanged(val);
+            },
           ),
           SizedBox(height: spacing.md),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text(l.adminProductVirtualLabel, style: text.bodyMedium),
+            title: Text(l.adminProductVirtualLabel),
             value: virtualProduct,
             onChanged: onVirtualChanged,
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text(l.adminProductDownloadableLabel, style: text.bodyMedium),
+            title: Text(l.adminProductDownloadableLabel),
             value: downloadable,
             onChanged: onDownloadableChanged,
           ),
           if (downloadable) ...[
             SizedBox(height: spacing.sm),
-            Text(l.adminProductDownloadUrlLabel, style: text.titleMedium),
-            SizedBox(height: spacing.xs),
             TextFormField(
               controller: downloadUrlCtrl,
-              decoration:
-                  InputDecoration(hintText: l.adminProductDownloadUrlHint),
+              decoration: InputDecoration(
+                hintText: l.adminProductDownloadUrlHint,
+              ),
             ),
           ],
           if (selectedProductType == ProductTypeDto.external) ...[
             SizedBox(height: spacing.md),
-            Text(l.adminProductExternalUrlLabel, style: text.titleMedium),
-            SizedBox(height: spacing.xs),
             TextFormField(
               controller: externalUrlCtrl,
-              decoration:
-                  InputDecoration(hintText: l.adminProductExternalUrlHint),
+              decoration: InputDecoration(
+                hintText: l.adminProductExternalUrlHint,
+              ),
             ),
-            SizedBox(height: spacing.md),
-            Text(l.adminProductButtonTextLabel, style: text.titleMedium),
-            SizedBox(height: spacing.xs),
+            SizedBox(height: spacing.sm),
             TextFormField(
               controller: buttonTextCtrl,
-              decoration:
-                  InputDecoration(hintText: l.adminProductButtonTextHint),
+              decoration: InputDecoration(
+                hintText: l.adminProductButtonTextHint,
+              ),
             ),
           ],
         ],
@@ -2030,8 +1995,8 @@ class AdminProductSaleSection extends StatelessWidget {
   final TextEditingController salePriceCtrl;
   final TextEditingController saleStartCtrl;
   final TextEditingController saleEndCtrl;
-  final Future<void> Function() onPickSaleStart;
-  final Future<void> Function() onPickSaleEnd;
+  final VoidCallback onPickSaleStart;
+  final VoidCallback onPickSaleEnd;
 
   const AdminProductSaleSection({
     super.key,
@@ -2047,50 +2012,57 @@ class AdminProductSaleSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final spacing = tokens.spacing;
+    final text = tokens.typography;
 
     return AdminFormSectionCard(
       tokens: tokens,
-      title: l.adminProductSaleSectionTitle,
-      subtitle: l.adminProductSaleSectionSubtitle,
+      title: l.adminProductSectionSaleTitle,
+      subtitle: l.adminProductSectionSaleSubtitle,
       icon: Icons.local_offer_outlined,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(l.adminProductSalePriceLabel, style: text.titleMedium),
+          SizedBox(height: spacing.xs),
+          TextFormField(
+            controller: salePriceCtrl,
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              hintText: l.adminProductSalePriceHint,
+            ),
+          ),
+          SizedBox(height: spacing.md),
           Row(
             children: [
-              Expanded(
-                child: TextFormField(
-                  controller: salePriceCtrl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  decoration:
-                      InputDecoration(labelText: l.adminProductSalePriceLabel),
-                ),
-              ),
-              SizedBox(width: spacing.md),
               Expanded(
                 child: TextFormField(
                   controller: saleStartCtrl,
                   readOnly: true,
                   decoration: InputDecoration(
-                    labelText: l.adminProductSaleStartLabel,
-                    hintText: l.commonDateFormatHint,
-                    suffixIcon: const Icon(Icons.calendar_today),
+                    hintText: l.adminProductSaleStartHint,
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.calendar_today_outlined),
+                      onPressed: onPickSaleStart,
+                    ),
                   ),
-                  onTap: onPickSaleStart,
+                ),
+              ),
+              SizedBox(width: spacing.sm),
+              Expanded(
+                child: TextFormField(
+                  controller: saleEndCtrl,
+                  readOnly: true,
+                  decoration: InputDecoration(
+                    hintText: l.adminProductSaleEndHint,
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.calendar_today_outlined),
+                      onPressed: onPickSaleEnd,
+                    ),
+                  ),
                 ),
               ),
             ],
-          ),
-          SizedBox(height: spacing.sm),
-          TextFormField(
-            controller: saleEndCtrl,
-            readOnly: true,
-            decoration: InputDecoration(
-              labelText: l.adminProductSaleEndLabel,
-              hintText: l.commonDateFormatHint,
-              suffixIcon: const Icon(Icons.calendar_today),
-            ),
-            onTap: onPickSaleEnd,
           ),
         ],
       ),
@@ -2105,6 +2077,7 @@ class AdminProductAttributesSection extends StatelessWidget {
   final List<String> allowedAttributeCodes;
   final VoidCallback onAddAttribute;
   final void Function(int index) onRemoveAttribute;
+  final List<String> Function(int index) availableCodesForRow;
 
   const AdminProductAttributesSection({
     super.key,
@@ -2114,6 +2087,7 @@ class AdminProductAttributesSection extends StatelessWidget {
     required this.allowedAttributeCodes,
     required this.onAddAttribute,
     required this.onRemoveAttribute,
+    required this.availableCodesForRow,
   });
 
   @override
@@ -2142,7 +2116,15 @@ class AdminProductAttributesSection extends StatelessWidget {
             final index = entry.key;
             final row = entry.value;
 
-            row.selectedCode ??= allowedAttributeCodes.first;
+            final availableCodes = availableCodesForRow(index);
+            if (availableCodes.isEmpty) {
+              return const SizedBox.shrink();
+            }
+
+            row.selectedCode ??= availableCodes.first;
+            if (!availableCodes.contains(row.selectedCode)) {
+              row.selectedCode = availableCodes.first;
+            }
 
             return Padding(
               padding: EdgeInsets.only(bottom: spacing.sm),
@@ -2166,7 +2148,7 @@ class AdminProductAttributesSection extends StatelessWidget {
                             return DropdownButton<String>(
                               value: row.selectedCode,
                               isExpanded: true,
-                              items: allowedAttributeCodes
+                              items: availableCodes
                                   .map(
                                     (code) => DropdownMenuItem(
                                       value: code,

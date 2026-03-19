@@ -1209,7 +1209,21 @@
 "adminProductStatusUnavailable": "Indisponible",
 "adminProductStatusRequired": "Veuillez sélectionner un statut pour ce produit.",
 "home_coming_soon_button": "Bientôt disponible",
-"connection_reconnecting":  "Reconnexion…"
+"connection_reconnecting":  "Reconnexion…",
+
+"adminProductSectionSaleTitle": "Promotion",
+  "adminProductSectionSaleSubtitle": "Définissez un prix de promotion et une période pour ce produit",
+  "adminProductLoadingCategories": "Chargement des catégories...",
+  "adminProductLoadingItemTypes": "Chargement des types d'éléments...",
+  "adminProductSelectCategoryHint": "Sélectionnez une catégorie",
+  "adminProductSelectItemTypeHint": "Sélectionnez un type d'élément",
+  "adminProductSectionCategoryTypeTitle": "Catégorie et type",
+  "adminProductSectionCategoryTypeSubtitle": "Sélectionnez la catégorie et le type d'élément pour ce produit",
+   "adminCreateItemTypeTooltip": " création d'un nouveau type d'élément",
+  "adminProductSalePriceHint": "Entrez le prix de la promotion pour ce produit (il doit être inférieur au prix régulier).",
+  "adminProductSaleStartHint": "Sélectionnez la date de début de la promotion",
+  "adminProductSaleEndHint": "Sélectionnez la date de fin de la promotion",
+   "adminCreateCategoryTooltip":"création d'un nouveau catégorie" 
 
 
 

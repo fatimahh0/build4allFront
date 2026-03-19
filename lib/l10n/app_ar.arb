@@ -1127,7 +1127,23 @@
 "adminProductStatusUnavailable":  "غير متوفر",
 "adminProductStatusRequired": "مطلوب",
 "home_coming_soon_button": "قريبًا",
-"connection_reconnecting": "إعادة الاتصال..."
+"connection_reconnecting": "إعادة الاتصال...",
+
+
+  "adminProductSectionSaleTitle": "التخفيضات",
+  "adminProductSectionSaleSubtitle": "حدد سعر التخفيض وتواريخه لتقديم عروض خاصة على هذا المنتج.",
+
+  "adminProductLoadingCategories": "جارٍ تحميل التصنيفات...",
+  "adminProductLoadingItemTypes": "جارٍ تحميل أنواع العناصر...",
+  "adminProductSelectCategoryHint": "حدد تصنيفًا",
+  "adminProductSelectItemTypeHint": "حدد نوعًا للعنصر",
+  "adminProductSectionCategoryTypeTitle": "التصنيف وال نوع",
+  "adminProductSectionCategoryTypeSubtitle": "حدد التصنيف ونوع العنصر لهذا المنتج",
+   "adminCreateItemTypeTooltip": "إنشاء نوع عنصر جديد",
+  "adminProductSalePriceHint": "أدخل سعر التخفيض لهذا المنتج (يجب أن يكون أقل من السعر الأساسي).",
+  "adminProductSaleStartHint": "حدد تاريخ بداية التخفيض",
+  "adminProductSaleEndHint": "حدد تاريخ نهاية التخفيض",
+   "adminCreateCategoryTooltip":"إنشاء تصنيف جديد" 
 
 
 

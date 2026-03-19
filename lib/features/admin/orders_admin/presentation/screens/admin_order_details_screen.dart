@@ -5,6 +5,9 @@ import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/common/widgets/app_toast.dart';
 import 'package:build4front/l10n/app_localizations.dart';
 
+import 'package:build4front/features/invoices/presentation/mappers/admin_order_invoice_mapper.dart';
+import 'package:build4front/features/invoices/presentation/utils/invoice_pdf.dart';
+
 import '../../domain/entities/admin_order_entities.dart';
 import '../../domain/repositories/admin_orders_repository.dart';
 import '../../domain/usecases/get_admin_order_details.dart';
@@ -23,6 +26,7 @@ class AdminOrderDetailsScreen extends StatefulWidget {
 class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
   late final AdminOrderDetailsBloc _bloc;
   bool _changed = false;
+  bool _downloadingInvoice = false;
 
   @override
   void initState() {
@@ -47,6 +51,21 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
       if (!mounted) return;
       AppToast.error(context, m);
     });
+  }
+
+  Future<void> _downloadInvoice(OrderDetailsResponse data) async {
+    try {
+      setState(() => _downloadingInvoice = true);
+      final invoice = AdminOrderInvoiceMapper.fromAdminOrder(data);
+      await InvoicePdf.share(invoice);
+    } catch (e) {
+      if (!mounted) return;
+      AppToast.error(context, 'Invoice download failed: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _downloadingInvoice = false);
+      }
+    }
   }
 
   Future<bool> _confirmAction({
@@ -249,27 +268,18 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
 
                 final isPaid = paymentState == 'PAID' || o.fullyPaid == true;
 
-                // ✅ IMPORTANT: allow marking CASH paid even if status is CANCELED
-                // Only block if REFUNDED.
                 final canMarkCashPaid = isCash && !isRefunded && paymentState != 'PAID';
 
-                // ✅ If paid but not completed, allow completing even if status is CANCELED.
                 final canComplete = isPaid && !isRefunded && rawStatus != 'COMPLETED';
 
-                // Reject is only allowed when NOT paid and in pending-ish states
                 final canReject = !isPaid &&
                     (rawStatus == 'PENDING' || rawStatus == 'CANCEL_REQUESTED') &&
                     !['REJECTED', 'CANCELED', 'REFUNDED', 'COMPLETED'].contains(rawStatus);
 
-                // Your "reopen" action currently cancels + unpays (backend behavior)
-                // So don't show it if already canceled/refunded.
                 final canReopenAction = !isRefunded && rawStatus != 'CANCELED';
-
-                // Restore is optional control: allow moving canceled back to pending
                 final canRestore = !isRefunded && rawStatus == 'CANCELED';
 
                 final phoneTxt = (o.shippingPhone ?? '').trim();
-
                 final headerName = (o.shippingFullName ?? '').trim();
 
                 final uniqueCustomers = data.items
@@ -348,10 +358,7 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                         _kv(tokens, colors, l10n.adminOrderTotal, money(total)),
                         _kv(tokens, colors, l10n.adminPaid, money(o.payment.paidAmount)),
                         if (!o.fullyPaid)
-                          _kv(tokens, colors, l10n.adminRemaining,
-                              money(o.payment.remainingAmount)),
-
-                        // ✅ Mark CASH Paid stays visible even if status is CANCELED
+                          _kv(tokens, colors, l10n.adminRemaining, money(o.payment.remainingAmount)),
                         if (canMarkCashPaid) ...[
                           SizedBox(height: spacing.md),
                           Row(
@@ -375,8 +382,7 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                                           if (!ok) return;
 
                                           context.read<AdminOrderDetailsBloc>().add(
-                                                AdminOrderMarkCashPaidRequested(
-                                                    orderId: o.id),
+                                                AdminOrderMarkCashPaidRequested(orderId: o.id),
                                               );
                                         },
                                   style: ElevatedButton.styleFrom(
@@ -485,7 +491,24 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                         if ((o.paymentMethod ?? '').trim().isNotEmpty)
                           _kv(tokens, colors, 'Payment Method', o.paymentMethod!.trim()),
 
-                        // ✅ Mark Completed available even if status is CANCELED (your "control")
+                        SizedBox(height: spacing.md),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _downloadingInvoice
+                                ? null
+                                : () => _downloadInvoice(data),
+                            icon: _downloadingInvoice
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.picture_as_pdf_outlined),
+                            label: Text(l10n.orderDetailsDownloadInvoice),
+                          ),
+                        ),
+
                         if (canComplete) ...[
                           SizedBox(height: spacing.md),
                           Row(
@@ -547,7 +570,6 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                           ),
                         ],
 
-                        // ✅ "Reopen" button (your backend makes it: CANCELED + UNPAID)
                         if (canReopenAction) ...[
                           SizedBox(height: spacing.md),
                           Row(
@@ -606,7 +628,6 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                           ),
                         ],
 
-                        // ✅ Restore canceled order back to Pending (optional but gives you control)
                         if (canRestore) ...[
                           SizedBox(height: spacing.md),
                           OutlinedButton.icon(
@@ -806,14 +827,16 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                                 Text(
                                   it.item.location!.trim(),
                                   style: tokens.typography.bodySmall.copyWith(
-                                      color: colors.muted),
+                                    color: colors.muted,
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               Text(
                                 l10n.adminQtyPriceLine(it.quantity, money(it.price)),
                                 style: tokens.typography.bodySmall.copyWith(
-                                    color: colors.muted),
+                                  color: colors.muted,
+                                ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -837,10 +860,12 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                   if (!isWide) {
                     return Column(
                       children: data.items
-                          .map((it) => Padding(
-                                padding: EdgeInsets.only(bottom: spacing.sm),
-                                child: itemCard(it),
-                              ))
+                          .map(
+                            (it) => Padding(
+                              padding: EdgeInsets.only(bottom: spacing.sm),
+                              child: itemCard(it),
+                            ),
+                          )
                           .toList(),
                     );
                   }

@@ -54,22 +54,15 @@ class _TaxRuleFormSheetState extends State<TaxRuleFormSheet> {
 
   bool get _isEdit => widget.initial != null;
 
-  // -------------------------------
-  // Rule name presets
-  // -------------------------------
   static const String _customRuleKey = '__CUSTOM__';
 
   final List<_RulePreset> _presets = const [
     _RulePreset(key: 'VAT_11', name: 'VAT 11%', rate: 11.0),
     _RulePreset(key: 'VAT_5', name: 'VAT 5%', rate: 5.0),
-    
   ];
 
   String _selectedPresetKey = _customRuleKey;
 
-  // -------------------------------
-  // Auto-sync name <-> rate
-  // -------------------------------
   bool _lockNameToRate = true;
   bool _updatingName = false;
   bool _updatingRate = false;
@@ -106,7 +99,6 @@ class _TaxRuleFormSheetState extends State<TaxRuleFormSheet> {
     super.dispose();
   }
 
-  // ✅ DEFAULT Lebanon helper
   CountryModel? _findLebanon(List<CountryModel> countries) {
     final byIso = countries.where(
       (c) => c.iso2Code.trim().toUpperCase() == 'LB',
@@ -236,9 +228,6 @@ class _TaxRuleFormSheetState extends State<TaxRuleFormSheet> {
             .firstOrNull;
       }
 
-      // ✅ DEFAULT Lebanon if creating (no initial saved)
-      initCountry ??= _findLebanon(countries);
-
       setState(() {
         _countries = countries;
         _allRegions = regions;
@@ -284,44 +273,36 @@ class _TaxRuleFormSheetState extends State<TaxRuleFormSheet> {
   }
 
   void _submit(AppLocalizations l) {
-  if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) return;
 
-  final rate = double.tryParse(_rateCtrl.text.trim().replaceAll(',', '.'));
+    final rate = double.tryParse(_rateCtrl.text.trim().replaceAll(',', '.'));
 
-  if (rate == null) {
-    AppToast.error(
-      context,
-      l.adminTaxRuleRateInvalid ?? 'Invalid rate',
-    );
-    return;
+    if (rate == null) {
+      AppToast.error(
+        context,
+        l.adminTaxRuleRateInvalid ?? 'Invalid rate',
+      );
+      return;
+    }
+
+    if (rate < 0) {
+      AppToast.error(
+        context,
+        l.adminTaxRuleRateMustBePositive ?? 'Rate must be 0 or more',
+      );
+      return;
+    }
+
+    if (rate > 100) {
+      AppToast.error(
+        context,
+        l.adminTaxRuleRateTooHigh ?? 'Rate cannot be greater than 100%',
+      );
+      return;
+    }
+
+    Navigator.pop(context, _buildBody());
   }
-
-  if (rate < 0) {
-    AppToast.error(
-      context,
-      l.adminTaxRuleRateMustBePositive ?? 'Rate must be 0 or more',
-    );
-    return;
-  }
-
-  if (rate > 100) {
-    AppToast.error(
-      context,
-      l.adminTaxRuleRateTooHigh ?? 'Rate cannot be greater than 100%',
-    );
-    return;
-  }
-
-  if (_selectedCountry == null) {
-    AppToast.error(
-      context,
-      l.adminTaxCountryRequired ?? 'Country is required',
-    );
-    return;
-  }
-
-  Navigator.pop(context, _buildBody());
-}
 
   @override
   Widget build(BuildContext context) {
@@ -351,203 +332,205 @@ class _TaxRuleFormSheetState extends State<TaxRuleFormSheet> {
                 ),
               )
             : _catalogError != null
-            ? _ErrorState(
-                title: title,
-                error: _catalogError!,
-                onCancel: () => Navigator.pop(context),
-                onRetry: () {
-                  setState(() {
-                    _loadingCatalog = true;
-                    _catalogError = null;
-                  });
-                  _bootstrapCatalog(
-                    initialCountryId: widget.initial?.countryId,
-                    initialRegionId: widget.initial?.regionId,
-                  );
-                },
-              )
-            : SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: text.titleMedium.copyWith(color: c.label),
-                      ),
-                      SizedBox(height: spacing.md),
-
-                      // Presets
-                      Text(
-                        l.adminTaxRulePresetLabel ?? 'Rule template',
-                        style: text.titleMedium,
-                      ),
-                      SizedBox(height: spacing.xs),
-                      DropdownButtonFormField<String>(
-                        value: _selectedPresetKey,
-                        decoration: InputDecoration(
-                          hintText:
-                              l.adminTaxRulePresetHint ?? 'Select a template',
-                        ),
-                        items: [
-                          ..._presets.map(
-                            (p) => DropdownMenuItem(
-                              value: p.key,
-                              child: Text(p.name),
-                            ),
-                          ),
-                          DropdownMenuItem(
-                            value: _customRuleKey,
-                            child: Text(l.adminCustom ?? 'Custom'),
-                          ),
-                        ],
-                        onChanged: _onPresetChanged,
-                      ),
-                      SizedBox(height: spacing.md),
-
-                      AppTextField(
-                        label: l.adminTaxRuleNameLabel ?? 'Rule name',
-                        controller: _nameCtrl,
-                        keyboardType: TextInputType.text,
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? (l.adminTaxRuleNameRequired ??
-                                  'Rule name is required')
-                            : null,
-                      ),
-                      SizedBox(height: spacing.sm),
-
-                      _InlineSwitch(
-                        value: _lockNameToRate,
-                        label: l.adminTaxAutoNameLabel ?? 'Auto-name from rate',
-                        onChanged: (v) {
-                          setState(() => _lockNameToRate = v);
-                          final rate = double.tryParse(
-                            _rateCtrl.text.trim().replaceAll(',', '.'),
-                          );
-                          if (v && rate != null) {
-                            _updatingName = true;
-                            _nameCtrl.text = _nameFromRate(rate);
-                            _updatingName = false;
-                          }
-                        },
-                      ),
-                      SizedBox(height: spacing.md),
-
-                      AppTextField(
-                        label: l.adminTaxRuleRateLabel ?? 'Rate (%)',
-                        controller: _rateCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                      validator: (v) {
-  if (v == null || v.trim().isEmpty) {
-    return l.adminTaxRuleRateRequired ?? 'Rate is required';
-  }
-
-  final d = double.tryParse(v.trim().replaceAll(',', '.'));
-
-  if (d == null) {
-    return l.adminTaxRuleRateInvalid ?? 'Invalid rate';
-  }
-
-  if (d < 0) {
-    return l.adminTaxRuleRateMustBePositive ?? 'Rate must be 0 or more';
-  }
-
-  if (d > 100) {
-    return l.adminTaxRuleRateTooHigh ?? 'Rate cannot be greater than 100%';
-  }
-
-  return null;
-},
-                      ),
-                      SizedBox(height: spacing.lg),
-
-                      // Country/Region
-                      Text(
-                        l.adminTaxCountryLabel ?? 'Country',
-                        style: text.titleMedium,
-                      ),
-                      SizedBox(height: spacing.xs),
-                      _SearchablePicker<CountryModel>(
-                        items: _countries,
-                        value: _selectedCountry,
-                        label: (x) => '${x.name} (${x.iso2Code})',
-                        hintText: l.adminTaxCountryHint ?? 'Select country',
-                        onChanged: _onCountryChanged,
-                      ),
-                      SizedBox(height: spacing.md),
-
-                      Text(
-                        l.adminTaxRegionLabel ?? 'Region',
-                        style: text.titleMedium,
-                      ),
-                      SizedBox(height: spacing.xs),
-                      _SearchablePicker<RegionModel>(
-                        items: _filteredRegions,
-                        value: _selectedRegion,
-                        enabled: _selectedCountry != null,
-                        label: (x) => x.name,
-                        hintText: _selectedCountry == null
-                            ? (l.adminTaxSelectCountryFirst ??
-                                  'Select country first')
-                            : (l.adminTaxRegionHint ??
-                                  'Select region (optional)'),
-                        onChanged: (r) => setState(() => _selectedRegion = r),
-                      ),
-                      SizedBox(height: spacing.lg),
-
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          l.adminTaxAppliesToShippingLabel ??
-                              'Applies to shipping',
-                        ),
-                        value: _appliesToShipping,
-                        onChanged: (v) =>
-                            setState(() => _appliesToShipping = v),
-                      ),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(l.adminTaxEnabledLabel ?? 'Enabled'),
-                        value: _enabled,
-                        onChanged: (v) => setState(() => _enabled = v),
-                      ),
-                      SizedBox(height: spacing.lg),
-
-                      Row(
+                ? _ErrorState(
+                    title: title,
+                    error: _catalogError!,
+                    onCancel: () => Navigator.pop(context),
+                    onRetry: () {
+                      setState(() {
+                        _loadingCatalog = true;
+                        _catalogError = null;
+                      });
+                      _bootstrapCatalog(
+                        initialCountryId: widget.initial?.countryId,
+                        initialRegionId: widget.initial?.regionId,
+                      );
+                    },
+                  )
+                : SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: Text(l.adminCancel ?? 'Cancel'),
-                            ),
+                          Text(
+                            title,
+                            style: text.titleMedium.copyWith(color: c.label),
                           ),
-                          SizedBox(width: spacing.sm),
-                          Expanded(
-                            child: PrimaryButton(
-                              label: _isEdit
-                                  ? (l.adminUpdate ?? 'Update')
-                                  : (l.adminCreate ?? 'Create'),
-                              onPressed: () => _submit(l),
+                          SizedBox(height: spacing.md),
+
+                          Text(
+                            l.adminTaxRulePresetLabel ?? 'Rule template',
+                            style: text.titleMedium,
+                          ),
+                          SizedBox(height: spacing.xs),
+                          DropdownButtonFormField<String>(
+                            value: _selectedPresetKey,
+                            decoration: InputDecoration(
+                              hintText:
+                                  l.adminTaxRulePresetHint ?? 'Select a template',
                             ),
+                            items: [
+                              ..._presets.map(
+                                (p) => DropdownMenuItem(
+                                  value: p.key,
+                                  child: Text(p.name),
+                                ),
+                              ),
+                              DropdownMenuItem(
+                                value: _customRuleKey,
+                                child: Text(l.adminCustom ?? 'Custom'),
+                              ),
+                            ],
+                            onChanged: _onPresetChanged,
+                          ),
+                          SizedBox(height: spacing.md),
+
+                          AppTextField(
+                            label: l.adminTaxRuleNameLabel ?? 'Rule name',
+                            controller: _nameCtrl,
+                            keyboardType: TextInputType.text,
+                            validator: (v) => (v == null || v.trim().isEmpty)
+                                ? (l.adminTaxRuleNameRequired ??
+                                    'Rule name is required')
+                                : null,
+                          ),
+                          SizedBox(height: spacing.sm),
+
+                          _InlineSwitch(
+                            value: _lockNameToRate,
+                            label:
+                                l.adminTaxAutoNameLabel ?? 'Auto-name from rate',
+                            onChanged: (v) {
+                              setState(() => _lockNameToRate = v);
+                              final rate = double.tryParse(
+                                _rateCtrl.text.trim().replaceAll(',', '.'),
+                              );
+                              if (v && rate != null) {
+                                _updatingName = true;
+                                _nameCtrl.text = _nameFromRate(rate);
+                                _updatingName = false;
+                              }
+                            },
+                          ),
+                          SizedBox(height: spacing.md),
+
+                          AppTextField(
+                            label: l.adminTaxRuleRateLabel ?? 'Rate (%)',
+                            controller: _rateCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            validator: (v) {
+                              if (v == null || v.trim().isEmpty) {
+                                return l.adminTaxRuleRateRequired ??
+                                    'Rate is required';
+                              }
+
+                              final d =
+                                  double.tryParse(v.trim().replaceAll(',', '.'));
+
+                              if (d == null) {
+                                return l.adminTaxRuleRateInvalid ??
+                                    'Invalid rate';
+                              }
+
+                              if (d < 0) {
+                                return l.adminTaxRuleRateMustBePositive ??
+                                    'Rate must be 0 or more';
+                              }
+
+                              if (d > 100) {
+                                return l.adminTaxRuleRateTooHigh ??
+                                    'Rate cannot be greater than 100%';
+                              }
+
+                              return null;
+                            },
+                          ),
+                          SizedBox(height: spacing.lg),
+
+                          Text(
+                            l.adminTaxCountryLabel ?? 'Country (optional)',
+                            style: text.titleMedium,
+                          ),
+                          SizedBox(height: spacing.xs),
+                          _SearchablePicker<CountryModel>(
+                            items: _countries,
+                            value: _selectedCountry,
+                            label: (x) => '${x.name} (${x.iso2Code})',
+                            hintText: l.adminTaxCountryHint ??
+                                'Select country (optional)',
+                            onChanged: _onCountryChanged,
+                          ),
+                          SizedBox(height: spacing.md),
+
+                          Text(
+                            l.adminTaxRegionLabel ?? 'Region',
+                            style: text.titleMedium,
+                          ),
+                          SizedBox(height: spacing.xs),
+                          _SearchablePicker<RegionModel>(
+                            items: _filteredRegions,
+                            value: _selectedRegion,
+                            enabled: _selectedCountry != null,
+                            label: (x) => x.name,
+                            hintText: _selectedCountry == null
+                                ? (l.adminTaxSelectCountryFirst ??
+                                    'Select country first')
+                                : (l.adminTaxRegionHint ??
+                                    'Select region (optional)'),
+                            onChanged: (r) =>
+                                setState(() => _selectedRegion = r),
+                          ),
+                          SizedBox(height: spacing.lg),
+
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(
+                              l.adminTaxAppliesToShippingLabel ??
+                                  'Applies to shipping',
+                            ),
+                            value: _appliesToShipping,
+                            onChanged: (v) =>
+                                setState(() => _appliesToShipping = v),
+                          ),
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(l.adminTaxEnabledLabel ?? 'Enabled'),
+                            value: _enabled,
+                            onChanged: (v) => setState(() => _enabled = v),
+                          ),
+                          SizedBox(height: spacing.lg),
+
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: Text(l.adminCancel ?? 'Cancel'),
+                                ),
+                              ),
+                              SizedBox(width: spacing.sm),
+                              Expanded(
+                                child: PrimaryButton(
+                                  label: _isEdit
+                                      ? (l.adminUpdate ?? 'Update')
+                                      : (l.adminCreate ?? 'Create'),
+                                  onPressed: () => _submit(l),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
       ),
     );
   }
 }
-
-/* =========================================================
-   Inline switch
-   ========================================================= */
 
 class _InlineSwitch extends StatelessWidget {
   final bool value;
@@ -576,10 +559,6 @@ class _InlineSwitch extends StatelessWidget {
     );
   }
 }
-
-/* =========================================================
-   Error UI
-   ========================================================= */
 
 class _ErrorState extends StatelessWidget {
   final String title;
@@ -627,10 +606,6 @@ class _ErrorState extends StatelessWidget {
     );
   }
 }
-
-/* =========================================================
-   Searchable picker (SAFE bottom sheet)
-   ========================================================= */
 
 class _SearchablePicker<T> extends StatelessWidget {
   final List<T> items;
@@ -746,8 +721,8 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
       final next = q.isEmpty
           ? widget.items
           : widget.items
-                .where((i) => widget.label(i).toLowerCase().contains(q))
-                .toList();
+              .where((i) => widget.label(i).toLowerCase().contains(q))
+              .toList();
       setState(() => _filtered = next);
     });
   }
@@ -762,8 +737,6 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-
-    // ✅ read not watch to prevent semantics crash during keyboard animations
     final tokens = context.read<ThemeCubit>().state.tokens;
     final c = tokens.colors;
     final spacing = tokens.spacing;
@@ -798,7 +771,6 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
                 ),
               ),
               SizedBox(height: spacing.md),
-
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: spacing.lg),
                 child: Text(
@@ -809,9 +781,7 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
                   ),
                 ),
               ),
-
               SizedBox(height: spacing.md),
-
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: spacing.lg),
                 child: AppSearchField(
@@ -819,9 +789,7 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
                   controller: _searchCtrl,
                 ),
               ),
-
               SizedBox(height: spacing.md),
-
               Expanded(
                 child: _filtered.isEmpty
                     ? Center(
@@ -857,10 +825,6 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
     );
   }
 }
-
-/* =========================================================
-   Preset model
-   ========================================================= */
 
 class _RulePreset {
   final String key;

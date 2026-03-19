@@ -2890,4 +2890,43 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get connection_reconnecting => 'Reconnexion…';
+
+  @override
+  String get adminProductSectionSaleTitle => 'Promotion';
+
+  @override
+  String get adminProductSectionSaleSubtitle => 'Définissez un prix de promotion et une période pour ce produit';
+
+  @override
+  String get adminProductLoadingCategories => 'Chargement des catégories...';
+
+  @override
+  String get adminProductLoadingItemTypes => 'Chargement des types d\'éléments...';
+
+  @override
+  String get adminProductSelectCategoryHint => 'Sélectionnez une catégorie';
+
+  @override
+  String get adminProductSelectItemTypeHint => 'Sélectionnez un type d\'élément';
+
+  @override
+  String get adminProductSectionCategoryTypeTitle => 'Catégorie et type';
+
+  @override
+  String get adminProductSectionCategoryTypeSubtitle => 'Sélectionnez la catégorie et le type d\'élément pour ce produit';
+
+  @override
+  String get adminCreateCategoryTooltip => 'création d\'un nouveau catégorie';
+
+  @override
+  String get adminCreateItemTypeTooltip => ' création d\'un nouveau type d\'élément';
+
+  @override
+  String get adminProductSalePriceHint => 'Entrez le prix de la promotion pour ce produit (il doit être inférieur au prix régulier).';
+
+  @override
+  String get adminProductSaleStartHint => 'Sélectionnez la date de début de la promotion';
+
+  @override
+  String get adminProductSaleEndHint => 'Sélectionnez la date de fin de la promotion';
 }

@@ -26,8 +26,6 @@ import '../widgets/admin_tax_empty_state.dart';
 import '../widgets/admin_tax_filters_bar.dart';
 
 class AdminTaxRulesScreen extends StatelessWidget {
-  /// ✅ Keep temporarily ONLY because your TaxRuleFormSheet still expects it.
-  /// Once we update the sheet, we can remove this completely.
   final int ownerProjectId;
 
   const AdminTaxRulesScreen({super.key, required this.ownerProjectId});
@@ -81,7 +79,7 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
 
     if (t != null && t.isNotEmpty) {
       context.read<TaxRulesBloc>().add(
-            LoadTaxRules(token: t), // ✅ token-only
+            LoadTaxRules(token: t),
           );
     }
   }
@@ -98,11 +96,10 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
     }
 
     context.read<TaxRulesBloc>().add(
-          LoadTaxRules(token: _token!), // ✅ token-only
+          LoadTaxRules(token: _token!),
         );
   }
 
-  // ✅ PRO bottom sheet wrapper (no overflow when keyboard opens)
   Future<T?> _showProSheet<T>(Widget sheet) async {
     final tokens = context.read<ThemeCubit>().state.tokens;
     final radius = tokens.card.radius;
@@ -144,7 +141,6 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
       return;
     }
 
-    // ✅ Keep ownerProjectId only if your sheet needs it.
     final body = await _showProSheet<Map<String, dynamic>>(
       TaxRuleFormSheet(ownerProjectId: widget.ownerProjectId),
     );
@@ -157,9 +153,6 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
             token: _token!,
           ),
         );
-
-    final l = AppLocalizations.of(context)!;
-    AppToast.success(context, l.adminCreated ?? 'Created');
   }
 
   Future<void> _openEditSheet(TaxRule rule) async {
@@ -183,9 +176,6 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
             token: _token!,
           ),
         );
-
-    final l = AppLocalizations.of(context)!;
-    AppToast.success(context, l.adminUpdated ?? 'Updated');
   }
 
   Future<void> _confirmAndDelete(TaxRule rule) async {
@@ -229,8 +219,6 @@ class _AdminTaxRulesViewState extends State<_AdminTaxRulesView> {
             token: _token!,
           ),
         );
-
-    AppToast.success(context, l.adminDeleted ?? 'Deleted');
   }
 
   @override

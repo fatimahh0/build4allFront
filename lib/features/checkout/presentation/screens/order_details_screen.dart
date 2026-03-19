@@ -1,12 +1,13 @@
+import 'package:build4front/features/invoices/presentation/mappers/checkout_invoice_mapper.dart';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 
+import 'package:build4front/features/invoices/presentation/utils/invoice_pdf.dart';
 import 'package:build4front/l10n/app_localizations.dart';
 import 'package:build4front/features/catalog/cubit/money.dart';
 
 import 'package:build4front/features/checkout/data/models/checkout_summary_model.dart';
 import 'package:build4front/features/checkout/domain/entities/checkout_entities.dart';
-import '../utils/invoice_pdf.dart';
 
 class OrderDetailsScreen extends StatelessWidget {
   final CheckoutSummaryModel summary;
@@ -167,20 +168,19 @@ class OrderDetailsScreen extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          ElevatedButton(
-            onPressed: () async {
-              final bytes = await InvoicePdf.build(
-                summary,
-                itemNameById: itemNameById,
-              );
+         ElevatedButton(
+  onPressed: () async {
+    final invoice = CheckoutInvoiceMapper.fromCheckout(
+      summary,
+      address: address,
+      shipping: shipping,
+      itemNameById: itemNameById,
+    );
 
-              final fileName =
-                  code.isNotEmpty ? "invoice-$code.pdf" : "invoice-${summary.orderId}.pdf";
-
-              await Printing.sharePdf(bytes: bytes, filename: fileName);
-            },
-            child: Text(l10n.orderDetailsDownloadInvoice),
-          ),
+    await InvoicePdf.share(invoice);
+  },
+  child: Text(l10n.orderDetailsDownloadInvoice),
+),
         ],
       ),
     );

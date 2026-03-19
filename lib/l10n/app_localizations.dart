@@ -5658,6 +5658,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Connecting...'**
   String get connection_reconnecting;
+
+  /// No description provided for @adminProductSectionSaleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sale settings'**
+  String get adminProductSectionSaleTitle;
+
+  /// No description provided for @adminProductSectionSaleSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure sale price and sale period.'**
+  String get adminProductSectionSaleSubtitle;
+
+  /// No description provided for @adminProductLoadingCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading categories...'**
+  String get adminProductLoadingCategories;
+
+  /// No description provided for @adminProductLoadingItemTypes.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading item types...'**
+  String get adminProductLoadingItemTypes;
+
+  /// No description provided for @adminProductSelectCategoryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a category'**
+  String get adminProductSelectCategoryHint;
+
+  /// No description provided for @adminProductSelectItemTypeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select an item type'**
+  String get adminProductSelectItemTypeHint;
+
+  /// No description provided for @adminProductSectionCategoryTypeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Category & type'**
+  String get adminProductSectionCategoryTypeTitle;
+
+  /// No description provided for @adminProductSectionCategoryTypeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select the category and item type for this product'**
+  String get adminProductSectionCategoryTypeSubtitle;
+
+  /// No description provided for @adminCreateCategoryTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Create new category'**
+  String get adminCreateCategoryTooltip;
+
+  /// No description provided for @adminCreateItemTypeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Create new item type'**
+  String get adminCreateItemTypeTooltip;
+
+  /// No description provided for @adminProductSalePriceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 99.99'**
+  String get adminProductSalePriceHint;
+
+  /// No description provided for @adminProductSaleStartHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select sale start date'**
+  String get adminProductSaleStartHint;
+
+  /// No description provided for @adminProductSaleEndHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select sale end date'**
+  String get adminProductSaleEndHint;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

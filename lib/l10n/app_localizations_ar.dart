@@ -2890,4 +2890,43 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get connection_reconnecting => 'إعادة الاتصال...';
+
+  @override
+  String get adminProductSectionSaleTitle => 'التخفيضات';
+
+  @override
+  String get adminProductSectionSaleSubtitle => 'حدد سعر التخفيض وتواريخه لتقديم عروض خاصة على هذا المنتج.';
+
+  @override
+  String get adminProductLoadingCategories => 'جارٍ تحميل التصنيفات...';
+
+  @override
+  String get adminProductLoadingItemTypes => 'جارٍ تحميل أنواع العناصر...';
+
+  @override
+  String get adminProductSelectCategoryHint => 'حدد تصنيفًا';
+
+  @override
+  String get adminProductSelectItemTypeHint => 'حدد نوعًا للعنصر';
+
+  @override
+  String get adminProductSectionCategoryTypeTitle => 'التصنيف وال نوع';
+
+  @override
+  String get adminProductSectionCategoryTypeSubtitle => 'حدد التصنيف ونوع العنصر لهذا المنتج';
+
+  @override
+  String get adminCreateCategoryTooltip => 'إنشاء تصنيف جديد';
+
+  @override
+  String get adminCreateItemTypeTooltip => 'إنشاء نوع عنصر جديد';
+
+  @override
+  String get adminProductSalePriceHint => 'أدخل سعر التخفيض لهذا المنتج (يجب أن يكون أقل من السعر الأساسي).';
+
+  @override
+  String get adminProductSaleStartHint => 'حدد تاريخ بداية التخفيض';
+
+  @override
+  String get adminProductSaleEndHint => 'حدد تاريخ نهاية التخفيض';
 }
