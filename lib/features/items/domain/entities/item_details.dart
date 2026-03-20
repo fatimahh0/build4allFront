@@ -1,7 +1,11 @@
 class ItemAttribute {
   final String code;
   final String value;
-  const ItemAttribute({required this.code, required this.value});
+
+  const ItemAttribute({
+    required this.code,
+    required this.value,
+  });
 }
 
 class ItemDetails {
@@ -30,10 +34,18 @@ class ItemDetails {
 
   final List<ItemAttribute> attributes;
 
-  // ✅ NEW
   final int? statusId;
   final String? statusCode;
   final String? statusName;
+
+  final String? productType;
+  final bool downloadable;
+  final String? downloadUrl;
+  final String? externalUrl;
+  final String? buttonText;
+
+  final bool canDownload;
+  final String? accessMessage;
 
   const ItemDetails({
     required this.id,
@@ -55,11 +67,16 @@ class ItemDetails {
     this.heightCm,
     this.lengthCm,
     this.attributes = const [],
-
-    // ✅ NEW
     this.statusId,
     this.statusCode,
     this.statusName,
+    this.productType,
+    this.downloadable = false,
+    this.downloadUrl,
+    this.externalUrl,
+    this.buttonText,
+    this.canDownload = false,
+    this.accessMessage,
   });
 
   bool get isSaleActiveNow {
@@ -88,11 +105,28 @@ class ItemDetails {
     return price;
   }
 
-  // ✅ NEW
   String get normalizedStatusCode => (statusCode ?? '').trim().toUpperCase();
   String get normalizedStatusName => (statusName ?? '').trim().toUpperCase();
 
   bool get isUpcoming =>
       normalizedStatusCode == 'UPCOMING' ||
       normalizedStatusName == 'UPCOMING';
+
+  String get normalizedProductType => (productType ?? '').trim().toUpperCase();
+
+  bool get isExternalProduct => normalizedProductType == 'EXTERNAL';
+
+  bool get hasExternalUrl => (externalUrl ?? '').trim().isNotEmpty;
+
+  bool get hasDownloadUrl => (downloadUrl ?? '').trim().isNotEmpty;
+
+  bool get isDownloadReady => downloadable && canDownload;
+
+  String get resolvedButtonText {
+    final t = (buttonText ?? '').trim();
+    if (t.isNotEmpty) return t;
+    if (isExternalProduct) return 'Open';
+    if (isDownloadReady) return 'Download';
+    return 'Add to cart';
+  }
 }

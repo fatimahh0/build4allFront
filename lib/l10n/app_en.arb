@@ -1375,7 +1375,38 @@
   "adminCreateItemTypeTooltip": "Create new item type",
   "adminProductSalePriceHint": "e.g. 99.99",
   "adminProductSaleStartHint": "Select sale start date",
-  "adminProductSaleEndHint": "Select sale end date"
+  "adminProductSaleEndHint": "Select sale end date",
+
+  "checkoutPaymentMethodUnavailable": "Selected payment method is not available,please call support",
+  "adminDisable": "Disable",
+"adminDisableShippingMethodMessage": "Are you sure you want to disable this shipping method? It will no longer appear at checkout.",
+"adminShippingMethodDisabled": "Shipping method disabled successfully",
+"adminDisabledLabel": "Disabled",
+"adminEnabledOnly": "Enabled only",
+"adminDisabledOnly": "Disabled only",
+"adminAllLabel": "All",
+ "openLinkLabel": "Open Link",
+  "downloadNowLabel": "Download",
+  "downloadLabel": "Download",
+  "downloadReadyLabel": "Ready to download",
+  "downloadAfterPurchaseLabel": "Available after purchase",
+  "externalProductLabel": "External product",
+  "productTypeLabel": "Product type",
+  "invalidExternalUrlLabel": "Invalid external URL",
+  "missingExternalUrlLabel": "Missing external URL",
+  "couldNotOpenLinkLabel": "Could not open the link",
+  "invalidDownloadUrlLabel": "Invalid download URL",
+  "missingDownloadUrlLabel": "Missing download URL",
+  "couldNotStartDownloadLabel": "Could not start the download",
+    "adminDownloadableMustBeSimple": "Downloadable product must use Simple product type",
+  "adminDownloadableMustBeVirtual": "Downloadable product must be virtual",
+  "adminDownloadUrlRequired": "Download URL is required for downloadable product",
+  "adminExternalUrlRequired": "External URL is required for external product",
+  "adminExternalCannotBeDownloadable": "External product cannot be downloadable",
+  "adminDownloadableRulesHint": "Downloadable products are saved as Simple + Virtual and require a download URL.",
+  "adminAllAttributeTypesAlreadyAdded": "All available attribute types are already added"
+
+
   
 
 }

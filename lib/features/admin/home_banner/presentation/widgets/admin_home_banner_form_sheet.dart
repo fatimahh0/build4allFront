@@ -75,13 +75,15 @@ class _AdminHomeBannerFormSheetState extends State<AdminHomeBannerFormSheet> {
     _titleCtrl = TextEditingController(text: b?.title ?? '');
     _subtitleCtrl = TextEditingController(text: b?.subtitle ?? '');
     _sortCtrl = TextEditingController(
-      text: b?.sortOrder != null ? '${b!.sortOrder}' : '',
+      text: b != null ? '${b.sortOrder}' : '',
     );
     _targetUrlCtrl = TextEditingController(text: b?.targetUrl ?? '');
 
-    _active = true;
+    final initialImage = (b?.imageUrl ?? '').trim();
+
+    _active = b?.active ?? true;
     _targetType = HomeBannerTargetTypeUiX.fromApi(b?.targetType);
-    _existingImageUrl = b?.imageUrl;
+    _existingImageUrl = initialImage.isEmpty ? null : Env.resolveUrl(initialImage);
 
     _bootstrapTargets(
       initialCategoryId: ((b?.targetType ?? '').toUpperCase() == 'CATEGORY')
@@ -123,12 +125,16 @@ class _AdminHomeBannerFormSheetState extends State<AdminHomeBannerFormSheet> {
 
       Category? initCat;
       if (initialCategoryId != null) {
-        initCat = categories.where((c) => c.id == initialCategoryId).firstOrNull;
+        initCat = categories
+            .where((c) => c.id == initialCategoryId)
+            .firstOrNull;
       }
 
       ItemSummary? initProd;
       if (initialProductId != null) {
-        initProd = products.where((p) => p.id == initialProductId).firstOrNull;
+        initProd = products
+            .where((p) => p.id == initialProductId)
+            .firstOrNull;
       }
 
       setState(() {
@@ -149,7 +155,8 @@ class _AdminHomeBannerFormSheetState extends State<AdminHomeBannerFormSheet> {
 
   Future<List<Category>> _loadCategories(String token) async {
     final api = CategoryApiService();
-    final projectId = int.tryParse(Env.projectId!.trim());
+    final rawProjectId = (Env.projectId ?? '').trim();
+    final projectId = int.tryParse(rawProjectId);
 
     if (projectId == null || projectId <= 0) {
       return <Category>[];
@@ -282,7 +289,6 @@ class _AdminHomeBannerFormSheetState extends State<AdminHomeBannerFormSheet> {
       return;
     }
 
-    // target صار optional
     if (_targetType == HomeBannerTargetTypeUi.category &&
         _selectedCategory == null) {
       setState(() {
@@ -523,11 +529,13 @@ class _BannerImagePickerBlock extends StatelessWidget {
           fit: BoxFit.cover,
         ),
       );
-    } else if ((existingUrl ?? '').isNotEmpty) {
+    } else if ((existingUrl ?? '').trim().isNotEmpty) {
+      final resolvedUrl = Env.resolveUrl(existingUrl!.trim());
+
       preview = ClipRRect(
         borderRadius: BorderRadius.circular(tokens.card.radius),
         child: Image.network(
-          existingUrl!,
+          resolvedUrl,
           height: 160,
           width: double.infinity,
           fit: BoxFit.cover,

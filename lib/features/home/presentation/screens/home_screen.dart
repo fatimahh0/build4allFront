@@ -6,6 +6,7 @@ import 'package:build4front/features/support/data/services/support_api_service.d
 import 'package:build4front/features/support/domain/support_info.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:build4front/core/network/globals.dart' as authState;
 import 'package:build4front/core/config/app_config.dart';
@@ -25,6 +26,7 @@ import 'package:build4front/common/widgets/app_search_field.dart';
 import 'package:build4front/features/home/presentation/widgets/home_header.dart';
 import 'package:build4front/features/home/presentation/widgets/home_category_chips.dart';
 import 'package:build4front/features/home/homebanner/presentations/widgets/home_banner_slider.dart';
+import 'package:build4front/features/home/homebanner/domain/entities/home_banner.dart';
 
 import 'package:build4front/features/home/presentation/widgets/home_bottom_section.dart';
 
@@ -88,6 +90,86 @@ class _HomeScreenState extends State<HomeScreen>
     if (v is int) return v;
     return int.tryParse('$v') ?? 0;
   }
+
+  String _safeString(dynamic v) => (v ?? '').toString().trim();
+
+  String? _safeNullableString(dynamic v) {
+    final s = _safeString(v);
+    return s.isEmpty ? null : s;
+  }
+
+  bool _safeBool(dynamic v) {
+    if (v == null) return false;
+    if (v is bool) return v;
+    if (v is num) return v != 0;
+    final s = v.toString().trim().toLowerCase();
+    return s == 'true' || s == '1' || s == 'yes';
+  }
+
+  String _itemProductType(ItemSummary item) {
+    try {
+      return _safeString((item as dynamic).productType).toUpperCase();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  bool _isExternalProduct(ItemSummary item) {
+    try {
+      final bool fromGetter = _safeBool((item as dynamic).isExternalProduct);
+      if (fromGetter) return true;
+    } catch (_) {}
+    return _itemProductType(item) == 'EXTERNAL';
+  }
+
+  bool _isDownloadable(ItemSummary item) {
+    try {
+      return _safeBool((item as dynamic).downloadable);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  bool _canDownloadNow(ItemSummary item) {
+    try {
+      return _safeBool((item as dynamic).canDownload);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  String? _externalUrl(ItemSummary item) {
+    try {
+      return _safeNullableString((item as dynamic).externalUrl);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String? _downloadUrl(ItemSummary item) {
+    try {
+      return _safeNullableString((item as dynamic).downloadUrl);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String? _buttonText(ItemSummary item) {
+    try {
+      return _safeNullableString((item as dynamic).buttonText);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _hasExternalUrl(ItemSummary item) =>
+      (_externalUrl(item) ?? '').trim().isNotEmpty;
+
+  bool _hasDownloadUrl(ItemSummary item) =>
+      (_downloadUrl(item) ?? '').trim().isNotEmpty;
+
+  bool _isDownloadReady(ItemSummary item) =>
+      _isDownloadable(item) && _canDownloadNow(item) && _hasDownloadUrl(item);
 
   void _ensureHomeDataLoaded() {
     final homeBloc = context.read<HomeBloc>();
@@ -292,6 +374,59 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
+  Future<void> _handleBannerTap(BuildContext context, HomeBanner banner) async {
+    final l10n = AppLocalizations.of(context)!;
+    final type = (banner.targetType ?? '').trim().toUpperCase();
+
+    switch (type) {
+      case 'CATEGORY':
+        final categoryId = banner.targetId;
+        if (categoryId == null) return;
+
+        setState(() {
+          _selectedCategoryId = categoryId;
+          _resetPaging();
+        });
+        return;
+
+      case 'PRODUCT':
+        final productId = banner.targetId;
+        if (productId == null) return;
+
+        _openDetails(context, productId);
+        return;
+
+      case 'URL':
+      case 'EXTERNAL_URL':
+        final rawUrl = (banner.targetUrl ?? '').trim();
+        if (rawUrl.isEmpty) {
+          AppToast.error(context, l10n.missingExternalUrlLabel);
+          return;
+        }
+
+        final uri = Uri.tryParse(rawUrl);
+        if (uri == null) {
+          AppToast.error(context, l10n.invalidExternalUrlLabel);
+          return;
+        }
+
+        final opened = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+
+        if (!mounted) return;
+
+        if (!opened) {
+          AppToast.error(context, l10n.couldNotOpenLinkLabel);
+        }
+        return;
+
+      default:
+        return;
+    }
+  }
+
   void _openSectionSeeAll(
     BuildContext context, {
     required String title,
@@ -312,11 +447,28 @@ class _HomeScreenState extends State<HomeScreen>
           subtitleFor: _subtitleFor,
           metaFor: _metaLabelFor,
           ctaLabelFor: _ctaLabelFor,
+          isCtaDisabledFor: _isCtaDisabled,
           onTapItem: (id) => _openDetails(context, id),
           onCtaPressed: (item) => _handleCtaPressed(context, item),
         ),
       ),
     );
+  }
+
+  bool _isCtaDisabled(ItemSummary item) {
+    if (item.kind != ItemKind.product) return false;
+
+    if (_isExternalProduct(item)) {
+      return !_hasExternalUrl(item);
+    }
+
+    if (_isDownloadReady(item)) {
+      return !_hasDownloadUrl(item);
+    }
+
+    if (_isComingSoon(item)) return false;
+
+    return !_canUserPurchase(item);
   }
 
   @override
@@ -364,88 +516,87 @@ class _HomeScreenState extends State<HomeScreen>
 
             return BlocBuilder<HomeBloc, HomeState>(
               builder: (context, homeState) {
-              if (!homeState.hasLoaded && !homeState.isLoading) {
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (!mounted) return;
-    _ensureHomeDataLoaded();
-  });
-}
+                if (!homeState.hasLoaded && !homeState.isLoading) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    _ensureHomeDataLoaded();
+                  });
+                }
 
-final bool initialLoading = homeState.isLoading && !homeState.hasLoaded;
+                final bool initialLoading =
+                    homeState.isLoading && !homeState.hasLoaded;
 
-return Stack(
-  children: [
-    RefreshIndicator(
-      onRefresh: () async {
-        setState(() {
-          _searchQuery = '';
-          _selectedCategoryId = null;
-          _resetPaging();
-        });
+                return Stack(
+                  children: [
+                    RefreshIndicator(
+                      onRefresh: () async {
+                        setState(() {
+                          _searchQuery = '';
+                          _selectedCategoryId = null;
+                          _resetPaging();
+                        });
 
-        final raw = (authState.token ?? '').trim();
-        final token = raw.isEmpty ? null : raw;
+                        final raw = (authState.token ?? '').trim();
+                        final token = raw.isEmpty ? null : raw;
 
-        context.read<HomeBloc>().add(
-          HomeRefreshRequested(token: token),
-        );
+                        context.read<HomeBloc>().add(
+                          HomeRefreshRequested(token: token),
+                        );
 
-        await AiFeatureBootstrap().refresh(
-          minInterval: Duration.zero,
-        );
-        await _loadSupportInfo(
-          silent: false,
-          reason: 'pull-to-refresh',
-        );
-      },
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final maxW = constraints.maxWidth;
-          final contentMaxWidth = maxW > 900 ? 900.0 : maxW;
+                        await AiFeatureBootstrap().refresh(
+                          minInterval: Duration.zero,
+                        );
+                        await _loadSupportInfo(
+                          silent: false,
+                          reason: 'pull-to-refresh',
+                        );
+                      },
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final maxW = constraints.maxWidth;
+                          final contentMaxWidth = maxW > 900 ? 900.0 : maxW;
 
-          final hp = maxW < 390 ? spacing.md : spacing.lg;
-          final top = maxW < 390 ? spacing.md : spacing.lg;
-          final bottom = spacing.lg;
+                          final hp = maxW < 390 ? spacing.md : spacing.lg;
+                          final top = maxW < 390 ? spacing.md : spacing.lg;
+                          final bottom = spacing.lg;
 
-          return Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: contentMaxWidth),
-              child: ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(hp, top, hp, bottom),
-                itemCount: visibleSections.length,
-                itemBuilder: (context, index) {
-                  final section = visibleSections[index];
-                  return _buildSection(
-                    context,
-                    theme,
-                    l10n,
-                    section,
-                    homeState: homeState,
-                    fullName: fullName,
-                    avatarUrl: avatarUrl,
-                  );
-                },
-              ),
-            ),
-          );
-        },
-      ),
-    ),
-
-    if (initialLoading)
-      const Positioned(
-        top: 0,
-        left: 0,
-        right: 0,
-        child: LinearProgressIndicator(),
-      ),
-  ],
-);
-                
-                 
-                
+                          return Align(
+                            alignment: Alignment.topCenter,
+                            child: ConstrainedBox(
+                              constraints:
+                                  BoxConstraints(maxWidth: contentMaxWidth),
+                              child: ListView.builder(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding:
+                                    EdgeInsets.fromLTRB(hp, top, hp, bottom),
+                                itemCount: visibleSections.length,
+                                itemBuilder: (context, index) {
+                                  final section = visibleSections[index];
+                                  return _buildSection(
+                                    context,
+                                    theme,
+                                    l10n,
+                                    section,
+                                    homeState: homeState,
+                                    fullName: fullName,
+                                    avatarUrl: avatarUrl,
+                                  );
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    if (initialLoading)
+                      const Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: LinearProgressIndicator(),
+                      ),
+                  ],
+                );
               },
             );
           },
@@ -556,16 +707,7 @@ return Stack(
           padding: EdgeInsets.only(bottom: spacing.xs),
           child: HomeBannerSlider(
             token: authState.token ?? '',
-            onBannerTap: (banner) {
-              if (banner.targetType == 'CATEGORY' && banner.targetId != null) {
-                Navigator.of(
-                  context,
-                ).pushNamed('/explore', arguments: {'categoryId': banner.targetId});
-              } else if (banner.targetType == 'URL' &&
-                  (banner.targetUrl ?? '').isNotEmpty) {
-                // TODO url_launcher
-              }
-            },
+            onBannerTap: (banner) => _handleBannerTap(context, banner),
           ),
         );
 
@@ -582,16 +724,16 @@ return Stack(
             (section.id == 'recommended'
                 ? l10n.home_recommended_title
                 : section.id == 'popular'
-                    ? l10n.home_popular_title
-                    : section.id == 'flash_sale'
-                        ? l10n.home_flash_sale_title
-                        : section.id == 'new_arrivals'
-                            ? l10n.home_new_arrivals_title
-                            : section.id == 'best_sellers'
-                                ? l10n.home_best_sellers_title
-                                : section.id == 'top_rated'
-                                    ? l10n.home_top_rated_title
-                                    : l10n.home_items_default_title);
+                ? l10n.home_popular_title
+                : section.id == 'flash_sale'
+                ? l10n.home_flash_sale_title
+                : section.id == 'new_arrivals'
+                ? l10n.home_new_arrivals_title
+                : section.id == 'best_sellers'
+                ? l10n.home_best_sellers_title
+                : section.id == 'top_rated'
+                ? l10n.home_top_rated_title
+                : l10n.home_items_default_title);
 
         final icon = _iconForSection(section);
         final trailing = _trailingForSection(section, l10n);
@@ -621,6 +763,7 @@ return Stack(
             subtitleFor: _subtitleFor,
             metaFor: _metaLabelFor,
             ctaLabelFor: _ctaLabelFor,
+            isCtaDisabledFor: _isCtaDisabled,
             onTapItem: (id) => _openDetails(context, id),
             onCtaPressed: (item) => _handleCtaPressed(context, item),
           ),
@@ -699,15 +842,15 @@ return Stack(
         return homeState.recommendedItems.isNotEmpty
             ? homeState.recommendedItems
             : homeState.popularItems.isNotEmpty
-                ? homeState.popularItems
-                : homeState.newArrivalsItems;
+            ? homeState.popularItems
+            : homeState.newArrivalsItems;
 
       case 'popular':
         return homeState.popularItems.isNotEmpty
             ? homeState.popularItems
             : homeState.recommendedItems.isNotEmpty
-                ? homeState.recommendedItems
-                : homeState.newArrivalsItems;
+            ? homeState.recommendedItems
+            : homeState.newArrivalsItems;
 
       case 'flash_sale':
         return homeState.flashSaleItems;
@@ -716,24 +859,24 @@ return Stack(
         return homeState.newArrivalsItems.isNotEmpty
             ? homeState.newArrivalsItems
             : homeState.popularItems.isNotEmpty
-                ? homeState.popularItems
-                : homeState.recommendedItems;
+            ? homeState.popularItems
+            : homeState.recommendedItems;
 
       case 'best_sellers':
         return homeState.bestSellersItems.isNotEmpty
             ? homeState.bestSellersItems
             : homeState.popularItems.isNotEmpty
-                ? homeState.popularItems
-                : homeState.recommendedItems;
+            ? homeState.popularItems
+            : homeState.recommendedItems;
 
       case 'top_rated':
         return homeState.topRatedItems.isNotEmpty
             ? homeState.topRatedItems
             : homeState.bestSellersItems.isNotEmpty
-                ? homeState.bestSellersItems
-                : homeState.popularItems.isNotEmpty
-                    ? homeState.popularItems
-                    : homeState.recommendedItems;
+            ? homeState.bestSellersItems
+            : homeState.popularItems.isNotEmpty
+            ? homeState.popularItems
+            : homeState.recommendedItems;
 
       default:
         return const <ItemSummary>[];
@@ -773,6 +916,14 @@ return Stack(
 
     switch (item.kind) {
       case ItemKind.product:
+        if (_isExternalProduct(item)) {
+          return _buttonText(item) ?? l10n.openLinkLabel;
+        }
+
+        if (_isDownloadReady(item)) {
+          return _buttonText(item) ?? l10n.downloadNowLabel;
+        }
+
         if (_isComingSoon(item)) return l10n.home_coming_soon_button;
         if (_isOutOfStock(item)) return l10n.outOfStock;
         return l10n.cart_add_button;
@@ -811,6 +962,16 @@ return Stack(
         return '$d/$m/$y  $hh:$mm';
 
       case ItemKind.product:
+        if (_isExternalProduct(item)) {
+          return l10n.externalProductLabel;
+        }
+
+        if (_isDownloadable(item)) {
+          return _isDownloadReady(item)
+              ? l10n.downloadReadyLabel
+              : l10n.downloadAfterPurchaseLabel;
+        }
+
         final stock = item.stock;
 
         if (stock == null) return null;
@@ -824,9 +985,53 @@ return Stack(
     }
   }
 
-  void _handleCtaPressed(BuildContext context, ItemSummary item) {
+  Future<void> _handleCtaPressed(BuildContext context, ItemSummary item) async {
     final l10n = AppLocalizations.of(context)!;
     final auth = context.read<AuthBloc>().state;
+
+    if (item.kind == ItemKind.product && _isExternalProduct(item)) {
+      final rawUrl = (_externalUrl(item) ?? '').trim();
+      if (rawUrl.isEmpty) {
+        AppToast.error(context, l10n.missingExternalUrlLabel);
+        return;
+      }
+
+      final uri = Uri.tryParse(rawUrl);
+      if (uri == null) {
+        AppToast.error(context, l10n.invalidExternalUrlLabel);
+        return;
+      }
+
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!context.mounted) return;
+
+      if (!ok) {
+        AppToast.error(context, l10n.couldNotOpenLinkLabel);
+      }
+      return;
+    }
+
+    if (item.kind == ItemKind.product && _isDownloadReady(item)) {
+      final rawUrl = (_downloadUrl(item) ?? '').trim();
+      if (rawUrl.isEmpty) {
+        AppToast.error(context, l10n.missingDownloadUrlLabel);
+        return;
+      }
+
+      final uri = Uri.tryParse(rawUrl);
+      if (uri == null) {
+        AppToast.error(context, l10n.invalidDownloadUrlLabel);
+        return;
+      }
+
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!context.mounted) return;
+
+      if (!ok) {
+        AppToast.error(context, l10n.couldNotStartDownloadLabel);
+      }
+      return;
+    }
 
     if (!auth.isLoggedIn) {
       AppToast.error(context, l10n.cart_login_required_message);
@@ -939,8 +1144,9 @@ class _HomeItemsPagerSection extends StatefulWidget {
   final String? Function(ItemSummary) subtitleFor;
   final String? Function(BuildContext, ItemSummary) metaFor;
   final String Function(BuildContext, ItemSummary) ctaLabelFor;
+  final bool Function(ItemSummary) isCtaDisabledFor;
   final void Function(int itemId) onTapItem;
-  final void Function(ItemSummary item) onCtaPressed;
+  final Future<void> Function(ItemSummary item) onCtaPressed;
 
   const _HomeItemsPagerSection({
     super.key,
@@ -956,6 +1162,7 @@ class _HomeItemsPagerSection extends StatefulWidget {
     required this.subtitleFor,
     required this.metaFor,
     required this.ctaLabelFor,
+    required this.isCtaDisabledFor,
     required this.onTapItem,
     required this.onCtaPressed,
   });
@@ -980,12 +1187,12 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
     super.dispose();
   }
 
- double _aspect(double w) {
-  if (w < 360) return 0.74;
-  if (w < 420) return 0.78;
-  if (w < 700) return 0.82;
-  return 0.88;
-}
+  double _aspect(double w) {
+    if (w < 360) return 0.74;
+    if (w < 420) return 0.78;
+    if (w < 700) return 0.82;
+    return 0.88;
+  }
 
   void _jumpTo(int p) {
     if (!_pc.hasClients) return;
@@ -1058,10 +1265,10 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
 
             var aspect = _aspect(w);
             if (widget.storageId == 'flash_sale') {
-  aspect = math.max(0.64, aspect - 0.03);
-}
+              aspect = math.max(0.64, aspect - 0.03);
+            }
 
-            final cols = 2;
+            const cols = 2;
             const perPage = 2;
 
             final totalPages = (items.length / perPage).ceil().clamp(1, 999999);
@@ -1077,7 +1284,8 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
 
             final cardW = (w - ((cols - 1) * spacing.md)) / cols;
             final cardH = cardW / aspect;
-            final extraH = widget.storageId == 'flash_sale' ? spacing.sm : 0.0;
+            final extraH =
+                widget.storageId == 'flash_sale' ? spacing.sm : 0.0;
 
             Widget card(ItemSummary item) {
               return Builder(
@@ -1087,9 +1295,7 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
                       ? BoxFit.contain
                       : BoxFit.cover;
 
-                  final bool ctaDisabled =
-                      item.kind == ItemKind.product &&
-                      !item.isAvailableForPurchase;
+                  final bool ctaDisabled = widget.isCtaDisabledFor(item);
 
                   return ItemCard(
                     itemId: item.id,
@@ -1106,7 +1312,7 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
                     onTap: () => widget.onTapItem(item.id),
                     onCtaPressed: ctaDisabled
                         ? null
-                        : () => widget.onCtaPressed(item),
+                        : () async => widget.onCtaPressed(item),
                   );
                 },
               );
@@ -1347,8 +1553,9 @@ class HomeSectionSeeAllScreen extends StatefulWidget {
   final String? Function(ItemSummary) subtitleFor;
   final String? Function(BuildContext, ItemSummary) metaFor;
   final String Function(BuildContext, ItemSummary) ctaLabelFor;
+  final bool Function(ItemSummary) isCtaDisabledFor;
   final void Function(int itemId) onTapItem;
-  final void Function(ItemSummary item) onCtaPressed;
+  final Future<void> Function(ItemSummary item) onCtaPressed;
 
   const HomeSectionSeeAllScreen({
     super.key,
@@ -1362,6 +1569,7 @@ class HomeSectionSeeAllScreen extends StatefulWidget {
     required this.subtitleFor,
     required this.metaFor,
     required this.ctaLabelFor,
+    required this.isCtaDisabledFor,
     required this.onTapItem,
     required this.onCtaPressed,
   });
@@ -1517,9 +1725,7 @@ class _HomeSectionSeeAllScreenState extends State<HomeSectionSeeAllScreen> {
                       itemBuilder: (ctx, i) {
                         final item = filtered[i];
                         final pricing = widget.pricingFor(ctx, item);
-                        final disabled =
-                            item.kind == ItemKind.product &&
-                            !item.isAvailableForPurchase;
+                        final disabled = widget.isCtaDisabledFor(item);
 
                         return ItemCard(
                           itemId: item.id,
@@ -1538,7 +1744,7 @@ class _HomeSectionSeeAllScreenState extends State<HomeSectionSeeAllScreen> {
                           onTap: () => widget.onTapItem(item.id),
                           onCtaPressed: disabled
                               ? null
-                              : () => widget.onCtaPressed(item),
+                              : () async => widget.onCtaPressed(item),
                         );
                       },
                     );

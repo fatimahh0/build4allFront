@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:build4front/core/exceptions/exception_mapper.dart';
 import 'package:build4front/features/checkout/domain/errors/checkout_blocked_failure.dart';
 import 'package:build4front/features/checkout/domain/usecases/get_last_shipping_address.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -439,10 +440,17 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
     CheckoutRefreshRequested e,
     Emitter<CheckoutState> emit,
   ) async {
+    if (state.refreshingShipping || state.quoting) return;
+
     final cart = state.cart;
     if (cart == null || cart.isEmpty) return;
 
     _invalidateQuoteWork();
+
+    emit(state.copyWith(
+      refreshingShipping: true,
+      clearError: true,
+    ));
 
     try {
       if (_addressReadyForQuotes(state.address)) {
@@ -457,10 +465,15 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
           clearTax: true,
           clearQuote: true,
           quoting: false,
+          clearError: true,
         ));
       }
     } catch (err) {
-      emit(state.copyWith(error: _friendlyError(err)));
+      emit(state.copyWith(
+        error: _friendlyError(err),
+      ));
+    } finally {
+      emit(state.copyWith(refreshingShipping: false));
     }
   }
 
@@ -612,7 +625,6 @@ class CheckoutBloc extends Bloc<CheckoutEvent, CheckoutState> {
   }
 
   String _friendlyError(Object err) {
-    final s = err.toString();
-    return s.replaceAll('Exception:', '').trim();
+    return ExceptionMapper.toMessage(err).trim();
   }
 }

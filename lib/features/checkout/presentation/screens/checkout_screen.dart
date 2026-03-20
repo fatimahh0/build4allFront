@@ -124,12 +124,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   String _localizeCheckoutError(AppLocalizations l10n, String raw) {
-    final s = raw.trim().toLowerCase();
+    final trimmed = raw.trim();
+    final s = trimmed.toLowerCase();
+
+    if (s.isEmpty) return l10n.commonSomethingWentWrong;
 
     if (s.contains('cart is empty')) return l10n.checkoutCartEmptyError;
     if (s.contains('select a payment method')) return l10n.checkoutSelectPayment;
     if (s.contains('payment method code is missing')) {
       return l10n.checkoutPaymentMissingCode;
+    }
+
+    if (s.contains('selected payment method is not available') ||
+        s.contains('payment method is not available') ||
+        s.contains('payment method not available') ||
+        s.contains('payment method is disabled') ||
+        s.contains('payment method disabled') ||
+        s.contains('payment method is not enabled') ||
+        s.contains('payment method not enabled') ||
+        s.contains('selected payment method is disabled')) {
+      return l10n.checkoutPaymentMethodUnavailable;
     }
 
     if (s.contains('select a country')) return l10n.checkoutCountryRequiredError;
@@ -151,7 +165,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return l10n.checkoutStripePublishableKeyMissing;
     }
 
-    return l10n.commonSomethingWentWrong;
+    return trimmed;
   }
 
   String _localizeCouponError(AppLocalizations l10n, String raw) {
@@ -360,26 +374,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   couponValid = false;
                   couponMsg = couponErrMsg;
                 } else if (quote != null) {
-                  final same = feedbackCoupon.isNotEmpty &&
-                      quoteCouponCode.isNotEmpty &&
-                      quoteCouponCode.toUpperCase() == feedbackCoupon.toUpperCase();
+                 final same = feedbackCoupon.isNotEmpty &&
+    quoteCouponCode.isNotEmpty &&
+    quoteCouponCode.toUpperCase() == feedbackCoupon.toUpperCase();
 
-                  final disc = (quote.couponDiscount ?? 0.0).toDouble();
+final disc = (quote.couponDiscount ?? 0.0).toDouble();
 
-                  if (same && disc > 0) {
-                    couponValid = true;
-                    couponMsg = l10n.checkoutCouponAppliedDiscount(
-                      money(context, disc),
-                    );
-                  } else if (same) {
-                    couponValid = false;
-                    couponMsg = l10n.checkoutCouponDidNotAffectOrder;
-                  } else if (feedbackCoupon.isNotEmpty) {
-                    couponValid = false;
-                    couponMsg = l10n.checkoutCouponInvalid;
-                  }
-                }
-              }
+final baseShipping = (state.selectedQuote?.price ?? 0.0).toDouble();
+final quotedShipping = (quote.shippingTotal).toDouble();
+final shippingSaved =
+    baseShipping > quotedShipping ? (baseShipping - quotedShipping) : 0.0;
+
+final couponBenefit = disc > 0 ? disc : shippingSaved;
+
+if (same && couponBenefit > 0) {
+  couponValid = true;
+  couponMsg = l10n.checkoutCouponAppliedDiscount(
+    money(context, couponBenefit),
+  );
+} else if (same) {
+  couponValid = false;
+  couponMsg = l10n.checkoutCouponDidNotAffectOrder;
+} else if (feedbackCoupon.isNotEmpty) {
+  couponValid = false;
+  couponMsg = l10n.checkoutCouponInvalid;
+}}}
 
               return Stack(
                 children: [
@@ -387,9 +406,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ignoring: state.placing,
                     child: RefreshIndicator(
                       onRefresh: () async {
-                        context
-                            .read<CheckoutBloc>()
-                            .add(const CheckoutRefreshRequested());
+                        final bloc = context.read<CheckoutBloc>();
+                        final s = bloc.state;
+                        if (s.refreshingShipping || s.quoting || s.placing) return;
+                        bloc.add(const CheckoutRefreshRequested());
                       },
                       child: ListView(
                         key: const PageStorageKey('checkout_list'),
@@ -457,6 +477,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               child: CheckoutShippingMethods(
                                 quotes: state.shippingQuotes,
                                 selectedMethodId: state.selectedShippingMethodId,
+                                refreshEnabled: !state.refreshingShipping &&
+                                    !state.quoting &&
+                                    !state.placing,
                                 onSelect: (id) => context
                                     .read<CheckoutBloc>()
                                     .add(CheckoutShippingSelected(id)),

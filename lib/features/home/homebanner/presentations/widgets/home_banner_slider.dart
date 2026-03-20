@@ -9,9 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 class HomeBannerSlider extends StatefulWidget {
   final String token;
-
   final void Function(HomeBanner banner)? onBannerTap;
-
   final int cacheBuster;
 
   const HomeBannerSlider({
@@ -62,19 +60,27 @@ class _HomeBannerSliderState extends State<HomeBannerSlider> {
   Future<void> _load() async {
     if (!mounted) return;
 
+    _autoSlideTimer?.cancel();
+
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
     try {
-      final list = await _service.fetchActiveBanners(token: widget.token);
+      final list = await _service
+          .fetchActiveBanners(token: widget.token)
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () => const <Map<String, dynamic>>[],
+          );
 
       if (!mounted) return;
 
       setState(() {
         _banners = list.map((e) => HomeBanner.fromJson(e)).toList();
         _isLoading = false;
+        _error = null;
         _currentIndex = 0;
       });
 
@@ -82,8 +88,10 @@ class _HomeBannerSliderState extends State<HomeBannerSlider> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
+        _banners = const [];
         _isLoading = false;
         _error = e.toString();
+        _currentIndex = 0;
       });
     }
   }
@@ -93,7 +101,7 @@ class _HomeBannerSliderState extends State<HomeBannerSlider> {
     if (_banners.length <= 1) return;
 
     _autoSlideTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (!mounted || _banners.isEmpty) return;
+      if (!mounted || _banners.isEmpty || !_pageController.hasClients) return;
 
       final nextIndex = (_currentIndex + 1) % _banners.length;
       _pageController.animateToPage(
@@ -126,30 +134,7 @@ class _HomeBannerSliderState extends State<HomeBannerSlider> {
     }
 
     if (_error != null) {
-      return Container(
-        margin: EdgeInsets.only(bottom: spacing.lg),
-        padding: EdgeInsets.all(spacing.md),
-        decoration: BoxDecoration(
-          color: c.errorContainer,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.error_outline, color: c.onErrorContainer),
-            SizedBox(width: spacing.sm),
-            Expanded(
-              child: Text(
-                'Failed to load banners',
-                style: t.bodyMedium?.copyWith(color: c.onErrorContainer),
-              ),
-            ),
-            IconButton(
-              icon: Icon(Icons.refresh, color: c.onErrorContainer),
-              onPressed: _load,
-            ),
-          ],
-        ),
-      );
+      return const SizedBox.shrink();
     }
 
     if (_banners.isEmpty) return const SizedBox.shrink();
@@ -183,7 +168,7 @@ class _HomeBannerSliderState extends State<HomeBannerSlider> {
                         imageUrl,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => Container(
-                          color: c.surfaceVariant,
+                          color: c.surfaceContainerHighest,
                           alignment: Alignment.center,
                           child: Icon(
                             Icons.broken_image_outlined,

@@ -63,9 +63,8 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
   String? _token;
   bool _loadingToken = true;
 
-  bool _showAll = false;
+  ShippingMethodsFilter _filter = ShippingMethodsFilter.enabledOnly;
 
-  // prevent repeating same error toast on rebuild
   String? _lastShownError;
 
   @override
@@ -74,17 +73,11 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
     _loadTokenAndData();
   }
 
-  // ----------------- Friendly errors -----------------
-
   String _friendlyError(Object err) {
     final l = AppLocalizations.of(context)!;
-
-    // If your bloc throws a plain message already
     final msg = err.toString();
 
-    // DioException mapping
     if (err is DioException) {
-      // Timeout / connection
       if (err.type == DioExceptionType.connectionTimeout ||
           err.type == DioExceptionType.sendTimeout ||
           err.type == DioExceptionType.receiveTimeout) {
@@ -96,12 +89,10 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
             'No internet / server unreachable. Check connection.';
       }
 
-      // Server responded with status code
       final res = err.response;
       if (res != null) {
         final status = res.statusCode;
 
-        // Try to read backend structured JSON: {error: "..."} or {message: "..."}
         final data = res.data;
         if (data is Map) {
           final m = data.cast<String, dynamic>();
@@ -130,12 +121,10 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
         return 'Request failed (${status ?? 'unknown'}).';
       }
 
-      // fallback
       return l.networkErrorLabel ??
           'Network error. Please try again.';
     }
 
-    // If error contains DioException text anyway, clean it
     if (msg.contains('DioException')) {
       return l.networkErrorLabel ?? 'Network error. Please try again.';
     }
@@ -147,8 +136,6 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
     final l = AppLocalizations.of(context)!;
     AppToast.error(context, l.adminSessionExpired);
   }
-
-  // ----------------- Load / refresh -----------------
 
   Future<void> _loadTokenAndData() async {
     final t = await _store.getToken();
@@ -177,7 +164,6 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
         );
   }
 
-  // ✅ PRO bottom sheet wrapper (no overflow when keyboard opens)
   Future<T?> _showProSheet<T>(Widget sheet) async {
     final tokens = context.read<ThemeCubit>().state.tokens;
     final radius = tokens.card.radius;
@@ -210,8 +196,6 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
       },
     );
   }
-
-  // ----------------- Create / Edit / Delete -----------------
 
   Future<void> _openCreateSheet() async {
     if (_loadingToken) return;
@@ -267,13 +251,15 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
     AppToast.success(context, l.adminUpdated ?? 'Updated');
   }
 
-  Future<void> _confirmAndDelete(ShippingMethod method) async {
+  Future<void> _confirmAndDisable(ShippingMethod method) async {
     if (_loadingToken) return;
 
     if (_token == null || _token!.isEmpty) {
       _showNoTokenMessage();
       return;
     }
+
+    if (!method.enabled) return;
 
     final l = AppLocalizations.of(context)!;
     final tokens = context.read<ThemeCubit>().state.tokens;
@@ -282,10 +268,8 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(l.adminDelete ?? 'Delete'),
-        content: Text(
-          l.adminConfirmDelete ?? 'Are you sure you want to delete this item?',
-        ),
+        title: Text(l.adminDisable),
+        content: Text(l.adminDisableShippingMethodMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -294,7 +278,7 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: c.danger),
             onPressed: () => Navigator.pop(context, true),
-            child: Text(l.adminDelete ?? 'Delete'),
+            child: Text(l.adminDisable),
           ),
         ],
       ),
@@ -309,10 +293,8 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
           ),
         );
 
-    AppToast.success(context, l.adminDeleted ?? 'Deleted');
+    AppToast.success(context, l.adminShippingMethodDisabled);
   }
-
-  // ----------------- UI -----------------
 
   @override
   Widget build(BuildContext context) {
@@ -392,12 +374,17 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
                       );
                     }
 
-                    // reset last error once we have success state
                     _lastShownError = null;
 
-                    final all = state.methods;
-                    final filtered =
-                        _showAll ? all : all.where((m) => m.enabled).toList();
+                   final all = state.methods;
+
+final filtered = switch (_filter) {
+  ShippingMethodsFilter.enabledOnly =>
+    all.where((m) => m.enabled).toList(),
+  ShippingMethodsFilter.disabledOnly =>
+    all.where((m) => !m.enabled).toList(),
+  ShippingMethodsFilter.all => all,
+};
 
                     return RefreshIndicator(
                       onRefresh: _refresh,
@@ -405,11 +392,10 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: EdgeInsets.all(spacing.lg),
                         children: [
-                          AdminShippingFiltersBar(
-                            showAll: _showAll,
-                            onChangedShowAll: (v) =>
-                                setState(() => _showAll = v),
-                          ),
+                         AdminShippingFiltersBar(
+  filter: _filter,
+  onChanged: (value) => setState(() => _filter = value),
+),
                           SizedBox(height: spacing.md),
                           if (filtered.isEmpty)
                             AdminShippingEmptyState(onAdd: _openCreateSheet)
@@ -420,7 +406,7 @@ class _AdminShippingMethodsViewState extends State<_AdminShippingMethodsView> {
                                 child: AdminShippingMethodCard(
                                   method: m,
                                   onEdit: () => _openEditSheet(m),
-                                  onDelete: () => _confirmAndDelete(m),
+                                  onDisable: () => _confirmAndDisable(m),
                                 ),
                               ),
                             ),

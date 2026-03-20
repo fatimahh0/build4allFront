@@ -15,4 +15,8 @@ abstract class AdminOrdersRepository {
  Future<void> markCashPaid({required int orderId});
 Future<void> resetCashToUnpaid({required int orderId});
 Future<void> reopenOrder({required int orderId});
+Future<void> editOrder({
+  required int orderId,
+  required Map<String, dynamic> body,
+});
 }

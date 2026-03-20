@@ -4,6 +4,7 @@ import 'package:build4front/features/checkout/domain/entities/checkout_entities.
 class CheckoutState {
   final bool loading;
   final bool placing;
+  final bool refreshingShipping;
 
   final bool quoting;
   final CheckoutSummaryModel? quote;
@@ -41,6 +42,7 @@ class CheckoutState {
   const CheckoutState({
     required this.loading,
     required this.placing,
+    required this.refreshingShipping,
     required this.quoting,
     required this.quote,
     required this.cart,
@@ -64,6 +66,7 @@ class CheckoutState {
     return const CheckoutState(
       loading: false,
       placing: false,
+      refreshingShipping: false,
       quoting: false,
       quote: null,
       cart: null,
@@ -87,6 +90,7 @@ class CheckoutState {
   CheckoutState copyWith({
     bool? loading,
     bool? placing,
+    bool? refreshingShipping,
     bool? quoting,
     CheckoutSummaryModel? quote,
     bool clearQuote = false,
@@ -115,6 +119,7 @@ class CheckoutState {
     return CheckoutState(
       loading: loading ?? this.loading,
       placing: placing ?? this.placing,
+      refreshingShipping: refreshingShipping ?? this.refreshingShipping,
       quoting: quoting ?? this.quoting,
       quote: clearQuote ? null : (quote ?? this.quote),
       cart: cart ?? this.cart,

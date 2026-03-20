@@ -26,6 +26,12 @@ int _toInt(dynamic v) {
   return int.tryParse(v.toString()) ?? 0;
 }
 
+int? _toNullableInt(dynamic v) {
+  if (v == null) return null;
+  if (v is num) return v.toInt();
+  return int.tryParse(v.toString());
+}
+
 String? _toNullableString(dynamic v) {
   if (v == null) return null;
   final s = v.toString().trim();
@@ -45,22 +51,18 @@ String? _normalizeUrl(String? raw) {
   final s = _toNullableString(raw);
   if (s == null) return null;
 
-  // already absolute
   if (s.startsWith('http://') || s.startsWith('https://') || s.startsWith('data:')) {
     return s;
   }
 
-  // protocol-relative URL
   if (s.startsWith('//')) {
     return 'https:$s';
   }
 
-  // relative path -> resolve against backend base URL
   try {
     final base = Uri.parse(Env.apiBaseUrl);
     return base.resolve(s).toString();
   } catch (_) {
-    // fallback (safe string concat)
     final base = Env.apiBaseUrl.endsWith('/')
         ? Env.apiBaseUrl.substring(0, Env.apiBaseUrl.length - 1)
         : Env.apiBaseUrl;
@@ -70,7 +72,6 @@ String? _normalizeUrl(String? raw) {
 }
 
 String? _extractImageUrl(Map<String, dynamic> json) {
-  // Common direct keys
   final direct = _firstNonEmpty(json, const [
     'imageUrl',
     'imageURL',
@@ -85,7 +86,6 @@ String? _extractImageUrl(Map<String, dynamic> json) {
   ]);
   if (direct != null) return _normalizeUrl(direct);
 
-  // Nested image object: { image: { url: ... } }
   final imageObj = json['image'];
   if (imageObj is Map) {
     final m = imageObj.cast<String, dynamic>();
@@ -99,7 +99,6 @@ String? _extractImageUrl(Map<String, dynamic> json) {
     if (nested != null) return _normalizeUrl(nested);
   }
 
-  // List images: [{url:...}] or ["..."]
   final images = json['images'];
   if (images is List && images.isNotEmpty) {
     final first = images.first;
@@ -167,7 +166,6 @@ class OrderHeaderRowModel {
   final String? phone;
   final String? addressLine;
 
-  // ✅ NEW
   final String? orderCode;
   final int? orderSeq;
 
@@ -182,8 +180,6 @@ class OrderHeaderRowModel {
     required this.payment,
     this.phone,
     this.addressLine,
-
-    // ✅ NEW
     this.orderCode,
     this.orderSeq,
   });
@@ -207,8 +203,6 @@ class OrderHeaderRowModel {
         'shippingAddress',
         'shippingAddressLine',
       ]),
-
-      // ✅ NEW
       orderCode: json['orderCode']?.toString(),
       orderSeq: json['orderSeq'] == null ? null : _toInt(json['orderSeq']),
     );
@@ -225,14 +219,10 @@ class OrderHeaderRowModel {
         payment: payment.toEntity(),
         phone: phone,
         addressLine: addressLine,
-
-        // ✅ NEW
         orderCode: orderCode,
         orderSeq: orderSeq,
       );
 }
-
- 
 
 class CurrencyMiniModel {
   final String? code;
@@ -262,48 +252,51 @@ class UserMiniModel {
     this.firstName,
     this.lastName,
   });
-factory UserMiniModel.fromJson(Map<String, dynamic> json) {
-  String? pick(List<String> keys) {
-    for (final k in keys) {
-      final v = json[k];
-      if (v == null) continue;
-      final s = v.toString().trim();
-      if (s.isNotEmpty && s.toLowerCase() != 'null') return s;
-    }
-    return null;
-  }
 
-  final fullNameRaw = pick([
-    'fullName',
-    'full_name',
-    'name',
-    'customerName',
-    'customer_name',
-  ]);
-
-  String? first = pick(['firstName', 'first_name']);
-  String? last = pick(['lastName', 'last_name']);
-  String? usern = pick(['username', 'userName', 'login']);
-
-  // If backend sends one full name only, split it softly
-  if (fullNameRaw != null && ((first == null || first.isEmpty) && (last == null || last.isEmpty))) {
-    final parts = fullNameRaw.split(RegExp(r'\s+')).where((e) => e.trim().isNotEmpty).toList();
-    if (parts.isNotEmpty) {
-      first = parts.first;
-      if (parts.length > 1) {
-        last = parts.sublist(1).join(' ');
+  factory UserMiniModel.fromJson(Map<String, dynamic> json) {
+    String? pick(List<String> keys) {
+      for (final k in keys) {
+        final v = json[k];
+        if (v == null) continue;
+        final s = v.toString().trim();
+        if (s.isNotEmpty && s.toLowerCase() != 'null') return s;
       }
+      return null;
     }
-    usern ??= fullNameRaw;
-  }
 
-  return UserMiniModel(
-    id: _toInt(json['id']),
-    username: usern,
-    firstName: first,
-    lastName: last,
-  );
-}
+    final fullNameRaw = pick([
+      'fullName',
+      'full_name',
+      'name',
+      'customerName',
+      'customer_name',
+    ]);
+
+    String? first = pick(['firstName', 'first_name']);
+    String? last = pick(['lastName', 'last_name']);
+    String? usern = pick(['username', 'userName', 'login']);
+
+    if (fullNameRaw != null && ((first == null || first.isEmpty) && (last == null || last.isEmpty))) {
+      final parts = fullNameRaw
+          .split(RegExp(r'\s+'))
+          .where((e) => e.trim().isNotEmpty)
+          .toList();
+      if (parts.isNotEmpty) {
+        first = parts.first;
+        if (parts.length > 1) {
+          last = parts.sublist(1).join(' ');
+        }
+      }
+      usern ??= fullNameRaw;
+    }
+
+    return UserMiniModel(
+      id: _toInt(json['id']),
+      username: usern,
+      firstName: first,
+      lastName: last,
+    );
+  }
 
   UserMini toEntity() => UserMini(
         id: id,
@@ -332,7 +325,7 @@ class ItemMiniDetailsModel {
     return ItemMiniDetailsModel(
       id: _toInt(json['id']),
       itemName: _firstNonEmpty(json, const ['itemName', 'name', 'title']) ?? '',
-      imageUrl: _extractImageUrl(json), // ✅ robust image parsing
+      imageUrl: _extractImageUrl(json),
       location: _firstNonEmpty(json, const ['location', 'address', 'place']),
       startDatetime: _tryParseDate(
         json['startDatetime'] ?? json['startDateTime'] ?? json['startDate'],
@@ -401,9 +394,14 @@ class OrderDetailsHeaderModel {
   final String? shippingCity;
   final String? shippingPostalCode;
   final String? shippingFullName;
-
   final String? shippingPhone;
   final String? shippingAddress;
+
+  // ✅ NEW
+  final int? shippingCountryId;
+  final String? shippingCountryName;
+  final int? shippingRegionId;
+  final String? shippingRegionName;
 
   final int? shippingMethodId;
   final String? shippingMethodName;
@@ -412,11 +410,12 @@ class OrderDetailsHeaderModel {
   final double? shippingTaxTotal;
   final String? couponCode;
   final double? couponDiscount;
-final String? orderCode;
+
+  final String? orderCode;
   final int? orderSeq;
+
   final bool fullyPaid;
   final PaymentSummaryModel payment;
-  
 
   OrderDetailsHeaderModel({
     required this.id,
@@ -426,7 +425,6 @@ final String? orderCode;
     required this.statusUi,
     required this.orderCode,
     required this.orderSeq,
-
     this.shippingFullName,
     this.paymentMethod,
     this.currency,
@@ -434,6 +432,13 @@ final String? orderCode;
     this.shippingPostalCode,
     this.shippingPhone,
     this.shippingAddress,
+
+    // ✅ NEW
+    this.shippingCountryId,
+    this.shippingCountryName,
+    this.shippingRegionId,
+    this.shippingRegionName,
+
     this.shippingMethodId,
     this.shippingMethodName,
     this.shippingTotal,
@@ -452,20 +457,14 @@ final String? orderCode;
       totalPrice: _toDouble(json['totalPrice']),
       status: (json['status'] ?? '').toString(),
       statusUi: (json['statusUi'] ?? '').toString(),
-      
-
       paymentMethod: json['paymentMethod']?.toString(),
       currency: (json['currency'] is Map)
           ? CurrencyMiniModel.fromJson(
               (json['currency'] as Map).cast<String, dynamic>(),
             )
           : null,
-
       shippingCity: _firstNonEmpty(json, const ['shippingCity', 'city']),
-      shippingPostalCode:
-          _firstNonEmpty(json, const ['shippingPostalCode', 'postalCode']),
-
-      // ✅ supports multiple backend naming styles
+      shippingPostalCode: _firstNonEmpty(json, const ['shippingPostalCode', 'postalCode']),
       shippingPhone: _firstNonEmpty(json, const ['shippingPhone', 'phone']),
       shippingAddress: _firstNonEmpty(json, const [
         'shippingAddress',
@@ -474,12 +473,17 @@ final String? orderCode;
         'addressline',
         'address',
       ]),
-
       shippingFullName: _firstNonEmpty(json, const [
-  'shippingFullName',
-  'fullName',
-  'customerName',
-]),
+        'shippingFullName',
+        'fullName',
+        'customerName',
+      ]),
+
+      // ✅ NEW
+      shippingCountryId: _toNullableInt(json['shippingCountryId']),
+      shippingCountryName: _firstNonEmpty(json, const ['shippingCountryName']),
+      shippingRegionId: _toNullableInt(json['shippingRegionId']),
+      shippingRegionName: _firstNonEmpty(json, const ['shippingRegionName']),
 
       shippingMethodId: json['shippingMethodId'] == null
           ? null
@@ -488,8 +492,9 @@ final String? orderCode;
       shippingTotal: json['shippingTotal'] == null
           ? null
           : _toDouble(json['shippingTotal']),
-      itemTaxTotal:
-          json['itemTaxTotal'] == null ? null : _toDouble(json['itemTaxTotal']),
+      itemTaxTotal: json['itemTaxTotal'] == null
+          ? null
+          : _toDouble(json['itemTaxTotal']),
       shippingTaxTotal: json['shippingTaxTotal'] == null
           ? null
           : _toDouble(json['shippingTaxTotal']),
@@ -497,44 +502,47 @@ final String? orderCode;
       couponDiscount: json['couponDiscount'] == null
           ? null
           : _toDouble(json['couponDiscount']),
-
       fullyPaid: json['fullyPaid'] == true,
       payment: PaymentSummaryModel.fromJson(
         (json['payment'] as Map?)?.cast<String, dynamic>() ?? const {},
       ),
-       orderCode: json['orderCode']?.toString(),
+      orderCode: json['orderCode']?.toString(),
       orderSeq: json['orderSeq'] == null ? null : _toInt(json['orderSeq']),
     );
   }
 
-OrderDetailsHeader toEntity() => OrderDetailsHeader(
-  id: id,
-  orderDate: orderDate,
-  totalPrice: totalPrice,
-  status: status,
-  statusUi: statusUi,
-  orderCode: orderCode,
-  orderSeq: orderSeq,
-  paymentMethod: paymentMethod,
-  currency: currency?.toEntity(),
-  shippingCity: shippingCity,
-  shippingPostalCode: shippingPostalCode,
-  shippingPhone: shippingPhone,
-  shippingAddress: shippingAddress,
+  OrderDetailsHeader toEntity() => OrderDetailsHeader(
+        id: id,
+        orderDate: orderDate,
+        totalPrice: totalPrice,
+        status: status,
+        statusUi: statusUi,
+        orderCode: orderCode,
+        orderSeq: orderSeq,
+        paymentMethod: paymentMethod,
+        currency: currency?.toEntity(),
+        shippingCity: shippingCity,
+        shippingPostalCode: shippingPostalCode,
+        shippingPhone: shippingPhone,
+        shippingAddress: shippingAddress,
+        shippingFullName: shippingFullName,
 
-  // ✅ ADD THIS LINE
-  shippingFullName: shippingFullName,
+        // ✅ NEW
+        shippingCountryId: shippingCountryId,
+        shippingCountryName: shippingCountryName,
+        shippingRegionId: shippingRegionId,
+        shippingRegionName: shippingRegionName,
 
-  shippingMethodId: shippingMethodId,
-  shippingMethodName: shippingMethodName,
-  shippingTotal: shippingTotal,
-  itemTaxTotal: itemTaxTotal,
-  shippingTaxTotal: shippingTaxTotal,
-  couponCode: couponCode,
-  couponDiscount: couponDiscount,
-  fullyPaid: fullyPaid,
-  payment: payment.toEntity(),
-);
+        shippingMethodId: shippingMethodId,
+        shippingMethodName: shippingMethodName,
+        shippingTotal: shippingTotal,
+        itemTaxTotal: itemTaxTotal,
+        shippingTaxTotal: shippingTaxTotal,
+        couponCode: couponCode,
+        couponDiscount: couponDiscount,
+        fullyPaid: fullyPaid,
+        payment: payment.toEntity(),
+      );
 }
 
 class OrderDetailsResponseModel {

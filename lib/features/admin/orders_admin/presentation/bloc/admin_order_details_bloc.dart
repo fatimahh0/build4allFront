@@ -14,10 +14,10 @@ class AdminOrderDetailsBloc
       : super(AdminOrderDetailsState.initial()) {
     on<AdminOrderDetailsStarted>(_onLoad);
     on<AdminOrderStatusUpdateRequested>(_onUpdateStatus);
-
-   on<AdminOrderMarkCashPaidRequested>(_onMarkCashPaid);
-on<AdminOrderResetCashUnpaidRequested>(_onResetCash);
-on<AdminOrderReopenRequested>(_onReopen);
+    on<AdminOrderMarkCashPaidRequested>(_onMarkCashPaid);
+    on<AdminOrderResetCashUnpaidRequested>(_onResetCash);
+    on<AdminOrderReopenRequested>(_onReopen);
+    on<AdminOrderEditRequested>(_onEditOrder);
   }
 
   Future<void> _onLoad(
@@ -63,66 +63,104 @@ on<AdminOrderReopenRequested>(_onReopen);
     }
   }
 
-  // ✅ NEW
   Future<void> _onMarkCashPaid(
-  AdminOrderMarkCashPaidRequested event,
-  Emitter<AdminOrderDetailsState> emit,
-) async {
-  emit(state.copyWith(updating: true, clearError: true, clearMessage: true));
-  try {
-    await repo.markCashPaid(orderId: event.orderId);
-    final res = await getDetails(orderId: event.orderId);
-    emit(state.copyWith(updating: false, data: res, message: 'Cash marked as paid'));
-  } catch (e) {
-    emit(state.copyWith(updating: false, error: e.toString().replaceFirst('Exception: ', '')));
-  }
-}
-
-Future<void> _onResetCash(
-  AdminOrderResetCashUnpaidRequested event,
-  Emitter<AdminOrderDetailsState> emit,
-) async {
-  emit(state.copyWith(updating: true, clearError: true, clearMessage: true));
-  try {
-    await repo.resetCashToUnpaid(orderId: event.orderId);
-    final res = await getDetails(orderId: event.orderId);
-    emit(state.copyWith(updating: false, data: res, message: 'Cash reset to unpaid'));
-  } catch (e) {
-    emit(state.copyWith(updating: false, error: e.toString().replaceFirst('Exception: ', '')));
-  }
-}
-
-Future<void> _onReopen(
-  AdminOrderReopenRequested event,
-  Emitter<AdminOrderDetailsState> emit,
-) async {
-  emit(state.copyWith(updating: true, clearError: true, clearMessage: true));
-  try {
-    // 1) load current details (to know payment method/state)
-    final current = await getDetails(orderId: event.orderId);
-    final method = (current.order.paymentMethod ?? '').toUpperCase();
-    final paid = current.order.fullyPaid ||
-        current.order.payment.paymentState.toUpperCase() == 'PAID';
-
-    // 2) CASH: undo cash paid first
-    if (method == 'CASH') {
-      await repo.resetCashToUnpaid(orderId: event.orderId); // calls /cash/reset-to-unpaid
+    AdminOrderMarkCashPaidRequested event,
+    Emitter<AdminOrderDetailsState> emit,
+  ) async {
+    emit(state.copyWith(updating: true, clearError: true, clearMessage: true));
+    try {
+      await repo.markCashPaid(orderId: event.orderId);
+      final res = await getDetails(orderId: event.orderId);
+      emit(
+        state.copyWith(
+          updating: false,
+          data: res,
+          message: 'Cash marked as paid',
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          updating: false,
+          error: e.toString().replaceFirst('Exception: ', ''),
+        ),
+      );
     }
-
-    // 3) set status back to pending
-    await repo.updateOrderStatus(orderId: event.orderId, status: 'PENDING');
-
-    // 4) reload
-    final res = await getDetails(orderId: event.orderId);
-    emit(state.copyWith(updating: false, data: res, message: 'Order reopened'));
-  } catch (e) {
-    emit(state.copyWith(
-      updating: false,
-      error: e.toString().replaceFirst('Exception: ', ''),
-    ));
   }
-}
 
+  Future<void> _onResetCash(
+    AdminOrderResetCashUnpaidRequested event,
+    Emitter<AdminOrderDetailsState> emit,
+  ) async {
+    emit(state.copyWith(updating: true, clearError: true, clearMessage: true));
+    try {
+      await repo.resetCashToUnpaid(orderId: event.orderId);
+      final res = await getDetails(orderId: event.orderId);
+      emit(
+        state.copyWith(
+          updating: false,
+          data: res,
+          message: 'Cash reset to unpaid',
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          updating: false,
+          error: e.toString().replaceFirst('Exception: ', ''),
+        ),
+      );
+    }
+  }
 
+  Future<void> _onReopen(
+    AdminOrderReopenRequested event,
+    Emitter<AdminOrderDetailsState> emit,
+  ) async {
+    emit(state.copyWith(updating: true, clearError: true, clearMessage: true));
+    try {
+      await repo.reopenOrder(orderId: event.orderId);
+      final res = await getDetails(orderId: event.orderId);
+      emit(
+        state.copyWith(
+          updating: false,
+          data: res,
+          message: 'Order reopened',
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          updating: false,
+          error: e.toString().replaceFirst('Exception: ', ''),
+        ),
+      );
+    }
+  }
 
+  Future<void> _onEditOrder(
+    AdminOrderEditRequested event,
+    Emitter<AdminOrderDetailsState> emit,
+  ) async {
+    emit(state.copyWith(updating: true, clearError: true, clearMessage: true));
+    try {
+      await repo.editOrder(orderId: event.orderId, body: event.body);
+      final res = await getDetails(orderId: event.orderId);
+      emit(
+        state.copyWith(
+          updating: false,
+          data: res,
+          message: 'Order updated',
+          clearError: true,
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          updating: false,
+          error: e.toString().replaceFirst('Exception: ', ''),
+        ),
+      );
+    }
+  }
 }

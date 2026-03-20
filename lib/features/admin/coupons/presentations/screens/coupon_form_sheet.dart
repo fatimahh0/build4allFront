@@ -38,6 +38,9 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
   DateTime? _expiresAt;
   String? _dateError;
 
+  String? _codeError;
+  String? _submitError;
+
   bool get _isPercent => _type == CouponDiscountType.percent;
   bool get _isFreeShipping => _type == CouponDiscountType.freeShipping;
 
@@ -72,11 +75,14 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
       _valueCtrl.text = '';
     }
 
+    _codeCtrl.addListener(_clearLocalErrorsOnEdit);
+
     _validateDates();
   }
 
   @override
   void dispose() {
+    _codeCtrl.removeListener(_clearLocalErrorsOnEdit);
     _codeCtrl.dispose();
     _descCtrl.dispose();
     _valueCtrl.dispose();
@@ -84,6 +90,37 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
     _minOrderCtrl.dispose();
     _maxDiscountCtrl.dispose();
     super.dispose();
+  }
+
+  void _clearLocalErrorsOnEdit() {
+    if (_codeError != null || _submitError != null) {
+      setState(() {
+        _codeError = null;
+        _submitError = null;
+      });
+    }
+  }
+
+  bool _looksLikeDuplicateCouponError(String msg) {
+    final s = msg.trim().toLowerCase();
+    return (s.contains('coupon') &&
+            (s.contains('already exists') ||
+                s.contains('already exist') ||
+                s.contains('duplicate') ||
+                s.contains('unique'))) ||
+        s.contains('duplicate key') ||
+        s.contains('unique constraint');
+  }
+
+  bool _isDuplicateCodeLocally(String code) {
+    final normalized = code.trim().toUpperCase();
+    final currentId = widget.existing?.id;
+
+    final coupons = context.read<CouponBloc>().state.coupons;
+
+    return coupons.any(
+      (c) => c.id != currentId && c.code.trim().toUpperCase() == normalized,
+    );
   }
 
   String _fmt(DateTime? dt) {
@@ -142,7 +179,33 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
     final t = Theme.of(context).textTheme;
     final c = Theme.of(context).colorScheme;
 
-    return BlocBuilder<CouponBloc, CouponState>(
+    return BlocConsumer<CouponBloc, CouponState>(
+      listenWhen: (prev, curr) =>
+          prev.errorMessage != curr.errorMessage ||
+          prev.lastMessage != curr.lastMessage ||
+          prev.isSaving != curr.isSaving,
+      listener: (context, state) {
+        final err = (state.errorMessage ?? '').trim();
+
+        if (err.isNotEmpty) {
+          if (_looksLikeDuplicateCouponError(err)) {
+            setState(() {
+              _codeError = err;
+              _submitError = null;
+            });
+            _formKey.currentState?.validate();
+          } else {
+            setState(() {
+              _submitError = err;
+            });
+          }
+          return;
+        }
+
+        if (!state.isSaving && state.lastMessage == 'coupon_saved' && mounted) {
+          Navigator.of(context).pop();
+        }
+      },
       builder: (context, state) {
         final isSaving = state.isSaving;
 
@@ -175,6 +238,9 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) {
                         return l10n.coupons_code_required;
+                      }
+                      if (_codeError != null && _codeError!.trim().isNotEmpty) {
+                        return _codeError;
                       }
                       return null;
                     },
@@ -408,6 +474,15 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
                       ),
                     ],
                   ),
+
+                  if (_submitError != null && _submitError!.trim().isNotEmpty) ...[
+                    SizedBox(height: spacing.sm),
+                    Text(
+                      _submitError!,
+                      style: t.bodySmall?.copyWith(color: c.error),
+                    ),
+                  ],
+
                   SizedBox(height: spacing.lg),
 
                   PrimaryButton(
@@ -425,6 +500,11 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
   }
 
   void _onSubmit() {
+    setState(() {
+      _codeError = null;
+      _submitError = null;
+    });
+
     if (!_formKey.currentState!.validate()) return;
 
     if (!_validateDates()) {
@@ -434,6 +514,16 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
 
     final existing = widget.existing;
     final bloc = context.read<CouponBloc>();
+
+    final normalizedCode = _codeCtrl.text.trim().toUpperCase();
+
+    if (_isDuplicateCodeLocally(normalizedCode)) {
+      setState(() {
+        _codeError = 'Coupon code already exists.';
+      });
+      _formKey.currentState!.validate();
+      return;
+    }
 
     double? parseDouble(String? v) =>
         (v == null || v.trim().isEmpty) ? null : double.tryParse(v.trim());
@@ -449,7 +539,7 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
     final coupon = Coupon(
       id: existing?.id ?? 0,
       ownerProjectId: safeOwnerProjectId,
-      code: _codeCtrl.text.trim(),
+      code: normalizedCode,
       description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
       discountType: _type,
       discountValue: discountValue,
@@ -469,6 +559,5 @@ class _CouponFormSheetState extends State<CouponFormSheet> {
     );
 
     bloc.add(CouponSaveRequested(coupon: coupon));
-    Navigator.of(context).maybePop();
   }
 }

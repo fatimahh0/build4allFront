@@ -5736,6 +5736,168 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select sale end date'**
   String get adminProductSaleEndHint;
+
+  /// No description provided for @checkoutPaymentMethodUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected payment method is not available,please call support'**
+  String get checkoutPaymentMethodUnavailable;
+
+  /// No description provided for @adminDisable.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable'**
+  String get adminDisable;
+
+  /// No description provided for @adminDisableShippingMethodMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to disable this shipping method? It will no longer appear at checkout.'**
+  String get adminDisableShippingMethodMessage;
+
+  /// No description provided for @adminShippingMethodDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Shipping method disabled successfully'**
+  String get adminShippingMethodDisabled;
+
+  /// No description provided for @adminDisabledLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get adminDisabledLabel;
+
+  /// No description provided for @adminDisabledOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled only'**
+  String get adminDisabledOnly;
+
+  /// No description provided for @adminAllLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get adminAllLabel;
+
+  /// No description provided for @openLinkLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Link'**
+  String get openLinkLabel;
+
+  /// No description provided for @downloadNowLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get downloadNowLabel;
+
+  /// No description provided for @downloadLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get downloadLabel;
+
+  /// No description provided for @downloadReadyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to download'**
+  String get downloadReadyLabel;
+
+  /// No description provided for @downloadAfterPurchaseLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Available after purchase'**
+  String get downloadAfterPurchaseLabel;
+
+  /// No description provided for @externalProductLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'External product'**
+  String get externalProductLabel;
+
+  /// No description provided for @productTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Product type'**
+  String get productTypeLabel;
+
+  /// No description provided for @invalidExternalUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid external URL'**
+  String get invalidExternalUrlLabel;
+
+  /// No description provided for @missingExternalUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing external URL'**
+  String get missingExternalUrlLabel;
+
+  /// No description provided for @couldNotOpenLinkLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the link'**
+  String get couldNotOpenLinkLabel;
+
+  /// No description provided for @invalidDownloadUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid download URL'**
+  String get invalidDownloadUrlLabel;
+
+  /// No description provided for @missingDownloadUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing download URL'**
+  String get missingDownloadUrlLabel;
+
+  /// No description provided for @couldNotStartDownloadLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start the download'**
+  String get couldNotStartDownloadLabel;
+
+  /// No description provided for @adminDownloadableMustBeSimple.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloadable product must use Simple product type'**
+  String get adminDownloadableMustBeSimple;
+
+  /// No description provided for @adminDownloadableMustBeVirtual.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloadable product must be virtual'**
+  String get adminDownloadableMustBeVirtual;
+
+  /// No description provided for @adminDownloadUrlRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Download URL is required for downloadable product'**
+  String get adminDownloadUrlRequired;
+
+  /// No description provided for @adminExternalUrlRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'External URL is required for external product'**
+  String get adminExternalUrlRequired;
+
+  /// No description provided for @adminExternalCannotBeDownloadable.
+  ///
+  /// In en, this message translates to:
+  /// **'External product cannot be downloadable'**
+  String get adminExternalCannotBeDownloadable;
+
+  /// No description provided for @adminDownloadableRulesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloadable products are saved as Simple + Virtual and require a download URL.'**
+  String get adminDownloadableRulesHint;
+
+  /// No description provided for @adminAllAttributeTypesAlreadyAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'All available attribute types are already added'**
+  String get adminAllAttributeTypesAlreadyAdded;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

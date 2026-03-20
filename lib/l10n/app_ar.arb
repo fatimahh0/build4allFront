@@ -1143,7 +1143,36 @@
   "adminProductSalePriceHint": "أدخل سعر التخفيض لهذا المنتج (يجب أن يكون أقل من السعر الأساسي).",
   "adminProductSaleStartHint": "حدد تاريخ بداية التخفيض",
   "adminProductSaleEndHint": "حدد تاريخ نهاية التخفيض",
-   "adminCreateCategoryTooltip":"إنشاء تصنيف جديد" 
+   "adminCreateCategoryTooltip":"إنشاء تصنيف جديد" ,
+
+   "checkoutPaymentMethodUnavailable": "طريقة الدفع المحددة غير متاحة",
+   "adminDisable": "تعطيل",
+"adminDisableShippingMethodMessage": "هل أنت متأكد أنك تريد تعطيل طريقة الشحن هذه؟ لن تظهر بعد الآن في صفحة الدفع.",
+"adminShippingMethodDisabled": "تم تعطيل طريقة الشحن بنجاح",
+"adminDisabledLabel": "معطّلة",
+"adminEnabledOnly": "المفعّلة فقط",
+"adminDisabledOnly": "المعطّلة فقط",
+"adminAllLabel": "الكل",
+"openLinkLabel": "فتح الرابط",
+  "downloadNowLabel": "تنزيل",
+  "downloadLabel": "التنزيل",
+  "downloadReadyLabel": "جاهز للتنزيل",
+  "downloadAfterPurchaseLabel": "متاح بعد الشراء",
+  "externalProductLabel": "منتج خارجي",
+  "productTypeLabel": "نوع المنتج",
+  "invalidExternalUrlLabel": "رابط خارجي غير صالح",
+  "missingExternalUrlLabel": "رابط المنتج الخارجي مفقود",
+  "couldNotOpenLinkLabel": "تعذر فتح الرابط",
+  "invalidDownloadUrlLabel": "رابط التنزيل غير صالح",
+  "missingDownloadUrlLabel": "رابط التنزيل مفقود",
+  "couldNotStartDownloadLabel": "تعذر بدء التنزيل",
+    "adminDownloadableMustBeSimple": "المنتج القابل للتنزيل يجب أن يكون من النوع البسيط",
+  "adminDownloadableMustBeVirtual": "المنتج القابل للتنزيل يجب أن يكون افتراضيًا",
+  "adminDownloadUrlRequired": "رابط التنزيل مطلوب للمنتج القابل للتنزيل",
+  "adminExternalUrlRequired": "الرابط الخارجي مطلوب للمنتج الخارجي",
+  "adminExternalCannotBeDownloadable": "المنتج الخارجي لا يمكن أن يكون قابلاً للتنزيل",
+  "adminDownloadableRulesHint": "المنتجات القابلة للتنزيل تُحفظ كمنتج بسيط وافتراضي وتتطلب رابط تنزيل.",
+  "adminAllAttributeTypesAlreadyAdded": "تمت إضافة جميع أنواع الخصائص المتاحة"
 
 
 

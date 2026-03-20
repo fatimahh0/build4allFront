@@ -8,29 +8,28 @@ class ItemSummary {
   final String? location;
   final DateTime? start;
 
-  /// base price
   final num? price;
-
-  /// product sale fields
   final num? salePrice;
   final DateTime? saleStart;
   final DateTime? saleEnd;
   final num? effectivePrice;
   final bool onSale;
 
-  /// extra useful summary fields
   final int? stock;
   final String? sku;
 
-  /// ✅ NEW: backend lifecycle status
   final int? statusId;
   final String? statusCode;
   final String? statusName;
 
   final ItemKind kind;
-
-  /// category id of this item (for filtering chips)
   final int? categoryId;
+
+  final String? productType;
+  final bool downloadable;
+  final String? downloadUrl;
+  final String? externalUrl;
+  final String? buttonText;
 
   const ItemSummary({
     required this.id,
@@ -52,11 +51,12 @@ class ItemSummary {
     this.statusName,
     this.kind = ItemKind.unknown,
     this.categoryId,
+    this.productType,
+    this.downloadable = false,
+    this.downloadUrl,
+    this.externalUrl,
+    this.buttonText,
   });
-
-  // =========================
-  // Sale helpers
-  // =========================
 
   bool get isSaleActiveNow {
     if (!onSale) return false;
@@ -84,15 +84,11 @@ class ItemSummary {
     return price;
   }
 
-  // =========================
-  // Stock helpers
-  // =========================
+  bool get isStockTracked => stock != null;
 
-  int get safeStock => stock ?? 0;
+  bool get isOutOfStock => isStockTracked && stock! <= 0;
 
-  bool get isOutOfStock => safeStock <= 0;
-
-  bool get isLowStock => !isOutOfStock && safeStock <= 10;
+  bool get isLowStock => isStockTracked && stock! > 0 && stock! <= 10;
 
   String get computedAvailabilityStatus {
     if (isOutOfStock) return 'OUT_OF_STOCK';
@@ -100,19 +96,8 @@ class ItemSummary {
     return 'IN_STOCK';
   }
 
-  // =========================
-  // Lifecycle status helpers
-  // =========================
-
-  // =========================
-  // Lifecycle status helpers
-  // =========================
-
-  String get normalizedStatusCode =>
-      (statusCode ?? '').trim().toUpperCase();
-
-  String get normalizedStatusName =>
-      (statusName ?? '').trim().toUpperCase();
+  String get normalizedStatusCode => (statusCode ?? '').trim().toUpperCase();
+  String get normalizedStatusName => (statusName ?? '').trim().toUpperCase();
 
   bool get isPublished =>
       normalizedStatusCode == 'PUBLISHED' ||
@@ -148,12 +133,14 @@ class ItemSummary {
     }
   }
 
-  // =========================
-  // User-side visibility rules
-  // =========================
+  String get normalizedProductType => (productType ?? '').trim().toUpperCase();
 
-  /// Products can be visible if published OR upcoming.
-  /// Upcoming means visible preview but not purchasable yet.
+  bool get isExternalProduct => normalizedProductType == 'EXTERNAL';
+
+  bool get hasExternalUrl => (externalUrl ?? '').trim().isNotEmpty;
+
+  bool get hasDownloadUrl => (downloadUrl ?? '').trim().isNotEmpty;
+
   bool get isVisibleForUser {
     if (kind == ItemKind.product) {
       return isPublished || isUpcoming;
@@ -161,13 +148,19 @@ class ItemSummary {
     return true;
   }
 
-  /// Product can be bought only if published and in stock.
   bool get isAvailableForPurchase {
     if (kind == ItemKind.product) {
+      if (isExternalProduct) return hasExternalUrl;
       return isPublished && !isOutOfStock;
     }
     return true;
   }
 
-
+  String get resolvedButtonText {
+    final t = (buttonText ?? '').trim();
+    if (t.isNotEmpty) return t;
+    if (isExternalProduct) return 'Open';
+    if (downloadable) return 'Download';
+    return 'Add to cart';
+  }
 }

@@ -1223,7 +1223,37 @@
   "adminProductSalePriceHint": "Entrez le prix de la promotion pour ce produit (il doit être inférieur au prix régulier).",
   "adminProductSaleStartHint": "Sélectionnez la date de début de la promotion",
   "adminProductSaleEndHint": "Sélectionnez la date de fin de la promotion",
-   "adminCreateCategoryTooltip":"création d'un nouveau catégorie" 
+   "adminCreateCategoryTooltip":"création d'un nouveau catégorie" ,
+
+   "checkoutPaymentMethodUnavailable": "Le mode de paiement sélectionné n’est pas disponible,s'il vous plait appeler le support pour plus d’informations",
+   "adminDisable": "Désactiver",
+"adminDisableShippingMethodMessage": "Êtes-vous sûr de vouloir désactiver cette méthode de livraison ? Elle n’apparaîtra plus au moment du paiement.",
+"adminShippingMethodDisabled": "Méthode de livraison désactivée avec succès",
+"adminDisabledLabel": "Désactivée",
+"adminEnabledOnly": "Actives seulement",
+"adminDisabledOnly": "Désactivées seulement",
+"adminAllLabel": "Toutes",
+ "openLinkLabel": "Ouvrir le lien",
+  "downloadNowLabel": "Télécharger",
+  "downloadLabel": "Téléchargement",
+  "downloadReadyLabel": "Prêt au téléchargement",
+  "downloadAfterPurchaseLabel": "Disponible après achat",
+  "externalProductLabel": "Produit externe",
+  "productTypeLabel": "Type de produit",
+  "invalidExternalUrlLabel": "URL externe invalide",
+  "missingExternalUrlLabel": "URL externe manquante",
+  "couldNotOpenLinkLabel": "Impossible d’ouvrir le lien",
+  "invalidDownloadUrlLabel": "URL de téléchargement invalide",
+  "missingDownloadUrlLabel": "URL de téléchargement manquante",
+  "couldNotStartDownloadLabel": "Impossible de démarrer le téléchargement",
+  "adminDownloadableMustBeSimple": "Le produit téléchargeable doit être de type simple",
+  "adminDownloadableMustBeVirtual": "Le produit téléchargeable doit être virtuel",
+  "adminDownloadUrlRequired": "L’URL de téléchargement est obligatoire pour un produit téléchargeable",
+  "adminExternalUrlRequired": "L’URL externe est obligatoire pour un produit externe",
+  "adminExternalCannotBeDownloadable": "Un produit externe ne peut pas être téléchargeable",
+  "adminDownloadableRulesHint": "Les produits téléchargeables sont enregistrés comme Simple + Virtuel et nécessitent une URL de téléchargement.",
+  "adminAllAttributeTypesAlreadyAdded": "Tous les types d’attributs disponibles sont déjà ajoutés"
+
 
 
 

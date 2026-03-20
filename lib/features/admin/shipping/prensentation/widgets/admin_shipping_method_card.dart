@@ -9,13 +9,13 @@ import '../../domain/entities/shipping_method.dart';
 class AdminShippingMethodCard extends StatelessWidget {
   final ShippingMethod method;
   final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback onDisable;
 
   const AdminShippingMethodCard({
     super.key,
     required this.method,
     required this.onEdit,
-    required this.onDelete,
+    required this.onDisable,
   });
 
   @override
@@ -44,7 +44,6 @@ class AdminShippingMethodCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Icon bubble
             Container(
               padding: EdgeInsets.all(spacing.sm),
               decoration: BoxDecoration(
@@ -59,7 +58,6 @@ class AdminShippingMethodCard extends StatelessWidget {
             ),
             SizedBox(width: spacing.sm),
 
-            // Content
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -88,8 +86,8 @@ class AdminShippingMethodCard extends StatelessWidget {
                   SizedBox(height: spacing.xs),
                   Text(
                     isDisabled
-                        ? (l.adminDisabled ?? 'Disabled')
-                        : (l.adminActive ?? 'Active'),
+                        ? l.adminDisabledLabel
+                        : l.adminActiveLabel,
                     style: text.bodySmall.copyWith(
                       color: isDisabled ? c.muted : (c.success ?? c.primary),
                       fontWeight: FontWeight.w600,
@@ -99,7 +97,6 @@ class AdminShippingMethodCard extends StatelessWidget {
               ),
             ),
 
-            // Actions
             Column(
               children: [
                 IconButton(
@@ -108,9 +105,12 @@ class AdminShippingMethodCard extends StatelessWidget {
                   tooltip: l.adminEdit ?? 'Edit',
                 ),
                 IconButton(
-                  onPressed: onDelete,
-                  icon: Icon(Icons.delete, color: c.danger),
-                  tooltip: l.adminDelete ?? 'Delete',
+                  onPressed: isDisabled ? null : onDisable,
+                  icon: Icon(
+                    Icons.block_rounded,
+                    color: isDisabled ? c.muted : c.danger,
+                  ),
+                  tooltip: l.adminDisable,
                 ),
               ],
             ),

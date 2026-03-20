@@ -26,10 +26,18 @@ class ItemDetailsModel {
 
   final List<ItemAttribute> attributes;
 
-  // ✅ NEW
   final int? statusId;
   final String? statusCode;
   final String? statusName;
+
+  final String? productType;
+  final bool downloadable;
+  final String? downloadUrl;
+  final String? externalUrl;
+  final String? buttonText;
+
+  final bool canDownload;
+  final String? accessMessage;
 
   ItemDetailsModel({
     required this.id,
@@ -51,17 +59,22 @@ class ItemDetailsModel {
     this.heightCm,
     this.lengthCm,
     this.attributes = const [],
-
-    // ✅ NEW
     this.statusId,
     this.statusCode,
     this.statusName,
+    this.productType,
+    this.downloadable = false,
+    this.downloadUrl,
+    this.externalUrl,
+    this.buttonText,
+    this.canDownload = false,
+    this.accessMessage,
   });
 
   factory ItemDetailsModel.fromJson(Map<String, dynamic> j) {
-    DateTime? _dt(dynamic v) => v == null ? null : DateTime.tryParse('$v');
+    DateTime? dt(dynamic v) => v == null ? null : DateTime.tryParse('$v');
 
-    num? _parseNum(dynamic v) {
+    num? parseNum(dynamic v) {
       if (v == null) return null;
       if (v is num) return v;
 
@@ -77,13 +90,13 @@ class ItemDetailsModel {
       return double.tryParse(s.replaceAll(',', '.'));
     }
 
-    bool _bool(dynamic v) {
+    bool parseBool(dynamic v) {
       if (v == null) return false;
       if (v is bool) return v;
       return '$v'.toLowerCase() == 'true';
     }
 
-    int? _int(dynamic v) {
+    int? parseInt(dynamic v) {
       if (v == null) return null;
       if (v is int) return v;
       if (v is num) return v.toInt();
@@ -104,26 +117,31 @@ class ItemDetailsModel {
       name: (j['name'] ?? j['itemName'] ?? '').toString(),
       description: j['description']?.toString(),
       imageUrl: j['imageUrl']?.toString(),
-      price: _parseNum(j['price']),
-      salePrice: _parseNum(j['salePrice']),
-      saleStart: _dt(j['saleStart']),
-      saleEnd: _dt(j['saleEnd']),
-      effectivePrice: _parseNum(j['effectivePrice']),
-      onSale: _bool(j['onSale']),
-      stock: _int(j['stock']),
+      price: parseNum(j['price']),
+      salePrice: parseNum(j['salePrice']),
+      saleStart: dt(j['saleStart']),
+      saleEnd: dt(j['saleEnd']),
+      effectivePrice: parseNum(j['effectivePrice']),
+      onSale: parseBool(j['onSale']),
+      stock: parseInt(j['stock']),
       sku: j['sku']?.toString(),
-      taxable: _bool(j['taxable']),
+      taxable: parseBool(j['taxable']),
       taxClass: j['taxClass']?.toString(),
-      weightKg: _parseNum(j['weightKg']),
-      widthCm: _parseNum(j['widthCm']),
-      heightCm: _parseNum(j['heightCm']),
-      lengthCm: _parseNum(j['lengthCm']),
+      weightKg: parseNum(j['weightKg']),
+      widthCm: parseNum(j['widthCm']),
+      heightCm: parseNum(j['heightCm']),
+      lengthCm: parseNum(j['lengthCm']),
       attributes: attrs,
-
-      // ✅ NEW
-      statusId: _int(j['statusId']),
+      statusId: parseInt(j['statusId']),
       statusCode: j['statusCode']?.toString(),
       statusName: j['statusName']?.toString(),
+      productType: j['productType']?.toString(),
+      downloadable: parseBool(j['downloadable']),
+      downloadUrl: j['downloadUrl']?.toString(),
+      externalUrl: j['externalUrl']?.toString(),
+      buttonText: j['buttonText']?.toString(),
+      canDownload: parseBool(j['canDownload']),
+      accessMessage: j['accessMessage']?.toString() ?? j['message']?.toString(),
     );
   }
 
@@ -148,11 +166,16 @@ class ItemDetailsModel {
       heightCm: heightCm,
       lengthCm: lengthCm,
       attributes: attributes,
-
-      // ✅ NEW
       statusId: statusId,
       statusCode: statusCode,
       statusName: statusName,
+      productType: productType,
+      downloadable: downloadable,
+      downloadUrl: downloadUrl,
+      externalUrl: externalUrl,
+      buttonText: buttonText,
+      canDownload: canDownload,
+      accessMessage: accessMessage,
     );
   }
 }

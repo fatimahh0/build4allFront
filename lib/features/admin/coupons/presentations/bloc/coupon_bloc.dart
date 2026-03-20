@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:build4front/core/exceptions/exception_mapper.dart';
 
 import '../../domain/usecases/delete_coupon.dart';
 import '../../domain/usecases/get_coupons.dart';
@@ -24,6 +25,26 @@ class CouponBloc extends Bloc<CouponEvent, CouponState> {
     on<CouponMessagesCleared>(_onMessagesCleared);
   }
 
+  String _friendlyError(Object e) {
+    final msg = ExceptionMapper.toMessage(e).trim();
+    final s = msg.toLowerCase();
+
+    final isDuplicateCoupon =
+        (s.contains('coupon') &&
+            (s.contains('already exists') ||
+                s.contains('already exist') ||
+                s.contains('duplicate') ||
+                s.contains('unique'))) ||
+        s.contains('duplicate key') ||
+        s.contains('unique constraint');
+
+    if (isDuplicateCoupon) {
+      return 'Coupon code already exists.';
+    }
+
+    return msg.isEmpty ? 'Something went wrong.' : msg;
+  }
+
   Future<void> _load(
     Emitter<CouponState> emit, {
     bool showLoading = true,
@@ -39,15 +60,17 @@ class CouponBloc extends Bloc<CouponEvent, CouponState> {
         );
       }
 
-      // ✅ backend uses tenant from token
       final list = await getCouponsUc();
       emit(state.copyWith(isLoading: false, coupons: list));
     } catch (e) {
-      emit(state.copyWith(isLoading: false, errorMessage: e.toString()));
+      emit(state.copyWith(isLoading: false, errorMessage: _friendlyError(e)));
     }
   }
 
-  Future<void> _onStarted(CouponsStarted event, Emitter<CouponState> emit) async {
+  Future<void> _onStarted(
+    CouponsStarted event,
+    Emitter<CouponState> emit,
+  ) async {
     await _load(emit);
   }
 
@@ -71,7 +94,6 @@ class CouponBloc extends Bloc<CouponEvent, CouponState> {
         ),
       );
 
-      // ✅ no ownerProjectId injection anymore
       final saved = await saveCouponUc(event.coupon);
 
       final updatedList = [
@@ -87,7 +109,7 @@ class CouponBloc extends Bloc<CouponEvent, CouponState> {
         ),
       );
     } catch (e) {
-      emit(state.copyWith(isSaving: false, errorMessage: e.toString()));
+      emit(state.copyWith(isSaving: false, errorMessage: _friendlyError(e)));
     }
   }
 
@@ -116,7 +138,7 @@ class CouponBloc extends Bloc<CouponEvent, CouponState> {
         ),
       );
     } catch (e) {
-      emit(state.copyWith(isSaving: false, errorMessage: e.toString()));
+      emit(state.copyWith(isSaving: false, errorMessage: _friendlyError(e)));
     }
   }
 

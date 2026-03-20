@@ -892,7 +892,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get refreshLabel => 'Actualiser';
 
   @override
-  String get adminEnabledOnly => 'Activés seulement';
+  String get adminEnabledOnly => 'Actives seulement';
 
   @override
   String get adminShowAll => 'Afficher tout';
@@ -2929,4 +2929,85 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get adminProductSaleEndHint => 'Sélectionnez la date de fin de la promotion';
+
+  @override
+  String get checkoutPaymentMethodUnavailable => 'Le mode de paiement sélectionné n’est pas disponible,s\'il vous plait appeler le support pour plus d’informations';
+
+  @override
+  String get adminDisable => 'Désactiver';
+
+  @override
+  String get adminDisableShippingMethodMessage => 'Êtes-vous sûr de vouloir désactiver cette méthode de livraison ? Elle n’apparaîtra plus au moment du paiement.';
+
+  @override
+  String get adminShippingMethodDisabled => 'Méthode de livraison désactivée avec succès';
+
+  @override
+  String get adminDisabledLabel => 'Désactivée';
+
+  @override
+  String get adminDisabledOnly => 'Désactivées seulement';
+
+  @override
+  String get adminAllLabel => 'Toutes';
+
+  @override
+  String get openLinkLabel => 'Ouvrir le lien';
+
+  @override
+  String get downloadNowLabel => 'Télécharger';
+
+  @override
+  String get downloadLabel => 'Téléchargement';
+
+  @override
+  String get downloadReadyLabel => 'Prêt au téléchargement';
+
+  @override
+  String get downloadAfterPurchaseLabel => 'Disponible après achat';
+
+  @override
+  String get externalProductLabel => 'Produit externe';
+
+  @override
+  String get productTypeLabel => 'Type de produit';
+
+  @override
+  String get invalidExternalUrlLabel => 'URL externe invalide';
+
+  @override
+  String get missingExternalUrlLabel => 'URL externe manquante';
+
+  @override
+  String get couldNotOpenLinkLabel => 'Impossible d’ouvrir le lien';
+
+  @override
+  String get invalidDownloadUrlLabel => 'URL de téléchargement invalide';
+
+  @override
+  String get missingDownloadUrlLabel => 'URL de téléchargement manquante';
+
+  @override
+  String get couldNotStartDownloadLabel => 'Impossible de démarrer le téléchargement';
+
+  @override
+  String get adminDownloadableMustBeSimple => 'Le produit téléchargeable doit être de type simple';
+
+  @override
+  String get adminDownloadableMustBeVirtual => 'Le produit téléchargeable doit être virtuel';
+
+  @override
+  String get adminDownloadUrlRequired => 'L’URL de téléchargement est obligatoire pour un produit téléchargeable';
+
+  @override
+  String get adminExternalUrlRequired => 'L’URL externe est obligatoire pour un produit externe';
+
+  @override
+  String get adminExternalCannotBeDownloadable => 'Un produit externe ne peut pas être téléchargeable';
+
+  @override
+  String get adminDownloadableRulesHint => 'Les produits téléchargeables sont enregistrés comme Simple + Virtuel et nécessitent une URL de téléchargement.';
+
+  @override
+  String get adminAllAttributeTypesAlreadyAdded => 'Tous les types d’attributs disponibles sont déjà ajoutés';
 }

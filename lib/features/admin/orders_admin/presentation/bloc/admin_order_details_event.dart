@@ -28,7 +28,6 @@ class AdminOrderStatusUpdateRequested extends AdminOrderDetailsEvent {
   List<Object?> get props => [orderId, status];
 }
 
-/// manual payment state change
 class AdminOrderMarkCashPaidRequested extends AdminOrderDetailsEvent {
   final int orderId;
   const AdminOrderMarkCashPaidRequested({required this.orderId});
@@ -59,4 +58,17 @@ class AdminOrderReopenRequested extends AdminOrderDetailsEvent {
 
   @override
   List<Object?> get props => [orderId];
+}
+
+class AdminOrderEditRequested extends AdminOrderDetailsEvent {
+  final int orderId;
+  final Map<String, dynamic> body;
+
+  const AdminOrderEditRequested({
+    required this.orderId,
+    required this.body,
+  });
+
+  @override
+  List<Object?> get props => [orderId, body];
 }

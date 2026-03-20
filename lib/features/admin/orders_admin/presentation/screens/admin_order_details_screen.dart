@@ -47,9 +47,17 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
   void _toast(String msg, {bool error = false}) {
     final m = msg.trim();
     if (m.isEmpty) return;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      AppToast.error(context, m);
+
+      if (error) {
+        AppToast.error(context, m);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(m)),
+        );
+      }
     });
   }
 
@@ -66,6 +74,225 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
         setState(() => _downloadingInvoice = false);
       }
     }
+  }
+
+  int? _tryInt(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v.toString());
+  }
+
+  int? _extractItemId(OrderDetailsItem it) {
+    final dynamic item = it.item;
+
+    try {
+      final v = item.id;
+      final parsed = _tryInt(v);
+      if (parsed != null) return parsed;
+    } catch (_) {}
+
+    return null;
+  }
+
+  int? _readOrderCountryId(OrderDetailsHeader o) {
+    return o.shippingCountryId;
+  }
+
+  int? _readOrderRegionId(OrderDetailsHeader o) {
+    return o.shippingRegionId;
+  }
+
+  bool _looksShippable(OrderDetailsResponse data) {
+    final o = data.order;
+    return o.shippingMethodId != null ||
+        ((o.shippingAddress ?? '').trim().isNotEmpty) ||
+        ((o.shippingCity ?? '').trim().isNotEmpty) ||
+        ((o.shippingPhone ?? '').trim().isNotEmpty);
+  }
+
+  Future<void> _openEditOrderDialog(OrderDetailsResponse data) async {
+    final o = data.order;
+
+    final fullNameCtrl = TextEditingController(text: o.shippingFullName ?? '');
+    final phoneCtrl = TextEditingController(text: o.shippingPhone ?? '');
+    final addressCtrl = TextEditingController(text: o.shippingAddress ?? '');
+    final cityCtrl = TextEditingController(text: o.shippingCity ?? '');
+    final postalCtrl = TextEditingController(text: o.shippingPostalCode ?? '');
+
+    final qtyCtrls = <int, TextEditingController>{};
+
+    for (final it in data.items) {
+      final itemId = _extractItemId(it);
+      if (itemId == null) continue;
+      qtyCtrls[itemId] = TextEditingController(text: it.quantity.toString());
+    }
+
+    final countryId = _readOrderCountryId(o);
+    final regionId = _readOrderRegionId(o);
+    final shippingRequired = _looksShippable(data);
+
+    if (shippingRequired && (countryId == null || o.shippingMethodId == null)) {
+      _toast(
+        'This order cannot be edited yet because shippingCountryId or shippingMethodId is missing in order details response.',
+        error: true,
+      );
+      return;
+    }
+
+    final ok = await showDialog<bool>(
+          context: context,
+          builder: (_) {
+            final tokens = context.read<ThemeCubit>().state.tokens;
+            final colors = tokens.colors;
+            final spacing = tokens.spacing;
+
+            return AlertDialog(
+              backgroundColor: colors.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              title: Text(
+                'Edit Order',
+                style: tokens.typography.titleMedium.copyWith(
+                  color: colors.label,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              content: SizedBox(
+                width: 520,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Set quantity to 0 to remove an item.',
+                        style: tokens.typography.bodySmall.copyWith(
+                          color: colors.muted,
+                        ),
+                      ),
+                      SizedBox(height: spacing.md),
+                      ...data.items.map((it) {
+                        final itemId = _extractItemId(it);
+                        if (itemId == null) return const SizedBox.shrink();
+
+                        return Padding(
+                          padding: EdgeInsets.only(bottom: spacing.sm),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  it.item.itemName,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: tokens.typography.bodyMedium.copyWith(
+                                    color: colors.label,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: spacing.sm),
+                              SizedBox(
+                                width: 90,
+                                child: TextField(
+                                  controller: qtyCtrls[itemId],
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Qty',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                      if (shippingRequired) ...[
+                        SizedBox(height: spacing.md),
+                        TextField(
+                          controller: fullNameCtrl,
+                          decoration: const InputDecoration(labelText: 'Full Name'),
+                        ),
+                        SizedBox(height: spacing.sm),
+                        TextField(
+                          controller: phoneCtrl,
+                          decoration: const InputDecoration(labelText: 'Phone'),
+                        ),
+                        SizedBox(height: spacing.sm),
+                        TextField(
+                          controller: addressCtrl,
+                          decoration: const InputDecoration(labelText: 'Address'),
+                        ),
+                        SizedBox(height: spacing.sm),
+                        TextField(
+                          controller: cityCtrl,
+                          decoration: const InputDecoration(labelText: 'City'),
+                        ),
+                        SizedBox(height: spacing.sm),
+                        TextField(
+                          controller: postalCtrl,
+                          decoration: const InputDecoration(labelText: 'Postal Code'),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (!ok) return;
+
+    final lines = <Map<String, dynamic>>[];
+
+    for (final it in data.items) {
+      final itemId = _extractItemId(it);
+      if (itemId == null) continue;
+
+      final qty = int.tryParse(qtyCtrls[itemId]!.text.trim()) ?? 0;
+      lines.add({
+        'itemId': itemId,
+        'quantity': qty,
+      });
+    }
+
+    final body = <String, dynamic>{
+      'lines': lines,
+      if (shippingRequired)
+        'shippingAddress': {
+          'countryId': countryId,
+          'regionId': regionId,
+          'city': cityCtrl.text.trim(),
+          'postalCode': postalCtrl.text.trim(),
+          'shippingMethodId': o.shippingMethodId,
+          'shippingMethodName': o.shippingMethodName,
+          'addressLine': addressCtrl.text.trim(),
+          'phone': phoneCtrl.text.trim(),
+          'fullName': fullNameCtrl.text.trim(),
+        },
+    };
+
+    debugPrint('EDIT BODY => $body');
+
+    if (!mounted) return;
+
+    _bloc.add(
+      AdminOrderEditRequested(
+        orderId: o.id,
+        body: body,
+      ),
+    );
   }
 
   Future<bool> _confirmAction({
@@ -279,6 +506,9 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                 final canReopenAction = !isRefunded && rawStatus != 'CANCELED';
                 final canRestore = !isRefunded && rawStatus == 'CANCELED';
 
+                final canEdit =
+                    isCash && (rawStatus == 'PENDING' || rawStatus == 'CANCEL_REQUESTED');
+
                 final phoneTxt = (o.shippingPhone ?? '').trim();
                 final headerName = (o.shippingFullName ?? '').trim();
 
@@ -381,9 +611,9 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                                           );
                                           if (!ok) return;
 
-                                          context.read<AdminOrderDetailsBloc>().add(
-                                                AdminOrderMarkCashPaidRequested(orderId: o.id),
-                                              );
+                                          _bloc.add(
+                                            AdminOrderMarkCashPaidRequested(orderId: o.id),
+                                          );
                                         },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: colors.success,
@@ -491,6 +721,23 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                         if ((o.paymentMethod ?? '').trim().isNotEmpty)
                           _kv(tokens, colors, 'Payment Method', o.paymentMethod!.trim()),
 
+                        if (canEdit) ...[
+                          SizedBox(height: spacing.md),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: state.updating ? null : () => _openEditOrderDialog(data),
+                              icon: const Icon(Icons.edit_outlined),
+                              label: Text(
+                                'Edit Order',
+                                style: tokens.typography.bodyMedium.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+
                         SizedBox(height: spacing.md),
                         SizedBox(
                           width: double.infinity,
@@ -531,12 +778,12 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                                           );
                                           if (!ok) return;
 
-                                          context.read<AdminOrderDetailsBloc>().add(
-                                                AdminOrderStatusUpdateRequested(
-                                                  orderId: o.id,
-                                                  status: 'COMPLETED',
-                                                ),
-                                              );
+                                          _bloc.add(
+                                            AdminOrderStatusUpdateRequested(
+                                              orderId: o.id,
+                                              status: 'COMPLETED',
+                                            ),
+                                          );
                                         },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: colors.success,
@@ -592,9 +839,9 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                                           );
                                           if (!ok) return;
 
-                                          context.read<AdminOrderDetailsBloc>().add(
-                                                AdminOrderReopenRequested(orderId: o.id),
-                                              );
+                                          _bloc.add(
+                                            AdminOrderReopenRequested(orderId: o.id),
+                                          );
                                         },
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: colors.danger,
@@ -647,12 +894,12 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                                     );
                                     if (!ok) return;
 
-                                    context.read<AdminOrderDetailsBloc>().add(
-                                          AdminOrderStatusUpdateRequested(
-                                            orderId: o.id,
-                                            status: 'PENDING',
-                                          ),
-                                        );
+                                    _bloc.add(
+                                      AdminOrderStatusUpdateRequested(
+                                        orderId: o.id,
+                                        status: 'PENDING',
+                                      ),
+                                    );
                                   },
                             style: OutlinedButton.styleFrom(
                               foregroundColor: colors.primary,
@@ -697,12 +944,12 @@ class _AdminOrderDetailsScreenState extends State<AdminOrderDetailsScreen> {
                                           );
                                           if (!ok) return;
 
-                                          context.read<AdminOrderDetailsBloc>().add(
-                                                AdminOrderStatusUpdateRequested(
-                                                  orderId: o.id,
-                                                  status: 'REJECTED',
-                                                ),
-                                              );
+                                          _bloc.add(
+                                            AdminOrderStatusUpdateRequested(
+                                              orderId: o.id,
+                                              status: 'REJECTED',
+                                            ),
+                                          );
                                         },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: colors.danger,

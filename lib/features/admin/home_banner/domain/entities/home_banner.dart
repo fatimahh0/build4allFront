@@ -7,6 +7,7 @@ class HomeBanner {
   final int? targetId;
   final String? targetUrl;
   final int sortOrder;
+  final bool active;
   final DateTime? startAt;
   final DateTime? endAt;
 
@@ -19,6 +20,7 @@ class HomeBanner {
     this.targetId,
     this.targetUrl,
     required this.sortOrder,
+    this.active = true,
     this.startAt,
     this.endAt,
   });

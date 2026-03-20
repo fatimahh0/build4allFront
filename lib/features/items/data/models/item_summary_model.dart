@@ -20,11 +20,15 @@ class ItemSummaryModel {
   final String? sku;
 
   final int? categoryId;
-
-  // ✅ NEW
   final int? statusId;
   final String? statusCode;
   final String? statusName;
+
+  final String? productType;
+  final bool downloadable;
+  final String? downloadUrl;
+  final String? externalUrl;
+  final String? buttonText;
 
   ItemSummaryModel({
     required this.id,
@@ -45,12 +49,17 @@ class ItemSummaryModel {
     this.statusId,
     this.statusCode,
     this.statusName,
+    this.productType,
+    this.downloadable = false,
+    this.downloadUrl,
+    this.externalUrl,
+    this.buttonText,
   });
 
   factory ItemSummaryModel.fromJson(Map<String, dynamic> j) {
-    DateTime? _dt(dynamic v) => v == null ? null : DateTime.tryParse('$v');
+    DateTime? dt(dynamic v) => v == null ? null : DateTime.tryParse('$v');
 
-    num? _parseNum(dynamic v) {
+    num? parseNum(dynamic v) {
       if (v == null) return null;
       if (v is num) return v;
 
@@ -66,14 +75,14 @@ class ItemSummaryModel {
       return double.tryParse(s.replaceAll(',', '.'));
     }
 
-    int? _intOrNull(dynamic v) {
+    int? intOrNull(dynamic v) {
       if (v == null) return null;
       if (v is int) return v;
       if (v is num) return v.toInt();
       return int.tryParse('$v');
     }
 
-    bool _bool(dynamic v) {
+    bool parseBool(dynamic v) {
       if (v == null) return false;
       if (v is bool) return v;
       return '$v'.toLowerCase() == 'true';
@@ -85,21 +94,24 @@ class ItemSummaryModel {
       subtitle: j['description']?.toString(),
       imageUrl: j['imageUrl']?.toString(),
       location: j['location']?.toString(),
-      start: _dt(j['startDatetime']),
-      price: _parseNum(j['price']),
-      salePrice: _parseNum(j['salePrice']),
-      saleStart: _dt(j['saleStart']),
-      saleEnd: _dt(j['saleEnd']),
-      effectivePrice: _parseNum(j['effectivePrice']),
-      onSale: _bool(j['onSale']),
-      stock: _intOrNull(j['stock']),
+      start: dt(j['startDatetime']),
+      price: parseNum(j['price']),
+      salePrice: parseNum(j['salePrice']),
+      saleStart: dt(j['saleStart']),
+      saleEnd: dt(j['saleEnd']),
+      effectivePrice: parseNum(j['effectivePrice']),
+      onSale: parseBool(j['onSale']),
+      stock: intOrNull(j['stock']),
       sku: j['sku']?.toString(),
-      categoryId: _intOrNull(j['categoryId']),
-
-      // ✅ NEW
-      statusId: _intOrNull(j['statusId']),
+      categoryId: intOrNull(j['categoryId']),
+      statusId: intOrNull(j['statusId']),
       statusCode: j['statusCode']?.toString(),
       statusName: j['statusName']?.toString(),
+      productType: j['productType']?.toString(),
+      downloadable: parseBool(j['downloadable']),
+      downloadUrl: j['downloadUrl']?.toString(),
+      externalUrl: j['externalUrl']?.toString(),
+      buttonText: j['buttonText']?.toString(),
     );
   }
 
@@ -121,11 +133,14 @@ class ItemSummaryModel {
       sku: sku,
       kind: currentItemKindFromEnv(),
       categoryId: categoryId,
-
-      // ✅ NEW
       statusId: statusId,
       statusCode: statusCode,
       statusName: statusName,
+      productType: productType,
+      downloadable: downloadable,
+      downloadUrl: downloadUrl,
+      externalUrl: externalUrl,
+      buttonText: buttonText,
     );
   }
 }

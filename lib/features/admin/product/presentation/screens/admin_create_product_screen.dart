@@ -195,6 +195,13 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
 
     _selectedProductType = _productTypeFromString(p.productType);
 
+    if (_downloadable) {
+      _selectedProductType = ProductTypeDto.simple;
+      _virtualProduct = true;
+      _externalUrlCtrl.clear();
+      _buttonTextCtrl.clear();
+    }
+
     if (p.salePrice != null) {
       _salePriceCtrl.text = p.salePrice!.toStringAsFixed(2);
     }
@@ -982,9 +989,7 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
       final l = AppLocalizations.of(context)!;
       AppToast.error(
         context,
-        l.adminGenericError.isNotEmpty
-            ? 'All available attribute types are already added'
-            : 'All available attribute types are already added',
+        l.adminAllAttributeTypesAlreadyAdded,
       );
       return;
     }
@@ -1033,6 +1038,35 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
     try {
       final price = double.parse(_priceCtrl.text.trim());
 
+      if (_downloadable) {
+        if (_selectedProductType != ProductTypeDto.simple) {
+          setState(() => _errorMessage = l.adminDownloadableMustBeSimple);
+          return;
+        }
+
+        if (!_virtualProduct) {
+          setState(() => _errorMessage = l.adminDownloadableMustBeVirtual);
+          return;
+        }
+
+        if (_downloadUrlCtrl.text.trim().isEmpty) {
+          setState(() => _errorMessage = l.adminDownloadUrlRequired);
+          return;
+        }
+      }
+
+      if (_selectedProductType == ProductTypeDto.external) {
+        if (_externalUrlCtrl.text.trim().isEmpty) {
+          setState(() => _errorMessage = l.adminExternalUrlRequired);
+          return;
+        }
+
+        if (_downloadable) {
+          setState(() => _errorMessage = l.adminExternalCannotBeDownloadable);
+          return;
+        }
+      }
+
       final saleErr = _validateSaleFields(l, regularPrice: price);
       if (saleErr != null) {
         setState(() => _errorMessage = saleErr);
@@ -1063,34 +1097,22 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
 
       final itemTypeId = _selectedItemTypeId ?? widget.itemTypeId;
 
-      final description = _descriptionCtrl.text.trim().isEmpty
-          ? null
-          : _descriptionCtrl.text.trim();
+      String? clean(String? v) {
+        final s = (v ?? '').trim();
+        return s.isEmpty ? null : s;
+      }
 
-      final sku = _skuCtrl.text.trim().isEmpty ? null : _skuCtrl.text.trim();
+      final description = clean(_descriptionCtrl.text);
+      final sku = clean(_skuCtrl.text);
 
-      final downloadUrl =
-          _downloadable && _downloadUrlCtrl.text.trim().isNotEmpty
-              ? _downloadUrlCtrl.text.trim()
-              : null;
+      final isExternal = _selectedProductType == ProductTypeDto.external;
 
-      final externalUrl = _selectedProductType == ProductTypeDto.external &&
-              _externalUrlCtrl.text.trim().isNotEmpty
-          ? _externalUrlCtrl.text.trim()
-          : null;
+      final downloadUrl = _downloadable ? clean(_downloadUrlCtrl.text) : null;
+      final externalUrl = isExternal ? clean(_externalUrlCtrl.text) : null;
+      final buttonText = isExternal ? clean(_buttonTextCtrl.text) : null;
 
-      final buttonText = _selectedProductType == ProductTypeDto.external &&
-              _buttonTextCtrl.text.trim().isNotEmpty
-          ? _buttonTextCtrl.text.trim()
-          : null;
-
-      final saleStartText = _saleStartCtrl.text.trim().isEmpty
-          ? null
-          : _saleStartCtrl.text.trim();
-
-      final saleEndText = _saleEndCtrl.text.trim().isEmpty
-          ? null
-          : _saleEndCtrl.text.trim();
+      final saleStartText = clean(_saleStartCtrl.text);
+      final saleEndText = clean(_saleEndCtrl.text);
 
       if (!_isEdit) {
         final req = CreateProductRequest(
@@ -1103,12 +1125,13 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
           stock: stock,
           statusCode: _selectedStatusCode,
           sku: sku,
-          productType: _selectedProductType,
-          virtualProduct: _virtualProduct,
+          productType:
+              _downloadable ? ProductTypeDto.simple : _selectedProductType,
+          virtualProduct: _downloadable ? true : _virtualProduct,
           downloadable: _downloadable,
-          downloadUrl: downloadUrl,
-          externalUrl: externalUrl,
-          buttonText: buttonText,
+          downloadUrl: _downloadable ? downloadUrl : null,
+          externalUrl: _downloadable ? null : externalUrl,
+          buttonText: _downloadable ? null : buttonText,
           salePrice: salePrice,
           saleStart: saleStartText,
           saleEnd: saleEndText,
@@ -1129,17 +1152,17 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
             'stock': stock,
             'statusCode': _selectedStatusCode,
             'sku': sku,
-            'productType': productTypeDtoToApi(_selectedProductType),
-            'virtualProduct': _virtualProduct,
+            'productType': productTypeDtoToApi(
+              _downloadable ? ProductTypeDto.simple : _selectedProductType,
+            ),
+            'virtualProduct': _downloadable ? true : _virtualProduct,
             'downloadable': _downloadable,
-            'downloadUrl': downloadUrl,
-            'externalUrl': externalUrl,
-            'buttonText': buttonText,
+            'downloadUrl': _downloadable ? downloadUrl : null,
+            'externalUrl': _downloadable ? null : externalUrl,
+            'buttonText': _downloadable ? null : buttonText,
             'salePrice': salePrice,
             'saleStart': saleStartText,
             'saleEnd': saleEndText,
-            // important: always send attributes, even if empty,
-            // so backend can delete old ones
             'attributes': attrs.map((e) => e.toJson()).toList(),
           },
         );
@@ -1158,6 +1181,8 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
     final token = await _requireAdminToken();
     final api = ProductApiService();
 
+    // debugPrint('CREATE PRODUCT BODY => ${jsonEncode(req.toJson())}');
+
     if (_pickedImage != null) {
       await api.createWithImage(
         body: req.toJson(),
@@ -1175,6 +1200,8 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
   }) async {
     final token = await _requireAdminToken();
     final api = ProductApiService();
+
+    // debugPrint('UPDATE PRODUCT BODY => ${jsonEncode(reqBody)}');
 
     if (_pickedImage != null) {
       await api.updateWithImage(
@@ -1287,20 +1314,44 @@ class _AdminCreateProductScreenState extends State<AdminCreateProductScreen> {
                   onProductTypeChanged: (val) {
                     setState(() {
                       _selectedProductType = val;
-                      if (val != ProductTypeDto.external) {
+
+                      if (val == ProductTypeDto.external) {
+                        _downloadable = false;
+                        _downloadUrlCtrl.clear();
+                      } else {
                         _externalUrlCtrl.clear();
-                        _buttonTextCtrl.text =
-                            l.adminButtonTextDefaultAddToCart;
+                        _buttonTextCtrl.clear();
+                      }
+
+                      if (_downloadable) {
+                        _selectedProductType = ProductTypeDto.simple;
+                        _virtualProduct = true;
                       }
                     });
                   },
                   virtualProduct: _virtualProduct,
-                  onVirtualChanged: (v) => setState(() => _virtualProduct = v),
+                  onVirtualChanged: (v) {
+                    setState(() {
+                      if (_downloadable && !v) {
+                        _virtualProduct = true;
+                      } else {
+                        _virtualProduct = v;
+                      }
+                    });
+                  },
                   downloadable: _downloadable,
                   onDownloadableChanged: (v) {
                     setState(() {
                       _downloadable = v;
-                      if (!v) _downloadUrlCtrl.clear();
+
+                      if (v) {
+                        _selectedProductType = ProductTypeDto.simple;
+                        _virtualProduct = true;
+                        _externalUrlCtrl.clear();
+                        _buttonTextCtrl.clear();
+                      } else {
+                        _downloadUrlCtrl.clear();
+                      }
                     });
                   },
                   downloadUrlCtrl: _downloadUrlCtrl,
@@ -1643,8 +1694,9 @@ class AdminProductCategoryTypeSection extends StatelessWidget {
                         ),
                       )
                       .toList(),
-                  onChanged:
-                      loadingItemTypes || selectedCategoryId == null ? null : onItemTypeChanged,
+                  onChanged: loadingItemTypes || selectedCategoryId == null
+                      ? null
+                      : onItemTypeChanged,
                   decoration: InputDecoration(
                     hintText: selectedCategoryId == null
                         ? l.adminSelectCategoryFirst
@@ -1959,6 +2011,11 @@ class AdminProductConfigSection extends StatelessWidget {
             onChanged: onDownloadableChanged,
           ),
           if (downloadable) ...[
+            SizedBox(height: spacing.xs),
+            Text(
+              l.adminDownloadableRulesHint,
+              style: text.bodySmall.copyWith(color: tokens.colors.muted),
+            ),
             SizedBox(height: spacing.sm),
             TextFormField(
               controller: downloadUrlCtrl,

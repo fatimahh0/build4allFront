@@ -29,7 +29,6 @@ class OrderHeaderRow {
   final String? phone;
   final String? addressLine;
 
-  // ✅ NEW
   final String? orderCode;
   final int? orderSeq;
 
@@ -44,12 +43,11 @@ class OrderHeaderRow {
     required this.payment,
     this.phone,
     this.addressLine,
-
-    // ✅ NEW
     this.orderCode,
     this.orderSeq,
   });
 }
+
 class CurrencyMini {
   final String? code;
   final String? symbol;
@@ -122,12 +120,15 @@ class OrderDetailsHeader {
 
   final String? shippingCity;
   final String? shippingPostalCode;
-
   final String? shippingPhone;
   final String? shippingAddress;
-
-  // ✅ ADD THIS
   final String? shippingFullName;
+
+  // ✅ NEW
+  final int? shippingCountryId;
+  final String? shippingCountryName;
+  final int? shippingRegionId;
+  final String? shippingRegionName;
 
   final int? shippingMethodId;
   final String? shippingMethodName;
@@ -155,9 +156,13 @@ class OrderDetailsHeader {
     this.shippingPostalCode,
     this.shippingPhone,
     this.shippingAddress,
-
-    // ✅ ADD THIS
     this.shippingFullName,
+
+    // ✅ NEW
+    this.shippingCountryId,
+    this.shippingCountryName,
+    this.shippingRegionId,
+    this.shippingRegionName,
 
     this.shippingMethodId,
     this.shippingMethodName,
@@ -172,6 +177,7 @@ class OrderDetailsHeader {
     this.orderSeq,
   });
 }
+
 class OrderDetailsResponse {
   final OrderDetailsHeader order;
   final int itemsCount;

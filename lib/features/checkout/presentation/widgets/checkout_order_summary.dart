@@ -1,5 +1,3 @@
-// lib/features/checkout/presentation/widgets/checkout_order_summary.dart
-
 import 'package:build4front/features/catalog/cubit/money.dart';
 import 'package:build4front/features/checkout/data/models/checkout_summary_model.dart';
 import 'package:build4front/features/checkout/domain/entities/checkout_entities.dart';
@@ -13,8 +11,6 @@ class CheckoutOrderSummary extends StatelessWidget {
   final CheckoutCart cart;
   final ShippingQuote? selectedShipping;
   final TaxPreview? tax;
-
-  /// ✅ NEW: backend quote result (source of truth)
   final CheckoutSummaryModel? quote;
 
   const CheckoutOrderSummary({
@@ -38,23 +34,31 @@ class CheckoutOrderSummary extends StatelessWidget {
     final t = Theme.of(context).textTheme;
 
     final itemsSubtotalLocal = _itemsSubtotalLocal();
-    final shippingLocal = selectedShipping?.price ?? 0.0;
-    final taxLocal = (tax?.itemsTaxTotal ?? 0.0) + (tax?.shippingTaxTotal ?? 0.0);
+    final baseShippingLocal = selectedShipping?.price ?? 0.0;
+    final taxLocal =
+        (tax?.itemsTaxTotal ?? 0.0) + (tax?.shippingTaxTotal ?? 0.0);
 
     final q = quote;
 
     final itemsSubtotal = q?.itemsSubtotal ?? itemsSubtotalLocal;
-    final shippingTotal = q?.shippingTotal ?? shippingLocal;
+    final shippingTotal = q?.shippingTotal ?? baseShippingLocal;
 
     final taxTotal = q != null
         ? (q.itemTaxTotal + q.shippingTaxTotal)
         : taxLocal;
 
     final couponCode = (q?.couponCode ?? '').trim();
-    final couponDiscount = q?.couponDiscount ?? 0.0;
-    final showCoupon = couponCode.isNotEmpty && couponDiscount > 0;
+    final couponDiscount = (q?.couponDiscount ?? 0.0).toDouble();
 
-    // ✅ grand total from backend quote is best
+    final shippingSavings = q != null && baseShippingLocal > shippingTotal
+        ? (baseShippingLocal - shippingTotal)
+        : 0.0;
+
+    final couponBenefit =
+        couponDiscount > 0 ? couponDiscount : shippingSavings;
+
+    final showCoupon = couponCode.isNotEmpty && couponBenefit > 0;
+
     final total = q?.grandTotal ??
         (itemsSubtotal + shippingTotal + taxTotal - couponDiscount);
 
@@ -73,7 +77,7 @@ class CheckoutOrderSummary extends StatelessWidget {
           _row(
             context,
             l10n.orderDetailsCouponLine(couponCode),
-            '-${money(context, couponDiscount)}',
+            '-${money(context, couponBenefit)}',
             rightColor: colors.success,
           ),
         ],

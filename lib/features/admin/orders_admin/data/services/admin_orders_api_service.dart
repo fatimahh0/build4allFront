@@ -70,6 +70,22 @@ class AdminOrdersApiService {
     );
   }
 
+  Future<Map<String, dynamic>> editOrderRaw({
+  required int orderId,
+  required Map<String, dynamic> body,
+}) async {
+  final token = await _requireToken();
+  final path = '/api/orders/owner/orders/$orderId/edit';
+
+  final res = await _dio.put(
+    path,
+    options: _auth(token),
+    data: body,
+  );
+
+  return res.data is Map ? (res.data as Map).cast<String, dynamic>() : {};
+}
+
   // ✅ NEW: CASH mark paid
   Future<Map<String, dynamic>> markCashPaidRaw({required int orderId}) async {
     final token = await _requireToken();

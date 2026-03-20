@@ -2929,4 +2929,85 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get adminProductSaleEndHint => 'حدد تاريخ نهاية التخفيض';
+
+  @override
+  String get checkoutPaymentMethodUnavailable => 'طريقة الدفع المحددة غير متاحة';
+
+  @override
+  String get adminDisable => 'تعطيل';
+
+  @override
+  String get adminDisableShippingMethodMessage => 'هل أنت متأكد أنك تريد تعطيل طريقة الشحن هذه؟ لن تظهر بعد الآن في صفحة الدفع.';
+
+  @override
+  String get adminShippingMethodDisabled => 'تم تعطيل طريقة الشحن بنجاح';
+
+  @override
+  String get adminDisabledLabel => 'معطّلة';
+
+  @override
+  String get adminDisabledOnly => 'المعطّلة فقط';
+
+  @override
+  String get adminAllLabel => 'الكل';
+
+  @override
+  String get openLinkLabel => 'فتح الرابط';
+
+  @override
+  String get downloadNowLabel => 'تنزيل';
+
+  @override
+  String get downloadLabel => 'التنزيل';
+
+  @override
+  String get downloadReadyLabel => 'جاهز للتنزيل';
+
+  @override
+  String get downloadAfterPurchaseLabel => 'متاح بعد الشراء';
+
+  @override
+  String get externalProductLabel => 'منتج خارجي';
+
+  @override
+  String get productTypeLabel => 'نوع المنتج';
+
+  @override
+  String get invalidExternalUrlLabel => 'رابط خارجي غير صالح';
+
+  @override
+  String get missingExternalUrlLabel => 'رابط المنتج الخارجي مفقود';
+
+  @override
+  String get couldNotOpenLinkLabel => 'تعذر فتح الرابط';
+
+  @override
+  String get invalidDownloadUrlLabel => 'رابط التنزيل غير صالح';
+
+  @override
+  String get missingDownloadUrlLabel => 'رابط التنزيل مفقود';
+
+  @override
+  String get couldNotStartDownloadLabel => 'تعذر بدء التنزيل';
+
+  @override
+  String get adminDownloadableMustBeSimple => 'المنتج القابل للتنزيل يجب أن يكون من النوع البسيط';
+
+  @override
+  String get adminDownloadableMustBeVirtual => 'المنتج القابل للتنزيل يجب أن يكون افتراضيًا';
+
+  @override
+  String get adminDownloadUrlRequired => 'رابط التنزيل مطلوب للمنتج القابل للتنزيل';
+
+  @override
+  String get adminExternalUrlRequired => 'الرابط الخارجي مطلوب للمنتج الخارجي';
+
+  @override
+  String get adminExternalCannotBeDownloadable => 'المنتج الخارجي لا يمكن أن يكون قابلاً للتنزيل';
+
+  @override
+  String get adminDownloadableRulesHint => 'المنتجات القابلة للتنزيل تُحفظ كمنتج بسيط وافتراضي وتتطلب رابط تنزيل.';
+
+  @override
+  String get adminAllAttributeTypesAlreadyAdded => 'تمت إضافة جميع أنواع الخصائص المتاحة';
 }

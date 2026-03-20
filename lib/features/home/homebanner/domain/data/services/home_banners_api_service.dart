@@ -8,8 +8,6 @@ class HomeBannersApiService {
   HomeBannersApiService(this._dio);
 
   factory HomeBannersApiService.create() {
-    // Prefer using your global dio if you have it (recommended),
-    // but keeping this structure for minimal change.
     final dio = Dio(
       BaseOptions(
         baseUrl: Env.apiBaseUrl,
@@ -24,9 +22,16 @@ class HomeBannersApiService {
     required String token,
   }) async {
     try {
+      final trimmedToken = token.trim();
+
+      final headers = <String, dynamic>{};
+      if (trimmedToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $trimmedToken';
+      }
+
       final res = await _dio.get(
         '/api/home-banners',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        options: Options(headers: headers.isEmpty ? null : headers),
       );
 
       if (kDebugMode) {
@@ -34,16 +39,27 @@ class HomeBannersApiService {
       }
 
       final data = res.data;
+
+      if (data == null) return const [];
+
       if (data is List) {
         return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
       }
+
       return const [];
     } on DioException catch (e) {
+      final status = e.response?.statusCode;
+
       if (kDebugMode) {
         debugPrint(
-          'HomeBannersApiService DioException: status=${e.response?.statusCode}, data=${e.response?.data}',
+          'HomeBannersApiService DioException: status=$status, data=${e.response?.data}',
         );
       }
+
+      if (status == 404) {
+        return const [];
+      }
+
       rethrow;
     }
   }

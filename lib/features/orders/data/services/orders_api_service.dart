@@ -64,9 +64,7 @@ class OrdersApiService {
     final headers = await _authHeaders();
 
     final candidates = <String>[
-      '/api/orders/$orderId',
-      '/api/orders/details/$orderId',
-      '/api/orders/myorders/details/$orderId',
+   
       '/api/orders/myorders/$orderId',
     ];
 

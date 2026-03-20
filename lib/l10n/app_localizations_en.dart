@@ -2929,4 +2929,85 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get adminProductSaleEndHint => 'Select sale end date';
+
+  @override
+  String get checkoutPaymentMethodUnavailable => 'Selected payment method is not available,please call support';
+
+  @override
+  String get adminDisable => 'Disable';
+
+  @override
+  String get adminDisableShippingMethodMessage => 'Are you sure you want to disable this shipping method? It will no longer appear at checkout.';
+
+  @override
+  String get adminShippingMethodDisabled => 'Shipping method disabled successfully';
+
+  @override
+  String get adminDisabledLabel => 'Disabled';
+
+  @override
+  String get adminDisabledOnly => 'Disabled only';
+
+  @override
+  String get adminAllLabel => 'All';
+
+  @override
+  String get openLinkLabel => 'Open Link';
+
+  @override
+  String get downloadNowLabel => 'Download';
+
+  @override
+  String get downloadLabel => 'Download';
+
+  @override
+  String get downloadReadyLabel => 'Ready to download';
+
+  @override
+  String get downloadAfterPurchaseLabel => 'Available after purchase';
+
+  @override
+  String get externalProductLabel => 'External product';
+
+  @override
+  String get productTypeLabel => 'Product type';
+
+  @override
+  String get invalidExternalUrlLabel => 'Invalid external URL';
+
+  @override
+  String get missingExternalUrlLabel => 'Missing external URL';
+
+  @override
+  String get couldNotOpenLinkLabel => 'Could not open the link';
+
+  @override
+  String get invalidDownloadUrlLabel => 'Invalid download URL';
+
+  @override
+  String get missingDownloadUrlLabel => 'Missing download URL';
+
+  @override
+  String get couldNotStartDownloadLabel => 'Could not start the download';
+
+  @override
+  String get adminDownloadableMustBeSimple => 'Downloadable product must use Simple product type';
+
+  @override
+  String get adminDownloadableMustBeVirtual => 'Downloadable product must be virtual';
+
+  @override
+  String get adminDownloadUrlRequired => 'Download URL is required for downloadable product';
+
+  @override
+  String get adminExternalUrlRequired => 'External URL is required for external product';
+
+  @override
+  String get adminExternalCannotBeDownloadable => 'External product cannot be downloadable';
+
+  @override
+  String get adminDownloadableRulesHint => 'Downloadable products are saved as Simple + Virtual and require a download URL.';
+
+  @override
+  String get adminAllAttributeTypesAlreadyAdded => 'All available attribute types are already added';
 }

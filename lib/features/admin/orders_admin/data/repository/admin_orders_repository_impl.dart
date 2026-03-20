@@ -82,6 +82,19 @@ class AdminOrdersRepositoryImpl implements AdminOrdersRepository {
     }
   }
 
+@override
+Future<void> editOrder({
+  required int orderId,
+  required Map<String, dynamic> body,
+}) async {
+  try {
+    await api.editOrderRaw(orderId: orderId, body: body);
+  } on DioException catch (e) {
+    _throwNice(e, fallback: 'Failed to edit order');
+  } catch (e) {
+    throw Exception(e.toString());
+  }
+}
   @override
   Future<void> reopenOrder({required int orderId}) async {
     try {

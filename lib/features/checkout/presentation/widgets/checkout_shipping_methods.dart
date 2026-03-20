@@ -5,10 +5,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:build4front/core/theme/theme_cubit.dart';
 import 'package:build4front/l10n/app_localizations.dart';
 
-
 class CheckoutShippingMethods extends StatelessWidget {
   final List<ShippingQuote> quotes;
   final int? selectedMethodId;
+  final bool refreshEnabled;
   final ValueChanged<int?> onSelect;
   final VoidCallback onRefresh;
 
@@ -16,6 +16,7 @@ class CheckoutShippingMethods extends StatelessWidget {
     super.key,
     required this.quotes,
     required this.selectedMethodId,
+    required this.refreshEnabled,
     required this.onSelect,
     required this.onRefresh,
   });
@@ -38,7 +39,7 @@ class CheckoutShippingMethods extends StatelessWidget {
           ),
           SizedBox(height: spacing.sm),
           OutlinedButton.icon(
-            onPressed: onRefresh,
+            onPressed: refreshEnabled ? onRefresh : null,
             icon: const Icon(Icons.refresh_rounded),
             label: Text(l10n.checkoutRefreshShipping),
           ),
@@ -49,7 +50,7 @@ class CheckoutShippingMethods extends StatelessWidget {
     return Column(
       children: [
         ...quotes.map((q) {
-          final id = q.methodId; // can be null depending on backend
+          final id = q.methodId;
           final selected = id != null && id == selectedMethodId;
 
           return Container(
@@ -74,11 +75,16 @@ class CheckoutShippingMethods extends StatelessWidget {
         Align(
           alignment: Alignment.centerRight,
           child: TextButton.icon(
-            onPressed: onRefresh,
-            icon: Icon(Icons.refresh_rounded, color: colors.primary),
+            onPressed: refreshEnabled ? onRefresh : null,
+            icon: Icon(
+              Icons.refresh_rounded,
+              color: refreshEnabled ? colors.primary : colors.muted,
+            ),
             label: Text(
               l10n.checkoutRefreshShipping,
-              style: TextStyle(color: colors.primary),
+              style: TextStyle(
+                color: refreshEnabled ? colors.primary : colors.muted,
+              ),
             ),
           ),
         ),

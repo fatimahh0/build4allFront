@@ -790,12 +790,218 @@ class _ProfileBottomSheet extends StatelessWidget {
     AppToast.success(context, toast);
   }
 
+  Widget _buildHandle(dynamic colors) {
+    return Center(
+      child: Container(
+        height: 5,
+        width: 52,
+        decoration: BoxDecoration(
+          color: colors.border.withOpacity(0.55),
+          borderRadius: BorderRadius.circular(999),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFooter(
+    BuildContext context, {
+    required dynamic colors,
+    required String label,
+  }) {
+    return Container(
+      padding: const EdgeInsets.only(top: 12),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(
+            color: colors.border.withOpacity(.14),
+          ),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: onReload,
+            icon: const Icon(Icons.refresh_rounded),
+            label: Text(label),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoList(
+    BuildContext context, {
+    required dynamic colors,
+    required dynamic profile,
+    required String role,
+    required String adminId,
+    required String businessId,
+    required String email,
+    required String phone,
+    required String name,
+  }) {
+    final l10n = AppLocalizations.of(context)!;
+    final t = Theme.of(context).textTheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              height: 56,
+              width: 56,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: colors.primary.withOpacity(.12),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: colors.primary.withOpacity(.18),
+                ),
+              ),
+              child: Text(
+                _initials(profile.firstName, profile.lastName, profile.username),
+                style: t.titleMedium?.copyWith(
+                  color: colors.primary,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.titleLarge?.copyWith(
+                      color: colors.label,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.background,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: colors.border.withOpacity(.18),
+                      ),
+                    ),
+                    child: Text(
+                      l10n.adminMyProfileSubtitle(role),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodySmall?.copyWith(
+                        color: colors.body,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: Icon(Icons.close_rounded, color: colors.body),
+              tooltip: l10n.closeLabel,
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        _ProfileRow(
+          label: l10n.adminIdLabel,
+          value: adminId,
+          icon: Icons.badge_outlined,
+          colors: colors,
+          onCopy: () => _copy(context, adminId, l10n.copiedLabel),
+        ),
+        _ProfileRow(
+          label: l10n.aupIdLabel,
+          value: aupId,
+          icon: Icons.link_outlined,
+          colors: colors,
+          onCopy: () => _copy(context, aupId, l10n.copiedLabel),
+        ),
+        _ProfileRow(
+          label: l10n.usernameLabel,
+          value: profile.username,
+          icon: Icons.person_outline,
+          colors: colors,
+          onCopy: profile.username.trim().isEmpty
+              ? null
+              : () => _copy(context, profile.username, l10n.copiedLabel),
+        ),
+        if (businessId.isNotEmpty)
+          _ProfileRow(
+            label: l10n.businessIdLabel,
+            value: businessId,
+            icon: Icons.store_outlined,
+            colors: colors,
+            onCopy: () => _copy(context, businessId, l10n.copiedLabel),
+          ),
+        if (email.isNotEmpty)
+          _ProfileRow(
+            label: l10n.emailLabel,
+            value: email,
+            icon: Icons.email_outlined,
+            colors: colors,
+            onCopy: () => _copy(context, email, l10n.copiedLabel),
+          ),
+        if (phone.isNotEmpty)
+          _ProfileRow(
+            label: l10n.phoneLabel,
+            value: phone,
+            icon: Icons.phone_outlined,
+            colors: colors,
+            onCopy: () => _copy(context, phone, l10n.copiedLabel),
+          ),
+        if ((profile.createdAt ?? '').trim().isNotEmpty)
+          _ProfileRow(
+            label: l10n.createdAtLabel,
+            value: (profile.createdAt ?? '').toString(),
+            icon: Icons.schedule_outlined,
+            colors: colors,
+            onCopy: () => _copy(
+              context,
+              (profile.createdAt ?? '').toString(),
+              l10n.copiedLabel,
+            ),
+          ),
+        if ((profile.updatedAt ?? '').trim().isNotEmpty)
+          _ProfileRow(
+            label: l10n.updatedAtLabel,
+            value: (profile.updatedAt ?? '').toString(),
+            icon: Icons.update_outlined,
+            colors: colors,
+            onCopy: () => _copy(
+              context,
+              (profile.updatedAt ?? '').toString(),
+              l10n.copiedLabel,
+            ),
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final tokens = context.watch<ThemeCubit>().state.tokens;
     final colors = tokens.colors;
     final t = Theme.of(context).textTheme;
+
+    final screenHeight = MediaQuery.of(context).size.height;
+    final maxSheetHeight = screenHeight * 0.88;
 
     return Material(
       color: Colors.transparent,
@@ -805,282 +1011,129 @@ class _ProfileBottomSheet extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOut,
           padding: EdgeInsets.only(bottom: _bottomInset(context)),
-          child: Container(
-            decoration: BoxDecoration(
-              color: colors.surface,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-              child: BlocBuilder<AdminProfileCubit, AdminProfileState>(
-                builder: (context, state) {
-                  Widget body;
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: maxSheetHeight,
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                  child: BlocBuilder<AdminProfileCubit, AdminProfileState>(
+                    builder: (context, state) {
+                      Widget body;
 
-                  if (state is AdminProfileLoading ||
-                      state is AdminProfileInitial) {
-                    body = Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox(height: 12),
-                        const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          l10n.adminProfileLoading,
-                          style: t.bodyMedium?.copyWith(color: colors.body),
-                        ),
-                      ],
-                    );
-                  } else if (state is AdminProfileError) {
-                    body = Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const SizedBox(height: 8),
-                        Icon(Icons.error_outline, color: colors.error, size: 28),
-                        const SizedBox(height: 8),
-                        Text(
-                          state.message,
-                          textAlign: TextAlign.center,
-                          style: t.bodyMedium?.copyWith(color: colors.label),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
+                      if (state is AdminProfileLoading ||
+                          state is AdminProfileInitial) {
+                        body = Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: onReload,
-                                child: Text(l10n.retryLabel),
+                            _buildHandle(colors),
+                            const SizedBox(height: 20),
+                            const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              l10n.adminProfileLoading,
+                              style: t.bodyMedium?.copyWith(
+                                color: colors.body,
                               ),
                             ),
                           ],
-                        ),
-                      ],
-                    );
-                  } else {
-                    final p = (state as AdminProfileLoaded).profile;
-
-                    final name = p.fullName.isNotEmpty
-                        ? p.fullName
-                        : (p.username.trim().isNotEmpty
-                            ? p.username
-                            : l10n.adminMyProfileTitle);
-
-                    final role =
-                        (p.role.trim().isNotEmpty ? p.role : fallbackRole)
-                            .toUpperCase();
-
-                    final email = p.email.trim();
-                    final phone = p.phoneNumber.trim();
-                    final businessId =
-                        p.businessId == null ? '' : p.businessId.toString();
-                    final adminId = p.adminId.toString();
-
-                    body = Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          height: 4,
-                          width: 44,
-                          decoration: BoxDecoration(
-                            color: colors.border.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
+                        );
+                      } else if (state is AdminProfileError) {
+                        body = Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Container(
-                              height: 52,
-                              width: 52,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: colors.primary.withOpacity(.12),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: colors.primary.withOpacity(.18),
-                                ),
-                              ),
-                              child: Text(
-                                _initials(p.firstName, p.lastName, p.username),
-                                style: t.titleMedium?.copyWith(
-                                  color: colors.primary,
-                                  fontWeight: FontWeight.w900,
-                                ),
+                            _buildHandle(colors),
+                            const SizedBox(height: 18),
+                            Icon(
+                              Icons.error_outline_rounded,
+                              color: colors.error,
+                              size: 28,
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              state.message,
+                              textAlign: TextAlign.center,
+                              style: t.bodyMedium?.copyWith(
+                                color: colors.label,
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: t.titleMedium?.copyWith(
-                                      color: colors.label,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: colors.background,
-                                      borderRadius:
-                                          BorderRadius.circular(999),
-                                      border: Border.all(
-                                        color: colors.border.withOpacity(.18),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      l10n.adminMyProfileSubtitle(role),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: t.bodySmall?.copyWith(
-                                        color: colors.body,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: () => Navigator.pop(context),
-                              icon: Icon(Icons.close, color: colors.body),
-                              tooltip: l10n.closeLabel,
+                            const SizedBox(height: 14),
+                            _buildFooter(
+                              context,
+                              colors: colors,
+                              label: l10n.retryLabel,
                             ),
                           ],
-                        ),
-                        const SizedBox(height: 14),
-                        Flexible(
-                          child: SingleChildScrollView(
-                            child: Column(
-                              children: [
-                                _ProfileRow(
-                                  label: l10n.adminIdLabel,
-                                  value: adminId,
-                                  icon: Icons.badge_outlined,
-                                  colors: colors,
-                                  onCopy: () => _copy(
-                                    context,
-                                    adminId,
-                                    l10n.copiedLabel,
-                                  ),
-                                ),
-                                _ProfileRow(
-                                  label: l10n.aupIdLabel,
-                                  value: aupId,
-                                  icon: Icons.link_outlined,
-                                  colors: colors,
-                                  onCopy: () => _copy(
-                                    context,
-                                    aupId,
-                                    l10n.copiedLabel,
-                                  ),
-                                ),
-                                _ProfileRow(
-                                  label: l10n.usernameLabel,
-                                  value: p.username,
-                                  icon: Icons.person_outline,
-                                  colors: colors,
-                                  onCopy: p.username.trim().isEmpty
-                                      ? null
-                                      : () => _copy(
-                                            context,
-                                            p.username,
-                                            l10n.copiedLabel,
-                                          ),
-                                ),
-                                if (businessId.isNotEmpty)
-                                  _ProfileRow(
-                                    label: l10n.businessIdLabel,
-                                    value: businessId,
-                                    icon: Icons.store_outlined,
-                                    colors: colors,
-                                    onCopy: () => _copy(
-                                      context,
-                                      businessId,
-                                      l10n.copiedLabel,
-                                    ),
-                                  ),
-                                if (email.isNotEmpty)
-                                  _ProfileRow(
-                                    label: l10n.emailLabel,
-                                    value: email,
-                                    icon: Icons.email_outlined,
-                                    colors: colors,
-                                    onCopy: () => _copy(
-                                      context,
-                                      email,
-                                      l10n.copiedLabel,
-                                    ),
-                                  ),
-                                if (phone.isNotEmpty)
-                                  _ProfileRow(
-                                    label: l10n.phoneLabel,
-                                    value: phone,
-                                    icon: Icons.phone_outlined,
-                                    colors: colors,
-                                    onCopy: () => _copy(
-                                      context,
-                                      phone,
-                                      l10n.copiedLabel,
-                                    ),
-                                  ),
-                                if ((p.createdAt ?? '').trim().isNotEmpty)
-                                  _ProfileRow(
-                                    label: l10n.createdAtLabel,
-                                    value: (p.createdAt ?? '').toString(),
-                                    icon: Icons.schedule_outlined,
-                                    colors: colors,
-                                    onCopy: () => _copy(
-                                      context,
-                                      (p.createdAt ?? '').toString(),
-                                      l10n.copiedLabel,
-                                    ),
-                                  ),
-                                if ((p.updatedAt ?? '').trim().isNotEmpty)
-                                  _ProfileRow(
-                                    label: l10n.updatedAtLabel,
-                                    value: (p.updatedAt ?? '').toString(),
-                                    icon: Icons.update_outlined,
-                                    colors: colors,
-                                    onCopy: () => _copy(
-                                      context,
-                                      (p.updatedAt ?? '').toString(),
-                                      l10n.copiedLabel,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: onReload,
-                            icon: const Icon(Icons.refresh),
-                            label: Text(l10n.refreshLabel),
-                          ),
-                        ),
-                      ],
-                    );
-                  }
+                        );
+                      } else {
+                        final p = (state as AdminProfileLoaded).profile;
 
-                  return AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 180),
-                    child: body,
-                  );
-                },
+                        final name = p.fullName.isNotEmpty
+                            ? p.fullName
+                            : (p.username.trim().isNotEmpty
+                                ? p.username
+                                : l10n.adminMyProfileTitle);
+
+                        final role =
+                            (p.role.trim().isNotEmpty ? p.role : fallbackRole)
+                                .toUpperCase();
+
+                        final email = p.email.trim();
+                        final phone = p.phoneNumber.trim();
+                        final businessId =
+                            p.businessId == null ? '' : p.businessId.toString();
+                        final adminId = p.adminId.toString();
+
+                        body = Column(
+                          children: [
+                            _buildHandle(colors),
+                            const SizedBox(height: 16),
+                            Expanded(
+                              child: SingleChildScrollView(
+                                physics: const BouncingScrollPhysics(),
+                                child: _buildInfoList(
+                                  context,
+                                  colors: colors,
+                                  profile: p,
+                                  role: role,
+                                  adminId: adminId,
+                                  businessId: businessId,
+                                  email: email,
+                                  phone: phone,
+                                  name: name,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            _buildFooter(
+                              context,
+                              colors: colors,
+                              label: l10n.refreshLabel,
+                            ),
+                          ],
+                        );
+                      }
+
+                      return AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 180),
+                        child: body,
+                      );
+                    },
+                  ),
+                ),
               ),
             ),
           ),
@@ -1089,6 +1142,7 @@ class _ProfileBottomSheet extends StatelessWidget {
     );
   }
 }
+
 
 class _ProfileRow extends StatelessWidget {
   final String label;
@@ -1145,8 +1199,8 @@ class _ProfileRow extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   value.trim().isEmpty ? '—' : value,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                 maxLines: 3,
+overflow: TextOverflow.ellipsis,
                   style: t.bodyMedium?.copyWith(
                     color: colors.label,
                     fontWeight: FontWeight.w700,

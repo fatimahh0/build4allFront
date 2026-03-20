@@ -29,7 +29,11 @@ class ItemsApiService {
     }
   }
 
-  List<dynamic> _readListResponse(dynamic data, int? statusCode, String context) {
+  List<dynamic> _readListResponse(
+    dynamic data,
+    int? statusCode,
+    String context,
+  ) {
     if (data is! List) {
       throw ServerException(
         'Invalid response format for $context',
@@ -37,6 +41,20 @@ class ItemsApiService {
       );
     }
     return List<dynamic>.from(data);
+  }
+
+  Map<String, dynamic> _readMapResponse(
+    dynamic data,
+    int? statusCode,
+    String context,
+  ) {
+    if (data is! Map) {
+      throw ServerException(
+        'Invalid response format for $context',
+        statusCode: statusCode ?? 200,
+      );
+    }
+    return Map<String, dynamic>.from(data as Map);
   }
 
   Future<List<dynamic>> _getProductsFallback({
@@ -53,7 +71,7 @@ class ItemsApiService {
 
     final res = await _fetch.fetch(
       HttpMethod.get,
-      _base, // /api/products
+      _base,
       headers: _authHeaders(token),
       data: query,
     );
@@ -173,15 +191,11 @@ class ItemsApiService {
         data: query,
       );
 
-      final data = res.data;
-      if (data is! Map) {
-        throw ServerException(
-          'Invalid response format for item details',
-          statusCode: res.statusCode ?? 200,
-        );
-      }
-
-      return Map<String, dynamic>.from(data as Map);
+      return _readMapResponse(
+        res.data,
+        res.statusCode,
+        'item details',
+      );
     } on AppException {
       rethrow;
     } catch (e) {
@@ -193,6 +207,64 @@ class ItemsApiService {
     return getById(id, token: token);
   }
 
+  Future<Map<String, dynamic>> getDownloadAccess(
+    int productId, {
+    required String token,
+  }) async {
+    if (!_isEcommerce) {
+      throw AppException('Download access is only available for products.');
+    }
+
+    _requireTokenForEcommerce(token, 'getDownloadAccess');
+
+    try {
+      final res = await _fetch.fetch(
+        HttpMethod.get,
+        '/api/products/$productId/download-access',
+        headers: _authHeaders(token),
+      );
+
+      return _readMapResponse(
+        res.data,
+        res.statusCode,
+        'product download access',
+      );
+    } on AppException {
+      rethrow;
+    } catch (e) {
+      throw AppException('Failed to load download access', original: e);
+    }
+  }
+
+  Future<Map<String, dynamic>> getDownload(
+    int productId, {
+    required String token,
+  }) async {
+    if (!_isEcommerce) {
+      throw AppException('Download is only available for products.');
+    }
+
+    _requireTokenForEcommerce(token, 'getDownload');
+
+    try {
+      final res = await _fetch.fetch(
+        HttpMethod.get,
+        '/api/products/$productId/download',
+        headers: _authHeaders(token),
+      );
+
+      return _readMapResponse(
+        res.data,
+        res.statusCode,
+        'product download',
+      );
+    } on AppException {
+      rethrow;
+    } catch (e) {
+      throw AppException('Failed to start download', original: e);
+    }
+  }
+
   Future<List<dynamic>> getInterestBased({
     required int userId,
     required String token,
@@ -201,7 +273,6 @@ class ItemsApiService {
     final headers = _authHeaders(token) ?? <String, String>{};
 
     if (_isEcommerce) {
-      // ✅ DO NOT depend on broken /best-sellers for home recommended/popular
       try {
         return await _getProductsFallback(
           limit: 20,
@@ -268,7 +339,6 @@ class ItemsApiService {
           'new arrivals',
         );
       } catch (_) {
-        // ✅ fallback so Home still shows products
         return await _getProductsFallback(
           categoryId: categoryId,
           token: token,
@@ -330,7 +400,6 @@ class ItemsApiService {
           'best-sellers',
         );
       } catch (_) {
-        // ✅ backend broken? use main products list so UI still works
         return await _getProductsFallback(
           categoryId: categoryId,
           limit: limit,
