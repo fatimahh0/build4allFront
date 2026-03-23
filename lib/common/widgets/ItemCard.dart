@@ -689,7 +689,7 @@ class _DiscountBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: c.primary.withOpacity(0.94),
+        color: c.primary.withOpacity(0.93),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
