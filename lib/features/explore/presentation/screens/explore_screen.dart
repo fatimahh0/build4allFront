@@ -855,11 +855,22 @@ class _ExploreItemsGrid extends StatelessWidget {
     required this.onCtaPressed,
   });
 
-  double _aspect(double w) {
-    if (w < 360) return 0.74;
-    if (w < 420) return 0.78;
-    if (w < 700) return 0.82;
-    return 0.88;
+  bool _hasProducts(List<ItemSummary> list) {
+    return list.any((e) => e.kind == ItemKind.product);
+  }
+
+  double _aspect(double w, {required bool hasProducts}) {
+    if (hasProducts) {
+      if (w < 360) return 0.50;
+      if (w < 420) return 0.54;
+      if (w < 700) return 0.60;
+      return 0.68;
+    } else {
+      if (w < 360) return 0.72;
+      if (w < 420) return 0.76;
+      if (w < 700) return 0.82;
+      return 0.88;
+    }
   }
 
   @override
@@ -870,9 +881,8 @@ class _ExploreItemsGrid extends StatelessWidget {
       builder: (context, constraints) {
         final w = constraints.maxWidth;
         const cols = 2;
-
-        final aspect = _aspect(w);
-        final cardWidth = (w - ((cols - 1) * spacing.md)) / cols;
+        final hasProducts = _hasProducts(items);
+        final aspect = _aspect(w, hasProducts: hasProducts);
 
         return GridView.builder(
           shrinkWrap: true,
@@ -897,7 +907,7 @@ class _ExploreItemsGrid extends StatelessWidget {
 
                 return ItemCard(
                   itemId: item.id,
-                  width: cardWidth,
+                  width: double.infinity,
                   imageFit: item.kind == ItemKind.product
                       ? BoxFit.contain
                       : BoxFit.cover,

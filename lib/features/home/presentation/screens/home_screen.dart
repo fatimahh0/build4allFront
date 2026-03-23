@@ -1187,9 +1187,20 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
     super.dispose();
   }
 
-  double _aspect(double w) {
-    if (w < 360) return 0.74;
-    if (w < 420) return 0.78;
+  bool _hasProducts(List<ItemSummary> items) {
+    return items.any((e) => e.kind == ItemKind.product);
+  }
+
+  double _aspect(double w, {required bool hasProducts}) {
+    if (hasProducts) {
+      if (w < 360) return 0.50;
+      if (w < 420) return 0.54;
+      if (w < 700) return 0.60;
+      return 0.68;
+    }
+
+    if (w < 360) return 0.72;
+    if (w < 420) return 0.76;
     if (w < 700) return 0.82;
     return 0.88;
   }
@@ -1263,9 +1274,11 @@ class _HomeItemsPagerSectionState extends State<_HomeItemsPagerSection> {
           builder: (context, constraints) {
             final w = constraints.maxWidth;
 
-            var aspect = _aspect(w);
-            if (widget.storageId == 'flash_sale') {
-              aspect = math.max(0.64, aspect - 0.03);
+            final hasProducts = _hasProducts(items);
+
+            var aspect = _aspect(w, hasProducts: hasProducts);
+            if (widget.storageId == 'flash_sale' && hasProducts) {
+              aspect = math.max(0.48, aspect - 0.02);
             }
 
             const cols = 2;
@@ -1713,6 +1726,21 @@ class _HomeSectionSeeAllScreenState extends State<HomeSectionSeeAllScreen> {
                   builder: (ctx, constraints) {
                     final w = constraints.maxWidth;
                     final cols = w < 520 ? 2 : (w < 900 ? 3 : 4);
+                    final hasProducts = filtered.any(
+                      (e) => e.kind == ItemKind.product,
+                    );
+
+                    final aspect = hasProducts
+                        ? (w < 360
+                              ? 0.50
+                              : (w < 520
+                                    ? 0.54
+                                    : (w < 900 ? 0.62 : 0.70)))
+                        : (w < 360
+                              ? 0.72
+                              : (w < 520
+                                    ? 0.76
+                                    : (w < 900 ? 0.82 : 0.88)));
 
                     return GridView.builder(
                       itemCount: filtered.length,
@@ -1720,7 +1748,7 @@ class _HomeSectionSeeAllScreenState extends State<HomeSectionSeeAllScreen> {
                         crossAxisCount: cols,
                         mainAxisSpacing: spacing.md,
                         crossAxisSpacing: spacing.md,
-                        childAspectRatio: 0.72,
+                        childAspectRatio: aspect,
                       ),
                       itemBuilder: (ctx, i) {
                         final item = filtered[i];

@@ -51,7 +51,12 @@ class PricingView {
   final String? currentLabel;
   final String? oldLabel;
   final String? tagLabel;
-  const PricingView({this.currentLabel, this.oldLabel, this.tagLabel});
+
+  const PricingView({
+    this.currentLabel,
+    this.oldLabel,
+    this.tagLabel,
+  });
 }
 
 class _HomePagedItemsSectionState extends State<HomePagedItemsSection> {
@@ -59,6 +64,17 @@ class _HomePagedItemsSectionState extends State<HomePagedItemsSection> {
   int _page = 0;
 
   double get _vf => widget.mode == HomePagerMode.carouselPages ? 0.84 : 1.0;
+
+  bool _isProduct(ItemSummary item) => item.kind == ItemKind.product;
+
+  BoxFit _imageFitFor(ItemSummary item) =>
+      _isProduct(item) ? BoxFit.contain : BoxFit.cover;
+
+  double _cardHeightForWidth(double width, {required bool hasProducts}) {
+    return hasProducts
+        ? (width * 1.52).clamp(315.0, 430.0)
+        : (width * 1.18).clamp(280.0, 360.0);
+  }
 
   @override
   void initState() {
@@ -78,9 +94,12 @@ class _HomePagedItemsSectionState extends State<HomePagedItemsSection> {
       return;
     }
 
-    if (_page >= widget.items.length) {
+    final maxPage = widget.items.isEmpty ? 0 : widget.items.length - 1;
+    if (_page > maxPage) {
       _page = 0;
-      if (_pageController.hasClients) _pageController.jumpToPage(0);
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(0);
+      }
     }
   }
 
@@ -131,14 +150,18 @@ class _HomePagedItemsSectionState extends State<HomePagedItemsSection> {
             onTap: widget.onTrailingTap,
             child: Padding(
               padding: EdgeInsets.symmetric(
-                  horizontal: spacing.sm, vertical: spacing.xs),
+                horizontal: spacing.sm,
+                vertical: spacing.xs,
+              ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     widget.trailingText!,
                     style: t.bodySmall?.copyWith(
-                        color: c.primary, fontWeight: FontWeight.w700),
+                      color: c.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   if (widget.trailingIcon != null) ...[
                     SizedBox(width: spacing.xs),
@@ -175,15 +198,20 @@ class _HomePagedItemsSectionState extends State<HomePagedItemsSection> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
-        final h = (w * 0.86).clamp(280.0, 350.0);
+        final h = _cardHeightForWidth(
+          w,
+          hasProducts: _isProduct(item),
+        );
 
         return SizedBox(
           height: h,
           child: ItemCard(
+            itemId: item.id,
             width: double.infinity,
             title: item.title,
             subtitle: widget.subtitleFor(item),
             imageUrl: item.imageUrl,
+            imageFit: _imageFitFor(item),
             badgeLabel: pricing.currentLabel,
             oldPriceLabel: pricing.oldLabel,
             tagLabel: pricing.tagLabel,
@@ -199,9 +227,9 @@ class _HomePagedItemsSectionState extends State<HomePagedItemsSection> {
 
   Widget _buildCarouselPager(BuildContext context, List<ItemSummary> items) {
     final spacing = context.read<ThemeCubit>().state.tokens.spacing;
-
     final totalPages = items.length.clamp(1, 999999);
     final safePage = _page.clamp(0, totalPages - 1);
+    final hasProducts = items.any(_isProduct);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -209,7 +237,10 @@ class _HomePagedItemsSectionState extends State<HomePagedItemsSection> {
         LayoutBuilder(
           builder: (context, constraints) {
             final w = constraints.maxWidth;
-            final cardH = (w * 0.86).clamp(280.0, 350.0);
+            final cardH = _cardHeightForWidth(
+              w,
+              hasProducts: hasProducts,
+            );
 
             return SizedBox(
               height: cardH,
@@ -226,10 +257,12 @@ class _HomePagedItemsSectionState extends State<HomePagedItemsSection> {
                   return Padding(
                     padding: EdgeInsets.only(right: spacing.md),
                     child: ItemCard(
+                      itemId: item.id,
                       width: double.infinity,
                       title: item.title,
                       subtitle: widget.subtitleFor(item),
                       imageUrl: item.imageUrl,
+                      imageFit: _imageFitFor(item),
                       badgeLabel: pricing.currentLabel,
                       oldPriceLabel: pricing.oldLabel,
                       tagLabel: pricing.tagLabel,
@@ -261,6 +294,7 @@ class _HomePagedItemsSectionState extends State<HomePagedItemsSection> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
+        final bool hasProducts = items.any(_isProduct);
 
         final rowsPerPage = w < 390 ? 2 : 3;
         const cols = 2;
@@ -269,11 +303,14 @@ class _HomePagedItemsSectionState extends State<HomePagedItemsSection> {
         final totalPages = (items.length / perPage).ceil().clamp(1, 999999);
         final safePage = _page.clamp(0, totalPages - 1);
 
-        final aspect = w < 420 ? 0.66 : (w < 700 ? 0.74 : 0.82);
+        final aspect = hasProducts
+            ? (w < 420 ? 0.56 : (w < 700 ? 0.62 : 0.70))
+            : (w < 420 ? 0.70 : (w < 700 ? 0.78 : 0.84));
+            
+
         final itemW = (w - spacing.md) / 2.0;
         final itemH = itemW / aspect;
 
-        // ✅ FIX: compute rowsNeeded for CURRENT page so height shrinks if 1–2 items
         final start = safePage * perPage;
         final end = math.min(start + perPage, items.length);
         final pageCount = start >= items.length ? 0 : (end - start);
@@ -316,10 +353,12 @@ class _HomePagedItemsSectionState extends State<HomePagedItemsSection> {
                       final pricing = widget.pricingFor(item);
 
                       return ItemCard(
+                        itemId: item.id,
                         width: double.infinity,
                         title: item.title,
                         subtitle: widget.subtitleFor(item),
                         imageUrl: item.imageUrl,
+                        imageFit: _imageFitFor(item),
                         badgeLabel: pricing.currentLabel,
                         oldPriceLabel: pricing.oldLabel,
                         tagLabel: pricing.tagLabel,
@@ -372,7 +411,9 @@ class _DotsPager extends StatelessWidget {
       final start = (currentPage0 - 2).clamp(0, totalPages - 1);
       final end = (currentPage0 + 2).clamp(0, totalPages - 1);
       final list = <int>[];
-      for (int p = start; p <= end; p++) list.add(p);
+      for (int p = start; p <= end; p++) {
+        list.add(p);
+      }
       return list;
     }
 
@@ -402,7 +443,9 @@ class _DotsPager extends StatelessWidget {
         SizedBox(width: spacing.sm),
         Text(
           '$current1/$totalPages',
-          style: t.bodySmall?.copyWith(color: c.onSurface.withOpacity(0.65)),
+          style: t.bodySmall?.copyWith(
+            color: c.onSurface.withOpacity(0.65),
+          ),
         ),
       ],
     );

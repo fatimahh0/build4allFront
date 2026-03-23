@@ -16,11 +16,11 @@ class ItemCard extends StatelessWidget {
   final String? subtitle;
   final String? imageUrl;
 
-  final String? badgeLabel; // current price
-  final String? oldPriceLabel; // old price (strikethrough)
-  final String? tagLabel; // discount tag
+  final String? badgeLabel;
+  final String? oldPriceLabel;
+  final String? tagLabel;
 
-  final String? metaLabel; // stock/date/etc
+  final String? metaLabel;
   final double? width;
   final VoidCallback? onTap;
 
@@ -46,278 +46,22 @@ class ItemCard extends StatelessWidget {
     this.imageFit = BoxFit.cover,
   });
 
+  bool _hasText(String? value) => (value ?? '').trim().isNotEmpty;
+
   @override
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
-    final t = Theme.of(context).textTheme;
-
     final themeState = context.read<ThemeCubit>().state;
     final cardTokens = themeState.tokens.card;
-    final spacing = themeState.tokens.spacing;
 
     String? resolvedImageUrl;
-    if (imageUrl != null && imageUrl!.trim().isNotEmpty) {
-      resolvedImageUrl = net.resolveUrl(imageUrl!);
+    if (_hasText(imageUrl)) {
+      resolvedImageUrl = net.resolveUrl(imageUrl!.trim());
     }
 
-    final hasCta = (ctaLabel ?? '').trim().isNotEmpty;
-    final showOld = (oldPriceLabel ?? '').trim().isNotEmpty;
-    final showMeta = (metaLabel ?? '').trim().isNotEmpty;
-    final showSubtitle = (subtitle ?? '').trim().isNotEmpty;
-
-    final bool ctaDisabled = hasCta && onCtaPressed == null;
-
-    Widget card = LayoutBuilder(
+    final card = LayoutBuilder(
       builder: (context, constraints) {
-        final maxW = constraints.maxWidth;
-        final bool boundedH =
-            constraints.hasBoundedHeight && constraints.maxHeight.isFinite;
-
-        final bool compact = maxW <= 230;
-        final bool veryCompact = maxW <= 210;
-
-        // ✅ In your project product cards use BoxFit.contain
-        final bool isProductCard = imageFit == BoxFit.contain;
-
-        // ✅ Keep activities pinned nicely, but do NOT create huge mid-card gap for products
-       final bool pinBottomActions = boundedH;
-
-        final double contentPad = isProductCard
-            ? (veryCompact
-                ? cardTokens.padding * 0.62
-                : (compact
-                    ? cardTokens.padding * 0.72
-                    : cardTokens.padding * 0.82))
-            : (veryCompact
-                ? cardTokens.padding * 0.72
-                : (compact
-                    ? cardTokens.padding * 0.82
-                    : cardTokens.padding));
-
-        final double ctaH = isProductCard
-            ? (veryCompact ? 32 : (compact ? 34 : 36))
-            : (veryCompact ? 34 : (compact ? 36 : 40));
-
-        final double aiBtnH = isProductCard
-            ? (veryCompact ? 32 : (compact ? 34 : 36))
-            : (veryCompact ? 34 : (compact ? 36 : 40));
-
-        final double gapXS = isProductCard
-            ? (veryCompact ? (spacing.xs * 0.45) : (spacing.xs * 0.7))
-            : (veryCompact ? (spacing.xs * 0.6) : spacing.xs);
-
-        final double gapSM = isProductCard
-            ? (veryCompact
-                ? (spacing.sm * 0.45)
-                : (compact ? (spacing.sm * 0.6) : (spacing.sm * 0.72)))
-            : (veryCompact
-                ? (spacing.sm * 0.65)
-                : (compact ? (spacing.sm * 0.85) : spacing.sm));
-
-        final double imgH = boundedH
-            ? (constraints.maxHeight *
-                    (isProductCard
-                        ? (veryCompact ? 0.22 : 0.25)
-                        : (veryCompact ? 0.32 : 0.34)))
-                .clamp(
-                  isProductCard ? 74.0 : 92.0,
-                  isProductCard ? 108.0 : 135.0,
-                )
-            : (isProductCard
-                ? (veryCompact ? 74.0 : (compact ? 86.0 : 98.0))
-                : (veryCompact ? 92.0 : (compact ? 105.0 : 125.0)));
-
-        final EdgeInsets imageInnerPadding = isProductCard
-            ? EdgeInsets.all(veryCompact ? 6 : 8)
-            : EdgeInsets.zero;
-
-        final ButtonStyle ctaStyle = ButtonStyle(
-          padding: MaterialStateProperty.all(EdgeInsets.zero),
-          shape: MaterialStateProperty.all(
-            RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(cardTokens.radius / 1.5),
-            ),
-          ),
-          elevation: MaterialStateProperty.all(0),
-          backgroundColor: MaterialStateProperty.resolveWith((states) {
-            if (states.contains(MaterialState.disabled)) {
-              return c.surfaceVariant.withOpacity(0.85);
-            }
-            return c.primary;
-          }),
-          foregroundColor: MaterialStateProperty.resolveWith((states) {
-            if (states.contains(MaterialState.disabled)) {
-              return c.onSurface.withOpacity(0.45);
-            }
-            return c.onPrimary;
-          }),
-        );
-
-Widget imagePlaceholder() {
-  return Container(
-    color: c.surface,
-    alignment: Alignment.center,
-    padding: const EdgeInsets.all(10),
-    child: Image.asset(
-      'assets/branding/product_placeholder.png',
-      fit: BoxFit.contain,
-    ),
-  );
-}
-        Widget contentColumn = Column(
-          mainAxisSize: pinBottomActions ? MainAxisSize.max : MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: t.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
-              maxLines: isProductCard ? 2 : 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-
-            if (showSubtitle) ...[
-              SizedBox(height: gapXS),
-              Text(
-                subtitle!.trim(),
-                style: t.bodySmall?.copyWith(
-                  color: c.onSurface.withOpacity(0.75),
-                ),
-                maxLines: isProductCard ? 2 : 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-
-            if (showOld) ...[
-              SizedBox(height: gapXS),
-              Text(
-                oldPriceLabel!.trim(),
-                style: t.bodySmall?.copyWith(
-                  decoration: TextDecoration.lineThrough,
-                  color: c.onSurface.withOpacity(0.55),
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-
-            if (showMeta) ...[
-              SizedBox(height: gapSM),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Icon(
-                      Icons.info_outline,
-                      size: veryCompact ? 12 : 14,
-                      color: c.onSurface.withOpacity(0.6),
-                    ),
-                  ),
-                  SizedBox(width: gapXS),
-                  Expanded(
-                    child: Text(
-                      metaLabel!.trim(),
-                      style: t.bodySmall?.copyWith(
-                        color: c.onSurface.withOpacity(0.6),
-                      ),
-                      maxLines: isProductCard ? 1 : 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-
-            if (pinBottomActions) const Spacer(),
-
-            ValueListenableBuilder<bool>(
-              valueListenable: net.aiEnabledNotifier,
-              builder: (_, enabled, __) {
-                final canShow = enabled && itemId != null;
-                if (!canShow) return const SizedBox.shrink();
-
-                return Padding(
-                  padding: EdgeInsets.only(
-                    top: pinBottomActions ? 0 : gapSM,
-                    bottom: hasCta ? gapXS : 0,
-                  ),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: aiBtnH,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Colors.transparent,
-                          builder: (_) {
-                            final remote = AiChatRemoteDataSource();
-                            final repo = AiChatRepositoryImpl(remote);
-                            final usecase = ChatItemUseCase(repo);
-
-                            return BlocProvider(
-                              create: (_) => AiChatBloc(useCase: usecase),
-                              child: AiItemChatSheet(
-                                itemId: itemId!,
-                                title: title,
-                                imageUrl: resolvedImageUrl,
-                              ),
-                            );
-                          },
-                        );
-                      },
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: c.primary.withOpacity(0.35)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            cardTokens.radius / 1.5,
-                          ),
-                        ),
-                        padding: EdgeInsets.zero,
-                      ),
-                      icon: Icon(
-                        Icons.auto_awesome,
-                        size: veryCompact ? 16 : 18,
-                      ),
-                      label: Text(
-                        "Ask AI",
-                        style: t.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-
-            if (hasCta)
-              SizedBox(
-                width: double.infinity,
-                height: ctaH,
-                child: ElevatedButton(
-                  onPressed: onCtaPressed,
-                  style: ctaStyle,
-                  child: Text(
-                    ctaLabel!.trim(),
-                    style: t.labelLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: ctaDisabled
-                          ? c.onSurface.withOpacity(0.45)
-                          : null,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    softWrap: false,
-                  ),
-                ),
-              ),
-          ],
-        );
+        final isProductCard = imageFit == BoxFit.contain;
 
         return Material(
           color: Colors.transparent,
@@ -329,114 +73,633 @@ Widget imagePlaceholder() {
                 color: c.surface,
                 borderRadius: BorderRadius.circular(cardTokens.radius),
                 border: cardTokens.showBorder
-                    ? Border.all(color: c.outline.withOpacity(0.18))
+                    ? Border.all(color: c.outline.withOpacity(0.12))
                     : null,
                 boxShadow: cardTokens.showShadow
                     ? [
                         BoxShadow(
-                          color: c.shadow.withOpacity(0.04),
-                          blurRadius: cardTokens.elevation * 2,
+                          color: c.shadow.withOpacity(0.05),
+                          blurRadius: cardTokens.elevation * 2.2,
                           offset: const Offset(0, 4),
                         ),
                       ]
                     : null,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(cardTokens.radius),
-                    ),
-                    child: SizedBox(
-                      height: imgH,
-                      width: double.infinity,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                         if (resolvedImageUrl != null && resolvedImageUrl!.isNotEmpty)
-  Container(
-    color: c.surface,
-    child: Padding(
-      padding: imageInnerPadding,
-      child: Image.network(
-        resolvedImageUrl!,
-        fit: imageFit,
-        errorBuilder: (_, __, ___) => imagePlaceholder(),
-      ),
-    ),
-  )
-else
-  imagePlaceholder(),
-                          if ((tagLabel ?? '').trim().isNotEmpty)
-                            Positioned(
-                              top: spacing.xs,
-                              left: spacing.xs,
-                              child: _PillTag(text: tagLabel!.trim()),
-                            ),
-                          if ((badgeLabel ?? '').trim().isNotEmpty)
-                            Positioned(
-                              top: spacing.xs,
-                              right: spacing.xs,
-                              child: _PillTag(text: badgeLabel!.trim()),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  if (boundedH)
-                    Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.all(contentPad),
-                        child: contentColumn,
-                      ),
+              child: isProductCard
+                  ? _ProductCardBody(
+                      itemId: itemId,
+                      title: title,
+                      subtitle: subtitle,
+                      resolvedImageUrl: resolvedImageUrl,
+                      badgeLabel: badgeLabel,
+                      oldPriceLabel: oldPriceLabel,
+                      tagLabel: tagLabel,
+                      ctaLabel: ctaLabel,
+                      onCtaPressed: onCtaPressed,
                     )
-                  else
-                    Padding(
-                      padding: EdgeInsets.all(contentPad),
-                      child: contentColumn,
+                  : _GenericCardBody(
+                      itemId: itemId,
+                      title: title,
+                      subtitle: subtitle,
+                      resolvedImageUrl: resolvedImageUrl,
+                      badgeLabel: badgeLabel,
+                      oldPriceLabel: oldPriceLabel,
+                      tagLabel: tagLabel,
+                      metaLabel: metaLabel,
+                      ctaLabel: ctaLabel,
+                      onCtaPressed: onCtaPressed,
+                      imageFit: imageFit,
                     ),
-                ],
-              ),
             ),
           ),
         );
       },
     );
 
-    if (width != null && width != double.infinity) {
-      card = SizedBox(width: width, child: card);
+    if (width != null) {
+      return SizedBox(width: width, child: card);
     }
 
     return card;
   }
 }
 
-class _PillTag extends StatelessWidget {
-  final String text;
-  const _PillTag({required this.text});
+class _ProductCardBody extends StatelessWidget {
+  final int? itemId;
+  final String title;
+  final String? subtitle;
+  final String? resolvedImageUrl;
+  final String? badgeLabel;
+  final String? oldPriceLabel;
+  final String? tagLabel;
+  final String? ctaLabel;
+  final VoidCallback? onCtaPressed;
+
+  const _ProductCardBody({
+    required this.itemId,
+    required this.title,
+    required this.subtitle,
+    required this.resolvedImageUrl,
+    required this.badgeLabel,
+    required this.oldPriceLabel,
+    required this.tagLabel,
+    required this.ctaLabel,
+    required this.onCtaPressed,
+  });
+
+  bool _hasText(String? value) => (value ?? '').trim().isNotEmpty;
+
+  double _titleFont(double h, double w) {
+    if (w < 150 || h < 105) return 12.3;
+    if (w < 170 || h < 125) return 13.0;
+    if (w < 190 || h < 145) return 13.8;
+    return 15.0;
+  }
+
+  double _subtitleFont(double h, double w) {
+    if (w < 150 || h < 105) return 10.0;
+    if (w < 170 || h < 125) return 10.6;
+    if (w < 190 || h < 145) return 11.0;
+    return 11.6;
+  }
+
+  double _priceFont(double h, double w) {
+    if (w < 150 || h < 105) return 11.8;
+    if (w < 170 || h < 125) return 12.4;
+    if (w < 190 || h < 145) return 13.0;
+    return 14.0;
+  }
+
+  double _bubbleFont(double w) {
+    if (w < 150) return 11.0;
+    if (w < 170) return 11.6;
+    if (w < 190) return 12.2;
+    return 13.0;
+  }
+
+  EdgeInsets _bubblePadding(double w) {
+    if (w < 150) {
+      return const EdgeInsets.symmetric(horizontal: 10, vertical: 7);
+    }
+    if (w < 190) {
+      return const EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+    }
+    return const EdgeInsets.symmetric(horizontal: 14, vertical: 9);
+  }
 
   @override
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final themeState = context.read<ThemeCubit>().state;
+    final spacing = themeState.tokens.spacing;
+    final cardTokens = themeState.tokens.card;
+
+    final hasSubtitle = _hasText(subtitle);
+    final hasPrice = _hasText(badgeLabel);
+    final hasOldPrice = _hasText(oldPriceLabel);
+    final hasCta = _hasText(ctaLabel);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(cardTokens.radius),
+          ),
+          child: AspectRatio(
+            aspectRatio: 1,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final imageW = constraints.maxWidth;
+                final bubbleFont = _bubbleFont(imageW);
+                final bubblePadding = _bubblePadding(imageW);
+
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Container(
+                      color: c.surfaceVariant.withOpacity(0.10),
+                      child: resolvedImageUrl != null &&
+                              resolvedImageUrl!.isNotEmpty
+                          ? Image.network(
+                              resolvedImageUrl!,
+                              fit: BoxFit.contain,
+                              filterQuality: FilterQuality.high,
+                              errorBuilder: (_, __, ___) => _imagePlaceholder(),
+                            )
+                          : _imagePlaceholder(),
+                    ),
+                    if (_hasText(tagLabel))
+                      Positioned(
+                        top: spacing.xs,
+                        left: spacing.xs,
+                        child: _DiscountBadge(text: tagLabel!.trim()),
+                      ),
+                    if (hasPrice)
+                      Positioned(
+                        top: spacing.xs,
+                        right: spacing.xs,
+                        child: Container(
+                          constraints: BoxConstraints(
+                            maxWidth: imageW * 0.52,
+                          ),
+                          padding: bubblePadding,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.55),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            badgeLabel!.trim(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: t.labelLarge?.copyWith(
+                              fontSize: bubbleFont,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              height: 1,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final h = constraints.maxHeight;
+                final w = constraints.maxWidth;
+
+                final ultraCompact = h < 105;
+                final compact = h < 132;
+
+                final titleLines = ultraCompact ? 2 : 3;
+                final subtitleLines = ultraCompact ? 1 : 2;
+                final showSubtitleNow = hasSubtitle;
+                final showOldPriceNow = hasOldPrice;
+                final buttonHeight =
+                    ultraCompact ? 34.0 : (compact ? 36.0 : 40.0);
+
+                final titleFont = _titleFont(h, w);
+                final subtitleFont = _subtitleFont(h, w);
+                final priceFont = _priceFont(h, w);
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: titleLines,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.titleMedium?.copyWith(
+                        fontSize: titleFont,
+                        fontWeight: FontWeight.w800,
+                        height: 1.12,
+                      ),
+                    ),
+                    if (showSubtitleNow) ...[
+                      SizedBox(height: compact ? 4 : 6),
+                      Text(
+                        subtitle!.trim(),
+                        maxLines: subtitleLines,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.bodySmall?.copyWith(
+                          fontSize: subtitleFont,
+                          color: c.onSurface.withOpacity(0.68),
+                          height: 1.18,
+                        ),
+                      ),
+                    ],
+                    if (showOldPriceNow) ...[
+                      SizedBox(height: compact ? 6 : 8),
+                      Text(
+                        oldPriceLabel!.trim(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.bodyMedium?.copyWith(
+                          fontSize: priceFont - 0.8,
+                          decoration: TextDecoration.lineThrough,
+                          color: c.onSurface.withOpacity(0.45),
+                          fontWeight: FontWeight.w500,
+                          height: 1.1,
+                        ),
+                      ),
+                    ],
+                    const Spacer(),
+                    if (hasCta)
+                      SizedBox(
+                        width: double.infinity,
+                        height: buttonHeight,
+                        child: ElevatedButton(
+                          onPressed: onCtaPressed,
+                          style: ElevatedButton.styleFrom(
+                            elevation: 0,
+                            padding: EdgeInsets.zero,
+                            backgroundColor: c.primary,
+                            foregroundColor: c.onPrimary,
+                            disabledBackgroundColor:
+                                c.surfaceVariant.withOpacity(0.95),
+                            disabledForegroundColor:
+                                c.onSurface.withOpacity(0.45),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                cardTokens.radius / 1.4,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            ctaLabel!.trim(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: t.labelLarge?.copyWith(
+                              fontSize: compact ? 12.6 : 13.2,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _imagePlaceholder() {
+    return Container(
+      alignment: Alignment.center,
+      child: Image.asset(
+        'assets/branding/product_placeholder.png',
+        fit: BoxFit.contain,
+      ),
+    );
+  }
+}
+
+class _GenericCardBody extends StatelessWidget {
+  final int? itemId;
+  final String title;
+  final String? subtitle;
+  final String? resolvedImageUrl;
+  final String? badgeLabel;
+  final String? oldPriceLabel;
+  final String? tagLabel;
+  final String? metaLabel;
+  final String? ctaLabel;
+  final VoidCallback? onCtaPressed;
+  final BoxFit imageFit;
+
+  const _GenericCardBody({
+    required this.itemId,
+    required this.title,
+    required this.subtitle,
+    required this.resolvedImageUrl,
+    required this.badgeLabel,
+    required this.oldPriceLabel,
+    required this.tagLabel,
+    required this.metaLabel,
+    required this.ctaLabel,
+    required this.onCtaPressed,
+    required this.imageFit,
+  });
+
+  bool _hasText(String? value) => (value ?? '').trim().isNotEmpty;
+
+  double _titleFont(double h, double w) {
+    if (w < 150 || h < 120) return 12.4;
+    if (w < 170 || h < 140) return 13.0;
+    if (w < 200 || h < 165) return 13.6;
+    return 14.4;
+  }
+
+  double _bodyFont(double h, double w) {
+    if (w < 150 || h < 120) return 10.2;
+    if (w < 170 || h < 140) return 10.8;
+    if (w < 200 || h < 165) return 11.2;
+    return 11.8;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final themeState = context.read<ThemeCubit>().state;
+    final spacing = themeState.tokens.spacing;
+    final cardTokens = themeState.tokens.card;
+
+    final hasSubtitle = _hasText(subtitle);
+    final hasPrice = _hasText(badgeLabel);
+    final hasOldPrice = _hasText(oldPriceLabel);
+    final hasMeta = _hasText(metaLabel);
+    final hasCta = _hasText(ctaLabel);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(cardTokens.radius),
+          ),
+          child: AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Container(
+                  color: c.surfaceVariant.withOpacity(0.14),
+                  child: resolvedImageUrl != null &&
+                          resolvedImageUrl!.isNotEmpty
+                      ? Image.network(
+                          resolvedImageUrl!,
+                          fit: imageFit,
+                          filterQuality: FilterQuality.medium,
+                          errorBuilder: (_, __, ___) => _imagePlaceholder(),
+                        )
+                      : _imagePlaceholder(),
+                ),
+                if (_hasText(tagLabel))
+                  Positioned(
+                    top: spacing.xs,
+                    left: spacing.xs,
+                    child: _DiscountBadge(text: tagLabel!.trim()),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final h = constraints.maxHeight;
+                final w = constraints.maxWidth;
+
+                final compact = h < 140;
+                final showMetaNow = hasMeta && !compact;
+                final showAiNow = itemId != null && h > 168;
+                final buttonHeight = compact ? 36.0 : 40.0;
+
+                final titleFont = _titleFont(h, w);
+                final bodyFont = _bodyFont(h, w);
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: compact ? 2 : 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.titleSmall?.copyWith(
+                        fontSize: titleFont,
+                        fontWeight: FontWeight.w800,
+                        height: 1.14,
+                      ),
+                    ),
+                    if (hasSubtitle) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        subtitle!.trim(),
+                        maxLines: compact ? 1 : 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.bodySmall?.copyWith(
+                          fontSize: bodyFont,
+                          color: c.onSurface.withOpacity(0.68),
+                          height: 1.18,
+                        ),
+                      ),
+                    ],
+                    if (hasPrice) ...[
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 2,
+                        children: [
+                          Text(
+                            badgeLabel!.trim(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: t.titleSmall?.copyWith(
+                              fontSize: titleFont,
+                              fontWeight: FontWeight.w800,
+                              height: 1.1,
+                            ),
+                          ),
+                          if (hasOldPrice)
+                            Text(
+                              oldPriceLabel!.trim(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: t.bodySmall?.copyWith(
+                                fontSize: bodyFont,
+                                decoration: TextDecoration.lineThrough,
+                                color: c.onSurface.withOpacity(0.48),
+                                height: 1.1,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                    if (showMetaNow) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        metaLabel!.trim(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.bodySmall?.copyWith(
+                          fontSize: bodyFont,
+                          color: c.onSurface.withOpacity(0.62),
+                          height: 1.18,
+                        ),
+                      ),
+                    ],
+                    const Spacer(),
+                    if (showAiNow)
+                      ValueListenableBuilder<bool>(
+                        valueListenable: net.aiEnabledNotifier,
+                        builder: (_, enabled, __) {
+                          if (!enabled) return const SizedBox.shrink();
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: SizedBox(
+                              width: double.infinity,
+                              height: 36,
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  showModalBottomSheet(
+                                    context: context,
+                                    isScrollControlled: true,
+                                    backgroundColor: Colors.transparent,
+                                    builder: (_) {
+                                      final remote = AiChatRemoteDataSource();
+                                      final repo = AiChatRepositoryImpl(remote);
+                                      final usecase = ChatItemUseCase(repo);
+
+                                      return BlocProvider(
+                                        create: (_) =>
+                                            AiChatBloc(useCase: usecase),
+                                        child: AiItemChatSheet(
+                                          itemId: itemId!,
+                                          title: title,
+                                          imageUrl: resolvedImageUrl,
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  side: BorderSide(
+                                    color: c.primary.withOpacity(0.35),
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      cardTokens.radius / 1.4,
+                                    ),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.auto_awesome, size: 16),
+                                label: Text(
+                                  'Ask AI',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: t.labelMedium?.copyWith(
+                                    fontSize: 12.2,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    if (hasCta)
+                      SizedBox(
+                        width: double.infinity,
+                        height: buttonHeight,
+                        child: ElevatedButton(
+                          onPressed: onCtaPressed,
+                          style: ElevatedButton.styleFrom(
+                            elevation: 0,
+                            padding: EdgeInsets.zero,
+                            backgroundColor: c.primary,
+                            foregroundColor: c.onPrimary,
+                            disabledBackgroundColor:
+                                c.surfaceVariant.withOpacity(0.95),
+                            disabledForegroundColor:
+                                c.onSurface.withOpacity(0.45),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                cardTokens.radius / 1.4,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            ctaLabel!.trim(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: t.labelLarge?.copyWith(
+                              fontSize: compact ? 12.6 : 13.2,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _imagePlaceholder() {
+    return Container(
+      alignment: Alignment.center,
+      child: Image.asset(
+        'assets/branding/product_placeholder.png',
+        fit: BoxFit.contain,
+      ),
+    );
+  }
+}
+
+class _DiscountBadge extends StatelessWidget {
+  final String text;
+
+  const _DiscountBadge({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.55),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: c.onSurface.withOpacity(0.08)),
+        color: c.primary.withOpacity(0.94),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         text,
-        style: const TextStyle(
-          fontSize: 11,
-          color: Colors.white,
-          fontWeight: FontWeight.w800,
-        ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
+        style: t.labelSmall?.copyWith(
+          color: c.onPrimary,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }

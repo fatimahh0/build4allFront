@@ -8,7 +8,6 @@ import 'package:build4front/features/items/domain/entities/item_summary.dart';
 import 'package:build4front/common/widgets/ItemCard.dart';
 import 'home_section_header.dart';
 
-// Auth + Cart + l10n + Toast
 import 'package:build4front/features/auth/presentation/login/bloc/auth_bloc.dart';
 import 'package:build4front/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:build4front/features/cart/presentation/bloc/cart_event.dart';
@@ -25,7 +24,6 @@ class HomeItemsSection extends StatelessWidget {
   final IconData? trailingIcon;
   final VoidCallback? onTrailingTap;
 
-  /// ✅ When true: force Grid with 2 items per row (New Arrivals)
   final bool forceTwoColumns;
 
   const HomeItemsSection({
@@ -43,12 +41,12 @@ class HomeItemsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final spacing = context.read<ThemeCubit>().state.tokens.spacing;
-
-    // ✅ If forceTwoColumns => ignore "horizontal" and always show grid 2 cols
     final isHorizontal =
         !forceTwoColumns && layout.toLowerCase() == 'horizontal';
 
     if (items.isEmpty) return const SizedBox.shrink();
+
+    final hasProducts = items.any((e) => e.kind == ItemKind.product);
 
     return Container(
       margin: EdgeInsets.only(bottom: spacing.lg),
@@ -64,13 +62,14 @@ class HomeItemsSection extends StatelessWidget {
           ),
           SizedBox(height: spacing.sm),
 
-          // ✅ Horizontal list (only when NOT forced)
           if (isHorizontal)
             LayoutBuilder(
               builder: (context, constraints) {
                 final maxWidth = constraints.maxWidth;
-                double cardWidth = (maxWidth * 0.55).clamp(170.0, 230.0);
-                final cardHeight = cardWidth * 1.6;
+                final double cardWidth =
+                    (maxWidth * 0.56).clamp(175.0, 235.0);
+                final double cardHeight =
+                    hasProducts ? cardWidth * 1.78 : cardWidth * 1.56;
 
                 return SizedBox(
                   height: cardHeight,
@@ -85,9 +84,13 @@ class HomeItemsSection extends StatelessWidget {
                       return SizedBox(
                         width: cardWidth,
                         child: ItemCard(
+                          itemId: item.id,
                           title: item.title,
                           subtitle: _subtitleFor(item),
                           imageUrl: item.imageUrl,
+                          imageFit: item.kind == ItemKind.product
+                              ? BoxFit.contain
+                              : BoxFit.cover,
                           badgeLabel: pricing.currentLabel,
                           oldPriceLabel: pricing.oldLabel,
                           tagLabel: pricing.tagLabel,
@@ -107,27 +110,36 @@ class HomeItemsSection extends StatelessWidget {
               builder: (context, constraints) {
                 final w = constraints.maxWidth;
 
-                // ✅ Always 2 columns for New Arrivals
                 final cols =
                     forceTwoColumns ? 2 : (w < 520 ? 2 : (w < 900 ? 3 : 4));
 
-                final aspect = forceTwoColumns
-                    ? (w < 520 ? 0.74 : 0.85)
-                    : (w < 520 ? 0.74 : (w < 900 ? 0.78 : 0.82));
+                final double aspect;
+                if (hasProducts) {
+                  aspect = forceTwoColumns
+                      ? (w < 520 ? 0.55 : 0.62)
+                      : (w < 520 ? 0.58 : (w < 900 ? 0.64 : 0.72));
+                } else {
+                  aspect = forceTwoColumns
+                      ? (w < 520 ? 0.72 : 0.80)
+                      : (w < 520 ? 0.74 : (w < 900 ? 0.80 : 0.86));
+                }
 
-                // ✅ Card width derived from columns (same math as grid)
                 final cardW = (w - ((cols - 1) * spacing.md)) / cols;
                 final cardH = cardW / aspect;
 
-                // ✅ helper card widget
                 Widget card(ItemSummary item) {
                   final pricing = _pricingFor(context, item);
+
                   return SizedBox(
                     width: double.infinity,
                     child: ItemCard(
+                      itemId: item.id,
                       title: item.title,
                       subtitle: _subtitleFor(item),
                       imageUrl: item.imageUrl,
+                      imageFit: item.kind == ItemKind.product
+                          ? BoxFit.contain
+                          : BoxFit.cover,
                       badgeLabel: pricing.currentLabel,
                       oldPriceLabel: pricing.oldLabel,
                       tagLabel: pricing.tagLabel,
@@ -139,11 +151,10 @@ class HomeItemsSection extends StatelessWidget {
                   );
                 }
 
-                // ✅ NEW: no-gap layout for New Arrivals when few items
                 if (forceTwoColumns && items.length == 1) {
                   return Center(
                     child: SizedBox(
-                      width: cardW, // same size as a grid card
+                      width: cardW,
                       height: cardH,
                       child: card(items.first),
                     ),
@@ -154,17 +165,16 @@ class HomeItemsSection extends StatelessWidget {
                   return Row(
                     children: [
                       Expanded(
-                          child:
-                              SizedBox(height: cardH, child: card(items[0]))),
+                        child: SizedBox(height: cardH, child: card(items[0])),
+                      ),
                       SizedBox(width: spacing.md),
                       Expanded(
-                          child:
-                              SizedBox(height: cardH, child: card(items[1]))),
+                        child: SizedBox(height: cardH, child: card(items[1])),
+                      ),
                     ],
                   );
                 }
 
-                // ✅ Default grid (3+ items or not forced)
                 return GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
